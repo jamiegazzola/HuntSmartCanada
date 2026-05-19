@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HuntSmart Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- Firebase loaded via module script below -->
+
+<style>
+:root {
+  --bg:        #070e09;
+  --surface:   #0c1610;
+  --surface2:  #111f15;
+  --border:    #1a2e1e;
+  --gold:      #c9a84c;
+  --gold-dim:  #8a6e2f;
+  --forest:    #2d6a35;
+  --forest-dim:#1a3d20;
+  --green:     #4ade80;
+  --red:       #ff5757;
+  --yellow:    #ffd166;
+  --text:      #deeade;
+  --muted:     #5a7a5e;
+  --mono:      'IBM Plex Mono', monospace;
+  --sans:      'IBM Plex Sans', sans-serif;
+  --display:   'Bebas Neue', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  min-height: 100vh;
+}
+
+/* ── AUTH GATE ── */
+#auth-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 24px;
+}
+#auth-gate h1 {
+  font-family: var(--display);
+  font-size: 3rem;
+  letter-spacing: 2px;
+  color: var(--gold);
+}
+#auth-gate p { color: var(--muted); font-size: 13px; }
+#auth-gate .badge {
+  background: var(--gold);
+  color: #000;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  padding: 3px 10px;
+  text-transform: uppercase;
+}
+.btn-gold {
+  background: var(--gold);
+  color: #000;
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 1px;
+  border: none;
+  padding: 12px 32px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: opacity .15s;
+}
+.btn-gold:hover { opacity: .85; }
+
+/* ── SHELL ── */
+#app { display: block; }
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 52px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.wordmark {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  letter-spacing: 2px;
+  color: var(--gold);
+}
+.admin-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #000;
+  background: var(--gold);
+  padding: 2px 8px;
+  text-transform: uppercase;
+}
+.header-right { display: flex; align-items: center; gap: 16px; }
+#last-refresh { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+#signout-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all .15s;
+}
+#signout-btn:hover { color: var(--text); border-color: var(--muted); }
+
+main { padding: 20px 16px; max-width: 1600px; margin: 0 auto; }
+
+/* ── STAT CARDS ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 20px 24px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--gold);
+  opacity: .5;
+}
+.stat-card.accent::before { opacity: 1; }
+.stat-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.stat-value {
+  font-family: var(--display);
+  font-size: 2.4rem;
+  line-height: 1;
+  color: var(--text);
+}
+.stat-card.accent .stat-value { color: var(--gold); }
+.stat-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* ── MINI CHARTS ── */
+.mini-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 20px 24px;
+}
+.chart-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+/* BC/AB bar */
+.province-bar { display: flex; flex-direction: column; gap: 10px; }
+.prov-row { display: flex; align-items: center; gap: 10px; }
+.prov-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  width: 24px;
+  flex-shrink: 0;
+}
+.prov-track {
+  flex: 1;
+  height: 14px;
+  background: var(--border);
+  position: relative;
+}
+.prov-fill {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  background: var(--gold);
+  transition: width .6s ease;
+}
+.prov-fill.ab { background: var(--green); }
+.prov-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Tier donut (CSS-only) */
+.tier-list { display: flex; flex-direction: column; gap: 8px; }
+.tier-row { display: flex; align-items: center; gap: 10px; }
+.tier-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.tier-name { font-family: var(--sans); font-size: 12px; color: var(--text); flex: 1; }
+.tier-num { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+/* Referral breakdown */
+.ref-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.ref-src { font-family: var(--mono); font-size: 11px; color: var(--text); flex: 1; }
+.ref-track { width: 80px; height: 6px; background: var(--border); position: relative; }
+.ref-fill { position: absolute; top:0; left:0; bottom:0; background: var(--gold); opacity:.7; transition: width .6s ease; }
+.ref-count { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 28px; text-align: right; }
+
+/* ── GLOBAL FILTERS ── */
+.global-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.table-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.search-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 8px 14px;
+  width: 220px;
+  outline: none;
+  transition: border-color .15s;
+}
+.search-input:focus { border-color: var(--gold-dim); }
+.search-input::placeholder { color: var(--muted); }
+.filter-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 8px 12px;
+  outline: none;
+  cursor: pointer;
+}
+.filter-select option { background: var(--surface2); }
+.ctrl-spacer { flex: 1; }
+.gf-select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .5px;
+  padding: 7px 10px;
+  cursor: pointer;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a7a5e'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+.gf-select option { background: var(--surface2); color: var(--text); }
+
+.refresh-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #000;
+  background: var(--gold);
+  border: none;
+  padding: 8px 18px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.refresh-btn:hover { background: #d4b05a; transform: scale(1.02); }
+
+/* ── TABLE ── */
+.table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+}
+table { width: 100%; border-collapse: collapse; }
+thead tr {
+  border-bottom: 1px solid var(--border);
+}
+th {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding: 12px 16px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: color .15s;
+}
+th:hover { color: var(--gold); }
+th.sort-asc::after  { content: ' ↑'; color: var(--gold); }
+th.sort-desc::after { content: ' ↓'; color: var(--gold); }
+
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background .1s;
+}
+tbody tr:hover { background: var(--surface2); }
+tbody tr:last-child { border-bottom: none; }
+
+td {
+  padding: 12px 16px;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+}
+td.mono { font-family: var(--mono); font-size: 12px; }
+
+/* tier pill */
+.pill {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 3px 9px;
+  text-transform: uppercase;
+}
+.pill-pro     { background: rgba(201,168,76,.15); color: var(--gold);  border: 1px solid var(--gold-dim); }
+.pill-trial   { background: rgba(255,209,102,.1);  color: var(--yellow);border: 1px solid rgba(255,209,102,.3); }
+.pill-free    { background: rgba(107,122,128,.1);  color: var(--muted); border: 1px solid var(--border); }
+
+/* churn risk */
+.risk { display: inline-block; font-family: var(--mono); font-size: 11px; font-weight: 600; }
+.risk-high   { color: var(--red); }
+.risk-medium { color: var(--yellow); }
+.risk-low    { color: var(--green); }
+
+/* province tag */
+.prov-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 2px 7px;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+.prov-tag.bc { color: var(--gold);  border-color: var(--gold-dim); }
+.prov-tag.ab { color: var(--green); border-color: rgba(61,220,132,.3); }
+.prov-tag.both { color: var(--yellow); border-color: rgba(255,209,102,.3); }
+
+/* pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.page-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.page-btn:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
+.page-btn:disabled { opacity: .3; cursor: default; }
+.page-btn.active { border-color: var(--gold); color: var(--gold); }
+
+/* ── LOADING ── */
+#loading-row td {
+  text-align: center;
+  padding: 48px;
+  font-family: var(--mono);
+  color: var(--muted);
+  font-size: 12px;
+}
+.spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── ACCESS DENIED ── */
+#denied-msg {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 16px;
+  text-align: center;
+}
+#denied-msg h2 { font-family: var(--display); font-size: 2.5rem; color: var(--red); }
+#denied-msg p  { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  header { padding: 0 12px; height: 48px; }
+  header img { height: 26px; }
+  #last-refresh { display: none; }
+  #signout-btn { display: none; }
+
+  .global-filters { padding: 8px 12px; gap: 8px; }
+  .gf-select { font-size: 12px; padding: 8px 28px 8px 10px; }
+
+  main { padding: 12px; }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .stat-card { padding: 12px 14px; }
+  .stat-value { font-size: 1.6rem; }
+  .stat-label { font-size: 9px; letter-spacing: 1px; }
+
+  .mini-split {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+  .chart-card { padding: 14px; }
+  .chart-card[style*="grid-column"] { grid-column: span 1 !important; }
+
+  .table-controls { gap: 8px; }
+  .search-input { width: 100%; }
+  .filter-select { font-size: 11px; padding: 7px 8px; flex: 1; }
+  .ctrl-spacer { display: none; }
+  #row-count { width: 100%; text-align: right; }
+
+  /* Mobile table — hide non-essential columns */
+  .table-wrap { overflow-x: hidden; }
+  table { table-layout: fixed; }
+  th:nth-child(2),  td:nth-child(2)  { display: none; }
+  th:nth-child(4),  td:nth-child(4)  { display: none; }
+  th:nth-child(6),  td:nth-child(6)  { display: none; }
+  th:nth-child(7),  td:nth-child(7)  { display: none; }
+  th:nth-child(8),  td:nth-child(8)  { display: none; }
+  th:nth-child(9),  td:nth-child(9)  { display: none; }
+  th:nth-child(1) { width: 40%; }
+  th:nth-child(3) { width: 25%; }
+  th:nth-child(5) { width: 18%; }
+  th:nth-child(6) { width: 17%; }
+  td { padding: 10px; font-size: 12px; }
+  td:nth-child(1) { overflow: hidden; text-overflow: ellipsis; }
+
+  .pagination { justify-content: center; margin-top: 12px; }
+}
+
+@media (min-width: 769px) {
+  header { padding: 0 24px; }
+  main { padding: 24px; }
+  .global-filters { padding: 10px 24px; }
+  .gf-select { max-width: 200px; flex: 0 0 auto; }
+}
+</style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<!-- MAIN APP -->
+<div id="app">
+  <header>
+    <div class="header-left">
+      <img src="./Images/logo.png" alt="HuntSmart Canada" style="height:36px;object-fit:contain;">
+      <span class="admin-badge">Admin</span>
+    </div>
+    <div class="header-right">
+      <span id="last-refresh">—</span>
+      <button class="refresh-btn" id="refresh-btn">↻ Refresh</button>
+      <button id="signout-btn">Sign Out</button>
+    </div>
+  </header>
+
+  <!-- GLOBAL FILTERS -->
+  <div class="global-filters">
+    <select class="gf-select" id="gf-time">
+      <option value="all">All Time</option>
+      <option value="year">This Year</option>
+      <option value="month">This Month</option>
+      <option value="week">This Week</option>
+      <option value="day">Today</option>
+    </select>
+    <select class="gf-select" id="gf-tier">
+      <option value="all">All Plans</option>
+      <option value="pro_monthly">Pro Monthly</option>
+      <option value="pro_annual">Pro Annual</option>
+      <option value="trialing">Trial</option>
+      <option value="free">Free</option>
+    </select>
+  </div>
+
+  <main>
+    <!-- STAT CARDS -->
+    <div class="stats-grid">
+      <div class="stat-card accent">
+        <div class="stat-label">Total Users</div>
+        <div class="stat-value" id="s-total">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pro Members</div>
+        <div class="stat-value" id="s-pro">—</div>
+        <div class="stat-sub" id="s-pro-pct">— of total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Trialing</div>
+        <div class="stat-value" id="s-trial">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Free Users</div>
+        <div class="stat-value" id="s-free">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Searches</div>
+        <div class="stat-value" id="s-searches">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">High Churn Risk</div>
+        <div class="stat-value" id="s-churn" style="color:var(--red)">—</div>
+        <div class="stat-sub">inactive 14+ days</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active Today</div>
+        <div class="stat-value" id="s-today">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Site Visitors (3d)</div>
+        <div class="stat-value" id="s-visitors">—</div>
+        <div class="stat-sub">unique anonymous visitors</div>
+      </div>
+      <div class="stat-card accent">
+        <div class="stat-label">Signup Conversion</div>
+        <div class="stat-value" id="s-conversion">—</div>
+        <div class="stat-sub" id="s-conversion-sub">visitors → accounts</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Auth Errors (3d)</div>
+        <div class="stat-value" id="s-autherrors" style="color:var(--red)">—</div>
+        <div class="stat-sub" id="s-autherrors-sub">failed sign-in attempts</div>
+      </div>
+    </div>
+
+    <!-- CHARTS ROW 1: Pies + Tiers + Referrals -->
+    <div class="mini-split">
+
+      <!-- Province Split Pie -->
+      <div class="chart-card" style="display:flex;flex-direction:column;align-items:center">
+        <div class="chart-title" style="align-self:flex-start">Province Split</div>
+        <canvas id="pie-province" width="180" height="180"></canvas>
+        <div id="pie-province-legend" style="margin-top:12px;width:100%"></div>
+      </div>
+
+      <!-- Search Method Pie -->
+      <div class="chart-card" style="display:flex;flex-direction:column;align-items:center">
+        <div class="chart-title" style="align-self:flex-start">How Users Search</div>
+        <canvas id="pie-method" width="180" height="180"></canvas>
+        <div id="pie-method-legend" style="margin-top:12px;width:100%"></div>
+      </div>
+
+      <!-- Membership Tiers -->
+      <div class="chart-card">
+        <div class="chart-title">Membership Tiers</div>
+        <div class="tier-list">
+          <div class="tier-row"><div class="tier-dot" style="background:var(--gold)"></div><div class="tier-name">Pro Monthly</div><div class="tier-num" id="t-monthly">0</div></div>
+          <div class="tier-row"><div class="tier-dot" style="background:var(--green)"></div><div class="tier-name">Pro Annual</div><div class="tier-num" id="t-annual">0</div></div>
+          <div class="tier-row"><div class="tier-dot" style="background:var(--yellow)"></div><div class="tier-name">Trial</div><div class="tier-num" id="t-trial">0</div></div>
+          <div class="tier-row"><div class="tier-dot" style="background:var(--muted)"></div><div class="tier-name">Free</div><div class="tier-num" id="t-free">0</div></div>
+        </div>
+      </div>
+
+      <!-- Referral Sources -->
+      <div class="chart-card">
+        <div class="chart-title">Referral Sources</div>
+        <div id="ref-chart"></div>
+      </div>
+
+      <!-- Churn Risk -->
+      <div class="chart-card">
+        <div class="chart-title">Churn Risk Breakdown</div>
+        <div class="tier-list">
+          <div class="tier-row"><div class="tier-dot" style="background:var(--green)"></div><div class="tier-name">Low (active &lt;7d)</div><div class="tier-num risk-low" id="cr-low">0</div></div>
+          <div class="tier-row"><div class="tier-dot" style="background:var(--yellow)"></div><div class="tier-name">Medium (7–14d)</div><div class="tier-num risk-medium" id="cr-med">0</div></div>
+          <div class="tier-row"><div class="tier-dot" style="background:var(--red)"></div><div class="tier-name">High (14d+)</div><div class="tier-num risk-high" id="cr-high">0</div></div>
+          <div class="tier-row"><div class="tier-dot" style="background:var(--muted)"></div><div class="tier-name">Never logged in</div><div class="tier-num" id="cr-never">0</div></div>
+        </div>
+      </div>
+
+      <!-- Species Breakdown -->
+      <div class="chart-card" style="grid-column: span 2">
+        <div class="chart-title">Top Species by Search Volume</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 32px">
+          <div>
+            <div style="font-family:var(--mono);font-size:10px;color:#4a7fd4;letter-spacing:1px;margin-bottom:8px">BC</div>
+            <div id="species-bc"></div>
+          </div>
+          <div>
+            <div style="font-family:var(--mono);font-size:10px;color:#3ddc84;letter-spacing:1px;margin-bottom:8px">AB</div>
+            <div id="species-ab"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Saved Draws Pies -->
+      <div class="chart-card" style="display:flex;flex-direction:column;align-items:center">
+        <div class="chart-title" style="align-self:flex-start">BC Saved Draws by Species</div>
+        <canvas id="pie-bc-saved" width="180" height="180"></canvas>
+        <div id="pie-bc-saved-legend" style="margin-top:12px;width:100%"></div>
+      </div>
+
+      <div class="chart-card" style="display:flex;flex-direction:column;align-items:center">
+        <div class="chart-title" style="align-self:flex-start">AB Saved Draws by Species</div>
+        <canvas id="pie-ab-saved" width="180" height="180"></canvas>
+        <div id="pie-ab-saved-legend" style="margin-top:12px;width:100%"></div>
+      </div>
+
+      <!-- Signup Sparkline -->
+      <div class="chart-card" style="grid-column: span 2">
+        <div class="chart-title">New User Signups — Last 30 Days</div>
+        <canvas id="sparkline-signups" height="80"></canvas>
+      </div>
+
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-controls">
+      <input class="search-input" type="text" id="user-search" placeholder="Search email or UID…">
+      <select class="filter-select" id="filter-tier">
+        <option value="">All Tiers</option>
+        <option value="pro_monthly">Pro Monthly</option>
+        <option value="pro_annual">Pro Annual</option>
+        <option value="trialing">Trial</option>
+        <option value="free">Free</option>
+      </select>
+      <select class="filter-select" id="filter-province">
+        <option value="">All Provinces</option>
+        <option value="BC">BC</option>
+        <option value="AB">AB</option>
+        <option value="both">Both</option>
+      </select>
+      <select class="filter-select" id="filter-churn">
+        <option value="">All Churn Risk</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+      <div class="ctrl-spacer"></div>
+      <span id="row-count" style="font-family:var(--mono);font-size:11px;color:var(--muted)"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table id="user-table">
+        <thead>
+          <tr>
+            <th data-col="email">Email</th>
+            <th data-col="province">Province</th>
+            <th data-col="subscriptionTier">Tier</th>
+            <th data-col="loginCount">Logins</th>
+            <th data-col="totalSearches">Searches</th>
+            <th data-col="lastLogin">Last Login</th>
+            <th data-col="churnRisk">Churn Risk</th>
+            <th data-col="referralSource">Referral</th>
+            <th data-col="createdAt">Joined</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr id="loading-row"><td colspan="9"><span class="spinner"></span>Loading users…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <span id="page-info">Page 1</span>
+      <button class="page-btn" id="prev-btn">← Prev</button>
+      <button class="page-btn" id="next-btn">Next →</button>
+    </div>
+  </main>
+</div>
+
+<!-- ───────────── FIREBASE CONFIG ───────────── -->
+<script type="module">
+import { initializeApp }      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, collection, getDocs, query, where, orderBy, limit }
+                               from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyDgiLQD2MVdX-OoeviFpQSRPT6isZNJVVQ",
+  authDomain:        "huntsmart-canada.firebaseapp.com",
+  projectId:         "huntsmart-canada",
+  storageBucket:     "huntsmart-canada.firebasestorage.app",
+  messagingSenderId: "342472703908",
+  appId:             "1:342472703908:web:f9ca542982549d4e1d8b31"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ── Load users on open ────────────────────────
+loadUsers();
+document.getElementById('signout-btn').style.display = 'none';
+
+// ── Helpers ──────────────────────────────────
+function fmtDate(ts) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-CA', { year:'numeric', month:'short', day:'numeric' });
+}
+
+function daysSince(ts) {
+  if (!ts) return null;
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+
+function churnRisk(lastLogin, tier) {
+  const days = daysSince(lastLogin);
+  if (days === null) return 'never';
+  if (days > 14) return 'high';
+  if (days > 6)  return 'medium';
+  return 'low';
+}
+
+function tierLabel(u) {
+  const s = (u.subscriptionStatus || '').toLowerCase();
+  const t = (u.subscriptionTier   || '').toLowerCase();
+  if (s === 'trialing')       return 'trialing';
+  if (t === 'pro_monthly')    return 'pro_monthly';
+  if (t === 'pro_annual')     return 'pro_annual';
+  return 'free';
+}
+
+function provinceTag(u) {
+  const bc = (u.bcSearches||0) > 0 || u.province === 'BC';
+  const ab = (u.abSearches||0) > 0 || u.province === 'AB';
+  if (bc && ab) return 'both';
+  if (ab)       return 'AB';
+  if (bc)       return 'BC';
+  return 'unknown';
+}
+
+// ── State ────────────────────────────────────
+let allUsers = [], filtered = [], sortCol = 'lastLogin', sortDir = 'desc';
+let siteVisitors3d = 0, authErrors3d = 0, authErrorBreakdown = {};
+let activeTimeFilter = 'all', activeTierFilter = 'all';
+const PAGE_SIZE = 25;
+let currentPage = 1;
+
+function getFilteredUsers() {
+  const now = new Date();
+  return allUsers.filter(u => {
+    // Time filter based on createdAt
+    if (activeTimeFilter !== 'all') {
+      const d = u.createdAt ? (u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt)) : null;
+      if (!d) return false;
+      const diff = (now - d) / 86400000;
+      if (activeTimeFilter === 'day'   && diff > 1)   return false;
+      if (activeTimeFilter === 'week'  && diff > 7)   return false;
+      if (activeTimeFilter === 'month' && diff > 30)  return false;
+      if (activeTimeFilter === 'year'  && diff > 365) return false;
+    }
+    // Tier filter
+    if (activeTierFilter !== 'all' && tierLabel(u) !== activeTierFilter) return false;
+    return true;
+  });
+}
+
+// Global filter select handlers
+document.getElementById('gf-time').addEventListener('change', function() {
+  activeTimeFilter = this.value;
+  updateStats();
+  applyFilters();
+});
+document.getElementById('gf-tier').addEventListener('change', function() {
+  activeTierFilter = this.value;
+  updateStats();
+  applyFilters();
+});
+
+// ── Load users ───────────────────────────────
+let bcSavedData = {}, abSavedData = {};
+
+async function loadUsers() {
+  document.getElementById('table-body').innerHTML =
+    '<tr id="loading-row"><td colspan="9"><span class="spinner"></span>Loading users…</td></tr>';
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+
+    // Fetch saved draws subcollections for all users
+    bcSavedData = {}; abSavedData = {};
+    await Promise.all(allUsers.map(async u => {
+      try {
+        const bcSnap = await getDocs(collection(db, 'users', u.uid, 'bcSavedDraws'));
+        bcSnap.forEach(d => {
+          const species = d.data().Species || 'Unknown';
+          bcSavedData[species] = (bcSavedData[species]||0) + 1;
+        });
+        const abSnap = await getDocs(collection(db, 'users', u.uid, 'abSavedDraws'));
+        abSnap.forEach(d => {
+          const species = d.data().species || 'Unknown';
+          abSavedData[species] = (abSavedData[species]||0) + 1;
+        });
+      } catch(e) {}
+    }));
+
+    // Load site visitors (last 7 days from visit_counters)
+    try {
+      const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 3);
+      const visitSnap = await getDocs(collection(db, 'visit_counters'));
+      siteVisitors3d = 0;
+      visitSnap.forEach(d => {
+        const date = d.data().date;
+        if (date && date >= sevenDaysAgo.toISOString().slice(0,10)) {
+          siteVisitors3d += (d.data().count || 0);
+        }
+      });
+    } catch(e) { console.warn('[admin] visit_counters load failed', e); }
+
+    // Load auth errors (last 7 days)
+    try {
+      const authErrSnap = await getDocs(collection(db, 'auth_errors'));
+      authErrors3d = 0; authErrorBreakdown = {};
+      const cutoff = Date.now() - 3 * 86400000;
+      authErrSnap.forEach(d => {
+        const data = d.data();
+        const ts = data.timestamp ? (data.timestamp.toDate ? data.timestamp.toDate() : new Date(data.timestamp)) : null;
+        if (ts && ts.getTime() >= cutoff) {
+          authErrors3d++;
+          const code = data.errorCode || 'unknown';
+          authErrorBreakdown[code] = (authErrorBreakdown[code] || 0) + 1;
+        }
+      });
+    } catch(e) { console.warn('[admin] auth_errors load failed', e); }
+
+    document.getElementById('last-refresh').textContent =
+      'Updated ' + new Date().toLocaleTimeString('en-CA', { hour:'2-digit', minute:'2-digit' });
+    updateStats();
+    applyFilters();
+  } catch(e) {
+    document.getElementById('table-body').innerHTML =
+      `<tr><td colspan="9" style="text-align:center;padding:40px;font-family:var(--mono);color:var(--red);font-size:12px">
+        Firestore permission denied — update security rules to allow admin reads.
+      </td></tr>`;
+    console.error('[admin] Firestore error:', e);
+  }
+}
+
+document.getElementById('refresh-btn').onclick = loadUsers;
+
+// ── Stats ────────────────────────────────────
+function updateStats() {
+  const users  = getFilteredUsers();
+  const total   = users.length;
+  const proList = users.filter(u => tierLabel(u).startsWith('pro'));
+  const trials  = users.filter(u => tierLabel(u) === 'trialing');
+  const frees   = users.filter(u => tierLabel(u) === 'free');
+  const totalS  = users.reduce((a,u) => a + (u.totalSearches||0), 0);
+  const today   = new Date(); today.setHours(0,0,0,0);
+  const todayN  = users.filter(u => {
+    if (!u.lastLogin) return false;
+    return (u.lastLogin.toDate ? u.lastLogin.toDate() : new Date(u.lastLogin)) >= today;
+  }).length;
+
+  set('s-total',     total);
+  set('s-pro',       proList.length);
+  set('s-pro-pct',   total ? Math.round(proList.length/total*100)+'% of total' : '—');
+  set('s-trial',     trials.length);
+  set('s-free',      frees.length);
+  set('s-searches',  totalS.toLocaleString());
+  set('s-today',     todayN);
+
+  // Visitor tracking & conversion
+  const newUsersLast7 = users.filter(u => {
+    if (!u.createdAt) return false;
+    const d = u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt);
+    return (Date.now() - d.getTime()) < 3 * 86400000;
+  }).length;
+  set('s-visitors', siteVisitors3d.toLocaleString());
+  const convPct = siteVisitors3d > 0 ? Math.round(newUsersLast7 / siteVisitors3d * 100) : 0;
+  set('s-conversion', convPct + '%');
+  set('s-conversion-sub', newUsersLast7 + ' signups / ' + siteVisitors3d + ' visitors (3d)');
+
+  // Auth errors
+  set('s-autherrors', authErrors3d);
+  const topErrors = Object.entries(authErrorBreakdown).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  document.getElementById('s-autherrors-sub').textContent = topErrors.length
+    ? topErrors.map(([k,v]) => k.replace('auth/','') + ':' + v).join(' · ')
+    : 'no errors recorded yet';
+
+  // Churn
+  const cr = { low:0, medium:0, high:0, never:0 };
+  users.forEach(u => cr[churnRisk(u.lastLogin)] = (cr[churnRisk(u.lastLogin)]||0)+1);
+  set('s-churn',  cr.high);
+  set('cr-low',   cr.low);
+  set('cr-med',   cr.medium);
+  set('cr-high',  cr.high);
+  set('cr-never', cr.never);
+
+  // Tiers
+  set('t-monthly', users.filter(u => tierLabel(u) === 'pro_monthly').length);
+  set('t-annual',  users.filter(u => tierLabel(u) === 'pro_annual').length);
+  set('t-trial',   trials.length);
+  set('t-free',    frees.length);
+
+  // Referrals
+  const refMap = {};
+  users.forEach(u => {
+    const r = u.referralSource || 'direct';
+    refMap[r] = (refMap[r]||0)+1;
+  });
+  const sorted = Object.entries(refMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxRef = sorted[0]?.[1] || 1;
+  const REF_COLORS = ['#4a7fd4','#3ddc84','#ff5757','#ffd166','#b57bee','#ff9f43'];
+  document.getElementById('ref-chart').innerHTML = sorted.map(([src,cnt], i) =>
+    `<div class="ref-row">
+      <div class="ref-src">${src}</div>
+      <div class="ref-track"><div class="ref-fill" style="width:${cnt/maxRef*100}%;background:${REF_COLORS[i % REF_COLORS.length]}"></div></div>
+      <div class="ref-count">${cnt}</div>
+    </div>`
+  ).join('');
+
+  // Species breakdown — handles both nested and dot-notation flat fields
+  const bcSpecies = {}, abSpecies = {};
+  users.forEach(u => {
+    // nested: u.bcSpeciesSearches = { Moose: 3 }
+    if (u.bcSpeciesSearches && typeof u.bcSpeciesSearches === 'object') {
+      Object.entries(u.bcSpeciesSearches).forEach(([s,n]) => bcSpecies[s] = (bcSpecies[s]||0)+n);
+    }
+    if (u.abSpeciesSearches && typeof u.abSpeciesSearches === 'object') {
+      Object.entries(u.abSpeciesSearches).forEach(([s,n]) => abSpecies[s] = (abSpecies[s]||0)+n);
+    }
+    // flat: u['bcSpeciesSearches.Moose'] = 3
+    Object.keys(u).forEach(k => {
+      if (k.startsWith('bcSpeciesSearches.')) {
+        const s = k.replace('bcSpeciesSearches.', '');
+        bcSpecies[s] = (bcSpecies[s]||0) + (u[k]||0);
+      }
+      if (k.startsWith('abSpeciesSearches.')) {
+        const s = k.replace('abSpeciesSearches.', '');
+        abSpecies[s] = (abSpecies[s]||0) + (u[k]||0);
+      }
+    });
+  });
+  const totalBCS = Object.values(bcSpecies).reduce((a,b)=>a+b,0)||1;
+  const totalABS = Object.values(abSpecies).reduce((a,b)=>a+b,0)||1;
+
+  const SPECIES_COLORS = ['#4a7fd4','#3ddc84','#ff5757','#ffd166','#b57bee','#ff9f43','#54a0ff','#ff6b9d'];
+  function speciesRows(map, total) {
+    const entries = Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    if (!entries.length) return '<div style="font-family:var(--mono);font-size:11px;color:var(--muted)">No data yet</div>';
+    const max = entries[0][1];
+    return entries.map(([s,n], i) => `
+      <div class="ref-row" style="margin-bottom:7px">
+        <div class="ref-src">${s}</div>
+        <div class="ref-track"><div class="ref-fill" style="width:${n/max*100}%;background:${SPECIES_COLORS[i % SPECIES_COLORS.length]}"></div></div>
+        <div class="ref-count">${Math.round(n/total*100)}%</div>
+      </div>`).join('');
+  }
+  document.getElementById('species-bc').innerHTML = speciesRows(bcSpecies, totalBCS);
+  document.getElementById('species-ab').innerHTML = speciesRows(abSpecies, totalABS);
+
+  // Province Split Pie
+  const bcN  = users.filter(u => provinceTag(u) === 'BC').length;
+  const abN  = users.filter(u => provinceTag(u) === 'AB').length;
+  const bN   = users.filter(u => provinceTag(u) === 'both').length;
+  const unkN = users.filter(u => provinceTag(u) === 'unknown').length;
+  const totalBCSearches = users.reduce((a,u) => a + (u.bcSearches||0), 0);
+  const totalABSearches = users.reduce((a,u) => a + (u.abSearches||0), 0);
+  const pieProvLabels = [], pieProvData = [], pieProvColors = [];
+  if (bcN)  { pieProvLabels.push('BC');      pieProvData.push(bcN);  pieProvColors.push('#4a7fd4'); }
+  if (abN)  { pieProvLabels.push('AB');      pieProvData.push(abN);  pieProvColors.push('#3ddc84'); }
+  if (bN)   { pieProvLabels.push('Both');    pieProvData.push(bN);   pieProvColors.push('#ffd166'); }
+  if (unkN) { pieProvLabels.push('Unknown'); pieProvData.push(unkN); pieProvColors.push('#6b7a80'); }
+  if (pieProvData.length) {
+    drawPie('pie-province', 'pie-province-legend', pieProvLabels, pieProvData, pieProvColors);
+  } else {
+    document.getElementById('pie-province-legend').innerHTML =
+      '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center">No data yet</div>';
+  }
+
+  // Search Method Pie — handles both nested and dot-notation flat fields
+  const methodMap = { filter_bc:0, filter_ab:0, map_bc:0, map_ab:0, map_main:0 };
+  users.forEach(u => {
+    // nested object: u.searchMethods = { filter_bc: 3 }
+    if (u.searchMethods && typeof u.searchMethods === 'object') {
+      Object.entries(u.searchMethods).forEach(([k,v]) => {
+        if (k in methodMap) methodMap[k] += (v||0);
+      });
+    }
+    // flat dot-notation: u['searchMethods.filter_bc'] = 3
+    Object.keys(u).forEach(k => {
+      if (k.startsWith('searchMethods.')) {
+        const method = k.replace('searchMethods.', '');
+        if (method in methodMap) methodMap[method] += (u[k]||0);
+      }
+    });
+  });
+  const methodLabels = { filter_bc:'BC Filter', filter_ab:'AB Filter', map_bc:'BC Map', map_ab:'AB Map', map_main:'Main Map' };
+  const methodColors = { filter_bc:'#4a7fd4', filter_ab:'#3ddc84', map_bc:'#ff5757', map_ab:'#ffd166', map_main:'#b57bee' };
+  const mEntries = Object.entries(methodMap).filter(([,v])=>v>0);
+  if (mEntries.length) {
+    drawPie('pie-method', 'pie-method-legend',
+      mEntries.map(([k])=>methodLabels[k]),
+      mEntries.map(([,v])=>v),
+      mEntries.map(([k])=>methodColors[k])
+    );
+  } else {
+    document.getElementById('pie-method-legend').innerHTML =
+      '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center">No data yet</div>';
+  }
+
+  // Saved Draws Pies
+  const PIE_COLORS = ['#4a7fd4','#3ddc84','#ff5757','#ffd166','#b57bee','#ff9f43','#54a0ff','#ff6b9d'];
+  function savedPie(canvasId, legendId, dataMap) {
+    const entries = Object.entries(dataMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    if (!entries.length) {
+      document.getElementById(legendId).innerHTML =
+        '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center">No saved draws yet</div>';
+      return;
+    }
+    drawPie(canvasId, legendId, entries.map(([s])=>s), entries.map(([,n])=>n), PIE_COLORS.slice(0,entries.length));
+  }
+  savedPie('pie-bc-saved', 'pie-bc-saved-legend', bcSavedData);
+  savedPie('pie-ab-saved', 'pie-ab-saved-legend', abSavedData);
+
+  // Signup Sparkline — signups per day last 30 days
+  const sparkDays = 30;
+  const dayCounts = {};
+  const now2 = new Date();
+  for (let i = 0; i < sparkDays; i++) {
+    const d = new Date(now2); d.setDate(d.getDate() - (sparkDays - 1 - i));
+    dayCounts[d.toISOString().slice(0,10)] = 0;
+  }
+  users.forEach(u => {
+    if (!u.createdAt) return;
+    const d = (u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt)).toISOString().slice(0,10);
+    if (d in dayCounts) dayCounts[d]++;
+  });
+  const sparkLabels = Object.keys(dayCounts);
+  const sparkData   = Object.values(dayCounts);
+  if (_pieCharts['sparkline']) _pieCharts['sparkline'].destroy();
+  const sCtx = document.getElementById('sparkline-signups').getContext('2d');
+  _pieCharts['sparkline'] = new Chart(sCtx, {
+    type: 'line',
+    data: {
+      labels: sparkLabels,
+      datasets: [{
+        data: sparkData,
+        borderColor: '#c9a84c',
+        backgroundColor: 'rgba(201,168,76,0.1)',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#c9a84c',
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          ticks: {
+            color: '#6b7a80', font: { size: 10 }, font: { family: 'IBM Plex Mono' },
+            maxTicksLimit: 8,
+            callback: (v, i) => sparkLabels[i] ? sparkLabels[i].slice(5) : ''
+          },
+          grid: { color: '#1f2729' }
+        },
+        y: {
+          ticks: { color: '#6b7a80', font: { size: 10 }, stepSize: 1 },
+          grid: { color: '#1f2729' },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+let _pieCharts = {};
+function drawPie(canvasId, legendId, labels, data, colors) {
+  if (_pieCharts[canvasId]) { _pieCharts[canvasId].destroy(); }
+  const total = data.reduce((a,b)=>a+b,0) || 1;
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  _pieCharts[canvasId] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }] },
+    options: {
+      cutout: '65%',
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} (${Math.round(ctx.raw/total*100)}%)` }
+      }},
+      animation: { duration: 600 }
+    }
+  });
+  document.getElementById(legendId).innerHTML = labels.map((l,i) =>
+    `<div class="tier-row" style="margin-bottom:5px">
+      <div class="tier-dot" style="background:${colors[i]}"></div>
+      <div class="tier-name">${l}</div>
+      <div class="tier-num">${data[i]} <span style="color:var(--muted);font-size:10px">(${Math.round(data[i]/total*100)}%)</span></div>
+    </div>`
+  ).join('');
+}
+
+function set(id, val) { document.getElementById(id).textContent = val; }
+function setW(id, pct) { document.getElementById(id).style.width = pct+'%'; }
+
+// ── Filter / Sort ─────────────────────────────
+function applyFilters() {
+  const q     = document.getElementById('user-search').value.toLowerCase();
+  const tier  = document.getElementById('filter-tier').value;
+  const prov  = document.getElementById('filter-province').value;
+  const churn = document.getElementById('filter-churn').value;
+
+  filtered = allUsers.filter(u => {
+    if (q    && !(u.email||'').toLowerCase().includes(q) && !u.uid.includes(q)) return false;
+    if (tier && tierLabel(u) !== tier) return false;
+    if (prov && provinceTag(u) !== prov) return false;
+    if (churn && churnRisk(u.lastLogin) !== churn) return false;
+    return true;
+  });
+
+  // sort
+  filtered.sort((a,b) => {
+    let av = a[sortCol], bv = b[sortCol];
+    if (av && av.toDate) av = av.toDate().getTime();
+    if (bv && bv.toDate) bv = bv.toDate().getTime();
+    av = av ?? (sortDir==='asc' ? Infinity : -Infinity);
+    bv = bv ?? (sortDir==='asc' ? Infinity : -Infinity);
+    if (av < bv) return sortDir==='asc' ?-1:1;
+    if (av > bv) return sortDir==='asc' ? 1:-1;
+    return 0;
+  });
+
+  currentPage = 1;
+  set('row-count', filtered.length + ' users');
+  renderPage();
+}
+
+['user-search','filter-tier','filter-province','filter-churn']
+  .forEach(id => document.getElementById(id).addEventListener('input', applyFilters));
+
+// ── Sort headers ──────────────────────────────
+document.querySelectorAll('th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (sortCol === col) sortDir = sortDir==='asc'?'desc':'asc';
+    else { sortCol = col; sortDir = 'desc'; }
+    document.querySelectorAll('th').forEach(t => t.className='');
+    th.className = 'sort-'+sortDir;
+    applyFilters();
+  });
+});
+
+// ── Render table ──────────────────────────────
+function renderPage() {
+  const start = (currentPage-1)*PAGE_SIZE;
+  const page  = filtered.slice(start, start+PAGE_SIZE);
+  const tbody = document.getElementById('table-body');
+
+  if (!page.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;font-family:var(--mono);color:var(--muted);font-size:12px">No users match filters</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = page.map(u => {
+    const tl = tierLabel(u);
+    const pv = provinceTag(u);
+    const cr = churnRisk(u.lastLogin);
+    const pillClass = tl.startsWith('pro') ? 'pill-pro' : tl==='trialing' ? 'pill-trial' : 'pill-free';
+    const pillText  = tl==='pro_monthly'?'Pro Monthly':tl==='pro_annual'?'Pro Annual':tl==='trialing'?'Trial':'Free';
+    const riskClass = `risk risk-${cr}`;
+    const riskText  = cr==='never'?'Never logged in':cr.charAt(0).toUpperCase()+cr.slice(1);
+
+    return `<tr>
+      <td>${u.email||'<span style="color:var(--muted)">—</span>'}</td>
+      <td><span class="prov-tag ${pv.toLowerCase()}">${pv}</span></td>
+      <td><span class="pill ${pillClass}">${pillText}</span></td>
+      <td class="mono">${u.loginCount||0}</td>
+      <td class="mono">${(u.totalSearches||0).toLocaleString()}</td>
+      <td class="mono">${fmtDate(u.lastLogin)}</td>
+      <td><span class="${riskClass}">${riskText}</span></td>
+      <td class="mono" style="color:var(--muted)">${u.referralSource||'direct'}</td>
+      <td class="mono">${fmtDate(u.createdAt)}</td>
+    </tr>`;
+  }).join('');
+
+  const totalPages = Math.ceil(filtered.length/PAGE_SIZE);
+  set('page-info', `Page ${currentPage} of ${totalPages||1}`);
+  document.getElementById('prev-btn').disabled = currentPage <= 1;
+  document.getElementById('next-btn').disabled = currentPage >= totalPages;
+}
+
+document.getElementById('prev-btn').onclick = () => { currentPage--; renderPage(); };
+document.getElementById('next-btn').onclick = () => { currentPage++; renderPage(); };
+</script>
+</body>
+</html>
