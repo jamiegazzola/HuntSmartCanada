@@ -255,7 +255,7 @@ function osInitMap() {
 
   const url = (typeof BC_WMU_GEOJSON_URL !== 'undefined')
     ? BC_WMU_GEOJSON_URL
-    : 'https://raw.githubusercontent.com/jamiegazzola/Hunt-Odds/main/data/bc_wmu.geojson';
+    : 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/bc_wmu.geojson';
 
   fetch(url)
     .then(r => r.json())
