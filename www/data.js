@@ -23,23 +23,23 @@ function clearAbProfile() {
 let activeProvince = 'BC'; // 'BC' or 'AB'
 
 // ── DATA SOURCES ──
-const DATA_URL = 'https://raw.githubusercontent.com/jamiegazzola/Hunt-Odds/main/data/draws.json';
-const WRITEUPS_URL = 'https://raw.githubusercontent.com/jamiegazzola/Hunt-Odds/main/data/writeups.json';
-const AB_TERRAIN_URL = 'https://raw.githubusercontent.com/jamiegazzola/Hunt-Odds/main/data/ab_terrain.json';
-const AB_DATA_URL = 'https://raw.githubusercontent.com/jamiegazzola/Hunt-Odds/main/data/AlbertaData.json';
-const AB_HARVEST_URL = 'https://raw.githubusercontent.com/jamiegazzola/Hunt-Odds/main/data/alberta_2024_huntcode_harvest_success_matched_only.json';
+const DATA_URL = 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/draws.json';
+const WRITEUPS_URL = 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/writeups.json';
+const AB_TERRAIN_URL = 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/ab_terrain.json';
+const AB_DATA_URL = 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/AlbertaData.json';
+const AB_HARVEST_URL = 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/alberta_2024_huntcode_harvest_success_matched_only.json';
 let AB_HARVEST = null;
-const AB_ELK_HISTORY_URL = 'https://raw.githubusercontent.com/jamiegazzola/Hunt-Odds/main/data/AB_ELK_10YRDATA.json';
+const AB_ELK_HISTORY_URL = 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/AB_ELK_10YRDATA.json';
 let AB_ELK_HISTORY = null; // { wmu: { year: pct, ... }, ... } — also handles grouped WMUs
-const AB_MOOSE_HISTORY_URL = 'https://raw.githubusercontent.com/jamiegazzola/Hunt-Odds/main/data/alberta_moose_harvest_2015_2024.json';
+const AB_MOOSE_HISTORY_URL = 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/alberta_moose_harvest_2015_2024.json';
 let AB_MOOSE_HISTORY = null; // { wmu: { year: pct, ... } }
-const AB_MULEDEER_HISTORY_URL = 'https://raw.githubusercontent.com/jamiegazzola/Hunt-Odds/main/data/alberta_mule_deer_harvest_2015_2024.json';
+const AB_MULEDEER_HISTORY_URL = 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/alberta_mule_deer_harvest_2015_2024.json';
 let AB_MULEDEER_HISTORY = null; // { wmu: { year: pct, ... } }
-const AB_ANTELOPE_HISTORY_URL = 'https://raw.githubusercontent.com/jamiegazzola/Hunt-Odds/main/data/alberta_antelope_harvest_2015_2024.json';
+const AB_ANTELOPE_HISTORY_URL = 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/alberta_antelope_harvest_2015_2024.json';
 let AB_ANTELOPE_HISTORY = null; // { wmu: { year: pct, ... } }
-const AB_WTDEER_HISTORY_URL = 'https://raw.githubusercontent.com/jamiegazzola/Hunt-Odds/main/data/alberta_white_tailed_deer_harvest_2015_2024.json';
+const AB_WTDEER_HISTORY_URL = 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/alberta_white_tailed_deer_harvest_2015_2024.json';
 let AB_WTDEER_HISTORY = null; // { wmu: { year: pct, ... } }
-const AB_BISON_HISTORY_URL = 'https://raw.githubusercontent.com/jamiegazzola/Hunt-Odds/main/data/alberta_wood_bison_harvest_2015_2025.json';
+const AB_BISON_HISTORY_URL = 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/alberta_wood_bison_harvest_2015_2025.json';
 let AB_BISON_HISTORY = null; // [ { season, pct }, ... ] — province-level, no WMU breakdown
 
 async function loadAppData() {
