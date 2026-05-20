@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>LEH Draw Card – Thinhorn Sheep</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Barlow+Condensed:wght@500;700;800&family=Barlow:wght@400;500;600&display=swap');
+
+  :root {
+    --bg:        #141414;
+    --surface:   #1c1c1c;
+    --surface2:  #242424;
+    --border:    #2e2e2e;
+    --text:      #e8e8e8;
+    --muted:     #666;
+    --muted2:    #444;
+    --green:     #3ddc84;
+    --gold:      #f0b429;
+    --gold-dim:  rgba(240,180,41,0.15);
+    --gold-border: rgba(240,180,41,0.6);
+    --blue:      #5b8def;
+    --red:       #f06060;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Barlow', sans-serif;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 560px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  .card-header {
+    padding: 16px 18px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-header-left h2 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .card-header-left .sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 3px;
+    font-weight: 500;
+  }
+  .odds-block { text-align: right; }
+  .odds-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--green);
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+  .odds-year {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .star-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    margin-left: 8px;
+    padding: 2px;
+    transition: color 0.15s;
+  }
+  .star-btn:hover { color: var(--gold); }
+
+  /* ── TAG ROW ── */
+  .tag-row {
+    padding: 8px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(240,100,100,0.1);
+    border: 1px solid rgba(240,100,100,0.25);
+    color: #f07070;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.03em;
+  }
+  .tag::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #f07070;
+    flex-shrink: 0;
+  }
+
+  /* ── STATS GRID ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .stat-cell {
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+  .stat-cell:nth-child(even) { border-right: none; }
+  .stat-cell.full-width {
+    grid-column: span 2;
+    border-right: none;
+  }
+  .stat-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .stat-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 0.02em;
+  }
+  .stat-value.green { color: var(--green); }
+  .stat-value.gold  { color: var(--gold); }
+  .stat-value.blue  { color: var(--blue); }
+  .stat-value .dim  { color: var(--muted); font-size: 12px; font-weight: 400; }
+
+  /* ── TRAVEL BAR ── */
+  .travel-bar {
+    padding: 8px 18px;
+    font-size: 12px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .travel-bar .dist { color: var(--text); font-weight: 600; }
+
+  /* ── CHART ── */
+  .chart-section {
+    padding: 10px 18px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .chart-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .chart-avg {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--green);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .chart-wrap { height: 60px; }
+  .chart-wrap svg { width: 100%; height: 100%; overflow: visible; }
+
+  /* ── MAP SECTION ── */
+  .map-section { background: var(--surface2); }
+
+  .map-topbar {
+    padding: 10px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .map-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .map-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .zone-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--gold-dim);
+    border: 1px solid var(--gold-border);
+    color: var(--gold);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .zone-pill-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--gold);
+    flex-shrink: 0;
+  }
+
+  .layer-toggle {
+    display: flex;
+    gap: 3px;
+  }
+  .layer-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.12s;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .layer-btn.active {
+    background: var(--surface2);
+    color: var(--text);
+    border-color: #555;
+  }
+  .layer-btn:hover:not(.active) { border-color: #444; color: #aaa; }
+
+  #map {
+    height: 320px;
+    width: 100%;
+  }
+
+  .map-status {
+    padding: 6px 18px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    border-top: 1px solid var(--border);
+  }
+  .map-status .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    flex-shrink: 0;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .map-status .dot.loading {
+    background: var(--gold);
+    animation: pulse 0.8s ease-in-out infinite;
+  }
+  .map-status .dot.error { background: var(--red); animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Leaflet overrides */
+  .leaflet-control-zoom a {
+    background: #1c1c1c !important;
+    color: #ccc !important;
+    border-color: #333 !important;
+  }
+  .leaflet-control-zoom a:hover { background: #2a2a2a !important; }
+  .leaflet-control-attribution {
+    background: rgba(0,0,0,0.6) !important;
+    color: #555 !important;
+    font-size: 9px !important;
+  }
+  .leaflet-control-attribution a { color: #777 !important; }
+
+  .leh-tooltip {
+    background: #1a1a1a !important;
+    border: 1px solid #f0b429 !important;
+    color: #e8e8e8 !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 11px !important;
+    border-radius: 6px !important;
+    padding: 6px 10px !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.6) !important;
+  }
+  .leh-tooltip b { color: #f0b429; }
+</style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- HEADER -->
+  <div class="card-header">
+    <div class="card-header-left">
+      <h2>Thinhorn Sheep</h2>
+      <div class="sub">At least Full Curl &nbsp;·&nbsp; Zone A</div>
+    </div>
+    <div class="odds-block" style="display:flex;align-items:flex-start;gap:4px">
+      <div>
+        <div class="odds-num">68%</div>
+        <div class="odds-year">2024 actual</div>
+      </div>
+      <button class="star-btn" title="Favourite">☆</button>
+    </div>
+  </div>
+
+  <!-- TAG -->
+  <div class="tag-row">
+    <span class="tag">1% Harvest Success</span>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-cell">
+      <div class="stat-label">Area</div>
+      <div class="stat-value blue">Spatsizi</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Region</div>
+      <div class="stat-value">6 — Skeena</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Full MU</div>
+      <div class="stat-value">6-20</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Draw Code</div>
+      <div class="stat-value" style="font-family:'IBM Plex Mono',monospace;font-size:14px">6038</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Zone</div>
+      <div class="stat-value">A</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Season</div>
+      <div class="stat-value">Aug 1 – Oct 15</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Draw Odds (2024 Actual)</div>
+      <div class="stat-value green">68%</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Tags Available</div>
+      <div class="stat-value">90</div>
+    </div>
+    <div class="stat-cell full-width">
+      <div class="stat-label">Harvest Success (All-Time)</div>
+      <div class="stat-value gold">1% <span class="dim">(2 yrs data)</span></div>
+    </div>
+  </div>
+
+  <!-- TRAVEL -->
+  <div class="travel-bar">
+    🚗 <span class="dist">~23h 15min</span> from Vancouver
+  </div>
+
+  <!-- CHART -->
+  <div class="chart-section">
+    <div class="chart-header">
+      <span class="chart-label">Draw Odds % · Last 10 Yrs</span>
+      <span class="chart-avg">AVG 9.5%</span>
+    </div>
+    <div class="chart-wrap">
+      <svg viewBox="0 0 520 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#3ddc84" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="#3ddc84" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <!-- avg dashed line at ~y=50 (9.5% / 75% * 60 ≈ 7.6 from bottom → y=52) -->
+        <line x1="0" y1="52" x2="520" y2="52" stroke="#2e2e2e" stroke-width="1" stroke-dasharray="5,4"/>
+        <!-- data: years 2014-2024, values approx: 8,8,8,8,8,8,8,9,22,68 -->
+        <!-- scale: max ~68, chart height 60px -->
+        <path d="M0,53 L58,53 L116,53 L174,53 L232,53 L290,53 L348,53 L406,52 L464,36 L520,8 L520,62 L0,62 Z"
+              fill="url(#cg)"/>
+        <polyline points="0,53 58,53 116,53 174,53 232,53 290,53 348,53 406,52 464,36 520,8"
+                  fill="none" stroke="#3ddc84" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="0" cy="53" r="3" fill="#141414" stroke="#3ddc84" stroke-width="1.5"/>
+        <circle cx="58" cy="53" r="3" fill="#141414" stroke="#3ddc84" stroke-width="1.5"/>
+        <circle cx="116" cy="53" r="3" fill="#141414" stroke="#3ddc84" stroke-width="1.5"/>
+        <circle cx="174" cy="53" r="3" fill="#141414" stroke="#3ddc84" stroke-width="1.5"/>
+        <circle cx="232" cy="53" r="3" fill="#141414" stroke="#3ddc84" stroke-width="1.5"/>
+        <circle cx="290" cy="53" r="3" fill="#141414" stroke="#3ddc84" stroke-width="1.5"/>
+        <circle cx="348" cy="53" r="3" fill="#141414" stroke="#3ddc84" stroke-width="1.5"/>
+        <circle cx="406" cy="52" r="3" fill="#141414" stroke="#3ddc84" stroke-width="1.5"/>
+        <circle cx="464" cy="36" r="3" fill="#141414" stroke="#3ddc84" stroke-width="1.5"/>
+        <circle cx="520" cy="8"  r="4.5" fill="#3ddc84" stroke="#3ddc84" stroke-width="1.5"/>
+        <text x="0"   y="60" fill="#444" font-size="9" font-family="monospace">2014</text>
+        <text x="223" y="60" fill="#444" font-size="9" font-family="monospace">2019</text>
+        <text x="396" y="60" fill="#444" font-size="9" font-family="monospace">2021</text>
+        <text x="494" y="60" fill="#444" font-size="9" font-family="monospace">2024</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="map-section">
+    <div class="map-topbar">
+      <div class="map-title-row">
+        <span class="map-title">Zone Map</span>
+        <span class="zone-pill">
+          <span class="zone-pill-dot"></span>
+          Zone A · MU 6-20
+        </span>
+      </div>
+      <div class="layer-toggle">
+        <button class="layer-btn active" id="btn-sat" onclick="setLayer('satellite')">Satellite</button>
+        <button class="layer-btn" id="btn-topo" onclick="setLayer('topo')">Topo</button>
+      </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="map-status" id="map-status">
+      <span class="dot loading" id="status-dot"></span>
+      <span id="status-text">Loading LEH zone data…</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── Card data (would come from your app per-card) ───────────────────────
+const CARD = {
+  mu: '6-20',
+  zone: 'A',
+  speciesPrefix: 'S',   // S=sheep, M=moose, C=caribou, G=goat, E=elk, etc.
+  species: 'MOUNTAIN SHEEP',
+  label: 'Thinhorn Sheep · Zone A',
+  area: 'Spatsizi'
+};
+
+// Derived zone ID: "S_6-20A"
+const TARGET_ZONE_ID = `${CARD.speciesPrefix}_${CARD.mu}${CARD.zone}`;
+
+// ─── Map setup ───────────────────────────────────────────────────────────
+const map = L.map('map', {
+  center: [57.65, -129.85],
+  zoom: 7,
+  zoomControl: true,
+  attributionControl: true
+});
+
+const layers = {
+  satellite: L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { attribution: 'Esri World Imagery', maxZoom: 17 }
+  ),
+  topo: L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+    { attribution: 'Esri World Topo', maxZoom: 17 }
+  )
+};
+layers.satellite.addTo(map);
+
+function setLayer(type) {
+  Object.entries(layers).forEach(([k, l]) => {
+    if (k === type) l.addTo(map); else { try { map.removeLayer(l); } catch(e){} }
+  });
+  document.getElementById('btn-sat').classList.toggle('active', type === 'satellite');
+  document.getElementById('btn-topo').classList.toggle('active', type === 'topo');
+}
+
+// ─── Status helpers ──────────────────────────────────────────────────────
+function setStatus(msg, state='loading') {
+  document.getElementById('status-text').textContent = msg;
+  const dot = document.getElementById('status-dot');
+  dot.className = 'dot ' + state;
+}
+
+// ─── Load GeoJSON and render ─────────────────────────────────────────────
+let allZonesLayer = null;
+let highlightLayer = null;
+
+// We load the full simplified GeoJSON
+// Since this is a standalone file demo, we fetch the leh_zones.json from same directory
+// In your real app, host this file alongside the HTML
+async function loadZones() {
+  setStatus('Loading LEH zone boundaries…', 'loading');
+
+  let zonesData;
+  try {
+    const resp = await fetch('leh_zones.json');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    zonesData = await resp.json();
+  } catch(err) {
+    setStatus('Could not load zone file — make sure leh_zones.json is in the same folder', 'error');
+    console.error(err);
+    return;
+  }
+
+  setStatus('Rendering zones…', 'loading');
+
+  // Find all zones for the same MU (context layer) and the target zone
+  const muZones = [];
+  let targetFeature = null;
+
+  for (const [zoneId, z] of Object.entries(zonesData)) {
+    if (z.mu === CARD.mu) {
+      muZones.push({ id: zoneId, ...z });
+    }
+    if (zoneId === TARGET_ZONE_ID) {
+      targetFeature = { id: zoneId, ...z };
+    }
+  }
+
+  // Render all zones for this MU as a dim context layer
+  if (muZones.length > 0) {
+    const contextFC = {
+      type: 'FeatureCollection',
+      features: muZones.map(z => ({
+        type: 'Feature',
+        properties: { id: z.id, label: z.lb, ztype: z.zt },
+        geometry: z.g
+      }))
+    };
+    allZonesLayer = L.geoJSON(contextFC, {
+      style: {
+        color: '#5b8def',
+        weight: 1,
+        opacity: 0.4,
+        fillColor: '#5b8def',
+        fillOpacity: 0.04,
+        dashArray: '4,4'
+      },
+      onEachFeature: (feature, layer) => {
+        layer.bindTooltip(`<b style="color:#5b8def">${feature.properties.label}</b><br><span style="color:#666">${feature.properties.ztype}</span>`, {
+          className: 'leh-tooltip',
+          sticky: true,
+          direction: 'top'
+        });
+      }
+    }).addTo(map);
+  }
+
+  // Render the target zone with gold highlight
+  if (targetFeature) {
+    const targetFC = {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        properties: { id: targetFeature.id, label: targetFeature.lb },
+        geometry: targetFeature.g
+      }]
+    };
+
+    highlightLayer = L.geoJSON(targetFC, {
+      style: {
+        color: '#f0b429',
+        weight: 2.5,
+        opacity: 1,
+        fillColor: '#f0b429',
+        fillOpacity: 0.13
+      },
+      onEachFeature: (feature, layer) => {
+        layer.bindTooltip(
+          `<b>${CARD.label}</b><br>MU ${CARD.mu} · Draw Code 6038<br>Season: Aug 1 – Oct 15<br>${CARD.area}`,
+          { className: 'leh-tooltip', sticky: true, direction: 'top' }
+        );
+      }
+    }).addTo(map);
+
+    // Zoom to the highlight zone
+    map.fitBounds(highlightLayer.getBounds(), { padding: [30, 30] });
+    setStatus(`Zone A · MU 6-20 · ${TARGET_ZONE_ID} · Spatsizi`, 'ready');
+  } else {
+    setStatus(`Zone loaded (${TARGET_ZONE_ID} not found in dataset)`, 'error');
+  }
+}
+
+loadZones();
+</script>
+
+</body>
+</html>

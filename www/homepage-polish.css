@@ -1,0 +1,293 @@
+/* ═══════════════════════════════════════════════════════════
+   HUNTSMART — HOMEPAGE POLISH
+   Link AFTER style.css in <head>. Homepage only.
+   ═══════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600;1,700&display=swap');
+
+/* ── 1. GRAIN TEXTURE ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9997;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+/* ── 2. CURSOR GLOW ── */
+.hs-cursor-glow {
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9996;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(46,122,60,0.07) 0%, transparent 65%);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.hs-cursor-glow.active { opacity: 1; }
+
+/* ── 3. HERO ── */
+.hero-photo {
+  height: 86vh;
+  min-height: 560px;
+}
+.hero-photo-overlay {
+  background: linear-gradient(
+    to bottom,
+    rgba(4,10,5,0.08) 0%,
+    rgba(4,10,5,0.18) 30%,
+    rgba(4,10,5,0.68) 65%,
+    rgba(4,10,5,0.97) 100%
+  );
+}
+.hero-photo-bg {
+  will-change: transform;
+}
+.hero-photo-content {
+  padding: 0 64px 72px;
+  max-width: 900px;
+}
+.hero-eyebrow {
+  font-size: 11px;
+  letter-spacing: 5px;
+  font-weight: 700;
+  margin-bottom: 18px;
+}
+.hero-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(48px, 5.5vw, 72px);
+  font-weight: 700;
+  line-height: 1.00;
+  letter-spacing: -1px;
+  margin-bottom: 20px;
+  color: #d8f0cc;
+  text-shadow: 0 2px 60px rgba(0,0,0,0.7);
+}
+.hero-title span {
+  font-style: italic;
+  color: #5ccc6a;
+  text-shadow: 0 0 60px rgba(70,190,90,0.35), 0 2px 40px rgba(0,0,0,0.6);
+}
+.hero-body {
+  font-size: 17.5px;
+  line-height: 1.74;
+  color: rgba(200,228,192,0.88);
+  margin-bottom: 32px;
+  max-width: 580px;
+  letter-spacing: 0.1px;
+}
+.province-card {
+  transition: background 0.18s, border-color 0.18s, transform 0.18s, box-shadow 0.18s;
+}
+.province-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(92,204,106,0.2);
+}
+
+/* ── 4. SCROLL REVEAL ── */
+.hs-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.75s cubic-bezier(0.22,1,0.36,1),
+              transform 0.75s cubic-bezier(0.22,1,0.36,1);
+}
+.hs-reveal.hs-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.hs-delay-1 { transition-delay: 0.08s; }
+.hs-delay-2 { transition-delay: 0.16s; }
+.hs-delay-3 { transition-delay: 0.24s; }
+.hs-delay-4 { transition-delay: 0.32s; }
+
+/* ── 5. SECTION TITLES ── */
+.home-section-label {
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.home-section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(30px, 3.5vw, 46px);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.5px;
+  margin-bottom: 52px;
+  color: #d8f0cc;
+  position: relative;
+  display: inline-block;
+}
+.home-section-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -14px;
+  width: 40px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  opacity: 0.65;
+}
+.pro-section-inner .home-section-title,
+.species-section .home-section-title {
+  display: block;
+}
+.pro-section-inner .home-section-title::after,
+.species-section .home-section-title::after {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* ── 6. HOW IT WORKS ── */
+.hiw-step {
+  padding: 36px 32px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.2s;
+}
+.hiw-step::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.014) 0%, transparent 55%);
+  pointer-events: none;
+}
+.hiw-step:hover { background: var(--surface2); }
+.hiw-step-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 52px;
+  font-weight: 700;
+  opacity: 0.12;
+  transition: opacity 0.22s;
+  line-height: 1;
+}
+.hiw-step:hover .hiw-step-num { opacity: 0.25; }
+.hiw-step-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #d0eccc;
+}
+.hiw-step-desc {
+  font-size: 14px;
+  line-height: 1.75;
+  color: #7a9880;
+}
+
+/* ── 7. FEATURE CARDS ── */
+.feat-card {
+  padding: 26px;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.feat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.016) 0%, transparent 55%);
+  pointer-events: none;
+}
+.feat-card:hover {
+  border-color: rgba(92,204,106,0.3);
+  background: var(--surface2);
+  box-shadow: 0 0 0 1px rgba(92,204,106,0.07), 0 10px 36px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.04);
+  transform: translateY(-3px);
+}
+.feat-card-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #d0eccc;
+  letter-spacing: -0.2px;
+}
+.feat-card-desc {
+  font-size: 13.5px;
+  line-height: 1.72;
+  color: #7a9880;
+}
+
+/* ── 8. STATS STRIP ── */
+.home-stats-strip {
+  background: linear-gradient(180deg, #0a1209 0%, #0c1a0c 100%);
+  border-top: 1px solid rgba(46,122,60,0.2);
+  border-bottom: 1px solid rgba(46,122,60,0.2);
+}
+.home-stats-inner { padding: 48px 48px; }
+.home-stat-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 8px;
+  color: #d8f0cc;
+  letter-spacing: -1px;
+}
+.home-stat-label {
+  font-size: 11.5px;
+  color: #3a5c40;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}
+.home-stat-divider {
+  height: 52px;
+  background: linear-gradient(to bottom, transparent, rgba(46,122,60,0.25), transparent);
+}
+
+/* ── 9. PRO SECTION ── */
+.pro-section {
+  background: radial-gradient(ellipse at 50% -5%, rgba(30,90,40,0.14) 0%, transparent 65%);
+}
+.pro-section-sub {
+  font-size: 16px;
+  line-height: 1.74;
+  color: #7a9880;
+  margin-bottom: 40px;
+}
+.pro-trial-btn {
+  padding: 15px 34px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(46,122,60,0.5), 0 1px 0 rgba(255,255,255,0.08) inset;
+  transition: background 0.18s, transform 0.15s, box-shadow 0.18s;
+}
+.pro-trial-btn:hover {
+  background: var(--accent2);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(46,122,60,0.65), 0 1px 0 rgba(255,255,255,0.12) inset;
+}
+
+/* ── 10. FOOTER ── */
+.home-footer { background: #080e08; }
+.home-footer-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: #d0eccc;
+}
+.home-footer-logo span { color: var(--accent2); font-style: italic; }
+.home-footer-tagline { font-size: 13px; line-height: 1.6; color: #3a5040; }
+
+/* ── 11. MOBILE ── */
+@media (max-width: 768px) {
+  .hero-photo-content { padding: 0 22px 48px; }
+  .hero-title { letter-spacing: -0.5px; }
+  .hero-body { font-size: 16px; }
+  .home-section-title { font-size: clamp(26px, 7vw, 34px); display: block; }
+  .home-section-title::after { bottom: -10px; width: 28px; }
+  .hiw-step { padding: 26px 20px; }
+  .home-stats-inner { padding: 32px 24px; }
+  .home-stat-num { font-size: 36px; }
+  .feat-card:hover { transform: none; }
+}
