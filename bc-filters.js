@@ -38,20 +38,9 @@ function fpBcInitMap() {
     if (!container) return;
     if (typeof bcWmuGeoJSON !== 'undefined' && bcWmuGeoJSON) {
       fpBcRenderMap(bcWmuGeoJSON);
-    } else if (typeof BC_WMU_GEOJSON_URL !== 'undefined') {
-      const loader = document.createElement('div');
-      loader.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:500;background:rgba(11,21,16,0.9);border-radius:10px';
-      loader.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">Loading BC map…</span>';
-      container.style.position = 'relative';
-      container.appendChild(loader);
-      fetch(BC_WMU_GEOJSON_URL)
-        .then(r => r.json())
-        .then(data => {
-          bcWmuGeoJSON = data;
-          loader.remove();
-          fpBcRenderMap(data);
-        })
-        .catch(() => { loader.innerHTML = '<span style="font-size:12px;color:#f87171">Failed to load map.</span>'; });
+    } else if (typeof BC_WMU_GEOJSON !== 'undefined' && BC_WMU_GEOJSON) {
+      bcWmuGeoJSON = BC_WMU_GEOJSON;
+      fpBcRenderMap(BC_WMU_GEOJSON);
     }
   }
   if (typeof L !== 'undefined') doInit();
