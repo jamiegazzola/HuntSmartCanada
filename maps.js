@@ -587,21 +587,147 @@ function fullMapInit() {
   }
 }
 
+// ── Full map tile layers & LEH overlay state ──
+let _fullMapCurrentTile = 'streets';
+let _fullMapTileLayers  = {};
+let _fullMapLEHLayer    = null;
+let _fullMapLEHVisible  = false;
+let _fullMapLEHLoading  = false;
+
+const _FULLMAP_TILES = {
+  streets: {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    opts: { attribution: '© <a href="https://openstreetmap.org/copyright">OSM</a>', subdomains: 'abc', maxZoom: 19 }
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    opts: { attribution: 'Esri World Imagery', maxZoom: 17 }
+  },
+  topo: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+    opts: { attribution: 'Esri World Topo', maxZoom: 17 }
+  }
+};
+
+// ── Switch tile layer on the full map ──
+function fullMapSetTile(type) {
+  if (!fullMapInstance) return;
+  if (_fullMapCurrentTile === type) return;
+  if (_fullMapTileLayers[_fullMapCurrentTile]) {
+    fullMapInstance.removeLayer(_fullMapTileLayers[_fullMapCurrentTile]);
+  }
+  if (!_fullMapTileLayers[type]) {
+    const t = _FULLMAP_TILES[type];
+    _fullMapTileLayers[type] = L.tileLayer(t.url, t.opts);
+  }
+  _fullMapTileLayers[type].addTo(fullMapInstance);
+  // Ensure WMU layer stays on top
+  if (fullMapGeoLayer) fullMapGeoLayer.bringToFront();
+  if (_fullMapLEHLayer) _fullMapLEHLayer.bringToFront();
+  _fullMapCurrentTile = type;
+  // Sync pill buttons
+  ['streets','satellite','topo'].forEach(t => {
+    const btn = document.getElementById('fullMapTile_' + t);
+    if (btn) btn.classList.toggle('active', t === type);
+  });
+}
+
+// ── Toggle LEH zone overlay ──
+function fullMapToggleLEH() {
+  const btn = document.getElementById('fullMapLEHToggle');
+  if (_fullMapLEHLoading) return;
+
+  if (_fullMapLEHVisible && _fullMapLEHLayer) {
+    fullMapInstance.removeLayer(_fullMapLEHLayer);
+    _fullMapLEHVisible = false;
+    if (btn) { btn.classList.remove('active'); btn.textContent = 'LEH Zones'; }
+    return;
+  }
+
+  // Already loaded — just re-add
+  if (_fullMapLEHLayer) {
+    _fullMapLEHLayer.addTo(fullMapInstance);
+    if (fullMapGeoLayer) fullMapGeoLayer.bringToFront();
+    _fullMapLEHVisible = true;
+    if (btn) { btn.classList.add('active'); btn.textContent = 'LEH Zones ✓'; }
+    return;
+  }
+
+  // Need to fetch
+  _fullMapLEHLoading = true;
+  if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
+
+  fetch('leh_zones.json')
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(zones => {
+      const speciesColors = {
+        'MOUNTAIN SHEEP':    '#f0b429',
+        'MOUNTAIN GOAT':     '#a78bfa',
+        'MOOSE':             '#34d399',
+        'ELK':               '#f87171',
+        'CARIBOU':           '#60a5fa',
+        'BLACK BEAR':        '#fb923c',
+        'MULE DEER':         '#a3e635',
+        'WHITE-TAILED DEER': '#e879f9',
+        'BISON':             '#fbbf24',
+        'TURKEY':            '#94a3b8',
+      };
+
+      const features = Object.entries(zones).map(([id, z]) => ({
+        type: 'Feature',
+        properties: { id, label: z.lb, zt: z.zt, mu: z.mu },
+        geometry: z.g
+      }));
+
+      _fullMapLEHLayer = L.geoJSON(
+        { type: 'FeatureCollection', features },
+        {
+          style: feat => {
+            const col = speciesColors[feat.properties.zt] || '#888';
+            return { color: col, weight: 1.2, opacity: 0.7, fillColor: col, fillOpacity: 0.08 };
+          },
+          onEachFeature: (feat, layer) => {
+            const col = speciesColors[feat.properties.zt] || '#888';
+            layer.bindTooltip(
+              `<b style="color:${col}">${feat.properties.label}</b><br><span style="font-size:10px;color:#aaa">${feat.properties.zt} · MU ${feat.properties.mu}</span>`,
+              { sticky: true, direction: 'top', className: 'leh-card-tip' }
+            );
+          }
+        }
+      ).addTo(fullMapInstance);
+
+      if (fullMapGeoLayer) fullMapGeoLayer.bringToFront();
+      _fullMapLEHVisible = true;
+      _fullMapLEHLoading = false;
+      if (btn) { btn.classList.add('active'); btn.textContent = 'LEH Zones ✓'; btn.disabled = false; }
+    })
+    .catch(err => {
+      console.error('[LEH overlay]', err);
+      _fullMapLEHLoading = false;
+      if (btn) { btn.textContent = 'LEH Zones'; btn.disabled = false; }
+    });
+}
+
 // ── Build Leaflet map ──
 function _fullMapBuildBase(center, zoom, bounds) {
   const container = document.getElementById('fullMapLeaflet');
   if (!container) return null;
   if (container._leaflet_id) { container.innerHTML = ''; delete container._leaflet_id; }
 
+  // Reset tile/LEH state when rebuilding
+  _fullMapTileLayers = {};
+  _fullMapLEHLayer = null;
+  _fullMapLEHVisible = false;
+  _fullMapCurrentTile = 'streets';
+
   const map = L.map('fullMapLeaflet', {
     center, zoom, minZoom: 4, maxZoom: 13,
     zoomControl: true, scrollWheelZoom: true, touchZoom: true
   });
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    subdomains: 'abc', maxZoom: 19
-  }).addTo(map);
+  // Default streets tile
+  const t = _FULLMAP_TILES.streets;
+  _fullMapTileLayers.streets = L.tileLayer(t.url, t.opts).addTo(map);
 
   if (bounds) map.fitBounds(bounds);
   return map;
