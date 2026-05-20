@@ -730,7 +730,34 @@ function toggleCard(i) {
   if (!el) return;
   const open=el.classList.contains('open');
   if (open) { el.classList.remove('open'); btn.textContent='▾ Show details'; }
-  else { el.classList.add('open'); btn.textContent='▴ Hide details'; }
+  else {
+    el.classList.add('open');
+    btn.textContent='▴ Hide details';
+    // Init the LEH zone map for this card if not already done
+    const r = filtered[i];
+    if (r && typeof bcCardMapInit === 'function') {
+      const mapContainerId = 'lehMap_' + i + '_' + r.Code;
+      const mapEl = document.getElementById(mapContainerId);
+      if (mapEl && !mapEl._lehInited) {
+        mapEl._lehInited = true;
+        const s = (r.Species || '').toUpperCase();
+        let speciesType = 'MOUNTAIN SHEEP';
+        if (s.includes('GOAT'))                                        speciesType = 'MOUNTAIN GOAT';
+        else if (s.includes('MOOSE'))                                  speciesType = 'MOOSE';
+        else if (s.includes('ELK'))                                    speciesType = 'ELK';
+        else if (s.includes('CARIBOU'))                                speciesType = 'CARIBOU';
+        else if (s.includes('BEAR'))                                   speciesType = 'BLACK BEAR';
+        else if (s.includes('MULE') || s.includes('BLACK-TAILED'))    speciesType = 'MULE DEER';
+        else if (s.includes('WHITE-TAILED') || s.includes('WHITETAIL')) speciesType = 'WHITE-TAILED DEER';
+        else if (s.includes('BISON'))                                  speciesType = 'BISON';
+        else if (s.includes('TURKEY'))                                 speciesType = 'TURKEY';
+        else if (s.includes('SHEEP') || s.includes('THINHORN') || s.includes('BIGHORN')) speciesType = 'MOUNTAIN SHEEP';
+        bcCardMapInit(mapContainerId, r.MU, r.Zone || '', speciesType);
+      } else if (mapEl && mapEl._lehInited) {
+        bcCardMapInvalidate(mapContainerId);
+      }
+    }
+  }
 }
 
 function toggleSavedCard(key) {
@@ -783,7 +810,40 @@ function buildBCExpandHTML(r, idPrefix) {
       '</div></div>';
   })() : '';
 
-  return `
+  // ── LEH Zone Map ──
+  const mapContainerId = `lehMap_${idPrefix}_${r.Code}`;
+  const mapSpeciesType = (() => {
+    const s = (r.Species || '').toUpperCase();
+    if (s.includes('SHEEP') || s.includes('THINHORN') || s.includes('BIGHORN')) return 'MOUNTAIN SHEEP';
+    if (s.includes('GOAT'))    return 'MOUNTAIN GOAT';
+    if (s.includes('MOOSE'))   return 'MOOSE';
+    if (s.includes('ELK'))     return 'ELK';
+    if (s.includes('CARIBOU')) return 'CARIBOU';
+    if (s.includes('BEAR'))    return 'BLACK BEAR';
+    if (s.includes('MULE') || s.includes('BLACK-TAILED')) return 'MULE DEER';
+    if (s.includes('WHITE-TAILED') || s.includes('WHITETAIL')) return 'WHITE-TAILED DEER';
+    if (s.includes('BISON'))   return 'BISON';
+    if (s.includes('TURKEY'))  return 'TURKEY';
+    return 'MOUNTAIN SHEEP';
+  })();
+  const zoneLabel = r.Zone ? `Zone ${r.Zone} · MU ${r.MU}` : `MU ${r.MU}`;
+  const mapHTML = `
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted)">Zone Map</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;background:rgba(240,180,41,.12);border:1px solid rgba(240,180,41,.4);color:#f0b429;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">${zoneLabel}</span>
+        </div>
+        <div style="display:flex;gap:3px">
+          <button id="${mapContainerId}_btn_satellite" class="leh-map-btn active" onclick="event.stopPropagation();bcCardMapSetLayer('${mapContainerId}','satellite')">Satellite</button>
+          <button id="${mapContainerId}_btn_topo" class="leh-map-btn" onclick="event.stopPropagation();bcCardMapSetLayer('${mapContainerId}','topo')">Topo</button>
+        </div>
+      </div>
+      <div id="${mapContainerId}" style="height:280px;width:100%;border-radius:8px;overflow:hidden;background:#1a1a1a"></div>
+      <div id="${mapContainerId}_status" style="font-size:10px;color:var(--text-muted);padding:4px 2px;font-family:monospace"></div>
+    </div>`;
+
+    return `
     <div class="expand-grid">
       <div class="ei"><div class="ei-label">Full MU</div><div class="ei-val">${r.MU}</div></div>
       <div class="ei"><div class="ei-label">Draw Code</div><div class="ei-val">${r.Code}</div></div>
@@ -794,7 +854,7 @@ function buildBCExpandHTML(r, idPrefix) {
       ${r.fill_rate_alltime!=null?`<div class="ei"><div class="ei-label">Harvest Success (all-time)</div><div class="ei-val">${fmtFill(r.fill_rate_alltime)} <span style="font-size:10px;color:${(r.fill_rate_years||0)>=10?'#4ade80':(r.fill_rate_years||0)>=4?'#facc15':'#f87171'}">(${r.fill_rate_years} yrs)</span></div></div>`:''}
       ${r.Notes?`<div class="ei ei-note">📝 ${r.Notes}</div>`:''}
     </div>
-    ${oddsChartHTML}${harvestChartHTML}${writeupHTML}`;
+    ${oddsChartHTML}${harvestChartHTML}${writeupHTML}${mapHTML}`;
 }
 
 function renderCards() {
