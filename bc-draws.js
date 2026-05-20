@@ -826,13 +826,14 @@ function buildBCExpandHTML(r, idPrefix) {
     if (s.includes('TURKEY'))  return 'TURKEY';
     return 'MOUNTAIN SHEEP';
   })();
+  const hasZoneModifier = r.Zone && /[\*\+]/.test(r.Zone);
   const zoneLabel = r.Zone ? `Zone ${r.Zone} · MU ${r.MU}` : `MU ${r.MU}`;
   const mapHTML = `
     <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted)">Zone Map</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;background:rgba(240,180,41,.12);border:1px solid rgba(240,180,41,.4);color:#f0b429;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">${zoneLabel}</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;background:rgba(240,180,41,.12);border:1px solid rgba(240,180,41,.4);color:#f0b429;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">${zoneLabel}</span>${hasZoneModifier ? '<span style="font-size:9px;color:var(--text-muted,#666)">Partial area — see regs</span>' : ''}
         </div>
         <div style="display:flex;gap:3px">
           <button id="${mapContainerId}_btn_satellite" class="leh-map-btn active" onclick="event.stopPropagation();bcCardMapSetLayer('${mapContainerId}','satellite')">Satellite</button>

@@ -527,6 +527,7 @@ function fullMapSetProvince(prov) {
   if (fullMapProvince === prov) return;
   fullMapProvince = prov;
   fullMapSelRegions.clear();
+  fullMapShowLEHForMUs([]);
 
   // Toggle button states
   document.getElementById('mapToggleBC').classList.toggle('active', prov === 'BC');
@@ -632,80 +633,170 @@ function fullMapSetTile(type) {
   });
 }
 
-// ── Toggle LEH zone overlay ──
-function fullMapToggleLEH() {
-  const btn = document.getElementById('fullMapLEHToggle');
-  if (_fullMapLEHLoading) return;
+// ── LEH species colours ──
+const _LEH_COLORS = {
+  'MOUNTAIN SHEEP':    '#f0b429',
+  'MOUNTAIN GOAT':     '#a78bfa',
+  'MOOSE':             '#34d399',
+  'ELK':               '#f87171',
+  'CARIBOU':           '#60a5fa',
+  'BLACK BEAR':        '#fb923c',
+  'MULE DEER':         '#a3e635',
+  'WHITE-TAILED DEER': '#e879f9',
+  'BISON':             '#fbbf24',
+  'TURKEY':            '#94a3b8',
+};
 
-  if (_fullMapLEHVisible && _fullMapLEHLayer) {
-    fullMapInstance.removeLayer(_fullMapLEHLayer);
-    _fullMapLEHVisible = false;
-    if (btn) { btn.classList.remove('active'); btn.textContent = 'LEH Zones'; }
-    return;
-  }
+// Cached zone data once loaded — { zones: {id: zone}, mu_index: {mu: [zoneIds]} }
+let _lehZonesCache = null;
 
-  // Already loaded — just re-add
-  if (_fullMapLEHLayer) {
-    _fullMapLEHLayer.addTo(fullMapInstance);
-    if (fullMapGeoLayer) fullMapGeoLayer.bringToFront();
-    _fullMapLEHVisible = true;
-    if (btn) { btn.classList.add('active'); btn.textContent = 'LEH Zones ✓'; }
-    return;
-  }
-
-  // Need to fetch
-  _fullMapLEHLoading = true;
-  if (btn) { btn.textContent = 'Loading…'; btn.disabled = true; }
-
-  fetch('leh_zones.json')
+function _lehGetZones() {
+  if (_lehZonesCache) return Promise.resolve(_lehZonesCache);
+  return fetch('leh_zones.json')
     .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(zones => {
-      const speciesColors = {
-        'MOUNTAIN SHEEP':    '#f0b429',
-        'MOUNTAIN GOAT':     '#a78bfa',
-        'MOOSE':             '#34d399',
-        'ELK':               '#f87171',
-        'CARIBOU':           '#60a5fa',
-        'BLACK BEAR':        '#fb923c',
-        'MULE DEER':         '#a3e635',
-        'WHITE-TAILED DEER': '#e879f9',
-        'BISON':             '#fbbf24',
-        'TURKEY':            '#94a3b8',
-      };
+    .then(d => { _lehZonesCache = d; return d; });
+}
 
-      const features = Object.entries(zones).map(([id, z]) => ({
-        type: 'Feature',
-        properties: { id, label: z.lb, zt: z.zt, mu: z.mu },
-        geometry: z.g
-      }));
+// Resolve the best matching zone ID for a draw card
+// mu: raw MU string from draws.json (e.g. "1-09", "6-20")
+// zone: zone letter possibly with modifiers (e.g. "A*", "B***")
+// speciesType: "MOUNTAIN SHEEP" etc.
+function _lehFindZoneId(zones, muIndex, mu, zone, speciesType) {
+  const LEH_PREFIX = {
+    'MOUNTAIN SHEEP':'S','MOUNTAIN GOAT':'G','MOOSE':'M','ELK':'E',
+    'CARIBOU':'C','BLACK BEAR':'U','MULE DEER':'D','WHITE-TAILED DEER':'W',
+    'BISON':'B','TURKEY':'T'
+  };
+  const prefix = LEH_PREFIX[speciesType] || '';
+  // Strip trailing * + modifiers from MU, keep leading zeros
+  const cleanMU = mu.replace(/[\*\+]+$/, '').trim();
+  // Strip non-alpha from zone letter
+  const cleanZone = zone.replace(/[^A-Za-z]/g, '');
 
-      _fullMapLEHLayer = L.geoJSON(
-        { type: 'FeatureCollection', features },
-        {
-          style: feat => {
-            const col = speciesColors[feat.properties.zt] || '#888';
-            return { color: col, weight: 1.2, opacity: 0.7, fillColor: col, fillOpacity: 0.08 };
-          },
-          onEachFeature: (feat, layer) => {
-            const col = speciesColors[feat.properties.zt] || '#888';
-            layer.bindTooltip(
-              `<b style="color:${col}">${feat.properties.label}</b><br><span style="font-size:10px;color:#aaa">${feat.properties.zt} · MU ${feat.properties.mu}</span>`,
-              { sticky: true, direction: 'top', className: 'leh-card-tip' }
-            );
-          }
-        }
-      ).addTo(fullMapInstance);
+  // Get all zone IDs for this MU from the index
+  const candidates = (muIndex[cleanMU] || []);
 
-      if (fullMapGeoLayer) fullMapGeoLayer.bringToFront();
-      _fullMapLEHVisible = true;
-      _fullMapLEHLoading = false;
-      if (btn) { btn.classList.add('active'); btn.textContent = 'LEH Zones ✓'; btn.disabled = false; }
-    })
-    .catch(err => {
-      console.error('[LEH overlay]', err);
-      _fullMapLEHLoading = false;
-      if (btn) { btn.textContent = 'LEH Zones'; btn.disabled = false; }
+  // 1. Exact: prefix + MU + zone (e.g. "E_7-20A")
+  if (cleanZone) {
+    const exact = candidates.find(id => id === prefix + '_' + cleanMU + cleanZone);
+    if (exact) return exact;
+    // Also try against multi-MU zone IDs that contain this MU
+    const multiExact = candidates.find(id => {
+      if (!id.startsWith(prefix + '_')) return false;
+      const zLetter = id.replace(/^[A-Z]_[^A-Z]+/, ''); // last char(s) = zone letter
+      return zLetter === cleanZone;
     });
+    if (multiExact) return multiExact;
+  }
+
+  // 2. Species + MU no zone (e.g. "E_7-20")
+  const noZone = candidates.find(id => id === prefix + '_' + cleanMU);
+  if (noZone) return noZone;
+
+  // 3. Any zone for this MU + species prefix
+  const anyZone = candidates.find(id => id.startsWith(prefix + '_'));
+  if (anyZone) return anyZone;
+
+  return null;
+}
+
+// ── Show LEH zones for a specific set of MUs ──
+// Called automatically when user selects region(s) on the map.
+// muSet: Set or Array of MU id strings e.g. ['3-17']
+function fullMapShowLEHForMUs(muSet) {
+  if (!fullMapInstance) return;
+
+  // Remove existing LEH layer
+  if (_fullMapLEHLayer) {
+    fullMapInstance.removeLayer(_fullMapLEHLayer);
+    _fullMapLEHLayer = null;
+  }
+
+  const mus = new Set(muSet);
+  if (mus.size === 0) {
+    _fullMapLEHVisible = false;
+    _updateLEHPill();
+    return;
+  }
+
+  const btn = document.getElementById('fullMapLEHToggle');
+
+  _lehGetZones().then(data => {
+    const zones = data.zones;
+    const muIndex = data.mu_index;
+    // Collect all zone IDs for the selected MUs (via mu_index for multi-MU zone support)
+    const zoneIds = new Set();
+    for (const mu of mus) {
+      const cleanMU = mu.replace(/[\*\+]+$/, '').trim();
+      (muIndex[cleanMU] || []).forEach(id => zoneIds.add(id));
+    }
+    const features = [...zoneIds].map(id => {
+      const z = zones[id];
+      return { type: 'Feature', properties: { id, label: z.lb, zt: z.zt, mu: z.mu }, geometry: z.g };
+    });
+
+    if (features.length === 0) return;
+
+    _fullMapLEHLayer = L.geoJSON(
+      { type: 'FeatureCollection', features },
+      {
+        style: feat => {
+          const col = _LEH_COLORS[feat.properties.zt] || '#888';
+          return { color: col, weight: 1.5, opacity: 0.85, fillColor: col, fillOpacity: 0.12 };
+        },
+        onEachFeature: (feat, layer) => {
+          const col = _LEH_COLORS[feat.properties.zt] || '#888';
+          layer.bindTooltip(
+            `<b style="color:${col}">${feat.properties.label}</b><br><span style="font-size:10px;color:#aaa">${feat.properties.zt} · MU ${feat.properties.mu}</span>`,
+            { sticky: true, direction: 'top', className: 'leh-card-tip', offset: [0,-4] }
+          );
+        }
+      }
+    );
+
+    if (_fullMapLEHVisible) {
+      _fullMapLEHLayer.addTo(fullMapInstance);
+      if (fullMapGeoLayer) fullMapGeoLayer.bringToFront();
+    }
+    _updateLEHPill();
+  }).catch(err => console.error('[LEH overlay]', err));
+}
+
+// ── Toggle LEH visibility on/off (pill button) ──
+function fullMapToggleLEH() {
+  if (_fullMapLEHLoading) return;
+  _fullMapLEHVisible = !_fullMapLEHVisible;
+
+  if (_fullMapLEHVisible) {
+    // Show layer if it exists, otherwise trigger for current selection
+    if (_fullMapLEHLayer) {
+      _fullMapLEHLayer.addTo(fullMapInstance);
+      if (fullMapGeoLayer) fullMapGeoLayer.bringToFront();
+    } else if (fullMapSelRegions.size > 0) {
+      fullMapShowLEHForMUs([...fullMapSelRegions]);
+      return; // _updateLEHPill called inside
+    }
+  } else {
+    if (_fullMapLEHLayer) fullMapInstance.removeLayer(_fullMapLEHLayer);
+  }
+  _updateLEHPill();
+}
+
+function _updateLEHPill() {
+  const btn = document.getElementById('fullMapLEHToggle');
+  if (!btn) return;
+  const hasZones = _fullMapLEHLayer !== null;
+  if (_fullMapLEHVisible && hasZones) {
+    btn.classList.add('active');
+    btn.textContent = 'LEH Zones ✓';
+  } else if (!_fullMapLEHVisible) {
+    btn.classList.remove('active');
+    btn.textContent = 'LEH Zones';
+  } else {
+    // visible=true but no zones loaded yet (no selection)
+    btn.classList.remove('active');
+    btn.textContent = 'LEH Zones';
+  }
 }
 
 // ── Build Leaflet map ──
@@ -717,7 +808,7 @@ function _fullMapBuildBase(center, zoom, bounds) {
   // Reset tile/LEH state when rebuilding
   _fullMapTileLayers = {};
   _fullMapLEHLayer = null;
-  _fullMapLEHVisible = false;
+  _fullMapLEHVisible = true;  // zones auto-show when a region is selected
   _fullMapCurrentTile = 'streets';
 
   const map = L.map('fullMapLeaflet', {
@@ -769,6 +860,8 @@ function _fullMapInitBC() {
           fullMapRefreshStyles();
           fullMapUpdateChips();
           fullMapShowResults();
+          // Auto-update LEH zone overlay for selected MUs
+          fullMapShowLEHForMUs([...fullMapSelRegions]);
         });
       }
     }).addTo(fullMapInstance);
@@ -837,6 +930,8 @@ function _fullMapInitAB() {
           fullMapRefreshStyles();
           fullMapUpdateChips();
           fullMapShowResults();
+          // Auto-update LEH zone overlay for selected MUs
+          fullMapShowLEHForMUs([...fullMapSelRegions]);
         });
       }
     }).addTo(fullMapInstance);
@@ -910,6 +1005,7 @@ function fullMapRemoveRegion(id) {
   fullMapUpdateChips();
   if (fullMapSelRegions.size === 0) fullMapHideResults();
   else fullMapShowResults();
+  fullMapShowLEHForMUs([...fullMapSelRegions]);
 }
 
 function fullMapClearAll() {
@@ -917,6 +1013,7 @@ function fullMapClearAll() {
   fullMapRefreshStyles();
   fullMapUpdateChips();
   fullMapHideResults();
+  fullMapShowLEHForMUs([]);
 }
 
 // ── Results drawer ──
@@ -1092,16 +1189,7 @@ const _LEH_SPECIES_PREFIX = {
   'TURKEY':            'T',
 };
 
-// Cached promise so the JSON is only fetched once across all cards
-let _lehZonesPromise = null;
-function _lehLoadZones() {
-  if (!_lehZonesPromise) {
-    _lehZonesPromise = fetch('leh_zones.json')
-      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .catch(err => { console.error('[bcCardMap] Failed to load leh_zones.json:', err); return null; });
-  }
-  return _lehZonesPromise;
-}
+// _lehGetZones() is defined above in the fullMap section — shared cache for both card maps and overlay
 
 // Track card map instances so we can destroy them if the card is re-rendered
 const _lehCardMaps = {};
@@ -1118,10 +1206,11 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
     delete container._leaflet_id;
   }
 
-  // Build the expected zone-ID  e.g. "S_6-20A"
+  // Strip BC draw modifiers from zone letter: "A*" -> "A"
+  const cleanZone = zone ? zone.replace(/[^A-Za-z]/g, '') : '';
+  // Strip trailing modifiers from MU but keep leading zeros (LEH data uses them)
+  const cleanMU = mu.replace(/[\*\+]+$/, '').trim();
   const prefix = _LEH_SPECIES_PREFIX[(speciesType || '').toUpperCase()] || 'S';
-  const normalMU = bcNormalizeMU(mu);   // reuse existing normaliser
-  const targetId = zone ? `${prefix}_${normalMU}${zone}` : null;
 
   // Satellite layer (default) + topo option — driven by the toggle buttons
   // that sit above each card map (rendered in the card HTML, see bcCardMapToggle)
@@ -1164,16 +1253,20 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
   }
   setStatus('Loading zone…', true);
 
-  _lehLoadZones().then(zones => {
-    if (!zones) { setStatus('Zone data unavailable', false); return; }
+  _lehGetZones().then(data => {
+    const zones = data.zones;
+    const muIndex = data.mu_index;
 
     // Ensure Leaflet is still alive (card may have been closed)
     if (!_lehCardMaps[containerId]) return;
 
     // ── Context layer: all zones for this MU (dim blue outlines) ──
-    const muFeatures = Object.entries(zones)
-      .filter(([id, z]) => z.mu === normalMU)
-      .map(([id, z]) => ({ type: 'Feature', properties: { id, label: z.lb, zt: z.zt }, geometry: z.g }));
+    // Use mu_index to get all zones that include this MU (handles multi-MU zones)
+    const contextIds = new Set(muIndex[cleanMU] || []);
+    const muFeatures = [...contextIds].map(id => {
+      const z = zones[id];
+      return { type: 'Feature', properties: { id, label: z.lb, zt: z.zt }, geometry: z.g };
+    });
 
     if (muFeatures.length > 0) {
       L.geoJSON({ type: 'FeatureCollection', features: muFeatures }, {
@@ -1191,11 +1284,15 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
     }
 
     // ── Highlight layer: the specific drawn zone (gold border) ──
+    const resolvedId = _lehFindZoneId(zones, muIndex, mu, cleanZone, speciesType);
+
     let highlightBounds = null;
-    if (targetId && zones[targetId]) {
-      const z = zones[targetId];
+    if (resolvedId && zones[resolvedId]) {
+      const z = zones[resolvedId];
+      // Show disclaimer if zone has modifier (partial area)
+      const hasModifier = zone && /[\*\+]/.test(zone);
       const highlightLayer = L.geoJSON(
-        { type: 'Feature', properties: { id: targetId, label: z.lb }, geometry: z.g },
+        { type: 'Feature', properties: { id: resolvedId, label: z.lb, partial: hasModifier }, geometry: z.g },
         {
           style: {
             color: '#f0b429', weight: 2.5, opacity: 1,
@@ -1203,7 +1300,7 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
           },
           onEachFeature: (feat, lyr) => {
             lyr.bindTooltip(
-              `<b style="color:#f0b429">${z.lb}</b><br><span style="font-size:10px;color:#aaa">${z.zt} · MU ${mu}</span>`,
+              `<b style="color:#f0b429">${z.lb}</b><br><span style="font-size:10px;color:#aaa">${z.zt}</span>${hasModifier ? '<br><span style="font-size:9px;color:#888">★ Partial area — see regulations</span>' : ''}`,
               { sticky: true, direction: 'top', className: 'leh-card-tip' }
             );
           }
