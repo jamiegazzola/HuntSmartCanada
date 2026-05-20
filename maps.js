@@ -934,3 +934,190 @@ function fullMapGoToDraws() {
     showPage('abDraws');
   }
 }
+
+
+// ══════════════════════════════════════════════════════════════
+// ── BC DRAW CARD MINI-MAP  (real LEH zone polygons)
+// ══════════════════════════════════════════════════════════════
+//
+// Usage: call bcCardMapInit(containerId, mu, zone, speciesType) once the
+// card's map <div> is visible.
+//
+//   containerId  — id of the <div> to render into (must have a fixed height)
+//   mu           — MU string exactly as in the draw data, e.g. "6-20"
+//   zone         — zone letter, e.g. "A"  (pass "" or null if no sub-zone)
+//   speciesType  — "MOUNTAIN SHEEP" | "MOUNTAIN GOAT" | "MOOSE" | "ELK" |
+//                  "CARIBOU" | "BLACK BEAR" | "MULE DEER" | "WHITE-TAILED DEER"
+//                  | "BISON" | "TURKEY"
+//
+// The function is safe to call multiple times (idempotent per container).
+
+// Species name → single-letter zone-ID prefix used in leh_zones.json
+const _LEH_SPECIES_PREFIX = {
+  'MOUNTAIN SHEEP':    'S',
+  'MOUNTAIN GOAT':     'G',
+  'MOOSE':             'M',
+  'ELK':               'E',
+  'CARIBOU':           'C',
+  'BLACK BEAR':        'U',
+  'MULE DEER':         'D',
+  'WHITE-TAILED DEER': 'W',
+  'BISON':             'B',
+  'TURKEY':            'T',
+};
+
+// Cached promise so the JSON is only fetched once across all cards
+let _lehZonesPromise = null;
+function _lehLoadZones() {
+  if (!_lehZonesPromise) {
+    _lehZonesPromise = fetch('leh_zones.json')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .catch(err => { console.error('[bcCardMap] Failed to load leh_zones.json:', err); return null; });
+  }
+  return _lehZonesPromise;
+}
+
+// Track card map instances so we can destroy them if the card is re-rendered
+const _lehCardMaps = {};
+
+function bcCardMapInit(containerId, mu, zone, speciesType) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  // Destroy any previous Leaflet instance in this container
+  if (_lehCardMaps[containerId]) {
+    try { _lehCardMaps[containerId].remove(); } catch(e) {}
+    delete _lehCardMaps[containerId];
+    container.innerHTML = '';
+    delete container._leaflet_id;
+  }
+
+  // Build the expected zone-ID  e.g. "S_6-20A"
+  const prefix = _LEH_SPECIES_PREFIX[(speciesType || '').toUpperCase()] || 'S';
+  const normalMU = bcNormalizeMU(mu);   // reuse existing normaliser
+  const targetId = zone ? `${prefix}_${normalMU}${zone}` : null;
+
+  // Satellite layer (default) + topo option — driven by the toggle buttons
+  // that sit above each card map (rendered in the card HTML, see bcCardMapToggle)
+  const tileLayers = {
+    satellite: L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { attribution: 'Esri', maxZoom: 17 }
+    ),
+    topo: L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+      { attribution: 'Esri', maxZoom: 17 }
+    )
+  };
+
+  // Default centre on BC if we can't zoom to the zone
+  const map = L.map(containerId, {
+    center: [54.5, -124.5],
+    zoom: 6,
+    minZoom: 4,
+    maxZoom: 15,
+    zoomControl: true,
+    attributionControl: true,
+    scrollWheelZoom: false,   // avoid page-scroll hijack inside card
+    tap: true
+  });
+
+  tileLayers.satellite.addTo(map);
+  _lehCardMaps[containerId] = map;
+
+  // Store layer refs on the map object so bcCardMapSetLayer can swap them
+  map._lehTileLayers = tileLayers;
+  map._lehCurrentTile = 'satellite';
+
+  // Show a subtle status message while loading
+  const statusEl = document.getElementById(containerId + '_status');
+  function setStatus(msg, ok) {
+    if (!statusEl) return;
+    statusEl.textContent = msg;
+    statusEl.style.color = ok ? 'var(--text-muted, #666)' : '#f87171';
+  }
+  setStatus('Loading zone…', true);
+
+  _lehLoadZones().then(zones => {
+    if (!zones) { setStatus('Zone data unavailable', false); return; }
+
+    // Ensure Leaflet is still alive (card may have been closed)
+    if (!_lehCardMaps[containerId]) return;
+
+    // ── Context layer: all zones for this MU (dim blue outlines) ──
+    const muFeatures = Object.entries(zones)
+      .filter(([id, z]) => z.mu === normalMU)
+      .map(([id, z]) => ({ type: 'Feature', properties: { id, label: z.lb, zt: z.zt }, geometry: z.g }));
+
+    if (muFeatures.length > 0) {
+      L.geoJSON({ type: 'FeatureCollection', features: muFeatures }, {
+        style: {
+          color: '#5b8def', weight: 1, opacity: 0.45,
+          fillColor: '#5b8def', fillOpacity: 0.05, dashArray: '4,4'
+        },
+        onEachFeature: (feat, lyr) => {
+          lyr.bindTooltip(
+            `<b style="color:#5b8def">${feat.properties.label}</b><br><span style="font-size:10px;color:#888">${feat.properties.zt}</span>`,
+            { sticky: true, direction: 'top', className: 'leh-card-tip' }
+          );
+        }
+      }).addTo(map);
+    }
+
+    // ── Highlight layer: the specific drawn zone (gold border) ──
+    let highlightBounds = null;
+    if (targetId && zones[targetId]) {
+      const z = zones[targetId];
+      const highlightLayer = L.geoJSON(
+        { type: 'Feature', properties: { id: targetId, label: z.lb }, geometry: z.g },
+        {
+          style: {
+            color: '#f0b429', weight: 2.5, opacity: 1,
+            fillColor: '#f0b429', fillOpacity: 0.14
+          },
+          onEachFeature: (feat, lyr) => {
+            lyr.bindTooltip(
+              `<b style="color:#f0b429">${z.lb}</b><br><span style="font-size:10px;color:#aaa">${z.zt} · MU ${mu}</span>`,
+              { sticky: true, direction: 'top', className: 'leh-card-tip' }
+            );
+          }
+        }
+      ).addTo(map);
+      highlightBounds = highlightLayer.getBounds();
+    } else if (muFeatures.length > 0) {
+      // No exact zone match — fall back to fitting the whole MU
+      const fallback = L.geoJSON({ type: 'FeatureCollection', features: muFeatures });
+      highlightBounds = fallback.getBounds();
+    }
+
+    if (highlightBounds && highlightBounds.isValid()) {
+      map.fitBounds(highlightBounds, { padding: [28, 28], maxZoom: 11 });
+    }
+
+    const label = targetId && zones[targetId] ? zones[targetId].lb : `MU ${mu}`;
+    setStatus(label, true);
+  });
+}
+
+// Called by the Satellite / Topo toggle buttons rendered in the card HTML
+// e.g. onclick="bcCardMapSetLayer('cardMapDiv_6038', 'topo')"
+function bcCardMapSetLayer(containerId, type) {
+  const map = _lehCardMaps[containerId];
+  if (!map || !map._lehTileLayers) return;
+  if (map._lehCurrentTile === type) return;
+  map.removeLayer(map._lehTileLayers[map._lehCurrentTile]);
+  map._lehTileLayers[type].addTo(map);
+  map._lehCurrentTile = type;
+
+  // Sync button states — buttons must have id="[containerId]_btn_satellite" etc.
+  ['satellite', 'topo'].forEach(t => {
+    const btn = document.getElementById(`${containerId}_btn_${t}`);
+    if (btn) btn.classList.toggle('active', t === type);
+  });
+}
+
+// Invalidate size when a card map becomes visible (call after expanding card)
+function bcCardMapInvalidate(containerId) {
+  const map = _lehCardMaps[containerId];
+  if (map) setTimeout(() => map.invalidateSize(), 80);
+}
