@@ -412,19 +412,10 @@ function bcInitLeafletMap() {
         loader.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">Loading BC map\u2026</span>';
         container.appendChild(loader);
       }
-      fetch(BC_WMU_GEOJSON_URL)
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          bcWmuGeoJSON = data;
-          var loader = document.getElementById('bcMapLoader');
-          if (loader) loader.remove();
-          bcRenderMap(data);
-        })
-        .catch(function(err) {
-          console.error('BC WMU GeoJSON load failed:', err);
-          var loader = document.getElementById('bcMapLoader');
-          if (loader) loader.innerHTML = '<span style="font-size:12px;color:#f87171">Failed to load map. Check connection.</span>';
-        });
+      bcWmuGeoJSON = BC_WMU_GEOJSON;
+      var loader = document.getElementById('bcMapLoader');
+      if (loader) loader.remove();
+      bcRenderMap(BC_WMU_GEOJSON);
     }
   }
 
@@ -663,13 +654,8 @@ function _fullMapInitBC() {
   if (bcWmuGeoJSON) {
     render(bcWmuGeoJSON);
   } else {
-    fetch(BC_WMU_GEOJSON_URL)
-      .then(r => r.json())
-      .then(data => { bcWmuGeoJSON = data; render(data); })
-      .catch(() => {
-        const l = document.getElementById('fullMapLoading');
-        if (l) l.innerHTML = '<span style="color:#f87171;font-size:12px">Failed to load BC map.</span>';
-      });
+    bcWmuGeoJSON = BC_WMU_GEOJSON;
+    render(BC_WMU_GEOJSON);
   }
 }
 
