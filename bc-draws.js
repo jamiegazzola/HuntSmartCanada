@@ -835,9 +835,10 @@ function buildBCExpandHTML(r, idPrefix) {
           <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted)">Zone Map</span>
           <span style="display:inline-flex;align-items:center;gap:4px;background:rgba(240,180,41,.12);border:1px solid rgba(240,180,41,.4);color:#f0b429;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">${zoneLabel}</span>${hasZoneModifier ? '<span style="font-size:9px;color:var(--text-muted,#666)">Partial area — see regs</span>' : ''}
         </div>
-        <div style="display:flex;gap:3px">
+        <div style="display:flex;gap:3px;align-items:center">
           <button id="${mapContainerId}_btn_satellite" class="leh-map-btn active" onclick="event.stopPropagation();bcCardMapSetLayer('${mapContainerId}','satellite')">Satellite</button>
           <button id="${mapContainerId}_btn_topo" class="leh-map-btn" onclick="event.stopPropagation();bcCardMapSetLayer('${mapContainerId}','topo')">Topo</button>
+          <button class="leh-map-btn leh-map-expand-btn" onclick="event.stopPropagation();bcCardMapToggleFullscreen('${mapContainerId}')" title="Expand map" style="width:26px;padding:0;font-size:13px;display:flex;align-items:center;justify-content:center">⛶</button>
         </div>
       </div>
       <div id="${mapContainerId}" style="height:280px;width:100%;border-radius:8px;overflow:hidden;background:#1a1a1a"></div>

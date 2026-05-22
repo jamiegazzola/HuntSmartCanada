@@ -1383,3 +1383,95 @@ function bcCardMapInvalidate(containerId) {
   const map = _lehCardMaps[containerId];
   if (map) setTimeout(() => map.invalidateSize(), 80);
 }
+// ── Card map fullscreen expand / collapse ──
+const _bcCardMapFullscreen = {};  // containerId → { overlay, origHeight }
+
+function bcCardMapToggleFullscreen(containerId) {
+  const mapDiv  = document.getElementById(containerId);
+  if (!mapDiv) return;
+
+  // Find the expand button
+  const header = mapDiv.closest('div[style*="margin-top:12px"]') ||
+                 mapDiv.parentElement;
+  const btn = header ? header.querySelector('.leh-map-expand-btn') : null;
+
+  if (_bcCardMapFullscreen[containerId]) {
+    // ── COLLAPSE ──
+    const { overlay } = _bcCardMapFullscreen[containerId];
+
+    // Move map back into its original spot
+    const placeholder = document.getElementById(containerId + '_placeholder');
+    if (placeholder) {
+      placeholder.replaceWith(mapDiv);
+    }
+    mapDiv.style.height    = '280px';
+    mapDiv.style.position  = '';
+    mapDiv.style.borderRadius = '8px';
+
+    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    delete _bcCardMapFullscreen[containerId];
+
+    if (btn) { btn.textContent = '⛶'; btn.title = 'Expand map'; }
+    document.body.style.overflow = '';
+  } else {
+    // ── EXPAND ──
+    // Leave a placeholder so the card doesn't collapse
+    const placeholder = document.createElement('div');
+    placeholder.id = containerId + '_placeholder';
+    placeholder.style.height = '280px';
+    mapDiv.parentNode.replaceChild(placeholder, mapDiv);
+
+    // Full-screen overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = [
+      'position:fixed', 'inset:0', 'z-index:10000',
+      'background:#111', 'display:flex', 'flex-direction:column'
+    ].join(';');
+
+    // Header bar inside overlay
+    const bar = document.createElement('div');
+    bar.style.cssText = [
+      'display:flex', 'align-items:center', 'justify-content:flex-end',
+      'padding:8px 12px', 'gap:8px',
+      'background:var(--bg-secondary,#1a1a1a)',
+      'border-bottom:1px solid var(--border,#2e2e2e)',
+      'flex-shrink:0'
+    ].join(';');
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕  Collapse';
+    closeBtn.className = 'leh-map-btn';
+    closeBtn.style.cssText = 'font-size:12px;padding:5px 14px;';
+    closeBtn.onclick = () => bcCardMapToggleFullscreen(containerId);
+    bar.appendChild(closeBtn);
+    overlay.appendChild(bar);
+
+    // Map fills the rest
+    mapDiv.style.height   = 'calc(100vh - 45px)';
+    mapDiv.style.position = 'relative';
+    mapDiv.style.borderRadius = '0';
+    overlay.appendChild(mapDiv);
+
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+
+    _bcCardMapFullscreen[containerId] = { overlay };
+    if (btn) { btn.textContent = '✕'; btn.title = 'Collapse map'; }
+  }
+
+  // Let Leaflet re-measure its new size
+  setTimeout(() => {
+    if (_lehCardMaps && _lehCardMaps[containerId]) {
+      _lehCardMaps[containerId].invalidateSize();
+    }
+  }, 50);
+}
+
+// Close card map fullscreen on Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    Object.keys(_bcCardMapFullscreen).forEach(id => bcCardMapToggleFullscreen(id));
+  }
+});
+
+
