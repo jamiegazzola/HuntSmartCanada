@@ -763,6 +763,45 @@ function fullMapShowLEHForMUs(muSet) {
 }
 
 // ── Toggle LEH visibility on/off (pill button) ──
+
+// ── Map fullscreen expand / collapse ──
+let _fullMapIsFullscreen = false;
+
+function fullMapToggleFullscreen() {
+  const page = document.querySelector('.fullmap-page');
+  const btn  = document.getElementById('fullMapExpandBtn');
+  if (!page || !btn) return;
+
+  _fullMapIsFullscreen = !_fullMapIsFullscreen;
+
+  if (_fullMapIsFullscreen) {
+    page.classList.add('is-fullscreen');
+    btn.title     = 'Collapse map';
+    btn.textContent = '✕';
+    // Prevent body scroll while fullscreen
+    document.body.style.overflow = 'hidden';
+  } else {
+    page.classList.remove('is-fullscreen');
+    btn.title     = 'Expand map';
+    btn.textContent = '⛶';
+    document.body.style.overflow = '';
+  }
+
+  // Give Leaflet a tick to see its new size, then re-centre
+  setTimeout(() => {
+    if (fullMapInstance) {
+      fullMapInstance.invalidateSize();
+    }
+  }, 50);
+}
+
+// Close fullscreen on Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && _fullMapIsFullscreen) {
+    fullMapToggleFullscreen();
+  }
+});
+
 function fullMapToggleLEH() {
   if (_fullMapLEHLoading) return;
   _fullMapLEHVisible = !_fullMapLEHVisible;
