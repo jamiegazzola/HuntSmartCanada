@@ -546,7 +546,7 @@ const _LEH_COLORS = {
 };
 
 // ── Tile layers: original OSM + Esri, plus Mapbox satellite ──
-const MAPBOX_TOKEN = 'MAPBOX_TOKEN_HERE';
+const MAPBOX_TOKEN = 'pk.eyJ1IjoiamFtaWVnYXp6b2xhIiwiYSI6ImNtcGdpbzM3dzA2ejAyd3E1NHZjZXlyMGIifQ.NKi0eSr7pXtLTO6nnrvF3A';
 
 const _FULLMAP_TILES = {
   streets: {
