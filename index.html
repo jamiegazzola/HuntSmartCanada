@@ -151,6 +151,93 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
   flex: 1 1 0;
   min-height: 0;
 }
+
+/* ── Pin mode button ── */
+.fullmap-pin-btn {
+  background: var(--bg-secondary, #1c1c1c);
+  border: 1px solid var(--border, #333);
+  color: var(--text-muted, #777);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.fullmap-pin-btn.active {
+  background: rgba(239,68,68,.15);
+  border-color: rgba(239,68,68,.6);
+  color: #f87171;
+  box-shadow: 0 0 0 1px rgba(239,68,68,.2);
+}
+.fullmap-pin-btn:hover:not(.active) { border-color: #555; color: #ccc; }
+
+/* Pin popup */
+.hs-pin-popup .leaflet-popup-content-wrapper {
+  background: #1a1a1a !important;
+  border: 1px solid #3a3a3a !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,.7) !important;
+  color: #e8e8e8 !important;
+  min-width: 200px !important;
+  padding: 0 !important;
+}
+.hs-pin-popup .leaflet-popup-tip { background: #1a1a1a !important; }
+.hs-pin-popup .leaflet-popup-content { margin: 0 !important; width: auto !important; }
+.hs-pin-popup-inner { padding: 12px 14px; }
+.hs-pin-popup-label {
+  font-size: 13px; font-weight: 700; color: #f0f0f0;
+  margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+}
+.hs-pin-popup-coords {
+  font-size: 10px; color: #666; font-family: monospace; margin-bottom: 10px;
+}
+.hs-pin-popup-input {
+  width: 100%; box-sizing: border-box;
+  background: #252525; border: 1px solid #3a3a3a; border-radius: 6px;
+  color: #e8e8e8; font-size: 12px; padding: 5px 8px;
+  font-family: inherit; outline: none; margin-bottom: 8px;
+}
+.hs-pin-popup-input:focus { border-color: #555; }
+.hs-pin-popup-cats {
+  display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.hs-pin-cat-btn {
+  font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 12px;
+  cursor: pointer; border: 1px solid transparent; transition: all .1s;
+  font-family: inherit;
+}
+.hs-pin-popup-actions { display: flex; gap: 6px; }
+.hs-pin-action-btn {
+  flex: 1; font-size: 11px; font-weight: 600; padding: 5px 0;
+  border-radius: 6px; cursor: pointer; border: 1px solid #3a3a3a;
+  font-family: inherit; transition: all .12s;
+}
+.hs-pin-save-btn  { background: #2a3a2a; color: #4ade80; border-color: #2e4a2e; }
+.hs-pin-save-btn:hover  { background: #2e4a2e; }
+.hs-pin-del-btn   { background: #3a2020; color: #f87171; border-color: #4a2020; }
+.hs-pin-del-btn:hover   { background: #4a2020; }
+
+/* Cursor hint when pin mode active */
+#fullMapLeaflet.pin-mode-cursor { cursor: crosshair !important; }
+#fullMapLeaflet.pin-mode-cursor .leaflet-interactive { cursor: crosshair !important; }
+
+/* Mapbox GL pin popup */
+.hs-mb-pin-popup .mapboxgl-popup-content {
+  background: #1a1a1a !important;
+  border: 1px solid #3a3a3a !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,.7) !important;
+  color: #e8e8e8 !important;
+  padding: 0 !important;
+  min-width: 200px !important;
+}
+.hs-mb-pin-popup .mapboxgl-popup-tip { border-top-color: #1a1a1a !important; }
+/* Mapbox GL attribution dark */
+.mapboxgl-ctrl-attrib { background: rgba(0,0,0,.5) !important; }
+.mapboxgl-ctrl-attrib a { color: #aaa !important; }
 </style>
 </head>
 <body>
@@ -591,12 +678,21 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
           <!-- Tile layer pills -->
           <div style="display:flex;gap:3px">
-            <button id="fullMapTile_streets"   class="fullmap-tile-btn active" onclick="fullMapSetTile('streets')">Streets</button>
-            <button id="fullMapTile_satellite" class="fullmap-tile-btn"        onclick="fullMapSetTile('satellite')">Satellite</button>
-            <button id="fullMapTile_topo"      class="fullmap-tile-btn"        onclick="fullMapSetTile('topo')">Topo</button>
+            <button id="fullMapTile_streets"   class="fullmap-tile-btn"        onclick="fullMapSetTile('streets')">Streets</button>
+            <button id="fullMapTile_satellite" class="fullmap-tile-btn active" onclick="fullMapSetTile('satellite')">Satellite</button>
+            <button id="fullMapTile_topo"      class="fullmap-tile-btn"        onclick="fullMapSetTile('topo')">Outdoors</button>
+            <button id="fullMapTile_hybrid"    class="fullmap-tile-btn"        onclick="fullMapSetTile('hybrid')">Hybrid</button>
           </div>
-          <!-- LEH zones toggle -->
+          <!-- 3D terrain toggle -->
+          <button id="fullMap3DBtn" class="fullmap-tile-btn" onclick="fullMapToggle3D()" title="Toggle 3D terrain">3D</button>
+          <!-- LEH zones toggle + opacity -->
           <button id="fullMapLEHToggle" class="fullmap-leh-btn" onclick="fullMapToggleLEH()">LEH Zones</button>
+          <input id="fullMapLEHOpacity" type="range" min="0.05" max="0.8" step="0.05" value="0.35"
+            oninput="fullMapSetLEHOpacity(this.value)"
+            title="LEH zone opacity"
+            style="width:60px;accent-color:#f0b429;cursor:pointer;vertical-align:middle">
+          <!-- Pin mode toggle -->
+          <button id="fullMapPinBtn" class="fullmap-pin-btn" onclick="fullMapTogglePinMode()" title="Drop pins">📍 Pins</button>
           <!-- Fullscreen expand/collapse -->
           <button id="fullMapExpandBtn" class="fullmap-expand-btn" onclick="fullMapToggleFullscreen()" title="Expand map">⛶</button>
         </div>
