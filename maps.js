@@ -525,6 +525,8 @@ let fullMapSortMode   = 'odds';
 // ── Switch province ──
 function fullMapSetProvince(prov) {
   if (fullMapProvince === prov) return;
+  // Deactivate pin mode before switching (map gets destroyed)
+  if (_pinModeActive) fullMapTogglePinMode();
   fullMapProvince = prov;
   fullMapSelRegions.clear();
   fullMapShowLEHForMUs([]);
@@ -633,6 +635,208 @@ function fullMapSetTile(type) {
   });
 }
 
+
+// ══════════════════════════════════════════════════════
+// ── PIN SYSTEM ──────────────────────────────────────
+// ══════════════════════════════════════════════════════
+
+const PIN_CATS = [
+  { id: 'camp',    label: '⛺ Camp',     color: '#f0b429' },
+  { id: 'glassing',label: '🔭 Glassing', color: '#60a5fa' },
+  { id: 'access',  label: '🛻 Access',   color: '#4ade80' },
+  { id: 'sighting',label: '🦌 Sighting', color: '#f87171' },
+  { id: 'waypoint',label: '📍 Waypoint', color: '#c084fc' },
+];
+
+let _pinModeActive  = false;
+let _pinMapClickFn  = null;  // stored so we can remove it
+
+// Load pins from localStorage
+function _pinsLoad(province) {
+  try {
+    return JSON.parse(localStorage.getItem('hs_pins_' + province) || '[]');
+  } catch { return []; }
+}
+
+function _pinsSave(province, pins) {
+  try { localStorage.setItem('hs_pins_' + province, JSON.stringify(pins)); } catch {}
+}
+
+function _pinNextId() {
+  return 'p' + Date.now() + Math.random().toString(36).slice(2, 6);
+}
+
+// ── Build a custom Leaflet DivIcon for a pin ──
+function _pinIcon(cat) {
+  const c = PIN_CATS.find(p => p.id === cat) || PIN_CATS[4];
+  return L.divIcon({
+    className: '',
+    iconSize: [28, 36],
+    iconAnchor: [14, 36],
+    popupAnchor: [0, -36],
+    html: `<div style="
+      width:28px;height:36px;display:flex;align-items:center;justify-content:center;
+      filter:drop-shadow(0 2px 6px rgba(0,0,0,.7));
+    ">
+      <svg width="28" height="36" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z"
+          fill="${c.color}" stroke="rgba(0,0,0,.4)" stroke-width="1.5"/>
+        <circle cx="14" cy="14" r="6" fill="rgba(0,0,0,.35)"/>
+      </svg>
+    </div>`
+  });
+}
+
+// ── Render popup HTML for a pin ──
+function _pinPopupHTML(pin) {
+  const catBtns = PIN_CATS.map(c => {
+    const active = pin.cat === c.id;
+    return `<button class="hs-pin-cat-btn"
+      style="background:${active ? c.color + '33' : 'transparent'};
+             border-color:${active ? c.color : '#333'};
+             color:${active ? c.color : '#666'};"
+      onclick="hsPinSetCat('${pin.id}','${c.id}')">${c.label}</button>`;
+  }).join('');
+
+  return `<div class="hs-pin-popup-inner">
+    <div class="hs-pin-popup-label">
+      <span id="hsPinIcon_${pin.id}">${PIN_CATS.find(p=>p.id===pin.cat)?.label || '📍'}</span>
+    </div>
+    <div class="hs-pin-popup-coords">${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}</div>
+    <input class="hs-pin-popup-input" id="hsPinLabel_${pin.id}"
+      value="${pin.label || ''}" placeholder="Add a label…"
+      oninput="hsPinUpdateLabel('${pin.id}',this.value)"
+    />
+    <div class="hs-pin-popup-cats">${catBtns}</div>
+    <div class="hs-pin-popup-actions">
+      <button class="hs-pin-action-btn hs-pin-save-btn" onclick="hsPinSaveClose('${pin.id}')">✓ Save</button>
+      <button class="hs-pin-action-btn hs-pin-del-btn"  onclick="hsPinDelete('${pin.id}')">✕ Delete</button>
+    </div>
+  </div>`;
+}
+
+// ── Global refs: id → { marker, pin } ──
+const _pinMarkers = {};  // province-keyed: { BC: {id:{marker,pin}}, AB: {...} }
+
+function _pinMarkersForProv() {
+  const p = fullMapProvince || 'BC';
+  if (!_pinMarkers[p]) _pinMarkers[p] = {};
+  return _pinMarkers[p];
+}
+
+// ── Add a single pin marker to the map ──
+function _pinAddMarker(pin) {
+  if (!fullMapInstance) return;
+  const marker = L.marker([pin.lat, pin.lng], {
+    icon: _pinIcon(pin.cat),
+    zIndexOffset: 1000,
+    draggable: true,
+  });
+
+  marker.bindPopup(_pinPopupHTML(pin), {
+    className: 'hs-pin-popup',
+    maxWidth: 240,
+    minWidth: 210,
+  });
+
+  // Update position in storage when dragged
+  marker.on('dragend', function() {
+    const ll = this.getLatLng();
+    pin.lat = +ll.lat.toFixed(6);
+    pin.lng = +ll.lng.toFixed(6);
+    _pinPersist();
+    // Refresh popup with new coords
+    marker.setPopupContent(_pinPopupHTML(pin));
+  });
+
+  marker.addTo(fullMapInstance);
+  _pinMarkersForProv()[pin.id] = { marker, pin };
+}
+
+// ── Load & render all saved pins for current province ──
+function _pinLoadAndRender() {
+  const prov = fullMapProvince || 'BC';
+  const pins = _pinsLoad(prov);
+  pins.forEach(p => _pinAddMarker(p));
+}
+
+// ── Persist current province's pins ──
+function _pinPersist() {
+  const prov = fullMapProvince || 'BC';
+  const markers = _pinMarkersForProv();
+  const pins = Object.values(markers).map(m => m.pin);
+  _pinsSave(prov, pins);
+}
+
+// ── Toggle pin drop mode ──
+function fullMapTogglePinMode() {
+  _pinModeActive = !_pinModeActive;
+  const btn     = document.getElementById('fullMapPinBtn');
+  const mapEl   = document.getElementById('fullMapLeaflet');
+
+  if (_pinModeActive) {
+    btn && btn.classList.add('active');
+    btn && (btn.textContent = '📍 Pinning…');
+    mapEl && mapEl.classList.add('pin-mode-cursor');
+
+    // Register map click
+    _pinMapClickFn = function(e) {
+      if (!_pinModeActive) return;
+      const pin = {
+        id:    _pinNextId(),
+        lat:   +e.latlng.lat.toFixed(6),
+        lng:   +e.latlng.lng.toFixed(6),
+        label: '',
+        cat:   'waypoint',
+      };
+      _pinAddMarker(pin);
+      _pinPersist();
+      // Open popup immediately
+      const ref = _pinMarkersForProv()[pin.id];
+      if (ref) ref.marker.openPopup();
+    };
+    fullMapInstance && fullMapInstance.on('click', _pinMapClickFn);
+  } else {
+    btn && btn.classList.remove('active');
+    btn && (btn.textContent = '📍 Pins');
+    mapEl && mapEl.classList.remove('pin-mode-cursor');
+    if (_pinMapClickFn && fullMapInstance) {
+      fullMapInstance.off('click', _pinMapClickFn);
+      _pinMapClickFn = null;
+    }
+  }
+}
+
+// ── Public callbacks called from popup HTML ──
+window.hsPinUpdateLabel = function(id, val) {
+  const ref = _pinMarkersForProv()[id];
+  if (!ref) return;
+  ref.pin.label = val;
+};
+
+window.hsPinSetCat = function(id, catId) {
+  const ref = _pinMarkersForProv()[id];
+  if (!ref) return;
+  ref.pin.cat = catId;
+  ref.marker.setIcon(_pinIcon(catId));
+  ref.marker.setPopupContent(_pinPopupHTML(ref.pin));
+};
+
+window.hsPinSaveClose = function(id) {
+  _pinPersist();
+  const ref = _pinMarkersForProv()[id];
+  if (ref) ref.marker.closePopup();
+};
+
+window.hsPinDelete = function(id) {
+  const ref = _pinMarkersForProv()[id];
+  if (!ref) return;
+  ref.marker.closePopup();
+  fullMapInstance && fullMapInstance.removeLayer(ref.marker);
+  delete _pinMarkersForProv()[id];
+  _pinPersist();
+};
+
 // ── LEH species colours ──
 const _LEH_COLORS = {
   'MOUNTAIN SHEEP':    '#f0b429',
@@ -722,18 +926,20 @@ function fullMapShowLEHForMUs(muSet) {
   const btn = document.getElementById('fullMapLEHToggle');
 
   _lehGetZones().then(data => {
-    const zones = data.zones;
-    const muIndex = data.mu_index;
+    const zones   = data.zones    || data;
+    const muIndex = data.mu_index || {};
     // Collect all zone IDs for the selected MUs (via mu_index for multi-MU zone support)
     const zoneIds = new Set();
     for (const mu of mus) {
       const cleanMU = mu.replace(/[\*\+]+$/, '').trim();
       (muIndex[cleanMU] || []).forEach(id => zoneIds.add(id));
     }
-    const features = [...zoneIds].map(id => {
-      const z = zones[id];
-      return { type: 'Feature', properties: { id, label: z.lb, zt: z.zt, mu: z.mu }, geometry: z.g };
-    });
+    const features = [...zoneIds]
+      .filter(id => zones[id])
+      .map(id => {
+        const z = zones[id];
+        return { type: 'Feature', properties: { id, label: z.lb, zt: z.zt, mu: z.mu }, geometry: z.g };
+      });
 
     if (features.length === 0) return;
 
@@ -907,6 +1113,7 @@ function _fullMapInitBC() {
 
     const loading = document.getElementById('fullMapLoading');
     if (loading) loading.style.display = 'none';
+    _pinLoadAndRender();
   }
 
   if (bcWmuGeoJSON) {
@@ -977,6 +1184,7 @@ function _fullMapInitAB() {
 
     const loading = document.getElementById('fullMapLoading');
     if (loading) loading.style.display = 'none';
+    _pinLoadAndRender();
   }
 
   build().catch(err => {
@@ -1293,8 +1501,8 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
   setStatus('Loading zone…', true);
 
   _lehGetZones().then(data => {
-    const zones = data.zones;
-    const muIndex = data.mu_index;
+    const zones    = data.zones    || data;   // support both {zones,mu_index} and flat formats
+    const muIndex  = data.mu_index || {};
 
     // Ensure Leaflet is still alive (card may have been closed)
     if (!_lehCardMaps[containerId]) return;
@@ -1302,10 +1510,12 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
     // ── Context layer: all zones for this MU (dim blue outlines) ──
     // Use mu_index to get all zones that include this MU (handles multi-MU zones)
     const contextIds = new Set(muIndex[cleanMU] || []);
-    const muFeatures = [...contextIds].map(id => {
-      const z = zones[id];
-      return { type: 'Feature', properties: { id, label: z.lb, zt: z.zt }, geometry: z.g };
-    });
+    const muFeatures = [...contextIds]
+      .filter(id => zones[id])   // guard: skip IDs that don't exist in zones
+      .map(id => {
+        const z = zones[id];
+        return { type: 'Feature', properties: { id, label: z.lb, zt: z.zt }, geometry: z.g };
+      });
 
     if (muFeatures.length > 0) {
       L.geoJSON({ type: 'FeatureCollection', features: muFeatures }, {
@@ -1356,8 +1566,11 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
       map.fitBounds(highlightBounds, { padding: [28, 28], maxZoom: 11 });
     }
 
-    const label = targetId && zones[targetId] ? zones[targetId].lb : `MU ${mu}`;
+    const label = resolvedId && zones[resolvedId] ? zones[resolvedId].lb : `MU ${mu}`;
     setStatus(label, true);
+  }).catch(err => {
+    console.error('[bcCardMapInit] zone load error:', err);
+    setStatus('Zone data unavailable', false);
   });
 }
 
