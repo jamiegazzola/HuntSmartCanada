@@ -513,45 +513,60 @@ function bcRenderMap(geojson) {
 
 // ══════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════
-// ── FULL-PAGE MAP TAB — Mapbox GL JS (3D terrain)
 // ══════════════════════════════════════════════════════════════
-
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiamFtaWVnYXp6b2xhIiwiYSI6ImNtcGdpbzM3dzA2ejAyd3E1NHZjZXlyMGIifQ.NKi0eSr7pXtLTO6nnrvF3A';
+// ── FULL-PAGE MAP TAB (BC / AB toggle) — Leaflet
+// ══════════════════════════════════════════════════════════════
 
 let fullMapProvince    = 'BC';
 let fullMapInitialized = { BC: false, AB: false };
-let fullMapInstance    = null;   // mapboxgl.Map
+let fullMapInstance    = null;
+let fullMapGeoLayer    = null;
 let fullMapSelRegions  = new Set();
 let fullMapSortMode    = 'odds';
 
-// Style / layer state
-let _fullMapStyle      = 'satellite'; // current base style key
-let _fullMapTerrain3D  = false;
-let _fullMapLEHVisible = false;
-let _fullMapLEHLoading = false;
-let _fullMapLEHOpacity = 0.35;        // fill opacity for LEH overlay (0–1)
+let _fullMapCurrentTile = 'streets';
+let _fullMapTileLayers  = {};
+let _fullMapLEHLayer    = null;
+let _fullMapLEHVisible  = false;
+let _fullMapLEHLoading  = false;
+let _fullMapLEHOpacity  = 0.35;
 
-// Mapbox style URLs
-const _MB_STYLES = {
-  streets:   'mapbox://styles/mapbox/dark-v11',
-  satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
-  topo:      'mapbox://styles/mapbox/outdoors-v12',
-  hybrid:    'mapbox://styles/mapbox/satellite-v9',
+// ── LEH zone type colours ──
+const _LEH_COLORS = {
+  'MOUNTAIN SHEEP':    '#e8a838',
+  'MOUNTAIN GOAT':     '#60a5fa',
+  'MOOSE':             '#4ade80',
+  'ELK':               '#f97316',
+  'CARIBOU':           '#a78bfa',
+  'BLACK BEAR':        '#94a3b8',
+  'MULE DEER':         '#fbbf24',
+  'WHITE-TAILED DEER': '#f472b6',
+  'BISON':             '#fb923c',
+  'TURKEY':            '#34d399',
 };
 
-// Source / layer IDs we add
-const _SRC_WMU   = 'wmu-source';
-const _LYR_WMU_FILL   = 'wmu-fill';
-const _LYR_WMU_BORDER = 'wmu-border';
-const _LYR_WMU_HOVER  = 'wmu-hover';
-const _SRC_LEH   = 'leh-source';
-const _LYR_LEH_FILL   = 'leh-fill';
-const _LYR_LEH_BORDER = 'leh-border';
+// ── Tile layers: original OSM + Esri, plus Mapbox satellite ──
+const MAPBOX_TOKEN = 'pk.eyJ1IjoiamFtaWVnYXp6b2xhIiwiYSI6ImNtcGdpbzM3dzA2ejAyd3E1NHZjZXlyMGIifQ.NKi0eSr7pXtLTO6nnrvF3A';
 
-// ── Province switch ──
+const _FULLMAP_TILES = {
+  streets: {
+    url:  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    opts: { attribution: '© <a href="https://openstreetmap.org/copyright">OSM</a>', subdomains: 'abc', maxZoom: 19 }
+  },
+  satellite: {
+    url:  `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=${MAPBOX_TOKEN}`,
+    opts: { attribution: '© Mapbox © OSM', tileSize: 512, zoomOffset: -1, maxZoom: 19 }
+  },
+  topo: {
+    url:  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+    opts: { attribution: 'Esri World Topo', maxZoom: 19 }
+  },
+};
+
+// ── Switch province ──
 function fullMapSetProvince(prov) {
   if (fullMapProvince === prov) return;
-  if (_pinModeActive) fullMapTogglePinMode();
+  if (typeof _pinModeActive !== 'undefined' && _pinModeActive) fullMapTogglePinMode();
   fullMapProvince = prov;
   fullMapSelRegions.clear();
 
@@ -561,6 +576,9 @@ function fullMapSetProvince(prov) {
   if (fullMapInstance) {
     fullMapInstance.remove();
     fullMapInstance = null;
+    fullMapGeoLayer = null;
+    const container = document.getElementById('fullMapLeaflet');
+    if (container) { container.innerHTML = ''; delete container._leaflet_id; }
   }
   fullMapInitialized[prov] = false;
   fullMapHideResults();
@@ -572,7 +590,7 @@ function fullMapSetProvince(prov) {
 let _fullMapGateAttempts = 0;
 function fullMapInit() {
   if (fullMapInitialized[fullMapProvince]) {
-    if (fullMapInstance) fullMapInstance.resize();
+    setTimeout(() => fullMapInstance && fullMapInstance.invalidateSize(), 150);
     return;
   }
 
@@ -586,391 +604,206 @@ function fullMapInit() {
     else _fullMapInitAB();
   }
 
-  if (window.mapboxgl) {
+  if (typeof L !== 'undefined') {
     doInit();
   } else {
-    // Load Mapbox GL JS dynamically
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css';
+    link.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
     document.head.appendChild(link);
     const script = document.createElement('script');
-    script.src = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
     script.onload = doInit;
-    script.onerror = () => {
-      if (loading) loading.innerHTML = '<span style="color:#f87171;font-size:12px">Failed to load map library.</span>';
-    };
     document.head.appendChild(script);
   }
 }
 
-// ── Build the base Mapbox map ──
-// ── Hover state tracking ──
-let _hoveredWMU = null;
+// ── Build base map ──
+function _fullMapBuildBase(center, zoom, bounds) {
+  const container = document.getElementById('fullMapLeaflet');
+  if (!container) return null;
+  if (container._leaflet_id) { container.innerHTML = ''; delete container._leaflet_id; }
 
-// ── BC init ──
-function _fullMapInitBC() {
-  fullMapInitialized['BC'] = true;
+  _fullMapTileLayers = {};
+  _fullMapLEHLayer   = null;
+  _fullMapLEHVisible = false;
+  _fullMapCurrentTile = 'streets';
 
-  const map = _fullMapBuild([-124.0, 54.0], 5, 'BC');
-  if (!map) return;
-  fullMapInstance = map;
-
-  map.on('load', () => {
-    const loading = document.getElementById('fullMapLoading');
-    if (loading) loading.style.display = 'none';
-
-    // Add WMU source + layers
-    const geojson = bcWmuGeoJSON || BC_WMU_GEOJSON;
-    bcWmuGeoJSON = geojson;
-
-    map.addSource(_SRC_WMU, { type: 'geojson', data: geojson, generateId: true });
-
-    // Fill layer
-    map.addLayer({
-      id: _LYR_WMU_FILL,
-      type: 'fill',
-      source: _SRC_WMU,
-      paint: {
-        'fill-color': [
-          'case',
-          ['boolean', ['feature-state', 'selected'], false], '#4ade80',
-          ['boolean', ['feature-state', 'hasDraws'], false], '#3a7a50',
-          '#2a4a35'
-        ],
-        'fill-opacity': [
-          'case',
-          ['boolean', ['feature-state', 'selected'], false], 0.75,
-          ['boolean', ['feature-state', 'hovered'], false],  0.5,
-          ['boolean', ['feature-state', 'hasDraws'], false], 0.35,
-          0.12
-        ],
-      }
-    });
-
-    // Border layer
-    map.addLayer({
-      id: _LYR_WMU_BORDER,
-      type: 'line',
-      source: _SRC_WMU,
-      paint: {
-        'line-color': [
-          'case',
-          ['boolean', ['feature-state', 'selected'], false], '#ffffff',
-          '#1a2a1a'
-        ],
-        'line-width': [
-          'case',
-          ['boolean', ['feature-state', 'selected'], false], 2,
-          0.7
-        ],
-        'line-opacity': 0.8,
-      }
-    });
-
-    // Set initial hasDraws feature states
-    geojson.features.forEach((feat, i) => {
-      const id = feat.properties.wmu_id || '';
-      const hasDraws = DATA.some(r => bcMUMatchesPolygon(r.MU, id));
-      map.setFeatureState({ source: _SRC_WMU, id: feat.id ?? i }, { hasDraws, selected: false, hovered: false });
-    });
-
-    // Hover
-    map.on('mousemove', _LYR_WMU_FILL, (e) => {
-      if (e.features.length === 0) return;
-      const feat = e.features[0];
-      const id = feat.properties.wmu_id || '';
-      if (_hoveredWMU !== null && _hoveredWMU !== feat.id) {
-        map.setFeatureState({ source: _SRC_WMU, id: _hoveredWMU }, { hovered: false });
-      }
-      _hoveredWMU = feat.id;
-      map.setFeatureState({ source: _SRC_WMU, id: feat.id }, { hovered: true });
-      map.getCanvas().style.cursor = 'pointer';
-      _fullMapShowTooltip(e, id, 'BC');
-    });
-    map.on('mouseleave', _LYR_WMU_FILL, () => {
-      if (_hoveredWMU !== null) {
-        map.setFeatureState({ source: _SRC_WMU, id: _hoveredWMU }, { hovered: false });
-        _hoveredWMU = null;
-      }
-      map.getCanvas().style.cursor = '';
-      _fullMapHideTooltip();
-    });
-
-    // Click to select
-    map.on('click', _LYR_WMU_FILL, (e) => {
-      if (_pinModeActive) return;
-      const id = e.features[0].properties.wmu_id || '';
-      const hasDraws = DATA.some(r => bcMUMatchesPolygon(r.MU, id));
-      if (!hasDraws) return;
-      _fullMapToggleRegion(id, e.features[0].id);
-    });
-
-    // Pin clicks on empty map area
-    map.on('click', (e) => {
-      if (!_pinModeActive) return;
-      const features = map.queryRenderedFeatures(e.point, { layers: [_LYR_WMU_FILL] });
-      if (features.length === 0) _fullMapDropPin(e.lngLat);
-      else _fullMapDropPin(e.lngLat);
-    });
-
-    _pinLoadAndRender();
-    _syncTileButtons();
+  const map = L.map('fullMapLeaflet', {
+    center, zoom, minZoom: 4, maxZoom: 19,
+    zoomControl: true, scrollWheelZoom: true, touchZoom: true
   });
 
-  map.on('error', e => console.error('[Mapbox]', e.error));
+  const t = _FULLMAP_TILES.streets;
+  _fullMapTileLayers.streets = L.tileLayer(t.url, t.opts).addTo(map);
+
+  if (bounds) map.fitBounds(bounds);
+  return map;
 }
 
-// ── AB init ──
+// ── Tile switcher ──
+function fullMapSetTile(type) {
+  if (!fullMapInstance || !_FULLMAP_TILES[type]) return;
+  if (_fullMapTileLayers[_fullMapCurrentTile]) {
+    fullMapInstance.removeLayer(_fullMapTileLayers[_fullMapCurrentTile]);
+  }
+  if (!_fullMapTileLayers[type]) {
+    const t = _FULLMAP_TILES[type];
+    _fullMapTileLayers[type] = L.tileLayer(t.url, t.opts);
+  }
+  _fullMapTileLayers[type].addTo(fullMapInstance);
+  _fullMapCurrentTile = type;
+
+  ['streets','satellite','topo'].forEach(t => {
+    const btn = document.getElementById('fullMapTile_' + t);
+    if (btn) btn.classList.toggle('active', t === type);
+  });
+}
+
+// ── BC MAP ──
+function _fullMapInitBC() {
+  fullMapInitialized['BC'] = true;
+  fullMapInstance = _fullMapBuildBase([54.0, -124.0], 5, [[48.3,-139.0],[60.0,-114.0]]);
+  if (!fullMapInstance) return;
+
+  function render(geojson) {
+    bcWmuGeoJSON = bcWmuGeoJSON || geojson;
+    fullMapGeoLayer = L.geoJSON(geojson, {
+      style: feature => _fullMapBCStyle(feature, false),
+      onEachFeature: (feature, layer) => {
+        const id = feature.properties.wmu_id || '';
+        const hasDraws = DATA.some(r => bcMUMatchesPolygon(r.MU, id));
+
+        layer.on('mouseover', function(e) {
+          const sel = fullMapSelRegions.has(id);
+          this.setStyle(sel
+            ? { fillColor:'#4ade80', fillOpacity:0.92, weight:3, color:'#fff' }
+            : { fillColor:'#fff',    fillOpacity:0.4,  weight:1.5, color:'#4ade80' });
+          const cnt = DATA.filter(r => bcMUMatchesPolygon(r.MU, id)).length;
+          this.bindTooltip(
+            `<b style="color:#4ade80">WMU ${id}</b><br><span style="font-size:11px;color:#aaa">${cnt || 'No'} draw${cnt!==1?'s':''}</span>`,
+            { sticky:true, direction:'top', offset:[0,-4], opacity:1, className:'ab-wmu-tip' }
+          ).openTooltip(e.latlng);
+        });
+        layer.on('mouseout', function() {
+          this.setStyle(_fullMapBCStyle(feature, fullMapSelRegions.has(id)));
+          this.closeTooltip();
+        });
+        layer.on('click', function() {
+          if (!hasDraws) return;
+          if (fullMapSelRegions.has(id)) fullMapSelRegions.delete(id);
+          else fullMapSelRegions.add(id);
+          fullMapRefreshStyles();
+          fullMapUpdateChips();
+          fullMapShowResults();
+          fullMapShowLEHForMUs([...fullMapSelRegions]);
+        });
+      }
+    }).addTo(fullMapInstance);
+
+    const loading = document.getElementById('fullMapLoading');
+    if (loading) loading.style.display = 'none';
+    _pinLoadAndRender();
+  }
+
+  if (bcWmuGeoJSON) render(bcWmuGeoJSON);
+  else render(BC_WMU_GEOJSON);
+}
+
+function _fullMapBCStyle(feature, isSelected) {
+  const id = feature.properties.wmu_id || '';
+  const hasDraws = DATA.length === 0 || DATA.some(r => bcMUMatchesPolygon(r.MU, id));
+  return {
+    fillColor:   isSelected ? '#4ade80' : bcWmuFillColor(id),
+    fillOpacity: isSelected ? 0.75 : hasDraws ? 0.38 : 0.15,
+    color:       isSelected ? '#ffffff' : '#1a1a1a',
+    weight:      isSelected ? 2.5 : 0.7,
+    opacity:     isSelected ? 1.0 : 0.75
+  };
+}
+
+// ── AB MAP ──
 function _fullMapInitAB() {
   fullMapInitialized['AB'] = true;
 
-  const map = _fullMapBuild([-115.0, 54.0], 5, 'AB');
-  if (!map) return;
-  fullMapInstance = map;
-
-  map.on('load', async () => {
+  async function build() {
     await Promise.all([loadABData(), loadABHarvest()]);
+
+    fullMapInstance = _fullMapBuildBase([54.0, -115.0], 5, [[49.0,-120.0],[60.0,-110.0]]);
+    if (!fullMapInstance) return;
+
+    fullMapGeoLayer = L.geoJSON(AB_WMU_GEOJSON, {
+      style: feature => _fullMapABStyle(feature, false),
+      onEachFeature: (feature, layer) => {
+        const id = String(feature.properties.WMUNIT_NUM || '');
+        const allCards = buildABCards().filter(c => c !== null);
+        const hasDraws = allCards.some(c => abCardMatchesWMU(c, id));
+
+        layer.on('mouseover', function(e) {
+          const sel = fullMapSelRegions.has(id);
+          this.setStyle(sel
+            ? { fillColor:'#4ade80', fillOpacity:0.92, weight:3, color:'#fff' }
+            : { fillColor:'#fff',    fillOpacity:0.4,  weight:1.5, color:'#4ade80' });
+          const cnt = allCards.filter(c => abCardMatchesWMU(c, id)).length;
+          this.bindTooltip(
+            `<b style="color:#4ade80">WMU ${id}</b><br><span style="font-size:11px;color:#aaa">${cnt || 'No'} draw${cnt!==1?'s':''}</span>`,
+            { sticky:true, direction:'top', offset:[0,-4], opacity:1, className:'ab-wmu-tip' }
+          ).openTooltip(e.latlng);
+        });
+        layer.on('mouseout', function() {
+          this.setStyle(_fullMapABStyle(feature, fullMapSelRegions.has(id)));
+          this.closeTooltip();
+        });
+        layer.on('click', function() {
+          if (!hasDraws) return;
+          if (fullMapSelRegions.has(id)) fullMapSelRegions.delete(id);
+          else fullMapSelRegions.add(id);
+          fullMapRefreshStyles();
+          fullMapUpdateChips();
+          fullMapShowResults();
+          fullMapShowLEHForMUs([...fullMapSelRegions]);
+        });
+      }
+    }).addTo(fullMapInstance);
 
     const loading = document.getElementById('fullMapLoading');
     if (loading) loading.style.display = 'none';
-
-    map.addSource(_SRC_WMU, { type: 'geojson', data: AB_WMU_GEOJSON, generateId: true });
-
-    map.addLayer({
-      id: _LYR_WMU_FILL,
-      type: 'fill',
-      source: _SRC_WMU,
-      paint: {
-        'fill-color': [
-          'case',
-          ['boolean', ['feature-state', 'selected'], false], '#4ade80',
-          '#3a6a7a'
-        ],
-        'fill-opacity': [
-          'case',
-          ['boolean', ['feature-state', 'selected'], false], 0.75,
-          ['boolean', ['feature-state', 'hovered'], false],  0.5,
-          ['boolean', ['feature-state', 'hasDraws'], false], 0.35,
-          0.12
-        ],
-      }
-    });
-
-    map.addLayer({
-      id: _LYR_WMU_BORDER,
-      type: 'line',
-      source: _SRC_WMU,
-      paint: {
-        'line-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#ffffff', '#1a1a2a'],
-        'line-width':  ['case', ['boolean', ['feature-state', 'selected'], false], 2, 0.7],
-        'line-opacity': 0.8,
-      }
-    });
-
-    const allCards = buildABCards().filter(c => c !== null);
-    AB_WMU_GEOJSON.features.forEach((feat, i) => {
-      const id = String(feat.properties.WMUNIT_NUM || '');
-      const hasDraws = allCards.some(c => abCardMatchesWMU(c, id));
-      map.setFeatureState({ source: _SRC_WMU, id: feat.id ?? i }, { hasDraws, selected: false, hovered: false });
-    });
-
-    map.on('mousemove', _LYR_WMU_FILL, (e) => {
-      if (e.features.length === 0) return;
-      const feat = e.features[0];
-      const id = String(feat.properties.WMUNIT_NUM || '');
-      if (_hoveredWMU !== null && _hoveredWMU !== feat.id) {
-        map.setFeatureState({ source: _SRC_WMU, id: _hoveredWMU }, { hovered: false });
-      }
-      _hoveredWMU = feat.id;
-      map.setFeatureState({ source: _SRC_WMU, id: feat.id }, { hovered: true });
-      map.getCanvas().style.cursor = 'pointer';
-      _fullMapShowTooltip(e, id, 'AB');
-    });
-    map.on('mouseleave', _LYR_WMU_FILL, () => {
-      if (_hoveredWMU !== null) {
-        map.setFeatureState({ source: _SRC_WMU, id: _hoveredWMU }, { hovered: false });
-        _hoveredWMU = null;
-      }
-      map.getCanvas().style.cursor = '';
-      _fullMapHideTooltip();
-    });
-
-    map.on('click', _LYR_WMU_FILL, (e) => {
-      if (_pinModeActive) return;
-      const id = String(e.features[0].properties.WMUNIT_NUM || '');
-      const allCards = buildABCards().filter(c => c !== null);
-      if (!allCards.some(c => abCardMatchesWMU(c, id))) return;
-      _fullMapToggleRegion(id, e.features[0].id);
-    });
-
-    map.on('click', (e) => {
-      if (!_pinModeActive) return;
-      _fullMapDropPin(e.lngLat);
-    });
-
     _pinLoadAndRender();
-    _syncTileButtons();
+  }
+
+  build().catch(err => {
+    console.error('[fullMap AB]', err);
+    const l = document.getElementById('fullMapLoading');
+    if (l) l.innerHTML = '<span style="color:#f87171;font-size:12px">Failed to load Alberta map.</span>';
   });
 }
 
-// ── Tooltip ──
-let _mbTooltip = null;
-function _fullMapShowTooltip(e, id, prov) {
-  let cnt;
-  if (prov === 'BC') {
-    cnt = DATA.filter(r => bcMUMatchesPolygon(r.MU, id)).length;
-  } else {
+function _fullMapABStyle(feature, isSelected) {
+  const id = String(feature.properties.WMUNIT_NUM || '');
+  const hasDraws = AB_DATA.length === 0 || (() => {
     const allCards = buildABCards().filter(c => c !== null);
-    cnt = allCards.filter(c => abCardMatchesWMU(c, id)).length;
-  }
-  if (!_mbTooltip) {
-    _mbTooltip = document.createElement('div');
-    _mbTooltip.style.cssText = [
-      'position:fixed','z-index:9000','pointer-events:none',
-      'background:#1a1a1a','border:1px solid #3a3a3a','border-radius:8px',
-      'padding:7px 12px','font-size:12px','color:#e8e8e8',
-      'box-shadow:0 4px 16px rgba(0,0,0,.6)','white-space:nowrap'
-    ].join(';');
-    document.body.appendChild(_mbTooltip);
-  }
-  _mbTooltip.innerHTML = `<b style="color:#4ade80">WMU ${id}</b><br><span style="font-size:11px;color:#aaa">${cnt || 'No'} draw${cnt!==1?'s':''}</span>`;
-  _mbTooltip.style.display = 'block';
-  _mbTooltip.style.left = (e.originalEvent.clientX + 14) + 'px';
-  _mbTooltip.style.top  = (e.originalEvent.clientY - 10) + 'px';
-}
-function _fullMapHideTooltip() {
-  if (_mbTooltip) _mbTooltip.style.display = 'none';
+    return allCards.some(c => abCardMatchesWMU(c, id));
+  })();
+  return {
+    fillColor:   isSelected ? '#4ade80' : abWmuFillColor(id),
+    fillOpacity: isSelected ? 0.75 : hasDraws ? 0.38 : 0.15,
+    color:       isSelected ? '#ffffff' : '#1a1a1a',
+    weight:      isSelected ? 2.5 : 0.7,
+    opacity:     isSelected ? 1.0 : 0.75
+  };
 }
 
-// ── Toggle region selection ──
-function _fullMapToggleRegion(id, featureId) {
-  const geojsonData = fullMapProvince === 'BC' ? (bcWmuGeoJSON || BC_WMU_GEOJSON) : AB_WMU_GEOJSON;
-
-  if (fullMapSelRegions.has(id)) {
-    fullMapSelRegions.delete(id);
-    if (featureId != null) fullMapInstance.setFeatureState({ source: _SRC_WMU, id: featureId }, { selected: false });
-  } else {
-    fullMapSelRegions.add(id);
-    if (featureId != null) fullMapInstance.setFeatureState({ source: _SRC_WMU, id: featureId }, { selected: true });
-  }
-  fullMapUpdateChips();
-  fullMapShowResults();
-  fullMapShowLEHForMUs([...fullMapSelRegions]);
-}
-
-// ── Refresh all selection states (e.g. after removing a chip) ──
+// ── Refresh styles after selection change ──
 function fullMapRefreshStyles() {
-  if (!fullMapInstance || !fullMapInstance.getSource(_SRC_WMU)) return;
-  const geojson = fullMapProvince === 'BC' ? (bcWmuGeoJSON || BC_WMU_GEOJSON) : AB_WMU_GEOJSON;
-  geojson.features.forEach((feat, i) => {
+  if (!fullMapGeoLayer) return;
+  fullMapGeoLayer.eachLayer(layer => {
+    const props = layer.feature.properties;
     const id = fullMapProvince === 'BC'
-      ? (feat.properties.wmu_id || '')
-      : String(feat.properties.WMUNIT_NUM || '');
-    fullMapInstance.setFeatureState(
-      { source: _SRC_WMU, id: feat.id ?? i },
-      { selected: fullMapSelRegions.has(id) }
-    );
+      ? (props.wmu_id || '')
+      : String(props.WMUNIT_NUM || '');
+    const styleFn = fullMapProvince === 'BC' ? _fullMapBCStyle : _fullMapABStyle;
+    layer.setStyle(styleFn(layer.feature, fullMapSelRegions.has(id)));
   });
-}
-
-// ── Tile / style switcher ──
-function fullMapSetTile(type) {
-  if (!_MB_STYLES[type] || !fullMapInstance) return;
-  _fullMapStyle = type;
-  _syncTileButtons();
-
-  // Save current camera
-  const center = fullMapInstance.getCenter();
-  const zoom   = fullMapInstance.getZoom();
-  const bearing = fullMapInstance.getBearing();
-  const pitch  = fullMapInstance.getPitch();
-
-  fullMapInstance.setStyle(_MB_STYLES[type]);
-
-  // Re-add layers after style loads
-  fullMapInstance.once('style.load', () => {
-    _reAddWMULayers();
-    if (_fullMapLEHVisible) _reAddLEHLayer();
-    if (_fullMapTerrain3D) _applyTerrain(true);
-    fullMapInstance.jumpTo({ center, zoom, bearing, pitch });
-    _pinReRender();
-  });
-}
-
-function _syncTileButtons() {
-  ['streets','satellite','topo','hybrid'].forEach(t => {
-    const btn = document.getElementById('fullMapTile_' + t);
-    if (btn) btn.classList.toggle('active', t === _fullMapStyle);
-  });
-}
-
-// ── Re-add WMU layers after style change ──
-function _reAddWMULayers() {
-  const geojson = fullMapProvince === 'BC' ? (bcWmuGeoJSON || BC_WMU_GEOJSON) : AB_WMU_GEOJSON;
-  if (!fullMapInstance.getSource(_SRC_WMU)) {
-    fullMapInstance.addSource(_SRC_WMU, { type: 'geojson', data: geojson, generateId: true });
-  }
-  if (!fullMapInstance.getLayer(_LYR_WMU_FILL)) {
-    fullMapInstance.addLayer({
-      id: _LYR_WMU_FILL, type: 'fill', source: _SRC_WMU,
-      paint: {
-        'fill-color': ['case', ['boolean',['feature-state','selected'],false],'#4ade80', fullMapProvince==='BC'?'#3a7a50':'#3a6a7a'],
-        'fill-opacity': ['case',['boolean',['feature-state','selected'],false],0.75,['boolean',['feature-state','hovered'],false],0.5,['boolean',['feature-state','hasDraws'],false],0.35,0.12],
-      }
-    });
-  }
-  if (!fullMapInstance.getLayer(_LYR_WMU_BORDER)) {
-    fullMapInstance.addLayer({
-      id: _LYR_WMU_BORDER, type: 'line', source: _SRC_WMU,
-      paint: {
-        'line-color': ['case',['boolean',['feature-state','selected'],false],'#ffffff','#1a2a1a'],
-        'line-width':  ['case',['boolean',['feature-state','selected'],false],2,0.7],
-        'line-opacity': 0.8,
-      }
-    });
-  }
-  // Restore feature states
-  geojson.features.forEach((feat, i) => {
-    const id = fullMapProvince === 'BC' ? (feat.properties.wmu_id||'') : String(feat.properties.WMUNIT_NUM||'');
-    const hasDraws = fullMapProvince === 'BC'
-      ? DATA.some(r => bcMUMatchesPolygon(r.MU, id))
-      : (() => { const c = buildABCards().filter(x=>x); return c.some(x => abCardMatchesWMU(x, id)); })();
-    fullMapInstance.setFeatureState(
-      { source: _SRC_WMU, id: feat.id ?? i },
-      { hasDraws, selected: fullMapSelRegions.has(id), hovered: false }
-    );
-  });
-}
-
-// ── 3D Terrain toggle ──
-function fullMapToggle3D() {
-  if (!fullMapInstance) return;
-  _fullMapTerrain3D = !_fullMapTerrain3D;
-  _applyTerrain(_fullMapTerrain3D);
-  const btn = document.getElementById('fullMap3DBtn');
-  if (btn) {
-    btn.classList.toggle('active', _fullMapTerrain3D);
-    btn.textContent = _fullMapTerrain3D ? '3D ✓' : '3D';
-  }
-}
-
-function _applyTerrain(on) {
-  if (!fullMapInstance) return;
-  if (on) {
-    if (!fullMapInstance.getSource('mapbox-dem')) {
-      fullMapInstance.addSource('mapbox-dem', {
-        type: 'raster-dem',
-        url: 'mapbox://mapbox.mapbox-terrain-dem-v1',
-        tileSize: 512, maxzoom: 14,
-      });
-    }
-    fullMapInstance.setTerrain({ source: 'mapbox-dem', exaggeration: 1.5 });
-    fullMapInstance.easeTo({ pitch: 50, duration: 800 });
-  } else {
-    fullMapInstance.setTerrain(null);
-    fullMapInstance.easeTo({ pitch: 0, duration: 600 });
-  }
 }
 
 // ── LEH overlay ──
@@ -978,13 +811,16 @@ function fullMapShowLEHForMUs(muSet) {
   if (!fullMapInstance) return;
   const mus = Array.isArray(muSet) ? muSet : [...muSet];
 
-  // Remove existing LEH layers
-  _removeLEHLayers();
+  if (_fullMapLEHLayer) {
+    fullMapInstance.removeLayer(_fullMapLEHLayer);
+    _fullMapLEHLayer = null;
+  }
   _fullMapLEHLoading = false;
 
-  if (mus.length === 0) { _updateLEHPill(); return; }
+  if (mus.length === 0) { _updateLEHBtn(); return; }
 
   _fullMapLEHLoading = true;
+
   _lehGetZones().then(data => {
     _fullMapLEHLoading = false;
     const zones   = data.zones    || data;
@@ -1000,114 +836,55 @@ function fullMapShowLEHForMUs(muSet) {
       .filter(id => zones[id])
       .map(id => {
         const z = zones[id];
-        return { type: 'Feature', id, properties: { id, label: z.lb, zt: z.zt, mu: z.mu }, geometry: z.g };
+        return { type:'Feature', properties:{ id, label:z.lb, zt:z.zt, mu:z.mu }, geometry:z.g };
       });
 
-    if (features.length === 0) { _updateLEHPill(); return; }
+    if (features.length === 0) { _updateLEHBtn(); return; }
 
-    const geojson = { type: 'FeatureCollection', features };
-
-    if (!fullMapInstance.getSource(_SRC_LEH)) {
-      fullMapInstance.addSource(_SRC_LEH, { type: 'geojson', data: geojson });
-    } else {
-      fullMapInstance.getSource(_SRC_LEH).setData(geojson);
-    }
-
-    if (!fullMapInstance.getLayer(_LYR_LEH_FILL)) {
-      fullMapInstance.addLayer({
-        id: _LYR_LEH_FILL, type: 'fill', source: _SRC_LEH,
-        paint: {
-          'fill-color': _lehColorExpression(),
-          'fill-opacity': _fullMapLEHOpacity,
+    _fullMapLEHLayer = L.geoJSON(
+      { type:'FeatureCollection', features },
+      {
+        style: feat => {
+          const col = _LEH_COLORS[feat.properties.zt] || '#888888';
+          return { color: col, weight: 1.5, opacity: 0.85, fillColor: col, fillOpacity: _fullMapLEHOpacity };
+        },
+        onEachFeature: (feat, lyr) => {
+          const col = _LEH_COLORS[feat.properties.zt] || '#888';
+          lyr.bindTooltip(
+            `<b style="color:${col}">${feat.properties.label}</b><br><span style="font-size:10px;color:#aaa">${feat.properties.zt} · MU ${feat.properties.mu}</span>`,
+            { sticky:true, direction:'top', className:'leh-card-tip', offset:[0,-4] }
+          );
         }
-      }, _LYR_WMU_FILL);  // insert below WMU fill
-    } else {
-      fullMapInstance.setPaintProperty(_LYR_LEH_FILL, 'fill-color', _lehColorExpression());
-      fullMapInstance.setPaintProperty(_LYR_LEH_FILL, 'fill-opacity', _fullMapLEHOpacity);
-    }
-
-    if (!fullMapInstance.getLayer(_LYR_LEH_BORDER)) {
-      fullMapInstance.addLayer({
-        id: _LYR_LEH_BORDER, type: 'line', source: _SRC_LEH,
-        paint: {
-          'line-color': _lehColorExpression(),
-          'line-width': 1.5,
-          'line-opacity': 0.9,
-        }
-      });
-    }
-
-    // Tooltip on hover
-    fullMapInstance.on('mouseenter', _LYR_LEH_FILL, (e) => {
-      fullMapInstance.getCanvas().style.cursor = 'pointer';
-      const p = e.features[0].properties;
-      const col = _LEH_COLORS[p.zt] || '#888';
-      if (!_mbTooltip) {
-        _mbTooltip = document.createElement('div');
-        _mbTooltip.style.cssText = 'position:fixed;z-index:9000;pointer-events:none;background:#1a1a1a;border:1px solid #3a3a3a;border-radius:8px;padding:7px 12px;font-size:12px;color:#e8e8e8;box-shadow:0 4px 16px rgba(0,0,0,.6);white-space:nowrap';
-        document.body.appendChild(_mbTooltip);
       }
-      _mbTooltip.innerHTML = `<b style="color:${col}">${p.label}</b><br><span style="font-size:10px;color:#aaa">${p.zt} · MU ${p.mu}</span>`;
-      _mbTooltip.style.display = 'block';
-    });
-    fullMapInstance.on('mousemove', _LYR_LEH_FILL, (e) => {
-      if (_mbTooltip) {
-        _mbTooltip.style.left = (e.originalEvent.clientX + 14) + 'px';
-        _mbTooltip.style.top  = (e.originalEvent.clientY - 10) + 'px';
-      }
-    });
-    fullMapInstance.on('mouseleave', _LYR_LEH_FILL, () => {
-      fullMapInstance.getCanvas().style.cursor = '';
-      _fullMapHideTooltip();
-    });
+    ).addTo(fullMapInstance);
 
     _fullMapLEHVisible = true;
-    _updateLEHPill();
-  }).catch(err => {
-    _fullMapLEHLoading = false;
-    console.error('[LEH overlay]', err);
-  });
-}
-
-function _lehColorExpression() {
-  // Mapbox GL expression: match zone type to colour
-  const expr = ['match', ['get', 'zt']];
-  Object.entries(_LEH_COLORS).forEach(([k, v]) => expr.push(k, v));
-  expr.push('#888888'); // fallback
-  return expr;
-}
-
-function _removeLEHLayers() {
-  if (!fullMapInstance) return;
-  [_LYR_LEH_BORDER, _LYR_LEH_FILL].forEach(id => {
-    if (fullMapInstance.getLayer(id)) fullMapInstance.removeLayer(id);
-  });
-  if (fullMapInstance.getSource(_SRC_LEH)) fullMapInstance.removeSource(_SRC_LEH);
-  _fullMapLEHVisible = false;
-}
-
-function _reAddLEHLayer() {
-  fullMapShowLEHForMUs([...fullMapSelRegions]);
+    _updateLEHBtn();
+  }).catch(err => console.error('[LEH overlay]', err));
 }
 
 function fullMapToggleLEH() {
   if (_fullMapLEHLoading) return;
   if (_fullMapLEHVisible) {
-    _removeLEHLayers();
-    _updateLEHPill();
+    if (_fullMapLEHLayer) { fullMapInstance.removeLayer(_fullMapLEHLayer); _fullMapLEHLayer = null; }
+    _fullMapLEHVisible = false;
   } else {
     fullMapShowLEHForMUs([...fullMapSelRegions]);
   }
+  _updateLEHBtn();
 }
 
 function fullMapSetLEHOpacity(val) {
   _fullMapLEHOpacity = parseFloat(val);
-  if (fullMapInstance && fullMapInstance.getLayer(_LYR_LEH_FILL)) {
-    fullMapInstance.setPaintProperty(_LYR_LEH_FILL, 'fill-opacity', _fullMapLEHOpacity);
+  if (_fullMapLEHLayer) {
+    _fullMapLEHLayer.setStyle(feat => {
+      const col = _LEH_COLORS[feat.properties.zt] || '#888888';
+      return { color: col, weight: 1.5, opacity: 0.85, fillColor: col, fillOpacity: _fullMapLEHOpacity };
+    });
   }
 }
 
-function _updateLEHPill() {
+function _updateLEHBtn() {
   const btn = document.getElementById('fullMapLEHToggle');
   if (!btn) return;
   btn.classList.toggle('active', _fullMapLEHVisible);
@@ -1115,9 +892,16 @@ function _updateLEHPill() {
 }
 
 // ── Pin system ──
-let _pinModeActive = false;
-let _pinMapClickFn = null;
-let _pinVisible    = true;
+const PIN_CATS = [
+  { id: 'camp',     label: '⛺ Camp',     color: '#f0b429' },
+  { id: 'glassing', label: '🔭 Glassing', color: '#60a5fa' },
+  { id: 'access',   label: '🛻 Access',   color: '#4ade80' },
+  { id: 'sighting', label: '🦌 Sighting', color: '#f87171' },
+  { id: 'waypoint', label: '📍 Waypoint', color: '#c084fc' },
+];
+
+let _pinModeActive  = false;
+let _pinMapClickFn  = null;
 
 function _pinsLoad(province) {
   try { return JSON.parse(localStorage.getItem('hs_pins_' + province) || '[]'); } catch { return []; }
@@ -1125,83 +909,76 @@ function _pinsLoad(province) {
 function _pinsSave(province, pins) {
   try { localStorage.setItem('hs_pins_' + province, JSON.stringify(pins)); } catch {}
 }
-function _pinNextId() { return 'p' + Date.now() + Math.random().toString(36).slice(2,6); }
-
-function _pinGetLocationInfo(lat, lng) {
-  if (!fullMapGeoLayer) return { region: '', mu: '' };
-  let info = { region: '', mu: '' };
-  fullMapGeoLayer.eachLayer(layer => {
-    if (info.mu) return;
-    try {
-      if (!layer.getBounds || !layer.getBounds().contains([lat, lng])) return;
-      const props = layer.feature.properties;
-      if (fullMapProvince === 'BC') {
-        const id = props.wmu_id || '';
-        info = { region: id.split('-')[0], mu: id };
-      } else {
-        const id = String(props.WMUNIT_NUM || '');
-        info = { region: Math.floor(parseInt(id)/100).toString(), mu: id };
-      }
-    } catch(e) {}
-  });
-  return info;
-}
-
-function _pinIcon(color) {
-  return L.divIcon({
-    className: '',
-    iconSize: [28,36], iconAnchor: [14,36], popupAnchor: [0,-36],
-    html: `<div style="width:28px;height:36px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.7))"><svg width="28" height="36" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z" fill="${color}" stroke="rgba(0,0,0,.4)" stroke-width="1.5"/><circle cx="14" cy="14" r="6" fill="rgba(0,0,0,.35)"/></svg></div>`
-  });
+function _pinNextId() {
+  return 'p' + Date.now() + Math.random().toString(36).slice(2,6);
 }
 
 function _pinPopupHTML(pin) {
+  const catBtns = PIN_CATS.map(c => {
+    const active = pin.cat === c.id;
+    return `<button class="hs-pin-cat-btn"
+      style="background:${active ? c.color+'33':'transparent'};border-color:${active ? c.color:'#333'};color:${active ? c.color:'#666'};"
+      onclick="hsPinSetCat('${pin.id}','${c.id}')">${c.label}</button>`;
+  }).join('');
   return `<div class="hs-pin-popup-inner">
-    <div class="hs-pin-popup-label">📍 Waypoint</div>
+    <div class="hs-pin-popup-label">${PIN_CATS.find(p=>p.id===pin.cat)?.label||'📍'}</div>
     <div class="hs-pin-popup-coords">${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}</div>
-    ${pin.mu ? `<div style="font-size:10px;color:#888;margin-bottom:6px">Region ${pin.region} · MU ${pin.mu}</div>` : ''}
     <input class="hs-pin-popup-input" id="hsPinLabel_${pin.id}" value="${pin.label||''}" placeholder="Add a label…" oninput="hsPinUpdateLabel('${pin.id}',this.value)"/>
+    <div class="hs-pin-popup-cats">${catBtns}</div>
     <div class="hs-pin-popup-actions">
-      <button class="hs-pin-action-btn hs-pin-save-btn" onclick="hsPinSave('${pin.id}')">✓ Save</button>
+      <button class="hs-pin-action-btn hs-pin-save-btn" onclick="hsPinSaveClose('${pin.id}')">✓ Save</button>
       <button class="hs-pin-action-btn hs-pin-del-btn"  onclick="hsPinDelete('${pin.id}')">✕ Delete</button>
     </div>
   </div>`;
 }
 
+function _pinIcon(cat) {
+  const c = PIN_CATS.find(p => p.id === cat) || PIN_CATS[4];
+  return L.divIcon({
+    className: '',
+    iconSize: [28,36], iconAnchor: [14,36], popupAnchor: [0,-36],
+    html: `<div style="width:28px;height:36px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.7))">
+      <svg width="28" height="36" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z" fill="${c.color}" stroke="rgba(0,0,0,.4)" stroke-width="1.5"/>
+        <circle cx="14" cy="14" r="6" fill="rgba(0,0,0,.35)"/>
+      </svg>
+    </div>`
+  });
+}
+
 const _pinMarkers = {};
+function _pinMarkersForProv() {
+  const p = fullMapProvince || 'BC';
+  if (!_pinMarkers[p]) _pinMarkers[p] = {};
+  return _pinMarkers[p];
+}
 
 function _pinLoadAndRender() {
   const prov = fullMapProvince || 'BC';
-  if (!_pinMarkers[prov]) _pinMarkers[prov] = {};
-  _pinsLoad(prov).forEach(p => _pinAddMarker(p));
-  _pinUpdateSavedTab();
+  const pins = _pinsLoad(prov);
+  pins.forEach(p => _pinAddMarker(p));
 }
 
 function _pinAddMarker(pin) {
   if (!fullMapInstance) return;
-  const prov = fullMapProvince || 'BC';
-  if (!_pinMarkers[prov]) _pinMarkers[prov] = {};
   const marker = L.marker([pin.lat, pin.lng], {
-    icon: _pinIcon('#f0b429'), zIndexOffset: 1000, draggable: true,
-    opacity: _pinVisible ? 1 : 0
+    icon: _pinIcon(pin.cat), zIndexOffset: 1000, draggable: true
   });
   marker.bindPopup(_pinPopupHTML(pin), { className:'hs-pin-popup', maxWidth:240, minWidth:210 });
   marker.on('dragend', function() {
     const ll = this.getLatLng();
-    pin.lat = +ll.lat.toFixed(6); pin.lng = +ll.lng.toFixed(6);
-    const info = _pinGetLocationInfo(pin.lat, pin.lng);
-    pin.region = info.region; pin.mu = info.mu;
+    pin.lat = +ll.lat.toFixed(6);
+    pin.lng = +ll.lng.toFixed(6);
     _pinPersist();
     marker.setPopupContent(_pinPopupHTML(pin));
-    _pinUpdateSavedTab();
   });
   marker.addTo(fullMapInstance);
-  _pinMarkers[prov][pin.id] = { marker, pin };
+  _pinMarkersForProv()[pin.id] = { marker, pin };
 }
 
 function _pinPersist() {
   const prov = fullMapProvince || 'BC';
-  const pins = Object.values(_pinMarkers[prov] || {}).map(m => m.pin);
+  const pins = Object.values(_pinMarkersForProv()).map(m => m.pin);
   _pinsSave(prov, pins);
 }
 
@@ -1209,18 +986,17 @@ function fullMapTogglePinMode() {
   _pinModeActive = !_pinModeActive;
   const btn   = document.getElementById('fullMapPinBtn');
   const mapEl = document.getElementById('fullMapLeaflet');
+
   if (_pinModeActive) {
     btn && btn.classList.add('active');
     btn && (btn.textContent = '📍 Pinning…');
     mapEl && mapEl.classList.add('pin-mode-cursor');
     _pinMapClickFn = function(e) {
       if (!_pinModeActive) return;
-      const loc = _pinGetLocationInfo(e.latlng.lat, e.latlng.lng);
-      const pin = { id:_pinNextId(), lat:+e.latlng.lat.toFixed(6), lng:+e.latlng.lng.toFixed(6), label:'', region:loc.region, mu:loc.mu, prov:fullMapProvince };
+      const pin = { id:_pinNextId(), lat:+e.latlng.lat.toFixed(6), lng:+e.latlng.lng.toFixed(6), label:'', cat:'waypoint' };
       _pinAddMarker(pin);
       _pinPersist();
-      _pinUpdateSavedTab();
-      const ref = _pinMarkers[fullMapProvince||'BC']?.[pin.id];
+      const ref = _pinMarkersForProv()[pin.id];
       if (ref) ref.marker.openPopup();
     };
     fullMapInstance && fullMapInstance.on('click', _pinMapClickFn);
@@ -1228,60 +1004,36 @@ function fullMapTogglePinMode() {
     btn && btn.classList.remove('active');
     btn && (btn.textContent = '📍 Pins');
     mapEl && mapEl.classList.remove('pin-mode-cursor');
-    if (_pinMapClickFn && fullMapInstance) { fullMapInstance.off('click', _pinMapClickFn); _pinMapClickFn = null; }
+    if (_pinMapClickFn && fullMapInstance) {
+      fullMapInstance.off('click', _pinMapClickFn);
+      _pinMapClickFn = null;
+    }
   }
 }
 
 window.hsPinUpdateLabel = function(id, val) {
-  const prov = fullMapProvince || 'BC';
-  const ref = _pinMarkers[prov]?.[id];
+  const ref = _pinMarkersForProv()[id];
   if (ref) ref.pin.label = val;
 };
-window.hsPinSave = function(id) {
+window.hsPinSetCat = function(id, catId) {
+  const ref = _pinMarkersForProv()[id];
+  if (!ref) return;
+  ref.pin.cat = catId;
+  ref.marker.setIcon(_pinIcon(catId));
+  ref.marker.setPopupContent(_pinPopupHTML(ref.pin));
+};
+window.hsPinSaveClose = function(id) {
   _pinPersist();
-  _pinUpdateSavedTab();
-  const prov = fullMapProvince || 'BC';
-  _pinMarkers[prov]?.[id]?.marker.closePopup();
+  const ref = _pinMarkersForProv()[id];
+  if (ref) ref.marker.closePopup();
 };
 window.hsPinDelete = function(id) {
-  const prov = fullMapProvince || 'BC';
-  const ref = _pinMarkers[prov]?.[id];
+  const ref = _pinMarkersForProv()[id];
   if (!ref) return;
   ref.marker.closePopup();
   fullMapInstance && fullMapInstance.removeLayer(ref.marker);
-  delete _pinMarkers[prov][id];
+  delete _pinMarkersForProv()[id];
   _pinPersist();
-  _pinUpdateSavedTab();
-};
-
-function _pinUpdateSavedTab() {
-  const container = document.getElementById('savedPinsSection');
-  if (!container) return;
-  const allPins = [];
-  ['BC','AB'].forEach(prov => _pinsLoad(prov).forEach(p => allPins.push({...p, prov})));
-  if (allPins.length === 0) {
-    container.innerHTML = '<p style="font-size:12px;color:var(--text-muted);padding:8px 0 0">No pins yet — drop them on the Map tab.</p>';
-    return;
-  }
-  container.innerHTML = allPins.map(pin => `
-    <div class="saved-pin-card">
-      <div class="saved-pin-icon">📍</div>
-      <div class="saved-pin-info">
-        <div class="saved-pin-label">${pin.label || 'Waypoint'}</div>
-        <div class="saved-pin-meta">${pin.prov}${pin.region?' · Region '+pin.region:''}${pin.mu?' · MU '+pin.mu:''}</div>
-        <div class="saved-pin-coords">${(+pin.lat).toFixed(5)}, ${(+pin.lng).toFixed(5)}</div>
-      </div>
-      <button class="saved-pin-del" onclick="hsPinDeleteSaved('${pin.id}','${pin.prov}')">✕</button>
-    </div>`).join('');
-}
-
-window.hsPinDeleteSaved = function(id, prov) {
-  _pinsSave(prov, _pinsLoad(prov).filter(p => p.id !== id));
-  if (_pinMarkers[prov]?.[id]) {
-    fullMapInstance && fullMapInstance.removeLayer(_pinMarkers[prov][id].marker);
-    delete _pinMarkers[prov][id];
-  }
-  _pinUpdateSavedTab();
 };
 
 document.addEventListener('keydown', e => {
@@ -1325,10 +1077,11 @@ function fullMapClearAll() {
   fullMapShowLEHForMUs([]);
 }
 
+// ── Results drawer ──
 function fullMapHideResults() {
   const drawer = document.getElementById('fullMapResultsDrawer');
   if (drawer) drawer.style.display = 'none';
-  setTimeout(() => fullMapInstance && fullMapInstance.resize(), 50);
+  setTimeout(() => fullMapInstance && fullMapInstance.invalidateSize(), 50);
 }
 
 function fullMapCloseResults() {
@@ -1338,8 +1091,6 @@ function fullMapCloseResults() {
   fullMapHideResults();
 }
 
-// ── fullMapShowResults, fullMapSetSort, fullMapGoToDraws unchanged ──
-// (copied verbatim — these don't reference Leaflet at all)
 function fullMapShowResults() {
   const drawer = document.getElementById('fullMapResultsDrawer');
   if (!drawer) return;
@@ -1349,18 +1100,18 @@ function fullMapShowResults() {
 
   if (fullMapProvince === 'BC') {
     cards = DATA.filter(r => regions.some(id => bcMUMatchesPolygon(r.MU, id))).map(r => ({
-      _type: 'BC', species: r.Species, mu: r.MU, code: r.Code,
-      odds: r['%'] || 0, success: computeHarvestAvg(r.yearly_fill_rates),
-      season: r.Season || '', class: r.Class || ''
+      _type:'BC', species:r.Species, mu:r.MU, code:r.Code,
+      odds:r['%']||0, success:computeHarvestAvg(r.yearly_fill_rates),
+      season:r.Season||'', class:r.Class||''
     }));
   } else {
     const allCards = buildABCards().filter(c => c !== null);
     cards = allCards
       .filter(c => regions.some(id => abCardMatchesWMU(c, id)))
       .map(c => ({
-        _type: 'AB', species: c.species, mu: c.wmu, code: c.draw,
-        odds: c.personalOdds !== null ? c.personalOdds : c.latestOdds,
-        success: c.harvestSuccess, season: c.season || '', class: c.draw || ''
+        _type:'AB', species:c.species, mu:c.wmu, code:c.draw,
+        odds:c.personalOdds !== null ? c.personalOdds : c.latestOdds,
+        success:c.harvestSuccess, season:c.season||'', class:c.draw||''
       }));
   }
 
@@ -1373,38 +1124,38 @@ function fullMapShowResults() {
   const count = document.getElementById('fullMapResultsCount');
   const regionLabel = regions.length === 1 ? `WMU ${regions[0]}` : `${regions.length} regions`;
   if (title) title.textContent = `Draws for ${regionLabel}`;
-  if (count) count.textContent = `${cards.length.toLocaleString()} draw${cards.length !== 1 ? 's' : ''}`;
+  if (count) count.textContent = `${cards.length.toLocaleString()} draw${cards.length!==1?'s':''}`;
 
   if (grid) {
     if (cards.length === 0) {
       grid.innerHTML = '<div class="fm-no-results">No draws found for the selected region(s) with current filters.</div>';
     } else {
       grid.innerHTML = cards.map(c => {
-        const cls = (fullMapProvince === 'BC')
-          ? (c.odds >= 5 ? 'green' : c.odds >= 1 ? 'yellow' : 'red')
-          : (c.odds >= 20 ? 'green' : c.odds >= 5 ? 'yellow' : 'red');
-        const oddsStr = c.odds != null ? ((c.odds >= 10 ? Math.round(c.odds) : c.odds.toFixed(1)) + '%') : '?%';
-        const succStr = c.success != null ? ((c.success >= 10 ? Math.round(c.success) : c.success.toFixed(1)) + '%') : null;
-        const succCls = c.success != null
-          ? (c.success >= (fullMapProvince==='BC'?40:50) ? 'fill-high' : c.success >= (fullMapProvince==='BC'?20:25) ? 'fill-mid' : 'fill-low')
+        const cls = (fullMapProvince==='BC')
+          ? (c.odds>=5?'green':c.odds>=1?'yellow':'red')
+          : (c.odds>=20?'green':c.odds>=5?'yellow':'red');
+        const oddsStr = c.odds!=null ? ((c.odds>=10?Math.round(c.odds):c.odds.toFixed(1))+'%') : '?%';
+        const succStr = c.success!=null ? ((c.success>=10?Math.round(c.success):c.success.toFixed(1))+'%') : null;
+        const succCls = c.success!=null
+          ? (c.success>=(fullMapProvince==='BC'?40:50)?'fill-high':c.success>=(fullMapProvince==='BC'?20:25)?'fill-mid':'fill-low')
           : 'fill-none';
-        const clickHandler = c._type === 'BC'
+        const clickHandler = c._type==='BC'
           ? `openDrawDetailByKey('${c.code}','${c.mu}')`
           : `openABDrawDetailByKey('${c.code}','${c.mu}')`;
         return `<div class="fm-card ${cls}" onclick="${clickHandler}" style="cursor:pointer">
           <div class="fm-card-top">
             <div>
               <div class="fm-card-species">${c.species}</div>
-              <div class="fm-card-meta">WMU ${c.mu}${c.class ? ' · ' + c.class : ''}</div>
+              <div class="fm-card-meta">WMU ${c.mu}${c.class?' · '+c.class:''}</div>
             </div>
             <div class="fm-card-odds ${cls}">${oddsStr}</div>
           </div>
           <div class="fm-card-bottom">
-            <span class="fm-card-code">${c.code || ''}</span>
+            <span class="fm-card-code">${c.code||''}</span>
             ${succStr
               ? `<span class="fm-card-success ${succCls}">${succStr} success</span>`
               : `<span class="fm-card-success fill-none">No success data</span>`}
-            ${c.season && c.season !== '1' ? `<span class="fm-card-code">${c.season}</span>` : ''}
+            ${c.season&&c.season!=='1'?`<span class="fm-card-code">${c.season}</span>`:''}
           </div>
         </div>`;
       }).join('');
@@ -1413,7 +1164,7 @@ function fullMapShowResults() {
 
   drawer.style.display = 'flex';
   drawer.style.flexDirection = 'column';
-  setTimeout(() => fullMapInstance && fullMapInstance.resize(), 80);
+  setTimeout(() => fullMapInstance && fullMapInstance.invalidateSize(), 80);
 }
 
 function fullMapSetSort(mode, btn) {
@@ -1429,7 +1180,7 @@ function fullMapGoToDraws() {
     fullMapSelRegions.forEach(id => selMUsFull.add(id));
     selMUs.clear();
     fullMapSelRegions.forEach(id => {
-      const region = parseInt((id || '').split('-')[0]);
+      const region = parseInt((id||'').split('-')[0]);
       if (!isNaN(region)) selMUs.add(region);
     });
     showPage('draws');
@@ -1441,7 +1192,7 @@ function fullMapGoToDraws() {
   }
 }
 
-// ── Fullscreen toggle (same as before, just resize instead of invalidateSize) ──
+// ── Fullscreen expand/collapse ──
 let _fullMapIsFullscreen = false;
 function fullMapToggleFullscreen() {
   const page = document.querySelector('.fullmap-page');
@@ -1457,11 +1208,12 @@ function fullMapToggleFullscreen() {
     btn.title = 'Expand map'; btn.textContent = '⛶';
     document.body.style.overflow = '';
   }
-  setTimeout(() => fullMapInstance && fullMapInstance.resize(), 50);
+  setTimeout(() => fullMapInstance && fullMapInstance.invalidateSize(), 50);
 }
-document.addEventListener('keydown', e => {
+document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape' && _fullMapIsFullscreen) fullMapToggleFullscreen();
 });
+
 
 
 // ══════════════════════════════════════════════════════════════
