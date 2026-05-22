@@ -238,6 +238,27 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
 /* Mapbox GL attribution dark */
 .mapboxgl-ctrl-attrib { background: rgba(0,0,0,.5) !important; }
 .mapboxgl-ctrl-attrib a { color: #aaa !important; }
+
+/* ── Saved tab pin cards ── */
+.saved-pin-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg-secondary, #1a1a1a);
+  border: 1px solid var(--border, #2e2e2e);
+  border-radius: 10px; padding: 11px 14px;
+  margin-bottom: 8px;
+}
+.saved-pin-icon { font-size: 20px; flex-shrink: 0; }
+.saved-pin-info { flex: 1; min-width: 0; }
+.saved-pin-label { font-size: 13px; font-weight: 700; color: var(--text-primary, #e8e8e8); }
+.saved-pin-meta  { font-size: 11px; color: #f0b429; margin-top: 2px; }
+.saved-pin-coords { font-size: 10px; color: var(--text-muted, #666); font-family: monospace; margin-top: 2px; }
+.saved-pin-del {
+  background: transparent; border: 1px solid #3a2020; color: #f87171;
+  border-radius: 6px; width: 26px; height: 26px; cursor: pointer;
+  font-size: 12px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background .1s;
+}
+.saved-pin-del:hover { background: #3a2020; }
 </style>
 </head>
 <body>
@@ -778,6 +799,16 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
 
   <!-- Cards grid -->
   <div class="cards-grid" id="savedCardsGrid"></div>
+
+  <!-- Pins section -->
+  <div style="margin-top:28px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <h3 style="font-size:14px;font-weight:700;color:var(--text-primary);margin:0">📍 Map Pins</h3>
+    </div>
+    <div id="savedPinsSection">
+      <p style="font-size:12px;color:var(--text-muted);padding:8px 0 0">No pins yet — drop them on the Map tab.</p>
+    </div>
+  </div>
 
 </div>
 </div>
