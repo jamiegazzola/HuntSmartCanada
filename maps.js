@@ -516,6 +516,21 @@ function bcRenderMap(geojson) {
 // ── FULL-PAGE MAP TAB — Mapbox GL JS (3D terrain)
 // ══════════════════════════════════════════════════════════════
 
+
+// ── LEH zone type colours ──
+const _LEH_COLORS = {
+  'MOUNTAIN SHEEP':    '#e8a838',
+  'MOUNTAIN GOAT':     '#60a5fa',
+  'MOOSE':             '#4ade80',
+  'ELK':               '#f97316',
+  'CARIBOU':           '#a78bfa',
+  'BLACK BEAR':        '#94a3b8',
+  'MULE DEER':         '#fbbf24',
+  'WHITE-TAILED DEER': '#f472b6',
+  'BISON':             '#fb923c',
+  'TURKEY':            '#34d399',
+};
+
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiamFtaWVnYXp6b2xhIiwiYSI6ImNtcGdpbzM3dzA2ejAyd3E1NHZjZXlyMGIifQ.NKi0eSr7pXtLTO6nnrvF3A';
 
 let fullMapProvince    = 'BC';
@@ -658,14 +673,24 @@ function _fullMapInitBC() {
         'fill-color': [
           'case',
           ['boolean', ['feature-state', 'selected'], false], '#4ade80',
-          ['boolean', ['feature-state', 'hasDraws'], false], '#3a7a50',
-          '#2a4a35'
+          ['match', ['slice', ['get', 'wmu_id'], 0, ['index-of', '-', ['get', 'wmu_id']]],
+            '1', '#4a8f5a',
+            '2', '#6aab76',
+            '3', '#9bc46a',
+            '4', '#c49a35',
+            '5', '#c06828',
+            '6', '#7a8fd4',
+            '7', '#a064c8',
+            '8', '#5ab8c4',
+            '9', '#c45a8a',
+            '#555555'
+          ]
         ],
         'fill-opacity': [
           'case',
           ['boolean', ['feature-state', 'selected'], false], 0.75,
-          ['boolean', ['feature-state', 'hovered'], false],  0.5,
-          ['boolean', ['feature-state', 'hasDraws'], false], 0.35,
+          ['boolean', ['feature-state', 'hovered'], false],  0.45,
+          ['boolean', ['feature-state', 'hasDraws'], false], 0.38,
           0.12
         ],
       }
@@ -684,7 +709,7 @@ function _fullMapInitBC() {
         ],
         'line-width': [
           'case',
-          ['boolean', ['feature-state', 'selected'], false], 2,
+          ['boolean', ['feature-state', 'selected'], false], 2.5,
           0.7
         ],
         'line-opacity': 0.8,
@@ -768,13 +793,18 @@ function _fullMapInitAB() {
         'fill-color': [
           'case',
           ['boolean', ['feature-state', 'selected'], false], '#4ade80',
-          '#3a6a7a'
+          ['match',
+            ['to-string', ['floor', ['/', ['to-number', ['get', 'WMUNIT_NUM'], 0], 100]]],
+            '1', '#4a8f9a', '2', '#6aab8a', '3', '#9bc47a',
+            '4', '#c49a45', '5', '#c07838', '6', '#8a7fd4',
+            '#5a8fa8'
+          ]
         ],
         'fill-opacity': [
           'case',
           ['boolean', ['feature-state', 'selected'], false], 0.75,
-          ['boolean', ['feature-state', 'hovered'], false],  0.5,
-          ['boolean', ['feature-state', 'hasDraws'], false], 0.35,
+          ['boolean', ['feature-state', 'hovered'], false],  0.45,
+          ['boolean', ['feature-state', 'hasDraws'], false], 0.38,
           0.12
         ],
       }
@@ -786,7 +816,7 @@ function _fullMapInitAB() {
       source: _SRC_WMU,
       paint: {
         'line-color': ['case', ['boolean', ['feature-state', 'selected'], false], '#ffffff', '#1a1a2a'],
-        'line-width':  ['case', ['boolean', ['feature-state', 'selected'], false], 2, 0.7],
+        'line-width':  ['case', ['boolean', ['feature-state', 'selected'], false], 2.5, 0.7],
         'line-opacity': 0.8,
       }
     });
@@ -935,11 +965,21 @@ function _reAddWMULayers() {
     fullMapInstance.addSource(_SRC_WMU, { type: 'geojson', data: geojson, generateId: true });
   }
   if (!fullMapInstance.getLayer(_LYR_WMU_FILL)) {
+    const _reAddFillColor = fullMapProvince === 'BC' ? [
+      'case', ['boolean',['feature-state','selected'],false], '#4ade80',
+      ['match', ['slice', ['get','wmu_id'], 0, ['index-of','-',['get','wmu_id']]],
+        '1','#4a8f5a','2','#6aab76','3','#9bc46a','4','#c49a35','5','#c06828',
+        '6','#7a8fd4','7','#a064c8','8','#5ab8c4','9','#c45a8a','#555555']
+    ] : [
+      'case', ['boolean',['feature-state','selected'],false], '#4ade80',
+      ['match',['to-string',['floor',['/',['to-number',['get','WMUNIT_NUM'],0],100]]],
+        '1','#4a8f9a','2','#6aab8a','3','#9bc47a','4','#c49a45','5','#c07838','6','#8a7fd4','#5a8fa8']
+    ];
     fullMapInstance.addLayer({
       id: _LYR_WMU_FILL, type: 'fill', source: _SRC_WMU,
       paint: {
-        'fill-color': ['case', ['boolean',['feature-state','selected'],false],'#4ade80', fullMapProvince==='BC'?'#3a7a50':'#3a6a7a'],
-        'fill-opacity': ['case',['boolean',['feature-state','selected'],false],0.75,['boolean',['feature-state','hovered'],false],0.5,['boolean',['feature-state','hasDraws'],false],0.35,0.12],
+        'fill-color': _reAddFillColor,
+        'fill-opacity': ['case',['boolean',['feature-state','selected'],false],0.75,['boolean',['feature-state','hovered'],false],0.45,['boolean',['feature-state','hasDraws'],false],0.38,0.12],
       }
     });
   }
@@ -1531,8 +1571,8 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
   setStatus('Loading zone…', true);
 
   _lehGetZones().then(data => {
-    const zones = data.zones;
-    const muIndex = data.mu_index;
+    const zones   = data.zones    || data;
+    const muIndex = data.mu_index || {};
 
     // Ensure Leaflet is still alive (card may have been closed)
     if (!_lehCardMaps[containerId]) return;
@@ -1540,10 +1580,12 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
     // ── Context layer: all zones for this MU (dim blue outlines) ──
     // Use mu_index to get all zones that include this MU (handles multi-MU zones)
     const contextIds = new Set(muIndex[cleanMU] || []);
-    const muFeatures = [...contextIds].map(id => {
-      const z = zones[id];
-      return { type: 'Feature', properties: { id, label: z.lb, zt: z.zt }, geometry: z.g };
-    });
+    const muFeatures = [...contextIds]
+      .filter(id => zones[id])
+      .map(id => {
+        const z = zones[id];
+        return { type: 'Feature', properties: { id, label: z.lb, zt: z.zt }, geometry: z.g };
+      });
 
     if (muFeatures.length > 0) {
       L.geoJSON({ type: 'FeatureCollection', features: muFeatures }, {
@@ -1594,8 +1636,11 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
       map.fitBounds(highlightBounds, { padding: [28, 28], maxZoom: 11 });
     }
 
-    const label = targetId && zones[targetId] ? zones[targetId].lb : `MU ${mu}`;
+    const label = resolvedId && zones[resolvedId] ? zones[resolvedId].lb : `MU ${mu}`;
     setStatus(label, true);
+  }).catch(err => {
+    console.error('[bcCardMapInit] zone load error:', err);
+    setStatus('Zone data unavailable', false);
   });
 }
 
