@@ -13,8 +13,12 @@
 <meta name="twitter:title" content="HuntSmart Canada — Know Your Draw Odds">
 <meta name="twitter:description" content="Draw odds, harvest success rates, and an interactive WMU map for every BC and Alberta LEH draw.">
 <meta name="twitter:image" content="https://huntsmartcanada.netlify.app/preview.jpg">
-<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Mapbox GL JS v3 — 3D terrain, Maxar Vivid + Vexcel sub-metre satellite, sky atmosphere -->
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet"/>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<!-- Leaflet kept for AB/BC sidebar flat WMU selector maps only -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
@@ -41,6 +45,106 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
 <!-- End Meta Pixel Code -->
 
 <style>
+/* ── Map search box ── */
+.fullmap-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.fullmap-search-input {
+  background: var(--bg-secondary, #1c1c1c);
+  border: 1px solid var(--border, #333);
+  color: var(--text-primary, #e8e8e8);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 5px 32px 5px 30px;
+  border-radius: 6px;
+  width: 200px;
+  outline: none;
+  transition: border-color 0.15s, width 0.2s;
+}
+.fullmap-search-input::placeholder { color: #555; }
+.fullmap-search-input:focus {
+  border-color: #4ade80;
+  width: 240px;
+}
+.fullmap-search-icon {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 13px;
+  opacity: .45;
+}
+.fullmap-search-clear {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  display: none;
+}
+.fullmap-search-clear:hover { color: #aaa; }
+.fullmap-search-results {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  min-width: 260px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.7);
+  z-index: 9999;
+  overflow: hidden;
+  display: none;
+}
+.fullmap-search-results.visible { display: block; }
+.fsr-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 13px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #ccc;
+  border-bottom: 1px solid #222;
+  transition: background 0.1s;
+}
+.fsr-item:last-child { border-bottom: none; }
+.fsr-item:hover { background: #252525; }
+.fsr-icon { font-size: 15px; flex-shrink: 0; opacity: .75; }
+.fsr-label { font-weight: 600; color: #e8e8e8; }
+.fsr-sub { font-size: 10px; color: #666; margin-top: 1px; }
+.fsr-badge {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.fsr-badge.wmu { background: rgba(74,222,128,.15); color: #4ade80; border: 1px solid rgba(74,222,128,.3); }
+.fsr-badge.city { background: rgba(96,165,250,.1); color: #60a5fa; border: 1px solid rgba(96,165,250,.25); }
+.fsr-no-results {
+  padding: 14px 13px;
+  font-size: 12px;
+  color: #555;
+  text-align: center;
+}
+.fsr-loading {
+  padding: 12px 13px;
+  font-size: 11px;
+  color: #555;
+  text-align: center;
+}
+
 /* Full map tile + LEH toggle pills */
 .fullmap-tile-btn {
   background: var(--bg-secondary, #1c1c1c);
@@ -111,6 +215,19 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
   padding: 5px 9px !important;
   box-shadow: 0 4px 14px rgba(0,0,0,.6) !important;
 }
+/* Mapbox GL JS card map popup (replaces Leaflet tooltip on card mini-maps) */
+.mapboxgl-popup.leh-card-tip .mapboxgl-popup-content {
+  background: #1a1a1a !important;
+  border: 1px solid #f0b429 !important;
+  color: #e8e8e8 !important;
+  font-size: 11px !important;
+  border-radius: 6px !important;
+  padding: 7px 10px !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.6) !important;
+  max-width: 200px !important;
+}
+.mapboxgl-popup.leh-card-tip .mapboxgl-popup-tip { border-top-color: #f0b429 !important; }
+.mapboxgl-popup-close-button { display: none !important; }
 
 /* Map fullscreen expand/collapse */
 .fullmap-expand-btn {
@@ -151,6 +268,12 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
   flex: 1 1 0;
   min-height: 0;
 }
+/* Floating collapse button rendered by JS — sits above Mapbox GL controls (z-index 10100) */
+#fullMapCollapseFloating {
+  z-index: 10100 !important;
+}
+/* Card map fullscreen bar always visible */
+#fullMapCollapseFloating:focus { outline: none; }
 
 /* ── Pin mode button ── */
 .fullmap-pin-btn {
@@ -223,6 +346,16 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
 /* Cursor hint when pin mode active */
 #fullMapLeaflet.pin-mode-cursor { cursor: crosshair !important; }
 #fullMapLeaflet.pin-mode-cursor .leaflet-interactive { cursor: crosshair !important; }
+/* Mapbox GL version of pin cursor */
+#fullMapLeaflet.pin-mode-cursor .mapboxgl-canvas-container { cursor: crosshair !important; }
+
+/* Mapbox GL card mini-map: hide default nav if compact */
+.leh-card-map-wrap .mapboxgl-ctrl-top-right { display: none; }
+/* Mapbox attribution compact dark style */
+.mapboxgl-ctrl-attrib.mapboxgl-compact { background: rgba(0,0,0,.55) !important; }
+.mapboxgl-ctrl-attrib a { color: #999 !important; font-size: 9px !important; }
+/* Mapbox canvas must fill container */
+.mapboxgl-map { width: 100% !important; height: 100% !important; }
 
 /* Mapbox GL pin popup */
 .hs-mb-pin-popup .mapboxgl-popup-content {
@@ -693,24 +826,40 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
         </div>
       </div>
       <div class="fullmap-topbar-center">
-        <span class="fullmap-instruction" id="fullMapInstruction">Click one or more regions on the map to filter draws</span>
+        <div class="fullmap-search-wrap" id="fullMapSearchWrap">
+          <span class="fullmap-search-icon">🔍</span>
+          <input
+            class="fullmap-search-input"
+            id="fullMapSearchInput"
+            type="text"
+            placeholder="Search city or unit (e.g. 4-38)…"
+            autocomplete="off"
+            oninput="fullMapHandleSearch(this.value)"
+            onkeydown="fullMapSearchKeydown(event)"
+            onfocus="fullMapSearchFocus()"
+            onblur="fullMapSearchBlur()"
+          />
+          <button class="fullmap-search-clear" id="fullMapSearchClear" onclick="fullMapSearchClear()" tabindex="-1">✕</button>
+          <div class="fullmap-search-results" id="fullMapSearchResults"></div>
+        </div>
       </div>
       <div class="fullmap-topbar-right">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
           <!-- Tile layer pills -->
           <div style="display:flex;gap:3px">
-            <button id="fullMapTile_streets"   class="fullmap-tile-btn active" onclick="fullMapSetTile('streets')">Streets</button>
-            <button id="fullMapTile_satellite" class="fullmap-tile-btn"        onclick="fullMapSetTile('satellite')">Satellite</button>
+            <button id="fullMapTile_streets"   class="fullmap-tile-btn"        onclick="fullMapSetTile('streets')">Streets</button>
+            <button id="fullMapTile_satellite" class="fullmap-tile-btn active" onclick="fullMapSetTile('satellite')">Satellite</button>
             <button id="fullMapTile_topo"      class="fullmap-tile-btn"        onclick="fullMapSetTile('topo')">Topo</button>
           </div>
+          <!-- 3D terrain — active by default on satellite/topo -->
+          <button id="fullMap3DBtn" class="fullmap-tile-btn active" onclick="fullMapToggle3D()" title="Toggle 3D terrain (Mapbox DEM, 512px tiles, 1.6× exaggeration)">3D ✓</button>
           <!-- LEH zones toggle + opacity -->
           <button id="fullMapLEHToggle" class="fullmap-leh-btn" onclick="fullMapToggleLEH()">LEH Zones</button>
+          <span style="font-size:10px;color:#888;white-space:nowrap">Zone opacity</span>
           <input id="fullMapLEHOpacity" type="range" min="0.05" max="0.8" step="0.05" value="0.35"
             oninput="fullMapSetLEHOpacity(this.value)"
-            title="LEH zone opacity"
+            title="Drag to adjust LEH zone fill opacity"
             style="width:60px;accent-color:#f0b429;cursor:pointer;vertical-align:middle">
-          <!-- Pin mode toggle -->
-          <button id="fullMapPinBtn" class="fullmap-pin-btn" onclick="fullMapTogglePinMode()" title="Drop pins">📍 Pins</button>
           <!-- Fullscreen expand/collapse -->
           <button id="fullMapExpandBtn" class="fullmap-expand-btn" onclick="fullMapToggleFullscreen()" title="Expand map">⛶</button>
         </div>
@@ -974,6 +1123,7 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
 <script type="module" src="./auth.js?v=2"></script>
 <script type="module" src="./stripe.js"></script>
 <script type="module" src="./hunting-partners.js"></script>
+<script src="./config.js"></script>
 <script defer src="./data.js"></script>
 <script defer src="./cities.js"></script>
 <script defer src="./drive-times.js"></script>
