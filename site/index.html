@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>HuntSmart Canada Preview</title>
+  <style>
+    html,body{height:100%;margin:0;background:#091109;color:#d8f0dc;font-family:system-ui,-apple-system,sans-serif}
+    .loader{height:100%;display:grid;place-items:center;text-align:center;padding:24px}
+    .loader b{display:block;font-size:22px;margin-bottom:8px}.loader span{color:#82a58a}
+  </style>
+</head>
+<body>
+  <div class="loader"><div><b>Loading HuntSmart preview…</b><span>Production data and maps remain unchanged.</span></div></div>
+  <script>
+    (async function () {
+      try {
+        const response = await fetch('/production/', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Production shell returned ' + response.status);
+        let html = await response.text();
+        html = html
+          .replace('maximum-scale=1.0, user-scalable=no, ', '')
+          .replace('<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></' + 'script>', '<script defer src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></' + 'script>')
+          .replace('<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></' + 'script>', '<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></' + 'script>')
+          .replace('<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></' + 'script>', '<script defer src="https://unpkg.com/@turf/turf@6/turf.min.js"></' + 'script>')
+          .replace(/<link href="\.\/stripe-styles\.css[^>]*>\s*/i, '')
+          .replace(/<script type="module" src="\.\/stripe\.js"><\/script>\s*/i, '')
+          .replace('</head>', '<link rel="stylesheet" href="/preview/ux.css?v=20260730"></head>')
+          .replace('</body>', '<script src="/preview/dom-patch.js?v=20260730"></' + 'script><script src="/preview/ux.js?v=20260730"></' + 'script></body>');
+        document.open();
+        document.write(html);
+        document.close();
+      } catch (error) {
+        document.body.innerHTML = '<div class="loader"><div><b>Preview could not load</b><span>' + String(error.message || error) + '</span></div></div>';
+      }
+    })();
+  </script>
+</body>
+</html>
