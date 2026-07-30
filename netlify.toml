@@ -1,13 +1,14 @@
 [build]
+  command = "bash build-preview.sh"
   publish = "site"
 
-[[redirects]]
-  from = "/production/*"
-  to = "https://huntsmartcanada.netlify.app/:splat"
-  status = 200
-  force = true
+[build.environment]
+  NODE_VERSION = "20"
 
-[[redirects]]
-  from = "/*"
-  to = "https://huntsmartcanada.netlify.app/:splat"
-  status = 200
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(self)"
