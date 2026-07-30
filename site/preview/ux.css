@@ -1,0 +1,384 @@
+/* HuntSmart Canada — UX, accessibility and responsive improvement pass
+   Loaded after the existing styles so changes remain isolated and reversible. */
+
+:root {
+  --hs-focus: #7cf59a;
+  --hs-panel: rgba(14, 23, 15, 0.98);
+}
+
+/* Accessible keyboard focus without changing mouse/touch appearance. */
+:where(a, button, input, select, summary, [role="button"]):focus-visible {
+  outline: 3px solid var(--hs-focus) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 5px rgba(124, 245, 154, 0.16) !important;
+}
+
+button, [role="button"], select, input[type="range"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Clearer desktop navigation. */
+@media (min-width: 769px) {
+  nav { padding-inline: clamp(22px, 3vw, 52px); }
+  .nav-links { gap: clamp(4px, .75vw, 12px); }
+  .nav-link { white-space: nowrap; }
+  .home-section-inner { max-width: 1240px; }
+}
+
+@media (min-width: 1450px) {
+  .draws-layout { grid-template-columns: 330px minmax(0, 1fr); }
+  .draws-main { padding-inline: 34px; }
+  .cards-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .fullmap-page { max-width: none; }
+}
+
+/* Homepage — stronger hierarchy and less dead space. */
+.hero-photo-content { max-width: 980px; }
+.hero-actions { width: 100%; }
+.province-cards { max-width: 720px; }
+.province-card { min-height: 86px; }
+
+.beta-section {
+  background:
+    radial-gradient(circle at 12% 20%, rgba(74, 222, 128, .10), transparent 35%),
+    linear-gradient(180deg, rgba(8, 16, 9, .98), rgba(7, 13, 8, 1));
+  border-top: 1px solid rgba(74, 222, 128, .13);
+}
+.beta-section-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, .85fr);
+  align-items: center;
+  gap: clamp(38px, 6vw, 86px);
+}
+.beta-section-inner .home-section-title { margin-bottom: 28px; }
+.beta-section-sub {
+  max-width: 690px;
+  margin: 0 0 30px;
+  color: #86a58d;
+  font-size: 16px;
+  line-height: 1.75;
+}
+.beta-actions, .methodology-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.trust-card {
+  padding: clamp(26px, 4vw, 40px);
+  border: 1px solid rgba(124, 245, 154, .18);
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(31, 55, 35, .62), rgba(12, 21, 13, .92));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .32);
+}
+.trust-card-kicker {
+  color: #5ccc6a;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.trust-card h3 {
+  margin: 0 0 12px;
+  color: #d8f0cc;
+  font-family: 'Cormorant Garamond', 'Playfair Display', serif;
+  font-size: 30px;
+  line-height: 1.05;
+}
+.trust-card p {
+  margin: 0 0 22px;
+  color: #88a48e;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.trust-link {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #7cf59a;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Data and methodology page. */
+.methodology-page {
+  min-height: calc(100vh - 64px);
+  padding: clamp(54px, 7vw, 100px) clamp(20px, 6vw, 90px) 90px;
+  background:
+    radial-gradient(circle at 85% 0%, rgba(74, 222, 128, .10), transparent 32%),
+    #091109;
+}
+.methodology-hero, .methodology-grid, .methodology-notice {
+  width: min(1120px, 100%);
+  margin-inline: auto;
+}
+.methodology-back {
+  border: 0;
+  background: transparent;
+  color: #7fa087;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  margin: 0 0 42px;
+  padding: 0;
+}
+.methodology-hero h1 {
+  margin: 0 0 20px;
+  max-width: 780px;
+  color: #d8f0cc;
+  font-family: 'Cormorant Garamond', 'Playfair Display', serif;
+  font-size: clamp(42px, 6vw, 72px);
+  line-height: .98;
+  letter-spacing: -.025em;
+}
+.methodology-hero > p {
+  max-width: 760px;
+  margin: 0 0 56px;
+  color: #88a48e;
+  font-size: 17px;
+  line-height: 1.75;
+}
+.methodology-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.methodology-card {
+  min-height: 260px;
+  padding: 30px;
+  border: 1px solid rgba(124, 245, 154, .12);
+  border-radius: 18px;
+  background: rgba(14, 25, 15, .75);
+}
+.methodology-card > span {
+  display: block;
+  margin-bottom: 28px;
+  color: rgba(124, 245, 154, .45);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 34px;
+  font-weight: 700;
+}
+.methodology-card h2 {
+  margin: 0 0 12px;
+  color: #d4ebce;
+  font-size: 20px;
+}
+.methodology-card p {
+  margin: 0;
+  color: #799380;
+  font-size: 14px;
+  line-height: 1.72;
+}
+.methodology-notice {
+  margin-top: 18px;
+  padding: clamp(28px, 5vw, 46px);
+  border-radius: 18px;
+  background: #d8f0cc;
+  color: #0b160d;
+}
+.methodology-notice strong { display: block; font-size: 24px; margin-bottom: 8px; }
+.methodology-notice p { max-width: 760px; margin: 0 0 24px; color: #29412d; line-height: 1.65; }
+.methodology-notice .pro-sub-btn { border-color: rgba(8, 24, 12, .35); color: #102615; }
+
+/* Small trust cue on result pages. */
+.data-freshness-note {
+  margin-top: 7px;
+  color: var(--text-muted, #718077);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+/* Better mobile interactions and density. */
+@media (max-width: 768px) {
+  nav { height: 56px; }
+  .nav-mobile-menu { top: 56px; }
+
+  .hero-photo {
+    height: auto !important;
+    min-height: 540px !important;
+    display: flex;
+    align-items: flex-end;
+  }
+  .hero-photo-content {
+    width: 100%;
+    padding: 82px 18px 28px !important;
+  }
+  .hero-title {
+    max-width: 350px;
+    font-size: clamp(37px, 11vw, 48px) !important;
+    line-height: .98;
+    margin-bottom: 16px;
+  }
+  .hero-body {
+    max-width: 350px;
+    font-size: 14.5px !important;
+    line-height: 1.58;
+    margin-bottom: 22px;
+  }
+  .province-cards { width: 100%; gap: 9px; }
+  .province-card {
+    width: 100%;
+    min-height: 70px;
+    padding: 12px 13px;
+    border-radius: 12px;
+  }
+  .province-card-flag { font-size: 23px; }
+  .province-card-name { font-size: 14px; }
+  .province-card-stats { font-size: 10px; line-height: 1.35; }
+  .province-card-cta { font-size: 11px; }
+
+  .home-section-inner { padding: 44px 18px !important; }
+  .home-section-title { margin-bottom: 36px !important; }
+  .hiw-grid, .feat-grid { gap: 10px; }
+  .hiw-step, .feat-card { border-radius: 14px; }
+  .hiw-step { padding: 23px 19px; }
+  .hiw-step-num { font-size: 38px; }
+  .hiw-step-desc, .feat-card-desc { line-height: 1.62; }
+
+  .home-stats-inner {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    padding: 1px !important;
+    background: rgba(74, 222, 128, .09);
+  }
+  .home-stat {
+    min-height: 112px;
+    padding: 24px 12px;
+    background: #0b150c;
+  }
+  .home-stat:last-of-type { grid-column: 1 / -1; }
+  .home-stat-divider { display: none; }
+  .home-stat-num { font-size: 34px; }
+  .home-stat-label { font-size: 9px; }
+
+  .beta-section-inner { grid-template-columns: 1fr; gap: 24px; }
+  .beta-section-sub { font-size: 14.5px; }
+  .beta-actions > button, .methodology-cta-row > button { width: 100%; min-height: 48px; }
+  .trust-card { padding: 24px 20px; border-radius: 16px; }
+  .trust-card h3 { font-size: 27px; }
+
+  .methodology-page { padding: 34px 16px 64px; }
+  .methodology-back { margin-bottom: 34px; min-height: 44px; }
+  .methodology-hero h1 { font-size: 44px; }
+  .methodology-hero > p { font-size: 15px; margin-bottom: 36px; }
+  .methodology-grid { grid-template-columns: 1fr; }
+  .methodology-card { min-height: 0; padding: 23px 20px; }
+  .methodology-card > span { margin-bottom: 18px; }
+  .methodology-notice { padding: 24px 20px; }
+
+  /* Sticky main action on the introductory filter screens. */
+  #filterPage .fp-cta, #abFilterPage .fp-cta {
+    position: sticky;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    z-index: 35;
+    min-height: 50px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .48), 0 0 0 1px rgba(124, 245, 154, .12);
+  }
+
+  /* Draw result header remains visible while browsing cards. */
+  #drawsPage .draws-topbar, #abDrawsPage .draws-topbar {
+    position: sticky;
+    top: 56px;
+    z-index: 45;
+    padding: 11px 14px;
+    background: rgba(10, 16, 11, .96);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(124, 245, 154, .12);
+  }
+  #drawsPage .draws-title, #abDrawsPage .draws-title { font-size: 16px; }
+  #drawsPage .draws-sub, #abDrawsPage .draws-sub { font-size: 11px; }
+  #drawsPage .sort-controls, #abDrawsPage .sort-controls { width: 100%; overflow-x: auto; padding-bottom: 2px; }
+  #drawsPage .sort-btn, #abDrawsPage .sort-btn { min-height: 38px; white-space: nowrap; }
+  .legend { overflow-x: auto; flex-wrap: nowrap !important; padding: 10px 14px; }
+  .legend-item { white-space: nowrap; }
+
+  /* Mobile filters become true bottom sheets instead of pushing results down. */
+  .sidebar-mobile-toggle {
+    position: sticky;
+    top: 56px;
+    z-index: 52;
+    min-height: 48px;
+    padding: 0 16px;
+    background: rgba(13, 22, 14, .98);
+  }
+  #sidebarInner.open, #abSidebarInner.open {
+    display: flex !important;
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 10002 !important;
+    width: 100% !important;
+    max-height: min(78dvh, 720px) !important;
+    overflow-y: auto !important;
+    padding: 30px 18px calc(22px + env(safe-area-inset-bottom)) !important;
+    border: 1px solid rgba(124, 245, 154, .18) !important;
+    border-bottom: 0 !important;
+    border-radius: 22px 22px 0 0 !important;
+    background: var(--hs-panel) !important;
+    box-shadow: 0 -22px 70px rgba(0, 0, 0, .58) !important;
+    animation: hsFilterSheetIn .22s ease-out;
+  }
+  #sidebarInner.open::before, #abSidebarInner.open::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    width: 44px;
+    height: 4px;
+    border-radius: 99px;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, .2);
+  }
+  .hs-filter-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10001;
+    background: rgba(0, 0, 0, .62);
+    backdrop-filter: blur(2px);
+  }
+  body.hs-filter-sheet-open { overflow: hidden; }
+  .filter-block { scroll-margin-top: 30px; }
+  .chip, .reset-btn, .filter-clear, .sidebar-mobile-toggle { min-height: 44px; }
+  .filter-clear { display: inline-flex; align-items: center; }
+
+  /* Reliable touch target sizes. */
+  .star-btn, .fullmap-close-results, .nav-hamburger,
+  .home-footer-link, .fullmap-map-control-stack button,
+  .hs-rb, .hs-bb, .os-rb, .os-bb { min-width: 44px; min-height: 44px; }
+
+  /* Cursor-only decoration and heavy movement do not belong on touch devices. */
+  .hs-cursor-glow { display: none !important; }
+  .hero-photo-bg { transform: none !important; will-change: auto !important; }
+}
+
+@keyframes hsFilterSheetIn {
+  from { transform: translateY(100%); opacity: .65; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+  .hs-reveal { opacity: 1 !important; transform: none !important; }
+  .hero-photo-bg { transform: none !important; }
+}
+
+/* Focused four-card homepage feature grid. */
+.feat-grid--focused { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.feat-grid--focused .feat-card { min-height: 248px; }
+@media (max-width: 1050px) {
+  .feat-grid--focused { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .feat-grid--focused { grid-template-columns: 1fr; }
+  .feat-grid--focused .feat-card { min-height: 0; }
+}
