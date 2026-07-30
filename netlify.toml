@@ -1,9 +1,16 @@
 [build]
-  command = "bash build-preview.sh"
   publish = "site"
 
-[build.environment]
-  NODE_VERSION = "20"
+[[redirects]]
+  from = "/production/*"
+  to = "https://huntsmartcanada.netlify.app/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "https://huntsmartcanada.netlify.app/:splat"
+  status = 200
 
 [[headers]]
   for = "/*"
