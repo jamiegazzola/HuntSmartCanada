@@ -1,0 +1,13 @@
+[build]
+  publish = "site"
+
+[[redirects]]
+  from = "/production/*"
+  to = "https://huntsmartcanada.netlify.app/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "https://huntsmartcanada.netlify.app/:splat"
+  status = 200
