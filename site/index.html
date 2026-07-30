@@ -26,7 +26,7 @@
           .replace(/<link href="\.\/stripe-styles\.css[^>]*>\s*/i, '')
           .replace(/<script type="module" src="\.\/stripe\.js"><\/script>\s*/i, '')
           .replace('</head>', '<link rel="stylesheet" href="/preview/ux.css?v=20260730"></head>')
-          .replace('</body>', '<script src="/preview/dom-patch.js?v=20260730"></' + 'script><script src="/preview/ux.js?v=20260730"></' + 'script></body>');
+          .replace('</body>', '<script src="/preview/dom-patch.js?v=20260730"></' + 'script><script src="/preview/ux.js?v=20260730"></' + 'script><script src="/preview/auth-bypass.js?v=20260730-2"></' + 'script></body>');
         document.open();
         document.write(html);
         document.close();
