@@ -142,6 +142,152 @@
   }
 
   /* ══════════════════════════════════════
+     5. MAP LAYER OPACITY
+     Lets WMU + LEH overlays fade over the basemap.
+  ══════════════════════════════════════ */
+  var _hsWmuOpacity = parseInt(localStorage.getItem('hs_map_wmu_opacity') || '100', 10);
+  if (isNaN(_hsWmuOpacity)) _hsWmuOpacity = 100;
+  var _hsOpacityBoundMap = null;
+  var _hsOpacityRetries = 0;
+
+  function getFullMap() {
+    try {
+      return (typeof fullMapInstance !== 'undefined') ? fullMapInstance : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function applyWmuOpacity() {
+    var map = getFullMap();
+    if (!map || !map.getLayer || !map.setPaintProperty || !map.getLayer('wmu-fill')) return;
+
+    var factor = Math.max(0, Math.min(1, _hsWmuOpacity / 100));
+    map.setPaintProperty('wmu-fill', 'fill-opacity', [
+      'case',
+      ['boolean', ['feature-state', 'selected'], false], 0.75 * factor,
+      ['boolean', ['feature-state', 'hovered'], false], 0.50 * factor,
+      ['boolean', ['feature-state', 'hasDraws'], false], 0.38 * factor,
+      0.12 * factor
+    ]);
+
+    if (map.getLayer('wmu-line')) {
+      map.setPaintProperty('wmu-line', 'line-opacity', 0.8 * factor);
+    }
+  }
+
+  function applyLehLineOpacity(val) {
+    var map = getFullMap();
+    if (!map || !map.getLayer || !map.setPaintProperty || !map.getLayer('leh-line')) return;
+    var opacity = Math.max(0, Math.min(1, parseFloat(val) || 0));
+    /* Preserve today's outline strength at the old .35 default, but let it fade to zero. */
+    map.setPaintProperty('leh-line', 'line-opacity', Math.min(0.9, 0.9 * (opacity / 0.35)));
+  }
+
+  function applySavedLehOpacity() {
+    var slider = document.getElementById('fullMapLEHOpacity');
+    if (!slider) return;
+    var saved = localStorage.getItem('hs_map_leh_opacity');
+    if (saved !== null) slider.value = saved;
+    try {
+      if (typeof fullMapSetLEHOpacity === 'function') fullMapSetLEHOpacity(slider.value);
+    } catch (e) {}
+    applyLehLineOpacity(slider.value);
+  }
+
+  function bindToCurrentMap() {
+    var map = getFullMap();
+    if (!map || map === _hsOpacityBoundMap || !map.on) return;
+    _hsOpacityBoundMap = map;
+    map.on('style.load', function() {
+      setTimeout(function() {
+        applyWmuOpacity();
+        applySavedLehOpacity();
+      }, 80);
+    });
+    map.on('load', function() {
+      setTimeout(function() {
+        applyWmuOpacity();
+        applySavedLehOpacity();
+      }, 80);
+    });
+  }
+
+  function initMapOpacityControls() {
+    var mapPage = document.getElementById('mapPage');
+    if (!mapPage || mapPage.style.display === 'none') return;
+
+    var lehBtn = document.getElementById('fullMapLEHToggle');
+    var topbarRow = lehBtn && lehBtn.parentNode;
+    if (!topbarRow) {
+      if (_hsOpacityRetries++ < 12) setTimeout(initMapOpacityControls, 120);
+      return;
+    }
+    _hsOpacityRetries = 0;
+
+    var wrap = document.getElementById('hsMapWmuOpacityWrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'hsMapWmuOpacityWrap';
+      wrap.style.cssText = 'display:flex;align-items:center;gap:5px;white-space:nowrap';
+      wrap.innerHTML =
+        '<span style="font-size:10px;color:#888">WMU opacity</span>' +
+        '<input id="hsMapWmuOpacity" type="range" min="0" max="100" step="5" value="' + _hsWmuOpacity + '" ' +
+        'title="Fade WMU colours and borders" style="width:68px;accent-color:#4ade80;cursor:pointer;vertical-align:middle">';
+      topbarRow.insertBefore(wrap, lehBtn);
+
+      var wmuSlider = document.getElementById('hsMapWmuOpacity');
+      if (wmuSlider) {
+        wmuSlider.addEventListener('input', function() {
+          _hsWmuOpacity = parseInt(this.value, 10);
+          localStorage.setItem('hs_map_wmu_opacity', String(_hsWmuOpacity));
+          applyWmuOpacity();
+        });
+      }
+    }
+
+    var lehSlider = document.getElementById('fullMapLEHOpacity');
+    if (lehSlider) {
+      lehSlider.min = '0';
+      lehSlider.max = '1';
+      lehSlider.step = '0.05';
+      lehSlider.title = 'Fade LEH zone colours';
+
+      var lehLabel = lehSlider.previousElementSibling;
+      if (lehLabel && /opacity/i.test(lehLabel.textContent || '')) {
+        lehLabel.textContent = 'LEH opacity';
+      }
+
+      if (!lehSlider.dataset.hsOpacityBound) {
+        lehSlider.dataset.hsOpacityBound = '1';
+        lehSlider.addEventListener('input', function() {
+          localStorage.setItem('hs_map_leh_opacity', this.value);
+          applyLehLineOpacity(this.value);
+        });
+      }
+    }
+
+    bindToCurrentMap();
+    setTimeout(function() {
+      applyWmuOpacity();
+      applySavedLehOpacity();
+    }, 180);
+  }
+
+  /* Re-bind after switching BC ↔ Alberta, because that creates a new Mapbox instance. */
+  if (typeof window.fullMapSetProvince === 'function' && !window._hsOpacityProvinceWrapped) {
+    window._hsOpacityProvinceWrapped = true;
+    var _origSetProvince = window.fullMapSetProvince;
+    window.fullMapSetProvince = function() {
+      var result = _origSetProvince.apply(this, arguments);
+      _hsOpacityBoundMap = null;
+      setTimeout(initMapOpacityControls, 220);
+      setTimeout(initMapOpacityControls, 700);
+      return result;
+    };
+  }
+
+  /* ══════════════════════════════════════
      INIT — run now + re-run when showPage
      switches back to home
   ══════════════════════════════════════ */
@@ -158,6 +304,10 @@
     if (_origShowPage) _origShowPage(page);
     if (page === 'home') {
       setTimeout(init, 60);
+    } else if (page === 'map') {
+      glow.classList.remove('active');
+      setTimeout(initMapOpacityControls, 120);
+      setTimeout(initMapOpacityControls, 500);
     } else {
       glow.classList.remove('active');
     }
