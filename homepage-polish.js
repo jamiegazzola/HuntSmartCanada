@@ -171,3 +171,148 @@
   }
 
 })();
+
+/* HuntSmart preview — map overlay opacity controller.
+   Isolated from navigation: only touches map paint properties and opacity UI. */
+(function () {
+  'use strict';
+
+  var opacityPct = 100;
+  var mapHooked = null;
+
+  function clampPct(value) {
+    var n = Number(value);
+    if (!Number.isFinite(n)) return opacityPct;
+    return Math.max(0, Math.min(100, n));
+  }
+
+  function setBoundaryVisibility() {
+    try {
+      if (typeof fullMapInstance === 'undefined' || !fullMapInstance) return;
+      if (typeof _LYR_WMU_LINE !== 'undefined' && fullMapInstance.getLayer(_LYR_WMU_LINE)) {
+        fullMapInstance.setPaintProperty(_LYR_WMU_LINE, 'line-opacity', 0.82);
+      }
+      if (typeof _LYR_LEH_LINE !== 'undefined' && fullMapInstance.getLayer(_LYR_LEH_LINE)) {
+        fullMapInstance.setPaintProperty(_LYR_LEH_LINE, 'line-opacity', 0.9);
+      }
+    } catch (e) {
+      console.warn('[HuntSmart preview] Could not preserve map boundaries:', e);
+    }
+  }
+
+  function applyOpacity() {
+    try {
+      if (typeof fullMapSetLEHOpacity === 'function') {
+        // Existing map API uses 0 = fully visible, 1 = fully transparent.
+        fullMapSetLEHOpacity(1 - opacityPct / 100);
+        setBoundaryVisibility();
+      }
+    } catch (e) {
+      console.warn('[HuntSmart preview] Overlay opacity update failed:', e);
+    }
+    syncControls();
+    hookMapStyleChanges();
+  }
+
+  function syncControls() {
+    var desktop = document.getElementById('hsPreviewOverlayOpacity');
+    var desktopValue = document.getElementById('hsPreviewOverlayOpacityValue');
+    if (desktop && Number(desktop.value) !== opacityPct) desktop.value = String(opacityPct);
+    if (desktopValue) desktopValue.textContent = Math.round(opacityPct) + '%';
+
+    var modal = document.getElementById('hsModal');
+    if (modal) {
+      var ranges = modal.querySelectorAll('.hs-slider-row input[type="range"], .hs-modal-slider-row input[type="range"]');
+      ranges.forEach(function (range) {
+        var row = range.parentElement;
+        if (!row || !row.querySelector('#hsOpV, #hsOpacityVal')) return;
+        if (Number(range.value) !== opacityPct) range.value = String(opacityPct);
+        var value = row.querySelector('#hsOpV, #hsOpacityVal');
+        if (value) value.textContent = Math.round(opacityPct) + '%';
+      });
+    }
+  }
+
+  function hookMapStyleChanges() {
+    try {
+      if (typeof fullMapInstance === 'undefined' || !fullMapInstance || mapHooked === fullMapInstance) return;
+      mapHooked = fullMapInstance;
+      var reapply = function () {
+        window.setTimeout(function () {
+          if (opacityPct !== 100) applyOpacity();
+        }, 80);
+      };
+      fullMapInstance.on('style.load', reapply);
+    } catch (e) {
+      console.warn('[HuntSmart preview] Could not hook map style changes:', e);
+    }
+  }
+
+  window.fullMapSetOverlayOpacity = function (value) {
+    opacityPct = clampPct(value);
+    applyOpacity();
+  };
+
+  function addDesktopControl() {
+    if (document.getElementById('hsPreviewOverlayOpacity')) return;
+    var toolbar = document.querySelector('#mapPage .fullmap-toolbar-main, #mapPage .fullmap-toolbar-right, #mapPage .fullmap-topbar-right');
+    if (!toolbar) return;
+
+    var clearBtn = document.getElementById('fullMapClearBtn');
+    var label = document.createElement('label');
+    label.className = 'hs-preview-opacity-control';
+    label.title = 'Adjust coloured WMU and LEH overlay fill';
+    label.innerHTML = '<span class="hs-preview-opacity-label">Overlay</span>' +
+      '<input id="hsPreviewOverlayOpacity" type="range" min="0" max="100" step="5" value="100" aria-label="Overlay fill opacity">' +
+      '<span id="hsPreviewOverlayOpacityValue" class="hs-preview-opacity-value">100%</span>';
+
+    if (clearBtn && clearBtn.parentElement === toolbar) toolbar.insertBefore(label, clearBtn);
+    else toolbar.appendChild(label);
+
+    label.querySelector('input').addEventListener('input', function () {
+      window.fullMapSetOverlayOpacity(this.value);
+    });
+  }
+
+  function addStyles() {
+    if (document.getElementById('hsPreviewOpacityStyles')) return;
+    var style = document.createElement('style');
+    style.id = 'hsPreviewOpacityStyles';
+    style.textContent =
+      '@media (min-width:769px){' +
+      '#mapPage .hs-preview-opacity-control{display:flex;align-items:center;gap:6px;height:34px;padding:0 9px;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:rgba(255,255,255,.045);white-space:nowrap;flex:0 0 auto}' +
+      '#mapPage .hs-preview-opacity-label{font-size:10px;font-weight:800;color:var(--text-muted,#8a948d);letter-spacing:.02em}' +
+      '#mapPage #hsPreviewOverlayOpacity{width:78px;margin:0;accent-color:#4ade80;cursor:pointer}' +
+      '#mapPage .hs-preview-opacity-value{min-width:28px;font-size:10px;font-weight:900;color:#4ade80;text-align:right}' +
+      '}' +
+      '@media (min-width:769px) and (max-width:1100px){#mapPage .hs-preview-opacity-label{display:none}#mapPage #hsPreviewOverlayOpacity{width:62px}#mapPage .hs-preview-opacity-control{padding:0 7px;gap:4px}}';
+    document.head.appendChild(style);
+  }
+
+  function isOpacitySlider(target) {
+    if (!target || target.tagName !== 'INPUT' || target.type !== 'range') return false;
+    var row = target.parentElement;
+    return !!(row && row.querySelector('#hsOpV, #hsOpacityVal'));
+  }
+
+  // Fix both existing mobile Layers-sheet implementations without replacing them.
+  document.addEventListener('input', function (event) {
+    if (!isOpacitySlider(event.target)) return;
+    opacityPct = clampPct(event.target.value);
+    applyOpacity();
+  });
+
+  var modal = document.getElementById('hsModal');
+  if (modal && typeof MutationObserver !== 'undefined') {
+    new MutationObserver(function () { syncControls(); }).observe(modal, { childList: true, subtree: true });
+  }
+
+  function initOpacityPreview() {
+    addStyles();
+    addDesktopControl();
+    syncControls();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initOpacityPreview);
+  else initOpacityPreview();
+})();
