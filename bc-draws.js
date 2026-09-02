@@ -6,6 +6,9 @@ let selSpecies = new Set();
 let selClass = new Set();
 let selMUs = new Set();
 let selMUsFull = new Set(); // full BC WMU IDs like '4-01' for map filter
+let selSpecialTags = new Set(); // 'shared' | 'archery'
+let selSeasonFrom = ''; // YYYY-MM-DD from sidebar date filter
+let selSeasonTo = '';   // YYYY-MM-DD from sidebar date filter
 
 // ── BC MAP STATE ──
 let bcMapOpen = false;
@@ -34,16 +37,63 @@ let selAreas = new Set(); // applied from filter page fpSelBap
 // ── BC ACTUAL ODDS ────────────────────────────────────────────────────────────
 // Use actual draw success % from data catalogue rather than synopsis odds ratio.
 // 2025 results are incomplete (draw just ran), so 2024 is the last reliable year.
-const BC_ACTUAL_ODDS_YEAR = 2024;
+const BC_ACTUAL_ODDS_YEAR = 2025;
 
 function getBCActualOdds(r) {
+  if (isNewSynopsisHunt(r)) return null;
+  // Prefer the restored actual-results percentage on the row. Some yearly values are
+  // rounded to 0.0 in source history for ultra-low odds (ex: 6002), which is misleading.
+  const pct = parseFloat(r['%']);
+  if (isFinite(pct) && pct > 0) return pct;
   const ydo = r.yearly_draw_odds || {};
-  if (ydo[BC_ACTUAL_ODDS_YEAR] !== undefined) return parseFloat(ydo[BC_ACTUAL_ODDS_YEAR]);
+  const yv = ydo[BC_ACTUAL_ODDS_YEAR] !== undefined ? parseFloat(ydo[BC_ACTUAL_ODDS_YEAR]) : NaN;
+  if (isFinite(yv) && yv > 0) return yv;
+  if (isFinite(pct)) return pct;
   const years = Object.keys(ydo).map(Number).filter(y => y <= BC_ACTUAL_ODDS_YEAR).sort((a,b)=>b-a);
+  for (const y of years) {
+    const v = parseFloat(ydo[y]);
+    if (isFinite(v) && v > 0) return v;
+  }
   return years.length > 0 ? parseFloat(ydo[years[0]]) : null;
 }
 
+function padHuntCode(code) {
+  const s = String(code ?? '').trim();
+  return /^\d+$/.test(s) ? s.padStart(4, '0') : s;
+}
+
+function bcDrawStableKey(r) {
+  if (!r) return '';
+  const parts = [r.Species, padHuntCode(r.Code), r.MU, r.Zone, r.Season];
+  return parts.map(v => String(v ?? '').trim()).join('_').replace(/[\s\/\\'"]/g, '_');
+}
+
+function bcDrawLegacyKey(r) {
+  if (!r) return '';
+  return (String(r.Species || '') + '_' + String(r.Class || '') + '_' + String(r.MU || '')).replace(/[\s\/\\'"]/g, '_');
+}
+
+function bcSavedMatchesDraw(saved, r) {
+  if (!saved || !r) return false;
+  const savedCode = padHuntCode(saved.Code);
+  const drawCode = padHuntCode(r.Code);
+  if (saved._key && (saved._key === bcDrawStableKey(r) || saved._key === bcDrawLegacyKey(r))) return true;
+  if (savedCode && drawCode && savedCode === drawCode) {
+    const sameSpecies = !saved.Species || !r.Species || String(saved.Species) === String(r.Species);
+    const sameMU = !saved.MU || !r.MU || String(saved.MU) === String(r.MU);
+    return sameSpecies && sameMU;
+  }
+  return false;
+}
+
+function isNewSynopsisHunt(r) {
+  if (!r) return false;
+  const odds = String(r.Odds ?? '').trim().toUpperCase();
+  return r.is_new === true || odds === 'N/A' || odds === 'NA';
+}
+
 function bcOddsForChart(r) {
+  if (isNewSynopsisHunt(r)) return {};
   const ydo = r.yearly_draw_odds || {};
   return Object.fromEntries(Object.entries(ydo).filter(([y]) => parseInt(y) <= BC_ACTUAL_ODDS_YEAR));
 }
@@ -85,15 +135,14 @@ let compareSelected = new Set();
 // ── STAR / SAVE — BC ─────────────────────────────────────────
 function isStarred(r) {
   if (!r) return false;
-  const key = r._key || (r.Species + '_' + r.Class + '_' + (r.MU || '')).replace(/[\s\/\\'"]/g, '_');
-  return savedDraws.some(s => s._key === key);
+  return savedDraws.some(s => bcSavedMatchesDraw(s, r));
 }
 
 function toggleStar(i) {
   const r = filtered[i];
   if (!r) return;
-  const key = r._key || (r.Species + '_' + r.Class + '_' + (r.MU || '')).replace(/[\s\/\\'"]/g, '_');
-  const idx = savedDraws.findIndex(s => s._key === key);
+  const key = bcDrawStableKey(r);
+  const idx = savedDraws.findIndex(s => bcSavedMatchesDraw(s, r));
   if (idx >= 0) {
     savedDraws.splice(idx, 1);
     import('./sync.js').then(m => m.syncRemoveBCDraw(key));
@@ -157,7 +206,7 @@ function showPage(page) {
   closeNavMenu();
 
   if (page==='filter') { fpBuildChips(); fpBuildClassChips(); fpBuildMU(); fpBuildBapChips(); fpUpdateCta(); }
-  if (page==='draws') { buildMUList(); buildSpeciesChips(); buildClassChips(); loadWriteups().then(()=>applyFilters()); applyFilters(); _trackBCSearch('filter_bc'); }
+  if (page==='draws') { buildMUList(); buildSpeciesChips(); buildClassChips(); buildSpecialTagChips(); loadWriteups().then(()=>applyFilters()); applyFilters(); _trackBCSearch('filter_bc'); }
   if (page==='saved') renderSavedPage();
   if (page==='map') { fullMapInit(); setTimeout(() => checkMobile(), 50); _trackBCSearch('map_main'); }
   if (page==='abProfile') renderAbProfilePage();
@@ -188,7 +237,7 @@ function goToAlberta() {
 
 function filterBySpecies(s) {
   selSpecies.clear();
-  selSpecies.add(s);
+  selSpecies.add(bcSpeciesGroup(s));
   showPage('draws');
   buildSpeciesChips();
   buildMUList();
@@ -197,11 +246,162 @@ function filterBySpecies(s) {
 }
 
 
+
+// ── BC species display/filter helpers ──────────────────────────────────────
+// Keep real synopsis species separate. Do NOT collapse Roosevelt/Rocky Elk or
+// Bighorn/Thinhorn Sheep into one chip, because those are distinct hunt groups.
+function bcSpeciesGroup(species) {
+  // Keep species categories exact for BC: Bighorn Sheep, Thinhorn Sheep,
+  // Roosevelt Elk, and Rocky Mountain Elk must remain separate chips/cards.
+  return String(species || '').trim();
+}
+function bcSpeciesMatchesAnySelected(species, selectedSet) {
+  if (!selectedSet || selectedSet.size === 0) return true;
+  const exact = bcSpeciesGroup(species);
+  for (const selected of selectedSet) {
+    if (bcSpeciesGroup(selected) === exact) return true;
+  }
+  return false;
+}
+
+// ── BC special hunt badges / filters ──────────────────────────────────────
+// Keep this deliberately small: only tags that are immediately useful and clear.
+const BC_ARCHERY_ONLY_CODES = new Set(["2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2143", "2144", "2145", "2146", "2160", "2161", "2162", "2163", "2164", "2165", "2166", "2167", "2168", "2169", "2170", "2171", "4219", "4220", "4221", "4222", "4223", "4224", "4225", "4226", "4227", "4228", "4229", "4230", "4231", "4232", "4233"]);
+
+function bcIsSharedHunt(r) {
+  if (!r) return false;
+  if (r.is_shared_hunt === true) return true;
+  if (r.is_shared_hunt === false) return false;
+  if (Array.isArray(r.special_tags) && r.special_tags.includes('shared')) return true;
+
+  // The 2026-27 synopsis states Shared Hunts are only available for Moose or Bison,
+  // and the Bison/Moose tables state those hunts are open to single applicants or shared groups.
+  const species = String(r.Species || '').trim().toLowerCase();
+  return species === 'moose' || species === 'bison';
+}
+
+function bcIsArcheryOnly(r) {
+  if (!r) return false;
+  if (r.is_archery_only === true) return true;
+  if (r.is_archery_only === false) return false;
+  if (Array.isArray(r.special_tags) && r.special_tags.includes('archery')) return true;
+
+  // Do not infer this from Notes. Some regular hunts mention archery/private-land restrictions.
+  // Use the exact hunt codes that appear under ARCHERY ONLY SEASONS in the synopsis.
+  return BC_ARCHERY_ONLY_CODES.has(padHuntCode(r.Code));
+}
+
+function bcSpecialTagsForDraw(r) {
+  const tags = [];
+  if (bcIsSharedHunt(r)) tags.push({ key: 'shared', label: 'Shared Hunt' });
+  if (bcIsArcheryOnly(r)) tags.push({ key: 'archery', label: 'Archery Only' });
+  return tags;
+}
+function renderBCSpecialBadges(r) {
+  const tags = bcSpecialTagsForDraw(r);
+  if (!tags.length) return '';
+  return '<div class="hunt-badges">' + tags.map(t => '<span class="hunt-badge hunt-badge-' + t.key + '">' + t.label + '</span>').join('') + '</div>';
+}
+function buildSpecialTagChips() {
+  const wrap = document.getElementById('specialTagChips');
+  if (!wrap) return;
+  const tags = [
+    { key: 'shared', label: 'Shared Hunt' },
+    { key: 'archery', label: 'Archery Only' }
+  ];
+  wrap.innerHTML = tags.map(t =>
+    '<div class="chip' + (selSpecialTags.has(t.key) ? ' active' : '') + '" onclick="toggleSpecialTag(\'' + t.key + '\')">' + t.label + '</div>'
+  ).join('');
+  const clear = document.getElementById('clearSpecialTags');
+  if (clear) clear.classList.toggle('visible', selSpecialTags.size > 0);
+}
+function toggleSpecialTag(tag) {
+  if (selSpecialTags.has(tag)) selSpecialTags.delete(tag); else selSpecialTags.add(tag);
+  buildSpecialTagChips();
+  applyFilters();
+}
+function bcDrawMatchesSpecialTags(r) {
+  if (selSpecialTags.size === 0) return true;
+  for (const tag of selSpecialTags) {
+    if (tag === 'shared' && !bcIsSharedHunt(r)) return false;
+    if (tag === 'archery' && !bcIsArcheryOnly(r)) return false;
+  }
+  return true;
+}
+
+const _BC_MONTHS = {
+  jan:1, january:1, feb:2, february:2, mar:3, march:3, apr:4, april:4,
+  may:5, jun:6, june:6, jul:7, july:7, aug:8, august:8, sep:9, sept:9, september:9,
+  oct:10, october:10, nov:11, november:11, dec:12, december:12
+};
+function bcSeasonDay(monthNum, dayNum) {
+  const monthDays = [0,31,28,31,30,31,30,31,31,30,31,30,31];
+  let doy = dayNum;
+  for (let m = 1; m < monthNum; m++) doy += monthDays[m];
+  // BC LEH seasons mostly start in Aug and can run into Jan. Treat Jan-Jul as next-year dates.
+  return monthNum < 8 ? doy + 365 : doy;
+}
+function bcDateInputToSeasonDay(value) {
+  if (!value) return null;
+  const parts = String(value).split('-').map(Number);
+  if (parts.length !== 3 || !parts[1] || !parts[2]) return null;
+  return bcSeasonDay(parts[1], parts[2]);
+}
+function bcParseSeasonIntervals(seasonText) {
+  const text = String(seasonText || '').replace(/–/g, '-').replace(/—/g, '-');
+  const re = /\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t)?(?:ember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s*(\d{1,2})\s*-\s*(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t)?(?:ember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)?\.?\s*(\d{1,2})\b/gi;
+  const intervals = [];
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const sm = _BC_MONTHS[m[1].toLowerCase().replace('.', '')];
+    const sd = parseInt(m[2], 10);
+    const em = m[3] ? _BC_MONTHS[m[3].toLowerCase().replace('.', '')] : sm;
+    const ed = parseInt(m[4], 10);
+    if (!sm || !em || !sd || !ed) continue;
+    let start = bcSeasonDay(sm, sd);
+    let end = bcSeasonDay(em, ed);
+    if (end < start) end += 365;
+    intervals.push([start, end]);
+  }
+  return intervals;
+}
+function bcDrawOverlapsSeasonFilter(r) {
+  const start = bcDateInputToSeasonDay(selSeasonFrom);
+  const end0 = bcDateInputToSeasonDay(selSeasonTo);
+  if (start === null && end0 === null) return true;
+  let filterStart = start !== null ? start : end0;
+  let filterEnd = end0 !== null ? end0 : start;
+  if (filterEnd < filterStart) filterEnd += 365;
+  const intervals = bcParseSeasonIntervals(r.Season);
+  if (!intervals.length) return true;
+  return intervals.some(([a,b]) => a <= filterEnd && b >= filterStart);
+}
+function setSeasonDateFilter(which, value) {
+  if (which === 'from') selSeasonFrom = value || '';
+  if (which === 'to') selSeasonTo = value || '';
+  const clear = document.getElementById('clearSeasonDate');
+  if (clear) clear.classList.toggle('visible', !!(selSeasonFrom || selSeasonTo));
+  applyFilters();
+}
+function clearSeasonDateFilter() {
+  selSeasonFrom = '';
+  selSeasonTo = '';
+  const from = document.getElementById('seasonDateFrom');
+  const to = document.getElementById('seasonDateTo');
+  if (from) from.value = '';
+  if (to) to.value = '';
+  const clear = document.getElementById('clearSeasonDate');
+  if (clear) clear.classList.remove('visible');
+  applyFilters();
+}
+
 // ── FILTERS ──
 function oddsClass(p) { return p >= 20 ? 'green' : p >= 5 ? 'yellow' : 'red'; }
 function fmt(p) {
-  if (isNaN(p)||p==null) return '?%';
-  return (p>=10 ? Math.round(p) : p.toFixed(1)) + '%';
+  const n = parseFloat(p);
+  if (isNaN(n)||n==null) return '?%';
+  if (n > 0 && n.toFixed(1) === '0.0') return n.toFixed(2) + '%';
+  return (n>=10 ? Math.round(n) : n.toFixed(1)) + '%';
 }
 function fmtFill(f) {
   if (f==null||isNaN(f)) return null;
@@ -236,7 +436,7 @@ function buildMiniChart(yearlyData) {
 function buildGreenBarChart(yearlyOdds, cardIndex, chartTitle, viewMode, abSpecies, abWmu) {
   if (!yearlyOdds || Object.keys(yearlyOdds).length === 0) return '';
   const allSorted = Object.entries(yearlyOdds)
-    .filter(([y]) => String(y).slice(0,4) < '2025')  // exclude incomplete current year
+    .filter(([y]) => String(y).slice(0,4) < '2026')  // exclude incomplete current year
     .sort((a,b) => String(a[0]).slice(0,4).localeCompare(String(b[0]).slice(0,4)));
   const hasExtra = allSorted.length > 10;
   const chartId = 'gbc_' + String(cardIndex).replace(/[^a-zA-Z0-9]/g, '_');
@@ -408,7 +608,7 @@ function toggleChartView(chartId, mode, btn) {
 function computeHarvestAvg(yearlyData) {
   if (!yearlyData) return null;
   const vals = Object.entries(yearlyData)
-    .filter(([y]) => String(y).slice(0,4) < '2025')  // exclude incomplete current year
+    .filter(([y]) => String(y).slice(0,4) < '2026')  // exclude incomplete current year
     .sort((a,b) => String(a[0]).slice(0,4).localeCompare(String(b[0]).slice(0,4)))
     .slice(-10)
     .map(e => parseFloat(e[1]))
@@ -578,7 +778,7 @@ function onSlider(v) {
 }
 
 function buildSpeciesChips() {
-  const all = [...new Set(DATA.map(r=>r.Species))].sort();
+  const all = [...new Set(DATA.map(r => bcSpeciesGroup(r.Species)))].filter(Boolean).sort();
   document.getElementById('speciesChips').innerHTML = all.map(s =>
     `<div class="chip${selSpecies.has(s)?' active':''}" onclick="toggleSpecies('${s}')">${s}</div>`
   ).join('');
@@ -586,7 +786,7 @@ function buildSpeciesChips() {
 }
 
 function buildMUList() {
-  const relevant = selSpecies.size===0 ? DATA : DATA.filter(r=>selSpecies.has(r.Species));
+  const relevant = selSpecies.size===0 ? DATA : DATA.filter(r => bcSpeciesMatchesAnySelected(r.Species, selSpecies));
   const nums = [...new Set(relevant.map(r=>r.MU_General))].sort((a,b)=>a-b);
   document.getElementById('muList').innerHTML = nums.map(n =>
     `<div class="mu-item${selMUs.has(n)?' active':''}" onclick="toggleMU(${n})">
@@ -598,13 +798,12 @@ function buildMUList() {
 }
 
 function toggleSpecies(s) {
+  s = bcSpeciesGroup(s);
   if (selSpecies.has(s)) selSpecies.delete(s); else selSpecies.add(s);
-  // Clear region filter when species changes — different species live in different
-  // regions so a stale selMUs silently excludes valid draws (e.g. Thinhorn Sheep
-  // are only in region 6 but Bighorn are in 3/4/8 — keeping region 4 selected
-  // when adding Thinhorn hides all 6 Thinhorn draws)
+  // Clear region filter when species changes so a stale region does not silently
+  // hide valid draws for the newly selected species.
   selMUs.clear();
-  buildSpeciesChips(); buildMUList(); applyFilters();
+  buildSpeciesChips(); buildMUList(); if (typeof bcUpdateMapStyles === 'function') bcUpdateMapStyles(); applyFilters();
 }
 
 function toggleMU(n) {
@@ -630,9 +829,11 @@ function toggleClass(c) {
 }
 
 function clearFilter(type) {
-  if (type==='species') { selSpecies.clear(); buildSpeciesChips(); buildMUList(); }
+  if (type==='species') { selSpecies.clear(); buildSpeciesChips(); buildMUList(); if (typeof bcUpdateMapStyles === 'function') bcUpdateMapStyles(); }
   if (type==='mu') { selMUs.clear(); selMUsFull.clear(); bcUpdateMapChips(); bcUpdateMapStyles(); buildMUList(); }
   if (type==='class') { selClass.clear(); buildClassChips(); }
+  if (type==='special') { selSpecialTags.clear(); buildSpecialTagChips(); }
+  if (type==='seasonDate') { clearSeasonDateFilter(); return; }
   applyFilters();
 }
 
@@ -641,30 +842,40 @@ function setSort(mode) {
   document.getElementById('sortOddsBtn').classList.toggle('active', mode==='odds');
   const ssBtn = document.getElementById('sortSuccessBtn');
   if (ssBtn) ssBtn.classList.toggle('active', mode==='success');
-  document.getElementById('sortSeasonBtn').classList.toggle('active', mode==='season');
+  const seasonBtn = document.getElementById('sortSeasonBtn');
+  if (seasonBtn) seasonBtn.classList.toggle('active', mode==='season');
   applyFilters();
 }
 
 function resetAll() {
-  selSpecies.clear(); selMUs.clear(); selMUsFull.clear(); selMinOdds=0; selMinHarvest=0; selClass.clear();
+  selSpecies.clear(); selMUs.clear(); selMUsFull.clear(); selMinOdds=0; selMinHarvest=0; selClass.clear(); selSpecialTags.clear(); selSeasonFrom=''; selSeasonTo='';
     document.getElementById('oddsSlider').value=0;
   onSlider(0);
   bcUpdateMapChips(); bcUpdateMapStyles();
-  buildSpeciesChips(); buildMUList(); buildClassChips(); applyFilters();
+  buildSpeciesChips(); buildMUList(); if (typeof bcUpdateMapStyles === 'function') bcUpdateMapStyles(); buildClassChips(); buildSpecialTagChips();
+  const seasonFromEl = document.getElementById('seasonDateFrom');
+  const seasonToEl = document.getElementById('seasonDateTo');
+  if (seasonFromEl) seasonFromEl.value = '';
+  if (seasonToEl) seasonToEl.value = '';
+  const clearSeasonEl = document.getElementById('clearSeasonDate');
+  if (clearSeasonEl) clearSeasonEl.classList.remove('visible');
+  applyFilters();
 }
 
 function applyFilters() {
   const q = (document.getElementById('search') ? document.getElementById('search').value : '').toLowerCase();
   filtered = DATA.filter(r => {
-    if (selSpecies.size>0 && !selSpecies.has(r.Species)) return false;
+    if (selSpecies.size>0 && !bcSpeciesMatchesAnySelected(r.Species, selSpecies)) return false;
     if (selMUs.size>0 && !selMUs.has(r.MU_General)) return false;
     if (selMUsFull.size>0 && !selMUsFull.has(bcNormalizeMU(r.MU))) return false;
     if (selAreas.size>0 && !selAreas.has(r.Area)) return false;
-    if ((r['%']||0) < selMinOdds) return false;
+    if ((getBCActualOdds(r) ?? 0) < selMinOdds) return false;
     if (selMinHarvest > 0) {
       const hr = computeHarvestAvg(r.yearly_fill_rates);
       if (hr === null || hr < selMinHarvest) return false;
     }
+    if (!bcDrawMatchesSpecialTags(r)) return false;
+    if (!bcDrawOverlapsSeasonFilter(r)) return false;
     if (selClass.size > 0) {
       const cls = (r.Class || '').toLowerCase();
       const match = [...selClass].some(c => {
@@ -682,7 +893,7 @@ function applyFilters() {
     return true;
   });
 
-  // Season sort: Aug=earliest; pre-Aug months wrap to end
+  if (sortMode !== 'odds' && sortMode !== 'success') sortMode = 'odds';
   if (sortMode==='odds') {
     filtered.sort((a,b)=>(getBCActualOdds(b)||0)-(getBCActualOdds(a)||0));
   } else if (sortMode==='success') {
@@ -694,17 +905,14 @@ function applyFilters() {
       if (fa === null) return 1;
       return fb - fa;
     });
-  } else {
-    filtered.sort((a,b)=>{
-      const adj = v => { const n = v||9999; return n < 800 ? n + 1200 : n; };
-      return adj(a.Season_Sort) - adj(b.Season_Sort);
-    });
   }
 
   const tags=[];
   selSpecies.forEach(s=>tags.push(s));
   selMUs.forEach(m=>tags.push(m+' — '+(MU_NAMES[m]||'')));
   if (selMinOdds>0) tags.push('≥ '+selMinOdds+'%');
+  selSpecialTags.forEach(t => tags.push(t === 'shared' ? 'Shared Hunt' : 'Archery Only'));
+  if (selSeasonFrom || selSeasonTo) tags.push('Season dates');
 
 
   let title='All Draws';
@@ -736,25 +944,32 @@ function toggleCard(i) {
     // Init the LEH zone map for this card if not already done
     const r = filtered[i];
     if (r && typeof bcCardMapInit === 'function') {
-      const mapContainerId = 'lehMap_' + i + '_' + r.Code;
+      const mapContainerId = 'lehMap_' + i + '_' + padHuntCode(r.Code);
       const mapEl = document.getElementById(mapContainerId);
-      if (mapEl && !mapEl._lehInited) {
-        mapEl._lehInited = true;
-        const s = (r.Species || '').toUpperCase();
-        let speciesType = 'MOUNTAIN SHEEP';
-        if (s.includes('GOAT'))                                        speciesType = 'MOUNTAIN GOAT';
-        else if (s.includes('MOOSE'))                                  speciesType = 'MOOSE';
-        else if (s.includes('ELK'))                                    speciesType = 'ELK';
-        else if (s.includes('CARIBOU'))                                speciesType = 'CARIBOU';
-        else if (s.includes('BEAR'))                                   speciesType = 'BLACK BEAR';
-        else if (s.includes('MULE') || s.includes('BLACK-TAILED'))    speciesType = 'MULE DEER';
-        else if (s.includes('WHITE-TAILED') || s.includes('WHITETAIL')) speciesType = 'WHITE-TAILED DEER';
-        else if (s.includes('BISON'))                                  speciesType = 'BISON';
-        else if (s.includes('TURKEY'))                                 speciesType = 'TURKEY';
-        else if (s.includes('SHEEP') || s.includes('THINHORN') || s.includes('BIGHORN')) speciesType = 'MOUNTAIN SHEEP';
-        bcCardMapInit(mapContainerId, r.MU, r.Zone || '', speciesType);
-      } else if (mapEl && mapEl._lehInited) {
-        bcCardMapInvalidate(mapContainerId);
+      if (mapEl) {
+        // Check if a live Mapbox GL map already exists for this container
+        const hasLiveMap = typeof _lehCardMaps !== 'undefined' && _lehCardMaps[mapContainerId];
+        if (!hasLiveMap) {
+          // No live map yet (first open, or was Leaflet before) — init fresh
+          mapEl._lehInited = true;
+          const s = (r.Species || '').toUpperCase();
+          let speciesType = 'MOUNTAIN SHEEP';
+          if (s.includes('GOAT'))                                        speciesType = 'MOUNTAIN GOAT';
+          else if (s.includes('MOOSE'))                                  speciesType = 'MOOSE';
+          else if (s.includes('ELK'))                                    speciesType = 'ELK';
+          else if (s.includes('CARIBOU'))                                speciesType = 'CARIBOU';
+          else if (s.includes('BEAR'))                                   speciesType = 'BLACK BEAR';
+          else if (s.includes('MULE') || s.includes('BLACK-TAILED'))    speciesType = 'MULE DEER';
+          else if (s.includes('WHITE-TAILED') || s.includes('WHITETAIL')) speciesType = 'WHITE-TAILED DEER';
+          else if (s.includes('BISON'))                                  speciesType = 'BISON';
+          else if (s.includes('TURKEY'))                                 speciesType = 'TURKEY';
+          else if (s.includes('SHEEP') || s.includes('THINHORN') || s.includes('BIGHORN')) speciesType = 'MOUNTAIN SHEEP';
+          // Delay init so card expand CSS transition completes before
+          // Mapbox GL measures container dimensions
+          setTimeout(() => bcCardMapInit(mapContainerId, r.MU, r.Zone || '', speciesType), 80);
+        } else {
+          bcCardMapInvalidate(mapContainerId);
+        }
       }
     }
   }
@@ -766,13 +981,42 @@ function toggleSavedCard(key) {
   if (!el) return;
   const open = el.classList.contains('open');
   if (open) { el.classList.remove('open'); if (btn) btn.textContent = '▾ Show details'; }
-  else       { el.classList.add('open');    if (btn) btn.textContent = '▴ Hide details'; }
+  else {
+    el.classList.add('open');
+    if (btn) btn.textContent = '▴ Hide details';
+    // Saved cards use the same expand HTML as the main BC cards. Initialize any
+    // zone maps inside the expanded saved card once the container is visible.
+    initVisibleBCZoneMaps(el);
+  }
+}
+
+function initVisibleBCZoneMaps(scope) {
+  const root = scope || document;
+  if (!root.querySelectorAll) return;
+  root.querySelectorAll('.leh-card-map').forEach(mapEl => {
+    const id = mapEl.id;
+    if (!id || mapEl.dataset.mapInitQueued === '1') return;
+    const hasLiveMap = typeof _lehCardMaps !== 'undefined' && _lehCardMaps[id];
+    if (hasLiveMap) { if (typeof bcCardMapInvalidate === 'function') bcCardMapInvalidate(id); return; }
+    const mu = mapEl.dataset.mu || '';
+    const zone = mapEl.dataset.zone || '';
+    const speciesType = mapEl.dataset.speciesType || 'MOUNTAIN SHEEP';
+    if (typeof bcCardMapInit === 'function') {
+      mapEl.dataset.mapInitQueued = '1';
+      setTimeout(() => {
+        bcCardMapInit(id, mu, zone, speciesType);
+        mapEl.dataset.mapInitQueued = '0';
+      }, 80);
+    }
+  });
 }
 
 // Builds expand HTML for a BC draw — used by both draw cards and saved cards
 function buildBCExpandHTML(r, idPrefix) {
+  const isNewDraw = isNewSynopsisHunt(r);
   const actualPct = getBCActualOdds(r);
-  const pct = actualPct !== null ? fmt(actualPct) : fmt(r['%']);
+  const hasDrawOdds = actualPct !== null;
+  const pct = hasDrawOdds ? fmt(actualPct) : 'No data';
   const fr  = computeHarvestAvg(r.yearly_fill_rates);
   const frFmt = fr !== null ? fr + '%' : null;
   const frCls = fr !== null ? (fr >= 50 ? 'fill-high' : fr >= 25 ? 'fill-mid' : 'fill-low') : 'fill-none';
@@ -783,7 +1027,7 @@ function buildBCExpandHTML(r, idPrefix) {
     .filter(e=>isFinite(parseFloat(e[1])) && parseFloat(e[1]) > 0 && parseFloat(e[1]) <= 100);
   const nYrs = Math.min(last10.length, 10);
   const oddsChartHTML = last10.length < 2
-    ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"><div class="chart-label">Draw odds % by year — no data available</div></div>'
+    ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)"><div class="chart-label">Draw odds % by year — no actual results data</div></div>'
     : (() => {
         const wavg10 = Math.min(100, +(last10.slice(-10).reduce((s,e)=>s+parseFloat(e[1]),0)/nYrs).toFixed(1));
         return '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">' +
@@ -811,7 +1055,7 @@ function buildBCExpandHTML(r, idPrefix) {
   })() : '';
 
   // ── LEH Zone Map ──
-  const mapContainerId = `lehMap_${idPrefix}_${r.Code}`;
+  const mapContainerId = `lehMap_${idPrefix}_${padHuntCode(r.Code)}`;
   const mapSpeciesType = (() => {
     const s = (r.Species || '').toUpperCase();
     if (s.includes('SHEEP') || s.includes('THINHORN') || s.includes('BIGHORN')) return 'MOUNTAIN SHEEP';
@@ -829,29 +1073,35 @@ function buildBCExpandHTML(r, idPrefix) {
   const hasZoneModifier = r.Zone && /[\*\+]/.test(r.Zone);
   const zoneLabel = r.Zone ? `Zone ${r.Zone} · MU ${r.MU}` : `MU ${r.MU}`;
   const mapHTML = `
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+    <div class="leh-card-map-wrap" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted)">Zone Map</span>
           <span style="display:inline-flex;align-items:center;gap:4px;background:rgba(240,180,41,.12);border:1px solid rgba(240,180,41,.4);color:#f0b429;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">${zoneLabel}</span>${hasZoneModifier ? '<span style="font-size:9px;color:var(--text-muted,#666)">Partial area — see regs</span>' : ''}
         </div>
         <div style="display:flex;gap:3px;align-items:center">
-          <button id="${mapContainerId}_btn_satellite" class="leh-map-btn active" onclick="event.stopPropagation();bcCardMapSetLayer('${mapContainerId}','satellite')">Satellite</button>
-          <button id="${mapContainerId}_btn_topo" class="leh-map-btn" onclick="event.stopPropagation();bcCardMapSetLayer('${mapContainerId}','topo')">Topo</button>
+          <button id="${mapContainerId}_btn_satellite" class="leh-map-btn active" data-tile="satellite" onclick="event.stopPropagation();bcCardMapSetLayer('${mapContainerId}','satellite')">Satellite</button>
+          <button id="${mapContainerId}_btn_topo" class="leh-map-btn" data-tile="topo" onclick="event.stopPropagation();bcCardMapSetLayer('${mapContainerId}','topo')">Topo</button>
           <button class="leh-map-btn leh-map-expand-btn" onclick="event.stopPropagation();bcCardMapToggleFullscreen('${mapContainerId}')" title="Expand map" style="width:26px;padding:0;font-size:13px;display:flex;align-items:center;justify-content:center">⛶</button>
         </div>
       </div>
-      <div id="${mapContainerId}" style="height:280px;width:100%;border-radius:8px;overflow:hidden;background:#1a1a1a"></div>
+      <div id="${mapContainerId}"
+           data-mu="${r.MU}"
+           data-zone="${r.Zone || ''}"
+           data-species-type="${mapSpeciesType}"
+           class="leh-card-map"
+           style="width:100%;aspect-ratio:1/1;height:auto;border-radius:8px;overflow:hidden;background:#1a1a1a"></div>
       <div id="${mapContainerId}_status" style="font-size:10px;color:var(--text-muted);padding:4px 2px;font-family:monospace"></div>
     </div>`;
 
     return `
+    ${renderBCSpecialBadges(r)}
     <div class="expand-grid">
       <div class="ei"><div class="ei-label">Full MU</div><div class="ei-val">${r.MU}</div></div>
-      <div class="ei"><div class="ei-label">Draw Code</div><div class="ei-val">${r.Code}</div></div>
+      <div class="ei"><div class="ei-label">Draw Code</div><div class="ei-val">${padHuntCode(r.Code)}</div></div>
       <div class="ei"><div class="ei-label">Zone</div><div class="ei-val">${r.Zone||'—'}</div></div>
       <div class="ei"><div class="ei-label">Season</div><div class="ei-val">${r.Season}</div></div>
-      <div class="ei"><div class="ei-label">Draw Odds (${BC_ACTUAL_ODDS_YEAR} actual)</div><div class="ei-val">${pct}</div></div>
+      <div class="ei"><div class="ei-label">Draw Odds</div><div class="ei-val">${isNewDraw ? '<span class="new-draw-pill">NEW</span> No data' : pct}</div></div>
       <div class="ei"><div class="ei-label">Tags Available</div><div class="ei-val">${r.Tags}</div></div>
       ${r.fill_rate_alltime!=null?`<div class="ei"><div class="ei-label">Harvest Success (all-time)</div><div class="ei-val">${fmtFill(r.fill_rate_alltime)} <span style="font-size:10px;color:${(r.fill_rate_years||0)>=10?'#4ade80':(r.fill_rate_years||0)>=4?'#facc15':'#f87171'}">(${r.fill_rate_years} yrs)</span></div></div>`:''}
       ${r.Notes?`<div class="ei ei-note">📝 ${r.Notes}</div>`:''}
@@ -861,17 +1111,27 @@ function buildBCExpandHTML(r, idPrefix) {
 
 function renderCards() {
   const grid=document.getElementById('cardsGrid');
+  if (!grid) return;
+
+  // Cancel any older chunked render that may still be queued.
+  // This prevents stale cards from a previous, larger result set from
+  // appending underneath the current filtered matches.
+  const renderToken = String(Date.now()) + '_' + Math.random().toString(36).slice(2);
+  grid.dataset.renderToken = renderToken;
+
   if (!filtered.length) {
     grid.innerHTML=`<div class="empty"><div class="empty-title">No draws found</div><p>Try adjusting your filters.</p></div>`;
     return;
   }
   const show=filtered.slice(0,300);
-  if (WRITEUPS) show.forEach(r=>{ if(!r.writeup){const k=`${r.Species}_${r.MU}_${r.Code}`;if(WRITEUPS[k])r.writeup=WRITEUPS[k];}});
+  if (WRITEUPS) show.forEach(r=>{ if(!r.writeup){const k=`${r.Species}_${r.MU}_${padHuntCode(r.Code)}`;if(WRITEUPS[k])r.writeup=WRITEUPS[k];}});
 
   function buildBCCard(r,i) {
+    const isNewDraw = isNewSynopsisHunt(r);
     const actualPct = getBCActualOdds(r);
-    const pct = actualPct !== null ? fmt(actualPct) : fmt(r['%']);
-    const cls = oddsClass(actualPct !== null ? actualPct : r['%']);
+    const hasDrawOdds = actualPct !== null;
+    const pct = hasDrawOdds ? fmt(actualPct) : (isNewDraw ? 'NEW' : 'No data');
+    const cls = hasDrawOdds ? oddsClass(actualPct) : 'new-draw-card';
     const fr = computeHarvestAvg(r.yearly_fill_rates);
     const frFmt = fr !== null ? fr + '%' : null;
     const frCls = fr !== null ? (fr >= 50 ? 'fill-high' : fr >= 25 ? 'fill-mid' : 'fill-low') : 'fill-none';
@@ -884,11 +1144,13 @@ function renderCards() {
         <div>
           <div class="card-species">${r.Species}</div>
           <div class="card-class">${r.Class}${r.Zone?' &nbsp;·&nbsp; Zone '+r.Zone:''}</div>
+          ${isNewDraw ? '<span class="new-draw-pill">NEW</span>' : ''}
+          ${renderBCSpecialBadges(r)}
           ${fr!=null?`<span class="fill-badge ${frCls}" data-tooltip="Harvest Success Rate: % of drawn hunters who reported harvesting an animal, averaged over available years."><span class="fill-pct">${frFmt}</span><span class="fill-sub">&nbsp;Harvest Success</span></span>`:`<span class="fill-badge fill-none"><span class="fill-sub">No Harvest Data</span></span>`}
         </div>
-        <div class="odds-badge" data-tooltip="Draw Odds: % of applicants who were drawn in ${BC_ACTUAL_ODDS_YEAR} (actual result from BC data catalogue).">
+        <div class="odds-badge ${hasDrawOdds ? '' : 'new-draw-odds'}" data-tooltip="${hasDrawOdds ? 'Draw Odds: % of applicants who were drawn in ' + BC_ACTUAL_ODDS_YEAR + ' (actual result from BC data catalogue).' : 'New or no matching actual-results row yet — no draw odds data.'}">
           <div class="odds-pct">${pct}</div>
-          <div class="odds-ratio">${BC_ACTUAL_ODDS_YEAR}</div>
+          <div class="odds-ratio">${hasDrawOdds ? BC_ACTUAL_ODDS_YEAR : 'No data yet'}</div>
         </div>
       </div>
       <div class="card-info">
@@ -919,8 +1181,6 @@ function renderCards() {
 
   if (show.length > CHUNK) {
     let offset = CHUNK;
-    const renderToken = Date.now();
-    grid.dataset.renderToken = renderToken;
     const overflowNote = grid.lastElementChild && grid.lastElementChild.classList.contains('overflow-note') ? grid.lastElementChild : null;
     function renderNextBCChunk() {
       // Abort if a newer render has started
@@ -951,3 +1211,126 @@ function _trackBCSearch(method) {
   if (window.HS && window.HS.trackSearch) window.HS.trackSearch('BC', species, method || 'filter_bc');
 }
 
+
+// Keep BC zone maps reliable on Saved and Compare tabs, even when those cards are
+// rendered by bc-saved-compare.js after this file loads.
+window.addEventListener('load', function() {
+  if (typeof window.renderSavedPage === 'function' && !window.renderSavedPage._hsZoneMapWrapped) {
+    const originalRenderSavedPage = window.renderSavedPage;
+    window.renderSavedPage = function() {
+      const out = originalRenderSavedPage.apply(this, arguments);
+      setTimeout(() => initVisibleBCZoneMaps(document.getElementById('savedPage') || document), 120);
+      return out;
+    };
+    window.renderSavedPage._hsZoneMapWrapped = true;
+  }
+  if (typeof window.toggleCompare === 'function' && !window.toggleCompare._hsZoneMapWrapped) {
+    const originalToggleCompare = window.toggleCompare;
+    window.toggleCompare = function() {
+      const out = originalToggleCompare.apply(this, arguments);
+      setTimeout(() => initVisibleBCZoneMaps(document.getElementById('savedPage') || document), 160);
+      return out;
+    };
+    window.toggleCompare._hsZoneMapWrapped = true;
+  }
+  if (typeof window.buildComparePanel === 'function' && !window.buildComparePanel._hsZoneMapWrapped) {
+    const originalBuildComparePanel = window.buildComparePanel;
+    window.buildComparePanel = function() {
+      const out = originalBuildComparePanel.apply(this, arguments);
+      setTimeout(() => initVisibleBCZoneMaps(document.getElementById('savedPage') || document), 160);
+      return out;
+    };
+    window.buildComparePanel._hsZoneMapWrapped = true;
+  }
+});
+
+
+// HuntSmart V8.0 — Saved species filter by active province
+let hsSavedSpeciesFilter = localStorage.getItem('huntodds_saved_species_filter') || '';
+function hsSavedCurrentProvince() {
+  try {
+    if (typeof savedProvince !== 'undefined') return savedProvince;
+  } catch(e) {}
+  const bcBtn = document.getElementById('savedBtnBC');
+  const abBtn = document.getElementById('savedBtnAB');
+  if (abBtn && abBtn.classList.contains('active')) return 'AB';
+  if (bcBtn && bcBtn.classList.contains('active')) return 'BC';
+  return 'BC';
+}
+function hsSavedSpeciesOf(item, province) {
+  if (!item) return '';
+  return String(province === 'AB' ? (item.species || item.Species || '') : (item.Species || item.species || '')).trim();
+}
+function hsBuildSavedSpeciesOptions() {
+  const sel = document.getElementById('savedSpeciesFilter');
+  const row = document.getElementById('savedFilterRow');
+  if (!sel) return;
+  const prov = hsSavedCurrentProvince();
+  const list = prov === 'AB' ? (Array.isArray(abSavedDraws) ? abSavedDraws : []) : (Array.isArray(savedDraws) ? savedDraws : []);
+  const species = [...new Set(list.map(x => hsSavedSpeciesOf(x, prov)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  if (row) row.style.display = list.length ? 'flex' : 'none';
+  const current = species.includes(hsSavedSpeciesFilter) ? hsSavedSpeciesFilter : '';
+  if (current !== hsSavedSpeciesFilter) {
+    hsSavedSpeciesFilter = '';
+    localStorage.setItem('huntodds_saved_species_filter', '');
+  }
+  sel.innerHTML = '<option value="">All species</option>' + species.map(sp => `<option value="${String(sp).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')}">${String(sp).replace(/&/g,'&amp;').replace(/</g,'&lt;')}</option>`).join('');
+  sel.value = hsSavedSpeciesFilter || '';
+}
+function setSavedSpeciesFilter(value) {
+  hsSavedSpeciesFilter = String(value || '');
+  localStorage.setItem('huntodds_saved_species_filter', hsSavedSpeciesFilter);
+  if (typeof renderSavedPage === 'function') renderSavedPage();
+}
+window.setSavedSpeciesFilter = setSavedSpeciesFilter;
+(function hsInstallSavedSpeciesFilter(){
+  function install() {
+    if (typeof renderSavedPage !== 'function' || renderSavedPage._hsSpeciesFilterWrapped) return false;
+    const originalRenderSavedPage = renderSavedPage;
+    const wrappedRenderSavedPage = function() {
+      const prov = hsSavedCurrentProvince();
+      const filter = hsSavedSpeciesFilter;
+      let oldBC, oldAB;
+      if (filter) {
+        if (prov === 'BC' && Array.isArray(savedDraws)) {
+          oldBC = savedDraws;
+          savedDraws = savedDraws.filter(x => hsSavedSpeciesOf(x, 'BC') === filter);
+        } else if (prov === 'AB' && Array.isArray(abSavedDraws)) {
+          oldAB = abSavedDraws;
+          abSavedDraws = abSavedDraws.filter(x => hsSavedSpeciesOf(x, 'AB') === filter);
+        }
+      }
+      try { return originalRenderSavedPage.apply(this, arguments); }
+      finally {
+        if (oldBC) savedDraws = oldBC;
+        if (oldAB) abSavedDraws = oldAB;
+        setTimeout(hsBuildSavedSpeciesOptions, 0);
+      }
+    };
+    wrappedRenderSavedPage._hsSpeciesFilterWrapped = true;
+    renderSavedPage = wrappedRenderSavedPage;
+    window.renderSavedPage = wrappedRenderSavedPage;
+    return true;
+  }
+  const tick = () => { if (!install()) setTimeout(tick, 150); };
+  tick();
+  // Reset the species dropdown when the user switches province so each province has its own clean list.
+  const wrapProvince = () => {
+    if (typeof setSavedProvince === 'function' && !setSavedProvince._hsSpeciesFilterWrapped) {
+      const old = setSavedProvince;
+      const nw = function(prov) {
+        hsSavedSpeciesFilter = '';
+        localStorage.setItem('huntodds_saved_species_filter', '');
+        const out = old.apply(this, arguments);
+        setTimeout(hsBuildSavedSpeciesOptions, 0);
+        return out;
+      };
+      nw._hsSpeciesFilterWrapped = true;
+      setSavedProvince = nw;
+      window.setSavedProvince = nw;
+    } else {
+      setTimeout(wrapProvince, 150);
+    }
+  };
+  setTimeout(wrapProvince, 300);
+})();

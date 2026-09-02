@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
 <title>HuntSmart Canada — Know Your Draw Odds</title>
 <meta property="og:title" content="HuntSmart Canada — Know Your Draw Odds">
 <meta property="og:description" content="Draw odds, harvest success rates, and an interactive WMU map for every BC and Alberta LEH draw. Built by a BC backcountry hunter.">
@@ -22,10 +22,10 @@
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
-<link href="./style.css" rel="stylesheet"/>
-<link href="./homepage-polish.css" rel="stylesheet"/>
-<link href="./auth-styles.css" rel="stylesheet"/>
-<link href="./stripe-styles.css" rel="stylesheet"/>
+<link href="./style.css?v=20260611e" rel="stylesheet"/>
+<link href="./homepage-polish.css?v=20260611e" rel="stylesheet"/>
+<link href="./auth-styles.css?v=20260611e" rel="stylesheet"/>
+<link href="./stripe-styles.css?v=20260611e" rel="stylesheet"/>
 <!-- Meta Pixel Code -->
 <script>
 !function(f,b,e,v,n,t,s)
@@ -392,6 +392,124 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
   flex-shrink: 0; transition: background .1s;
 }
 .saved-pin-del:hover { background: #3a2020; }
+
+
+/* ── Hunt-card green control polish ──
+   Makes Terrain & Access, Show Details, and Season Date controls match the bright green selected-chip style. */
+:root {
+  --hs-control-green: #4ade80;
+  --hs-control-green-soft: rgba(74, 222, 128, .10);
+  --hs-control-green-mid: rgba(74, 222, 128, .38);
+  --hs-control-green-strong: rgba(74, 222, 128, .70);
+}
+
+.hs-green-action-btn,
+button.hs-green-action-btn,
+summary.hs-green-action-btn,
+select.hs-green-action-btn,
+.hs-green-action-btn[role="button"] {
+  color: var(--hs-control-green) !important;
+  border-color: var(--hs-control-green-mid) !important;
+  background: var(--hs-control-green-soft) !important;
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, .10) !important;
+}
+
+.hs-green-action-btn:hover,
+button.hs-green-action-btn:hover,
+summary.hs-green-action-btn:hover,
+select.hs-green-action-btn:hover,
+.hs-green-action-btn[role="button"]:hover {
+  color: #86efac !important;
+  border-color: var(--hs-control-green-strong) !important;
+  background: rgba(74, 222, 128, .16) !important;
+}
+
+.hs-green-action-btn svg,
+.hs-green-action-btn path,
+.hs-green-action-btn span {
+  color: inherit !important;
+  stroke: currentColor !important;
+}
+
+/* Compact Show/Hide Details buttons. Keep them in the same row, but make the green background only wrap the text. */
+.hs-green-detail-toggle,
+button.hs-green-detail-toggle,
+summary.hs-green-detail-toggle,
+.hs-green-detail-toggle[role="button"] {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: max-content !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  padding: 4px 10px !important;
+  margin: 6px auto !important;
+  border: 1px solid var(--hs-control-green-mid) !important;
+  border-radius: 7px !important;
+  background: var(--hs-control-green-soft) !important;
+  color: var(--hs-control-green) !important;
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, .08) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.15 !important;
+  text-align: center !important;
+  cursor: pointer !important;
+}
+
+.hs-green-detail-toggle:hover,
+button.hs-green-detail-toggle:hover,
+summary.hs-green-detail-toggle:hover,
+.hs-green-detail-toggle[role="button"]:hover {
+  color: #86efac !important;
+  border-color: var(--hs-control-green-strong) !important;
+  background: rgba(74, 222, 128, .16) !important;
+}
+
+.hs-green-detail-toggle:focus,
+button.hs-green-detail-toggle:focus,
+summary.hs-green-detail-toggle:focus,
+.hs-green-detail-toggle[role="button"]:focus {
+  outline: none !important;
+}
+
+.hs-green-detail-toggle:focus-visible,
+button.hs-green-detail-toggle:focus-visible,
+summary.hs-green-detail-toggle:focus-visible,
+.hs-green-detail-toggle[role="button"]:focus-visible {
+  outline: none !important;
+  border-color: var(--hs-control-green-strong) !important;
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, .18) !important;
+}
+
+/* Season Dates filter block */
+.season-date-filter {
+  border-color: rgba(74, 222, 128, .18) !important;
+}
+.season-date-filter .filter-heading,
+.season-date-filter .filter-clear,
+.hs-green-season-label {
+  color: var(--hs-control-green) !important;
+}
+.season-date-field {
+  border-color: rgba(74, 222, 128, .22) !important;
+}
+.season-date-field span,
+.season-date-help {
+  color: rgba(134, 239, 172, .88) !important;
+}
+.season-date-field input[type="date"] {
+  color: var(--hs-control-green) !important;
+  border-color: var(--hs-control-green-mid) !important;
+  background: rgba(74, 222, 128, .075) !important;
+  accent-color: var(--hs-control-green) !important;
+}
+.season-date-field input[type="date"]:focus {
+  outline: none !important;
+  border-color: var(--hs-control-green-strong) !important;
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, .12) !important;
+}
+
 </style>
 </head>
 <body>
@@ -411,6 +529,7 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
 <div class="nav-links">
 <a class="nav-link active" id="navHome" onclick="showPage('home')">Home</a>
 <a class="nav-link" id="navBC" onclick="showPage('filter')">BC</a>
+<a class="nav-link" id="navBCOS" onclick="showPage('bcOpenSeasons')">BC GOS</a>
 <a class="nav-link" id="navAlberta" onclick="goToAlberta()">Alberta</a>
 <a class="nav-link" id="navMap" onclick="showPage('map')">Map</a>
 <a class="nav-link" id="navSaved" onclick="showPage('saved')">Saved <span class="saved-count-badge" id="savedBadge" style="display:none">0</span></a>
@@ -425,6 +544,7 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
 <div class="nav-mobile-menu" id="navMobileMenu">
 <a class="nav-link" id="mNavHome" onclick="showPage('home');closeNavMenu()">Home</a>
 <a class="nav-link" id="mNavBC" onclick="showPage('filter');closeNavMenu()">BC Draws</a>
+<a class="nav-link" id="mNavBCOS" onclick="showPage('bcOpenSeasons');closeNavMenu()">BC GOS</a>
 <a class="nav-link" id="mNavAlberta" onclick="goToAlberta();closeNavMenu()">Alberta Draws</a>
 <a class="nav-link" id="mNavMap" onclick="showPage('map');closeNavMenu()">Map</a>
 <a class="nav-link" id="mNavSaved" onclick="showPage('saved');closeNavMenu()">Saved <span class="saved-count-badge" id="savedBadgeMobile" style="display:none">0</span></a>
@@ -793,7 +913,6 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
 <span class="sort-label">Sort:</span>
 <button class="sort-btn active" id="abSortOddsBtn" onclick="abSetSort('odds')">Best Odds</button>
 <button class="sort-btn" id="abSortHarvestBtn" onclick="abSetSort('harvest')">Harvest Success Rate</button>
-<button class="sort-btn" id="abSortSeasonBtn" onclick="abSetSort('season')">Earliest Season Date</button>
 <button class="sort-btn" id="abSortPointsBtn" onclick="abSetSort('points')">Least Points To Draw</button>
 </div>
 </div>
@@ -807,32 +926,185 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
 </div>
 </div>
 
+
+<!-- ══════════════ BC GOS PAGE ══════════════ -->
+<div id="bcOpenSeasonsPage" style="display:none">
+  <div class="os-page">
+    <div class="os-topbar os-horizontal-toolbar" aria-label="BC GOS map tools">
+      <div class="os-search-wrap" id="osSearchWrap">
+        <span class="os-search-icon">⌕</span>
+        <input id="osSearchInput" class="os-search-input" type="search" autocomplete="off" placeholder="Search city, WMU, or coordinates" oninput="osHandleSearchInput(this.value)" onkeydown="osHandleSearchKey(event)">
+        <button id="osSearchClear" class="os-search-clear" type="button" onclick="osClearSearch()" aria-label="Clear search">×</button>
+        <div id="osSearchResults" class="os-search-results"></div>
+      </div>
+
+      <div class="os-filters os-toolbar-actions">
+        <select id="osSpeciesSel" class="os-toolbar-select os-species-select" onchange="osOnSpecies(this.value)" title="Choose a species to highlight matching GOS areas">
+          <option value="">All species</option>
+        </select>
+        <button type="button" id="osFilterBtn" class="os-dock-btn os-filter-btn" onclick="osToggleFilterPanel()">Filters</button>
+        <button type="button" id="osLayersBtn" class="os-dock-btn" onclick="osToggleLayersPanel()">Layers</button>
+        <div class="os-basemap-buttons" aria-label="BC GOS basemap style">
+          <button type="button" id="osTile_streets" class="os-map-style-btn active" onclick="osSetTile('streets')">Streets</button>
+          <button type="button" id="osTile_satellite" class="os-map-style-btn" onclick="osSetTile('satellite')">Satellite</button>
+          <button type="button" id="osTile_topo" class="os-map-style-btn" onclick="osSetTile('topo')">Topo</button>
+        </div>
+        <div class="os-2d3d-toggle" aria-label="2D or 3D terrain">
+          <button type="button" id="osGos2DBtn" class="active" onclick="osSet3D(false)">2D</button>
+          <button type="button" id="osGos3DBtn" onclick="osSet3D(true)">3D</button>
+        </div>
+        <button type="button" class="os-dock-btn os-dock-clear" onclick="osClearAllGOS()">Clear</button>
+      </div>
+
+      <div class="os-toolbar-popovers">
+        <div class="os-filter-popover os-dock-popover" id="osFilterPanel">
+          <div class="os-filter-popover-head">
+            <strong>Filters</strong>
+            <button type="button" onclick="osCloseFilterPanel()">✕</button>
+          </div>
+          <label>Month<select id="osMonthSel" onchange="osOnMonth(this.value)"><option value="">Any month</option></select></label>
+          <label>Method<select id="osMethodSel" onchange="osOnMethod(this.value)"><option value="">All methods</option></select></label>
+        </div>
+
+        <div id="osLayersPanel" class="os-dock-popover os-layers-popover os-clean-layers-panel os-v77-layers-panel">
+          <div class="os-filter-popover-head os-v77-layer-head">
+            <strong>Layers</strong>
+            <button type="button" class="os-layer-x" onclick="osCloseDockPanels()" aria-label="Close layers">×</button>
+          </div>
+          <div class="os-v77-layers">
+            <section class="os-v77-card os-v77-opacity-card">
+              <div class="os-v77-row-head"><span>Layer Opacity</span><b id="osOpacityValue">100%</b></div>
+              <input id="osOpacityRange" class="os-v77-range" type="range" min="0" max="1" step="0.05" value="1" oninput="osSetLayerOpacityClean(this.value)" aria-label="Layer opacity">
+            </section>
+            <section class="os-v77-card">
+              <button type="button" id="osWildfireCleanBtn" class="os-v77-toggle" onclick="osToggleWildfireClean()">Historical Wildfires</button>
+              <div class="os-v77-subblock">
+                <div class="os-v77-row-head"><span>Wildfire Years</span><b id="osWildfireRangeLabel">2013–2023</b></div>
+                <label class="os-v77-mini-range"><span>Start <b id="osWildfireStartValue">2013</b></span><input id="osWildfireStartRange" class="os-v77-range" type="range" min="2013" max="2023" step="1" value="2013" oninput="osUpdateWildfireYearRange()"></label>
+                <label class="os-v77-mini-range"><span>End <b id="osWildfireEndValue">2023</b></span><input id="osWildfireEndRange" class="os-v77-range" type="range" min="2013" max="2023" step="1" value="2023" oninput="osUpdateWildfireYearRange()"></label>
+              </div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="os-body">
+      <div class="os-map-wrap">
+        <div class="os-map-status" id="osMapStatus"></div>
+        <div id="osMap" class="os-map"></div>
+
+        <!-- HS MOBILE RAIL: GOS TAB — hidden on desktop via CSS -->
+        <div class="gos-mobile-wrap" id="gosMobileWrap">
+          <div class="hs-topbar gos-topbar" id="gosTopbarMobile">
+            <span class="hs-tp-pill gos-tp-label">BC GOS</span>
+            <div class="hs-tp-div"></div>
+            <button type="button" class="hs-tp-pill hs-tp-species" id="gosSpeciesBtn" onclick="gosToggleSpeciesDrop()">
+              <span id="gosSpeciesBtnText">All species</span><span class="hs-tp-arr">&#9660;</span>
+            </button>
+          </div>
+          <div class="hs-species-drop" id="gosSpeciesDrop" style="display:none"></div>
+          <div class="hs-zone-pill" id="gosZonePill" style="display:none">
+            <span class="hs-zp-dot"></span>
+            <span class="hs-zp-name" id="gosZonePillName"></span>
+            <span class="hs-zp-div" id="gosZonePillDiv" style="display:none"></span>
+            <span class="hs-zp-sub" id="gosZonePillSub"></span>
+          </div>
+          <div class="hs-rail" id="gosRail">
+            <button type="button" class="hs-rb" id="gosRbSearch" onclick="gosOpenModal('search')"><span class="hs-rb-i">&#8981;</span><span class="hs-rb-l">Search</span></button>
+            <button type="button" class="hs-rb" id="gosRbFilters" onclick="gosOpenModal('filters')"><span class="hs-rb-i">&#9638;</span><span class="hs-rb-l">Filters</span></button>
+            <button type="button" class="hs-rb" id="gosRbLayers" onclick="gosOpenModal('layers')"><span class="hs-rb-i">&#9635;</span><span class="hs-rb-l">Layers</span></button>
+            <button type="button" class="hs-rb hs-rb-clr" id="gosRbClear" onclick="gosClearAll()"><span class="hs-rb-i">&#10005;</span><span class="hs-rb-l">Clear</span></button>
+          </div>
+          <div class="hs-br-cluster" id="gosBrCluster">
+            <div class="hs-zoom-grp">
+              <button type="button" class="hs-bb" onclick="try{osZoomIn()}catch(e){}"><span class="hs-bb-i">+</span></button>
+              <button type="button" class="hs-bb" onclick="try{osZoomOut()}catch(e){}"><span class="hs-bb-i">&#8722;</span></button>
+            </div>
+            <button type="button" class="hs-bb hs-bb-tog" id="gos3DBtn" onclick="gosToggle3D()"><span class="hs-bb-i" id="gos3DLabel">3D</span></button>
+          </div>
+          <div class="hs-scrim" id="gosScrim" onclick="gosCloseModal()" style="display:none">
+            <div class="hs-modal" id="gosModal" onclick="event.stopPropagation()"></div>
+          </div>
+        </div>
+        <div class="os-map-control-stack" id="osMapControlStack" aria-label="BC GOS map controls">
+          <button type="button" onclick="osZoomIn()" aria-label="Zoom in">+</button>
+          <button type="button" onclick="osZoomOut()" aria-label="Zoom out">−</button>
+          <button type="button" id="osMap3DToggleBtn" class="os-map-3d-toggle" onclick="osToggle3D()" aria-label="Switch to 3D terrain">3D</button>
+        </div>
+        <div class="os-map-legend">
+          <span><i class="selected matching"></i> Matching WMU</span>
+          <a class="os-gos-updates" href="https://www2.gov.bc.ca/gov/content/sports-culture/recreation/fishing-hunting/hunting/regulations-synopsis/regulation-synopsis-corrections-and-updates" target="_blank" rel="noopener">Synopsis changes</a>
+        </div>
+      </div>
+
+      <aside class="os-panel">
+        <div class="os-panel-top">
+          <div id="osCrumbs" class="os-crumbs"></div>
+          <div class="os-panel-title-row">
+            <h2 id="osPanelTitle">BC General Open Seasons</h2>
+            <span id="osResultsCount">0 season rows</span>
+          </div>
+          <div class="os-panel-actions">
+            <button type="button" onclick="osBackToProvince()">Back to BC</button>
+            <button type="button" onclick="osClearWMU()">Clear WMU</button>
+          </div>
+        </div>
+        <div id="osResultsPanel" class="os-results-panel"></div>
+      </aside>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════ MAP PAGE ══════════════ -->
 <div id="mapPage" style="display:none">
   <div class="fullmap-page">
 
-    <!-- TOP BAR: Province Toggle + Instructions -->
-    <div class="fullmap-topbar">
-      <div class="fullmap-topbar-left">
-        <div class="province-toggle-group">
-          <button class="province-toggle-btn active" id="mapToggleBC" onclick="fullMapSetProvince('BC')">
-            <span class="ptb-flag">🏔</span>
-            <span class="ptb-label">British Columbia</span>
-          </button>
-          <button class="province-toggle-btn" id="mapToggleAB" onclick="fullMapSetProvince('AB')">
-            <span class="ptb-flag">🌾</span>
-            <span class="ptb-label">Alberta</span>
-          </button>
-        </div>
+    <!-- TOP BAR: Province + species. Map/search controls float on the map itself. -->
+    <div class="fullmap-topbar fullmap-toolbar-v3">
+      <div class="province-toggle-group">
+        <button class="province-toggle-btn active" id="mapToggleBC" onclick="fullMapSetProvince('BC')">
+          <span class="ptb-flag">🏔</span>
+          <span class="ptb-label">British Columbia</span>
+        </button>
+        <button class="province-toggle-btn" id="mapToggleAB" onclick="fullMapSetProvince('AB')">
+          <span class="ptb-flag">🌾</span>
+          <span class="ptb-label">Alberta</span>
+        </button>
       </div>
-      <div class="fullmap-topbar-center">
-        <div class="fullmap-search-wrap" id="fullMapSearchWrap">
-          <span class="fullmap-search-icon">🔍</span>
+
+      <div class="fullmap-toolbar-main fullmap-toolbar-main-v4">
+        <select id="fullMapSpeciesSelect" class="fullmap-control-select" onchange="fullMapSetSpecies(this.value)" title="Highlight WMUs with draws for this species">
+          <option value="">All species</option>
+        </select>
+        <div class="fullmap-basemap-buttons" aria-label="Basemap style">
+          <button id="fullMapTile_streets" class="fullmap-map-style-btn active" onclick="fullMapSetTile('streets')" title="Streets basemap">Streets</button>
+          <button id="fullMapTile_satellite" class="fullmap-map-style-btn" onclick="fullMapSetTile('satellite')" title="Satellite basemap">Satellite</button>
+          <button id="fullMapTile_topo" class="fullmap-map-style-btn" onclick="fullMapSetTile('topo')" title="Topo basemap">Topo</button>
+        </div>
+        <button id="fullMapClearBtn" class="fullmap-tile-btn fullmap-clear-btn" onclick="fullMapClearAll()" title="Clear selected species and WMUs">Clear</button>
+        <button id="fullMapExpandBtn" class="fullmap-expand-btn" onclick="fullMapToggleFullscreen()" title="Expand map">⛶</button>
+      </div>
+
+      <div class="fullmap-chips-row" id="fullMapChipsRow" style="display:none"></div>
+    </div>
+
+    <!-- MAP BODY: map left + optional side panel right -->
+    <div class="fullmap-body" id="fullMapBody">
+
+      <!-- MAP -->
+      <div class="fullmap-container">
+        <div id="fullMapLeaflet" style="width:100%;height:100%;"></div>
+
+        <div class="fullmap-floating-search" id="fullMapSearchWrap">
+          <span class="fullmap-search-icon">⌕</span>
           <input
             class="fullmap-search-input"
             id="fullMapSearchInput"
             type="text"
-            placeholder="Search city or unit (e.g. 4-38)…"
+            placeholder="Search city, WMU, or coordinates"
             autocomplete="off"
             oninput="fullMapHandleSearch(this.value)"
             onkeydown="fullMapSearchKeydown(event)"
@@ -842,39 +1114,75 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
           <button class="fullmap-search-clear" id="fullMapSearchClear" onclick="fullMapSearchClear()" tabindex="-1">✕</button>
           <div class="fullmap-search-results" id="fullMapSearchResults"></div>
         </div>
-      </div>
-      <div class="fullmap-topbar-right">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-          <!-- Tile layer pills -->
-          <div style="display:flex;gap:3px">
-            <button id="fullMapTile_streets"   class="fullmap-tile-btn"        onclick="fullMapSetTile('streets')">Streets</button>
-            <button id="fullMapTile_satellite" class="fullmap-tile-btn active" onclick="fullMapSetTile('satellite')">Satellite</button>
-            <button id="fullMapTile_topo"      class="fullmap-tile-btn"        onclick="fullMapSetTile('topo')">Topo</button>
+
+        <div class="fullmap-map-control-stack fullmap-map-control-stack-v5" id="fullMapControlStack">
+          <button type="button" onclick="fullMapZoomIn()" aria-label="Zoom in">+</button>
+          <button type="button" onclick="fullMapZoomOut()" aria-label="Zoom out">−</button>
+          <button type="button" id="fullMapMap3DToggleBtn" class="fullmap-3d-single-btn" onclick="fullMapToggle3D()" aria-label="Switch to 3D terrain">3D</button>
+        </div>
+
+        <!-- Mobile-only map app controls. Desktop controls remain unchanged. -->
+        <div class="fm-mobile-status" id="fmMobileStatus" style="display:none!important">
+          <span id="fmMobileStatusText">BC · Streets · 2D</span>
+          <button type="button" id="fmMobileClearBtn" onclick="fullMapClearAll()" aria-label="Clear selected WMU">×</button>
+        </div>
+
+        <div class="fm-mobile-tools" id="fmMobileTools" style="display:none!important" aria-label="Mobile map tools">
+          <button type="button" class="fm-mobile-tool" onclick="fullMapMobileOpenSheet('layers')" aria-label="Map layers"><span>▣</span><small>Layers</small></button>
+          <button type="button" class="fm-mobile-tool" onclick="fullMapMobileOpenSheet('search')" aria-label="Search"><span>⌕</span><small>Search</small></button>
+          <button type="button" class="fm-mobile-tool" onclick="fullMapMobileCardsToggle()" aria-label="Hunt cards"><span>▤</span><small>Cards</small></button>
+        </div>
+
+        <div class="fm-mobile-zone-pill" id="fmMobileZonePill" style="display:none!important"></div>
+
+        <div class="fm-mobile-scrim" id="fmMobileScrim" style="display:none!important"></div>
+        <div class="fm-mobile-sheet" id="fmMobileSheet" style="display:none" role="dialog" aria-modal="true" aria-label="Map controls">
+          <div class="fm-mobile-sheet-handle"></div>
+          <div class="fm-mobile-sheet-head">
+            <div>
+              <div class="fm-mobile-sheet-title" id="fmMobileSheetTitle">Map controls</div>
+              <div class="fm-mobile-sheet-sub" id="fmMobileSheetSub">Choose what to show on the map</div>
+            </div>
+            <button type="button" class="fm-mobile-sheet-close" onclick="fullMapMobileCloseSheet()" aria-label="Close">×</button>
           </div>
-          <!-- 3D terrain — active by default on satellite/topo -->
-          <button id="fullMap3DBtn" class="fullmap-tile-btn active" onclick="fullMapToggle3D()" title="Toggle 3D terrain (Mapbox DEM, 512px tiles, 1.6× exaggeration)">3D ✓</button>
-          <!-- LEH zones toggle + opacity -->
-          <button id="fullMapLEHToggle" class="fullmap-leh-btn" onclick="fullMapToggleLEH()">LEH Zones</button>
-          <span style="font-size:10px;color:#888;white-space:nowrap">Zone opacity</span>
-          <input id="fullMapLEHOpacity" type="range" min="0.05" max="0.8" step="0.05" value="0.35"
-            oninput="fullMapSetLEHOpacity(this.value)"
-            title="Drag to adjust LEH zone fill opacity"
-            style="width:60px;accent-color:#f0b429;cursor:pointer;vertical-align:middle">
-          <!-- Fullscreen expand/collapse -->
-          <button id="fullMapExpandBtn" class="fullmap-expand-btn" onclick="fullMapToggleFullscreen()" title="Expand map">⛶</button>
+          <div class="fm-mobile-sheet-content" id="fmMobileSheetContent"></div>
         </div>
-        <div class="fullmap-chips-row" id="fullMapChipsRow" style="margin-top:6px">
-          <span style="font-size:11px;color:var(--text-muted)">No regions selected — showing all</span>
+
+
+        <!-- HS MOBILE RAIL: MAP TAB — hidden on desktop via CSS -->
+        <div class="hs-mobile-wrap" id="hsMobileWrap">
+          <div class="hs-topbar" id="hsTopbar">
+            <button type="button" class="hs-tp-pill hs-tp-active" id="hsTpBC" onclick="fullMapSetProvince('BC')">BC</button>
+            <button type="button" class="hs-tp-pill hs-tp-dim" id="hsTpAB" onclick="fullMapSetProvince('AB')">AB</button>
+            <div class="hs-tp-div"></div>
+            <button type="button" class="hs-tp-pill hs-tp-species" id="hsSpeciesBtn" onclick="hsToggleSpeciesDrop()">
+              <span id="hsSpeciesBtnText">All species</span><span class="hs-tp-arr">&#9660;</span>
+            </button>
+          </div>
+          <div class="hs-species-drop" id="hsSpeciesDrop" style="display:none"></div>
+          <div class="hs-zone-pill" id="hsZonePill" style="display:none">
+            <span class="hs-zp-dot"></span>
+            <span class="hs-zp-name" id="hsZonePillName"></span>
+            <span class="hs-zp-div" id="hsZonePillDiv" style="display:none"></span>
+            <span class="hs-zp-sub" id="hsZonePillSub"></span>
+          </div>
+          <div class="hs-rail" id="hsRail">
+            <button type="button" class="hs-rb" id="hsRbLayers" onclick="hsOpenModal('layers')"><span class="hs-rb-i">&#9635;</span><span class="hs-rb-l">Layers</span></button>
+            <button type="button" class="hs-rb" id="hsRbSearch" onclick="hsOpenModal('search')"><span class="hs-rb-i">&#8981;</span><span class="hs-rb-l">Search</span></button>
+            <button type="button" class="hs-rb" id="hsRbCards" onclick="hsCardsToggle()"><span class="hs-rb-i">&#9636;</span><span class="hs-rb-l">Cards</span></button>
+            <button type="button" class="hs-rb" id="hsRbLEH" onclick="hsOpenModal('leh')"><span class="hs-rb-i"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4l-6 3v13l6-3l6 3l6-3V4l-6 3l-6-3"/><path d="M9 4v13M15 7v13"/></svg></span><span class="hs-rb-l">LEH</span></button>
+          </div>
+          <div class="hs-br-cluster" id="hsBrCluster">
+            <div class="hs-zoom-grp">
+              <button type="button" class="hs-bb" onclick="fullMapZoomIn()"><span class="hs-bb-i">+</span></button>
+              <button type="button" class="hs-bb" onclick="fullMapZoomOut()"><span class="hs-bb-i">&#8722;</span></button>
+            </div>
+            <button type="button" class="hs-bb hs-bb-tog" id="hs3DBtn" onclick="hsToggle3D()"><span class="hs-bb-i" id="hs3DLabel">3D</span></button>
+          </div>
+          <div class="hs-scrim" id="hsScrim" onclick="hsCloseModal()" style="display:none">
+            <div class="hs-modal" id="hsModal" onclick="event.stopPropagation()"></div>
+          </div>
         </div>
-      </div>
-    </div>
-
-    <!-- MAP BODY: map left + optional side panel right -->
-    <div class="fullmap-body" id="fullMapBody">
-
-      <!-- MAP -->
-      <div class="fullmap-container">
-        <div id="fullMapLeaflet" style="width:100%;height:100%;"></div>
         <div class="fullmap-loading" id="fullMapLoading" style="display:none">
           <div class="map-loading-inner">
             <div class="map-spinner"></div>
@@ -887,9 +1195,15 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
       <div class="fullmap-results-drawer" id="fullMapResultsDrawer" style="display:none">
         <div class="fullmap-results-header">
           <div class="fullmap-results-title-row">
-            <div>
+            <div class="fullmap-results-title-wrap">
               <span class="fullmap-results-title" id="fullMapResultsTitle">Draws for selected regions</span>
               <span class="fullmap-results-count" id="fullMapResultsCount">0 draws</span>
+              <label id="fullMapLEHSpeciesWrap" class="fullmap-leh-species-wrap" style="display:none">
+                <span>LEH zones</span>
+                <select id="fullMapLEHSpecies" onchange="fullMapSetLEHSpecies(this.value)">
+                  <option value="">Choose species</option>
+                </select>
+              </label>
             </div>
             <div style="display:flex;gap:8px;align-items:center">
               <button class="fullmap-goto-btn" id="fullMapGotoBtn" onclick="fullMapGoToDraws()">
@@ -902,7 +1216,6 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
             <span style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Sort:</span>
             <button class="fullmap-sort-btn active" id="fmSortOdds" onclick="fullMapSetSort('odds',this)">Best Odds</button>
             <button class="fullmap-sort-btn" id="fmSortSuccess" onclick="fullMapSetSort('success',this)">Success Rate</button>
-            <button class="fullmap-sort-btn" id="fmSortSeason" onclick="fullMapSetSort('season',this)">Earliest Season</button>
           </div>
         </div>
         <div class="fullmap-results-grid" id="fullMapResultsGrid"></div>
@@ -937,6 +1250,14 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
     <button id="savedBtnAB" class="saved-prov-btn" onclick="setSavedProvince('AB')">
       🌾 Alberta <span class="saved-prov-count" id="savedCountAB">0</span>
     </button>
+  </div>
+
+  <!-- Saved filters -->
+  <div class="saved-filter-row" id="savedFilterRow" style="display:none">
+    <label class="saved-filter-label" for="savedSpeciesFilter">Species</label>
+    <select id="savedSpeciesFilter" class="saved-species-select" onchange="setSavedSpeciesFilter(this.value)">
+      <option value="">All species</option>
+    </select>
   </div>
 
   <!-- Sort bar -->
@@ -1093,6 +1414,30 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
 <span>Any</span><span>1%</span><span>2%</span><span>5%</span><span>10%</span><span>20%</span><span>50%</span><span>75%</span>
 </div>
 </div>
+<div class="filter-block">
+<div class="filter-heading">
+          Special Tags
+          <span class="filter-clear" id="clearSpecialTags" onclick="clearFilter('special')">Clear</span>
+</div>
+<div class="chips-wrap" id="specialTagChips"></div>
+</div>
+<div class="filter-block season-date-filter">
+<div class="filter-heading">
+          Season Dates
+          <span class="filter-clear" id="clearSeasonDate" onclick="clearFilter('seasonDate')">Clear</span>
+</div>
+<div class="season-date-row">
+  <label class="season-date-field">
+    <span>From</span>
+    <input id="seasonDateFrom" type="date" min="2026-08-01" max="2027-07-31" onchange="setSeasonDateFilter('from', this.value)">
+  </label>
+  <label class="season-date-field">
+    <span>To</span>
+    <input id="seasonDateTo" type="date" min="2026-08-01" max="2027-07-31" onchange="setSeasonDateFilter('to', this.value)">
+  </label>
+</div>
+<div class="season-date-help">Shows hunts that overlap your selected dates.</div>
+</div>
 <button class="reset-btn" onclick="resetAll()">↺ Reset All Filters</button>
 </div><!-- /sidebar-inner -->
 </aside>
@@ -1106,7 +1451,7 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
 <span class="sort-label">Sort:</span>
 <button class="sort-btn active" id="sortOddsBtn" onclick="setSort('odds')">Best Odds</button>
 <button class="sort-btn" id="sortSuccessBtn" onclick="setSort('success')">Success Rate</button>
-<button class="sort-btn" id="sortSeasonBtn" onclick="setSort('season')">Earliest Season Date</button>
+
 </div>
 </div>
 <div class="legend">
@@ -1120,28 +1465,100 @@ src="https://www.facebook.com/tr?id=1288818836009931&ev=PageView&noscript=1"
 </div>
 
 
-<script type="module" src="./auth.js?v=2"></script>
-<script type="module" src="./stripe.js"></script>
-<script type="module" src="./hunting-partners.js"></script>
-<script src="./config.js"></script>
-<script defer src="./data.js"></script>
-<script defer src="./cities.js"></script>
-<script defer src="./drive-times.js"></script>
-<script defer src="./drive-time.js"></script>
-<script defer src="./bc-draws.js"></script>
-<script defer src="./bc-detail.js"></script>
-<script defer src="./bc-filters.js"></script>
-<script defer src="./bc-saved-compare.js"></script>
-<script defer src="./ab-draws.js"></script>
-<script defer src="./ab-cards.js"></script>
-<script defer src="./ab-filters.js"></script>
-<script defer src="./ui.js"></script>
-<script defer src="./ab-wmu-geojson-1.js"></script>
-<script defer src="./ab-wmu-geojson-2.js"></script>
-<script defer src="./ab-wmu-geojson-3.js"></script>
-<script defer src="./ab-wmu-geojson.js"></script>
-<script defer src="./bc-wmu-geojson.js"></script>
-<script defer src="./maps.js"></script>
-<script defer src="./homepage-polish.js"></script>
+<script type="module" src="./auth.js?v=20260611e"></script>
+<script type="module" src="./stripe.js?v=20260611e"></script>
+<script type="module" src="./hunting-partners.js?v=20260611e"></script>
+<script src="./config.js?v=20260611e"></script>
+<script defer src="./data.js?v=20260611e"></script>
+<script defer src="./cities.js?v=20260611e"></script>
+<script defer src="./drive-times.js?v=20260611e"></script>
+<script defer src="./drive-time.js?v=20260611e"></script>
+<script defer src="./bc-draws.js?v=20260611e"></script>
+<script defer src="./bc-detail.js?v=20260611e"></script>
+<script defer src="./bc-filters.js?v=20260611e"></script>
+<script defer src="./bc-saved-compare.js?v=20260611e"></script>
+<script defer src="./ab-draws.js?v=20260611e"></script>
+<script defer src="./ab-cards.js?v=20260611e"></script>
+<script defer src="./ab-filters.js?v=20260611e"></script>
+<script defer src="./ui.js?v=20260611e"></script>
+<script defer src="./ab-wmu-geojson-1.js?v=20260611e"></script>
+<script defer src="./ab-wmu-geojson-2.js?v=20260611e"></script>
+<script defer src="./ab-wmu-geojson-3.js?v=20260611e"></script>
+<script defer src="./ab-wmu-geojson.js?v=20260611e"></script>
+<script defer src="./bc-wmu-geojson.js?v=20260611e"></script>
+<script defer src="./bc-region-geojson.js?v=20260611e"></script>
+<script defer src="./bc-open-seasons.js?v=20260611e"></script>
+<script defer src="./maps.js?v=20260611e"></script>
+<script defer src="./card-map-3d-fullscreen-fix.js?v=20260611e"></script>
+<script defer src="./homepage-polish.js?v=20260611e"></script>
+
+<script>
+/* HuntSmart green control polish for dynamic card controls. */
+(function () {
+  if (window.__hsGreenControlPolishLoaded) return;
+  window.__hsGreenControlPolishLoaded = true;
+
+  var ACTION_RE = /terrain\s*(?:&|and)?\s*access|show\s+details|hide\s+details|expand\s+details?|collapse\s+details?/i;
+  var DETAIL_RE = /show\s+details|hide\s+details|expand\s+details?|collapse\s+details?/i;
+  var SEASON_RE = /season\s+dates?/i;
+
+  function cleanText(el) {
+    return (el && (el.innerText || el.textContent) || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function polishControls(root) {
+    root = root || document;
+
+    root.querySelectorAll('button, summary, [role="button"], select').forEach(function (el) {
+      var text = cleanText(el);
+      if (!text && el.tagName === 'SELECT') {
+        var opt = el.options && el.options[el.selectedIndex];
+        text = opt ? cleanText(opt) : '';
+      }
+      if (ACTION_RE.test(text)) {
+        el.classList.add('hs-green-action-btn');
+        if (DETAIL_RE.test(text)) el.classList.add('hs-green-detail-toggle');
+      }
+    });
+
+    root.querySelectorAll('.season-date-filter .filter-heading, [class*="season"][class*="date"], [id*="seasonDate"], label, span, div').forEach(function (el) {
+      if (SEASON_RE.test(cleanText(el))) {
+        el.classList.add('hs-green-season-label');
+      }
+    });
+  }
+
+  function schedulePolish(root) {
+    if (window.requestAnimationFrame) requestAnimationFrame(function () { polishControls(root); });
+    else setTimeout(function () { polishControls(root); }, 0);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { polishControls(document); });
+  } else {
+    polishControls(document);
+  }
+
+  new MutationObserver(function (mutations) {
+    mutations.forEach(function (mutation) {
+      mutation.addedNodes && mutation.addedNodes.forEach(function (node) {
+        if (node && node.nodeType === 1) schedulePolish(node);
+      });
+    });
+  }).observe(document.documentElement, { childList: true, subtree: true });
+})();
+</script>
+
+<script>
+(function(){
+  function isMobileLike(){ return window.matchMedia && (window.matchMedia('(max-width: 768px)').matches || window.matchMedia('(pointer: coarse)').matches); }
+  if ('serviceWorker' in navigator && isMobileLike()) {
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('./hs-offline-lite-sw.js').catch(function(err){ console.warn('[HuntSmart offline-lite]', err); });
+    });
+  }
+})();
+</script>
+
 </body>
 </html>

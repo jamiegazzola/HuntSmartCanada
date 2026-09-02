@@ -21,6 +21,7 @@ function clearAbProfile() {
   localStorage.removeItem(AB_PROFILE_KEY);
 }
 let activeProvince = 'BC'; // 'BC' or 'AB'
+function padHuntCode(code) { const s = String(code ?? '').trim(); return /^\d+$/.test(s) ? s.padStart(4, '0') : s; }
 
 // ── DATA SOURCES ──
 const DATA_URL = 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/draws.json';
@@ -43,9 +44,22 @@ const AB_BISON_HISTORY_URL = 'https://raw.githubusercontent.com/jamiegazzola/Hun
 let AB_BISON_HISTORY = null; // [ { season, pct }, ... ] — province-level, no WMU breakdown
 
 async function loadAppData() {
-  const response = await fetch(DATA_URL);
-  if (!response.ok) throw new Error(`Failed to load draw data: ${response.status}`);
-  DATA = await response.json();
+  // Prefer the deployed/local draws.json so current synopsis updates stay in sync
+  // with the app bundle. Fall back to GitHub only if local is unavailable.
+  const urls = ['./draws.json', DATA_URL];
+  let lastErr = null;
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, { cache: 'no-cache' });
+      if (!response.ok) throw new Error(`${url} HTTP ${response.status}`);
+      DATA = await response.json();
+      return;
+    } catch (err) {
+      lastErr = err;
+      console.warn('[loadAppData] failed:', err.message || err);
+    }
+  }
+  throw new Error(`Failed to load draw data: ${lastErr?.message || lastErr}`);
 }
 
 async function loadABData() {
@@ -208,16 +222,43 @@ async function loadABBisonHistory() {
 async function loadWriteups() {
   if (WRITEUPS) return WRITEUPS;
   if (WRITEUPS_LOADING) return WRITEUPS_LOADING;
-  WRITEUPS_LOADING = fetch(WRITEUPS_URL)
-    .then(r => r.ok ? r.json() : {})
-    .then(data => { WRITEUPS = data; return data; });
+
+  // Prefer the deployed/local writeups.json so card text stays in sync
+  // with the app bundle. Fall back to GitHub only if local is unavailable.
+  const urls = ['./writeups.json', WRITEUPS_URL];
+  WRITEUPS_LOADING = (async () => {
+    let lastErr = null;
+    for (const url of urls) {
+      try {
+        const response = await fetch(url, { cache: 'no-cache' });
+        if (!response.ok) throw new Error(`${url} HTTP ${response.status}`);
+        WRITEUPS = await response.json();
+        return WRITEUPS;
+      } catch (err) {
+        lastErr = err;
+        console.warn('[loadWriteups] failed:', err.message || err);
+      }
+    }
+    console.warn('[loadWriteups] using empty writeups after failure:', lastErr?.message || lastErr);
+    WRITEUPS = {};
+    return WRITEUPS;
+  })();
+
   return WRITEUPS_LOADING;
 }
 
 function getWriteup(r) {
   if (!WRITEUPS) return null;
-  const key = `${r.Species}_${r.MU}_${r.Code}`;
-  return WRITEUPS[key] || null;
+  const paddedCode = padHuntCode(r.Code);
+  const key = `${r.Species}_${r.MU}_${paddedCode}`;
+  if (WRITEUPS[key]) return WRITEUPS[key];
+
+  // Backward-compatible fallback for any older writeups.json that used
+  // unpadded codes like _1 instead of _0001.
+  const rawCode = String(r.Code ?? '').trim();
+  const unpaddedCode = /^\d+$/.test(rawCode) ? String(Number(rawCode)) : rawCode;
+  const legacyKey = `${r.Species}_${r.MU}_${unpaddedCode}`;
+  return WRITEUPS[legacyKey] || null;
 }
 
 async function loadABTerrain() {

@@ -1,5 +1,60 @@
 let _drawDetailData = null; // { type: 'BC'|'AB', data: r|c }
 
+
+function ddReturnToPreviousPage(defaultPage) {
+  const target = window.__drawDetailReturnPage || defaultPage;
+  window.__drawDetailReturnPage = null;
+  showPage(target || defaultPage);
+}
+
+function ddEscape(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+function ddDetailIsSaved() {
+  if (!_drawDetailData) return false;
+  const { type, data } = _drawDetailData;
+  try {
+    if (type === 'BC') return typeof isStarred === 'function' ? isStarred(data) : (Array.isArray(savedDraws) && savedDraws.some(s => typeof bcSavedMatchesDraw === 'function' ? bcSavedMatchesDraw(s, data) : (String(s.Code) === String(data.Code) && String(s.MU) === String(data.MU))));
+    const key = data._key || (data.species + '_' + data.wmu).replace(/\s+/g, '_');
+    return Array.isArray(abSavedDraws) && abSavedDraws.some(s => s._key === key);
+  } catch(e) { return false; }
+}
+
+function ddToggleDetailSave() {
+  if (!_drawDetailData) return;
+  const { type, data } = _drawDetailData;
+  try {
+    if (type === 'BC') {
+      const idx = savedDraws.findIndex(s => typeof bcSavedMatchesDraw === 'function' ? bcSavedMatchesDraw(s, data) : (String(s.Code) === String(data.Code) && String(s.MU) === String(data.MU)));
+      if (idx >= 0) {
+        const key = savedDraws[idx]._key || (typeof bcDrawStableKey === 'function' ? bcDrawStableKey(data) : `${data.Code}_${data.MU}`);
+        savedDraws.splice(idx, 1);
+        import('./sync.js').then(m => m.syncRemoveBCDraw && m.syncRemoveBCDraw(key)).catch(()=>{});
+      } else {
+        const entry = { ...data, Code: typeof padHuntCode === 'function' ? padHuntCode(data.Code) : data.Code, _key: typeof bcDrawStableKey === 'function' ? bcDrawStableKey(data) : `${data.Code}_${data.MU}` };
+        savedDraws.push(entry);
+        import('./sync.js').then(m => m.syncSaveBCDraw && m.syncSaveBCDraw(entry)).catch(()=>{});
+      }
+      localStorage.setItem('huntodds_saved', JSON.stringify(savedDraws));
+    } else {
+      const key = data._key || (data.species + '_' + data.wmu).replace(/\s+/g, '_');
+      const idx = abSavedDraws.findIndex(s => s._key === key);
+      if (idx >= 0) {
+        abSavedDraws.splice(idx, 1);
+        import('./sync.js').then(m => m.syncRemoveABDraw && m.syncRemoveABDraw(key)).catch(()=>{});
+      } else {
+        const entry = { ...data, _key: key };
+        abSavedDraws.push(entry);
+        import('./sync.js').then(m => m.syncSaveABDraw && m.syncSaveABDraw(entry)).catch(()=>{});
+      }
+      localStorage.setItem('huntodds_ab_saved', JSON.stringify(abSavedDraws));
+    }
+    if (typeof updateSavedBadge === 'function') updateSavedBadge();
+  } catch(e) { console.warn('[detail save]', e); }
+  renderDrawDetailPage();
+}
+
 function openDrawDetail(i) {
   const r = filtered[i];
   if (!r) return;
@@ -45,16 +100,31 @@ function renderDrawDetailPage() {
   if (!page || !_drawDetailData) return;
   const { type, data: d } = _drawDetailData;
 
-  let html = `<div class="draw-detail-wrap">
-    <div class="draw-detail-back">
-      <button onclick="showPage('${type==='BC'?'draws':'abDraws'}')" class="dd-back-btn">← Back to draws</button>
+  const defaultBackPage = type === 'BC' ? 'draws' : 'abDraws';
+  const backLabel = window.__drawDetailReturnPage === 'map' ? '← Back to map' : '← Back to draws';
+  const savedNow = ddDetailIsSaved();
+  let html = `<div class="draw-detail-wrap hs-dd-v80-wrap">
+    <div class="draw-detail-back dd-back-row">
+      <button onclick="ddReturnToPreviousPage('${defaultBackPage}')" class="dd-back-btn">${backLabel}</button>
+      <button onclick="ddToggleDetailSave()" class="dd-save-star ${savedNow ? 'starred' : ''}" title="${savedNow ? 'Remove from saved' : 'Save draw'}" aria-label="${savedNow ? 'Remove from saved' : 'Save draw'}">★</button>
     </div>`;
 
   if (type === 'BC') {
     const r = d;
-    const actualPct = getBCActualOdds(r);
-    const pct = actualPct !== null ? fmt(actualPct) : fmt(r['%']);
-    const cls = oddsClass(actualPct !== null ? actualPct : r['%']);
+    const isNewDraw = (typeof isNewSynopsisHunt === 'function') ? isNewSynopsisHunt(r) : !!r.is_new;
+    const rowPct = parseFloat(r['%']);
+    const actualPctRaw = (typeof getBCActualOdds === 'function') ? getBCActualOdds(r) : null;
+    // Ultra-low odds can be rounded to 0.0 in yearly history; prefer the row's precise % when present.
+    const actualPct = (isFinite(rowPct) && rowPct > 0) ? rowPct : actualPctRaw;
+    const ddFmtOdds = (p) => {
+      const n = parseFloat(p);
+      if (!isFinite(n)) return '?%';
+      if (n > 0 && n < 0.1) return n.toFixed(2) + '%';
+      const val = (n > 0 && n.toFixed(1) === '0.0') ? n.toFixed(2) : (n >= 10 ? Math.round(n) : n.toFixed(1));
+      return val + '%';
+    };
+    const pct = isNewDraw ? 'NEW' : (actualPct !== null ? ddFmtOdds(actualPct) : ddFmtOdds(r['%']));
+    const cls = isNewDraw ? 'new' : oddsClass(actualPct !== null ? actualPct : r['%']);
     const fr = computeHarvestAvg(r.yearly_fill_rates);
     const frFmt = fr !== null ? fr + '%' : '—';
     const frCls = fr !== null ? (fr >= 50 ? 'fill-high' : fr >= 25 ? 'fill-mid' : 'fill-low') : 'fill-none';
