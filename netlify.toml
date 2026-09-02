@@ -1,3 +1,4 @@
+# HuntSmart GitHub-backed preview deployment
 [build]
   publish = "."
 
