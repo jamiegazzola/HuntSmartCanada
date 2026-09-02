@@ -86,11 +86,11 @@
 
   /* Map each stat element to its real end value */
   var statData = [
-    { suffix: '',  end: 1138 },
-    { suffix: '',  end: 1236 },
-    { suffix: '+', end: 25   },
-    { suffix: '',  end: 10   },
-    { suffix: '',  end: 8    }
+    { suffix: '',  end: 1138 },   /* BC draw codes      */
+    { suffix: '',  end: 1236 },   /* Alberta draws      */
+    { suffix: '+', end: 25   },   /* Years of BC data   */
+    { suffix: '',  end: 10   },   /* BC species         */
+    { suffix: '',  end: 8    }    /* AB species         */
   ];
 
   function animateCounter(el, endVal, suffix, duration) {
@@ -99,6 +99,7 @@
     function step(timestamp) {
       if (!startTime) startTime = timestamp;
       var progress = Math.min((timestamp - startTime) / duration, 1);
+      /* ease out cubic */
       var eased = 1 - Math.pow(1 - progress, 3);
       var current = Math.round(startVal + (endVal - startVal) * eased);
       el.textContent = current.toLocaleString() + suffix;
@@ -112,6 +113,7 @@
     var statEls = document.querySelectorAll('.home-stat-num');
     statEls.forEach(function(el, i) {
       if (!statData[i]) return;
+      /* store original text so counters don't break on re-init */
       el.dataset.end    = statData[i].end;
       el.dataset.suffix = statData[i].suffix;
       el.dataset.counted = '0';
@@ -140,13 +142,18 @@
   }
 
   /* ══════════════════════════════════════
-     5. MAP LAYER OPACITY
-     Lets WMU + LEH overlays fade over the basemap.
+     5. MAP LAYER OPACITY — preview only
+     Attaches without replacing HuntSmart navigation functions.
   ══════════════════════════════════════ */
-  var _hsWmuOpacity = parseInt(localStorage.getItem('hs_map_wmu_opacity') || '100', 10);
+  var _hsWmuOpacity = 100;
+  var _hsBoundMap = null;
+  var _hsMapObserver = null;
+
+  try {
+    var savedWmuOpacity = localStorage.getItem('hs_map_wmu_opacity');
+    if (savedWmuOpacity !== null) _hsWmuOpacity = parseInt(savedWmuOpacity, 10);
+  } catch (e) {}
   if (isNaN(_hsWmuOpacity)) _hsWmuOpacity = 100;
-  var _hsOpacityBoundMap = null;
-  var _hsOpacityRetries = 0;
 
   function getFullMap() {
     try {
@@ -159,8 +166,8 @@
   function applyWmuOpacity() {
     var map = getFullMap();
     if (!map || !map.getLayer || !map.setPaintProperty || !map.getLayer('wmu-fill')) return;
-
     var factor = Math.max(0, Math.min(1, _hsWmuOpacity / 100));
+
     map.setPaintProperty('wmu-fill', 'fill-opacity', [
       'case',
       ['boolean', ['feature-state', 'selected'], false], 0.75 * factor,
@@ -170,7 +177,7 @@
     ]);
 
     if (map.getLayer('wmu-line')) {
-      map.setPaintProperty('wmu-line', 'line-opacity', 0.8 * factor);
+      map.setPaintProperty('wmu-line', 'line-opacity', Math.max(0.12, 0.8 * factor));
     }
   }
 
@@ -178,109 +185,119 @@
     var map = getFullMap();
     if (!map || !map.getLayer || !map.setPaintProperty || !map.getLayer('leh-line')) return;
     var opacity = Math.max(0, Math.min(1, parseFloat(val) || 0));
-    map.setPaintProperty('leh-line', 'line-opacity', Math.min(0.9, 0.9 * (opacity / 0.35)));
+    map.setPaintProperty('leh-line', 'line-opacity', opacity === 0 ? 0 : Math.min(0.9, 0.9 * (opacity / 0.35)));
   }
 
   function applySavedLehOpacity() {
     var slider = document.getElementById('fullMapLEHOpacity');
     if (!slider) return;
-    var saved = localStorage.getItem('hs_map_leh_opacity');
-    if (saved !== null) slider.value = saved;
+
+    try {
+      var saved = localStorage.getItem('hs_map_leh_opacity');
+      if (saved !== null) slider.value = saved;
+    } catch (e) {}
+
     try {
       if (typeof fullMapSetLEHOpacity === 'function') fullMapSetLEHOpacity(slider.value);
     } catch (e) {}
     applyLehLineOpacity(slider.value);
   }
 
-  function bindToCurrentMap() {
+  function bindMapEvents() {
     var map = getFullMap();
-    if (!map || map === _hsOpacityBoundMap || !map.on) return;
-    _hsOpacityBoundMap = map;
-    map.on('style.load', function() {
-      setTimeout(function() {
-        applyWmuOpacity();
-        applySavedLehOpacity();
-      }, 80);
-    });
+    if (!map || !map.on || map === _hsBoundMap) return;
+    _hsBoundMap = map;
+
     map.on('load', function() {
       setTimeout(function() {
         applyWmuOpacity();
         applySavedLehOpacity();
-      }, 80);
+      }, 100);
+    });
+
+    map.on('style.load', function() {
+      setTimeout(function() {
+        applyWmuOpacity();
+        applySavedLehOpacity();
+      }, 100);
     });
   }
 
   function initMapOpacityControls() {
-    var mapPage = document.getElementById('mapPage');
-    if (!mapPage || mapPage.style.display === 'none') return;
+    try {
+      var mapPage = document.getElementById('mapPage');
+      if (!mapPage || mapPage.style.display === 'none') return;
 
-    var lehBtn = document.getElementById('fullMapLEHToggle');
-    var topbarRow = lehBtn && lehBtn.parentNode;
-    if (!topbarRow) {
-      if (_hsOpacityRetries++ < 12) setTimeout(initMapOpacityControls, 120);
-      return;
-    }
-    _hsOpacityRetries = 0;
+      var lehBtn = document.getElementById('fullMapLEHToggle');
+      if (!lehBtn || !lehBtn.parentNode) return;
+      var topbarRow = lehBtn.parentNode;
 
-    var wrap = document.getElementById('hsMapWmuOpacityWrap');
-    if (!wrap) {
-      wrap = document.createElement('div');
-      wrap.id = 'hsMapWmuOpacityWrap';
-      wrap.style.cssText = 'display:flex;align-items:center;gap:5px;white-space:nowrap';
-      wrap.innerHTML =
-        '<span style="font-size:10px;color:#888">WMU opacity</span>' +
-        '<input id="hsMapWmuOpacity" type="range" min="0" max="100" step="5" value="' + _hsWmuOpacity + '" ' +
-        'title="Fade WMU colours and borders" style="width:68px;accent-color:#4ade80;cursor:pointer;vertical-align:middle">';
-      topbarRow.insertBefore(wrap, lehBtn);
+      var wrap = document.getElementById('hsMapWmuOpacityWrap');
+      if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.id = 'hsMapWmuOpacityWrap';
+        wrap.style.cssText = 'display:flex;align-items:center;gap:5px;white-space:nowrap';
+        wrap.innerHTML =
+          '<span style="font-size:10px;color:#888">WMU opacity</span>' +
+          '<input id="hsMapWmuOpacity" type="range" min="0" max="100" step="5" value="' + _hsWmuOpacity + '" ' +
+          'title="Fade WMU colours" style="width:68px;accent-color:#4ade80;cursor:pointer;vertical-align:middle">';
+        topbarRow.insertBefore(wrap, lehBtn);
 
-      var wmuSlider = document.getElementById('hsMapWmuOpacity');
-      if (wmuSlider) {
-        wmuSlider.addEventListener('input', function() {
-          _hsWmuOpacity = parseInt(this.value, 10);
-          localStorage.setItem('hs_map_wmu_opacity', String(_hsWmuOpacity));
-          applyWmuOpacity();
-        });
-      }
-    }
-
-    var lehSlider = document.getElementById('fullMapLEHOpacity');
-    if (lehSlider) {
-      lehSlider.min = '0';
-      lehSlider.max = '1';
-      lehSlider.step = '0.05';
-      lehSlider.title = 'Fade LEH zone colours';
-
-      var lehLabel = lehSlider.previousElementSibling;
-      if (lehLabel && /opacity/i.test(lehLabel.textContent || '')) {
-        lehLabel.textContent = 'LEH opacity';
+        var wmuSlider = document.getElementById('hsMapWmuOpacity');
+        if (wmuSlider) {
+          wmuSlider.addEventListener('input', function() {
+            _hsWmuOpacity = parseInt(this.value, 10);
+            if (isNaN(_hsWmuOpacity)) _hsWmuOpacity = 100;
+            try { localStorage.setItem('hs_map_wmu_opacity', String(_hsWmuOpacity)); } catch (e) {}
+            applyWmuOpacity();
+          });
+        }
       }
 
-      if (!lehSlider.dataset.hsOpacityBound) {
-        lehSlider.dataset.hsOpacityBound = '1';
-        lehSlider.addEventListener('input', function() {
-          localStorage.setItem('hs_map_leh_opacity', this.value);
-          applyLehLineOpacity(this.value);
-        });
-      }
-    }
+      var lehSlider = document.getElementById('fullMapLEHOpacity');
+      if (lehSlider) {
+        lehSlider.min = '0';
+        lehSlider.max = '0.8';
+        lehSlider.step = '0.05';
+        lehSlider.title = 'Fade LEH zone colours';
 
-    bindToCurrentMap();
-    setTimeout(function() {
+        var lehLabel = lehSlider.previousElementSibling;
+        if (lehLabel && /opacity/i.test(lehLabel.textContent || '')) {
+          lehLabel.textContent = 'LEH opacity';
+        }
+
+        if (!lehSlider.dataset.hsOpacityBound) {
+          lehSlider.dataset.hsOpacityBound = '1';
+          lehSlider.addEventListener('input', function() {
+            try { localStorage.setItem('hs_map_leh_opacity', this.value); } catch (e) {}
+            applyLehLineOpacity(this.value);
+          });
+        }
+      }
+
+      bindMapEvents();
       applyWmuOpacity();
       applySavedLehOpacity();
-    }, 180);
+    } catch (e) {
+      /* Preview helper must never interfere with HuntSmart's core controls. */
+    }
   }
 
-  if (typeof window.fullMapSetProvince === 'function' && !window._hsOpacityProvinceWrapped) {
-    window._hsOpacityProvinceWrapped = true;
-    var _origSetProvince = window.fullMapSetProvince;
-    window.fullMapSetProvince = function() {
-      var result = _origSetProvince.apply(this, arguments);
-      _hsOpacityBoundMap = null;
-      setTimeout(initMapOpacityControls, 220);
-      setTimeout(initMapOpacityControls, 700);
-      return result;
-    };
+  function scheduleMapOpacityInit() {
+    setTimeout(initMapOpacityControls, 50);
+    setTimeout(initMapOpacityControls, 250);
+    setTimeout(initMapOpacityControls, 700);
+    setTimeout(initMapOpacityControls, 1400);
+  }
+
+  function watchMapPage() {
+    var mapPage = document.getElementById('mapPage');
+    if (!mapPage || typeof MutationObserver === 'undefined') return;
+    if (_hsMapObserver) _hsMapObserver.disconnect();
+    _hsMapObserver = new MutationObserver(function() {
+      if (mapPage.style.display !== 'none') scheduleMapOpacityInit();
+    });
+    _hsMapObserver.observe(mapPage, { attributes: true, attributeFilter: ['style', 'class'] });
   }
 
   /* ══════════════════════════════════════
@@ -294,24 +311,28 @@
     initCounters();
   }
 
+  /* hook into your existing showPage function */
   var _origShowPage = window.showPage;
   window.showPage = function(page) {
     if (_origShowPage) _origShowPage(page);
     if (page === 'home') {
       setTimeout(init, 60);
-    } else if (page === 'map') {
-      glow.classList.remove('active');
-      setTimeout(initMapOpacityControls, 120);
-      setTimeout(initMapOpacityControls, 500);
     } else {
       glow.classList.remove('active');
     }
   };
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
+  /* initial load */
+  function start() {
     init();
+    watchMapPage();
+    scheduleMapOpacityInit();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
   }
 
 })();
