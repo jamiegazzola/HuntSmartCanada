@@ -1,0 +1,690 @@
+/* HuntSmart paid-product UX polish — preview branch only
+   High-impact visual system for cards, detail views and mobile navigation.
+   Keeps the existing HuntSmart dark / forest-green identity. */
+
+:root {
+  --hs-green: #57c86b;
+  --hs-green-soft: rgba(87,200,107,.12);
+  --hs-green-line: rgba(87,200,107,.30);
+  --hs-panel: #171a1b;
+  --hs-panel-2: #1d2122;
+  --hs-panel-3: #232829;
+  --hs-border: rgba(255,255,255,.085);
+  --hs-border-strong: rgba(255,255,255,.14);
+  --hs-copy: #dce3df;
+  --hs-copy-2: #98a39d;
+  --hs-copy-3: #66716b;
+  --hs-shadow: 0 14px 38px rgba(0,0,0,.24);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   GLOBAL PRODUCT FEEL
+   ───────────────────────────────────────────────────────────── */
+body {
+  background:
+    radial-gradient(circle at 50% -220px, rgba(58,125,68,.08), transparent 540px),
+    var(--bg);
+}
+
+nav {
+  background: rgba(11,13,13,.94);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom-color: rgba(255,255,255,.075);
+}
+
+.nav-link {
+  border-radius: 8px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+}
+.nav-link.active {
+  background: rgba(255,255,255,.065);
+  border-color: rgba(255,255,255,.09);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+button, .card, .fm-card, .dd-card, .dd-hero {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   BC + ALBERTA RESULT CARDS
+   ───────────────────────────────────────────────────────────── */
+#cardsGrid .card,
+#abCardsGrid .card,
+#savedPage .card {
+  background: linear-gradient(145deg, rgba(29,33,34,.98), rgba(20,23,24,.98));
+  border: 1px solid var(--hs-border);
+  border-radius: 16px;
+  padding: 20px 20px 18px;
+  box-shadow: 0 1px 0 rgba(255,255,255,.025) inset;
+  overflow: visible;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+#cardsGrid .card:hover,
+#abCardsGrid .card:hover,
+#savedPage .card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(87,200,107,.24);
+  background: linear-gradient(145deg, rgba(31,36,36,.99), rgba(22,25,26,.99));
+  box-shadow: var(--hs-shadow), 0 1px 0 rgba(255,255,255,.04) inset;
+}
+#cardsGrid .card.green,
+#abCardsGrid .card.green,
+#savedPage .card.green { box-shadow: inset 3px 0 0 rgba(87,200,107,.70); }
+#cardsGrid .card.yellow,
+#abCardsGrid .card.yellow,
+#savedPage .card.yellow { box-shadow: inset 3px 0 0 rgba(232,185,70,.65); }
+#cardsGrid .card.red,
+#abCardsGrid .card.red,
+#savedPage .card.red { box-shadow: inset 3px 0 0 rgba(211,102,88,.58); }
+
+#cardsGrid .card-header,
+#abCardsGrid .card-header,
+#savedPage .card-header {
+  align-items: flex-start;
+  gap: 16px;
+  padding-right: 38px;
+  margin-bottom: 16px;
+}
+
+#cardsGrid .card-species,
+#abCardsGrid .card-species,
+#savedPage .card-species {
+  font-family: 'Playfair Display', serif;
+  color: #f0f3f1;
+  font-size: 21px;
+  line-height: 1.08;
+  letter-spacing: -.025em;
+  font-weight: 700;
+}
+#cardsGrid .card-class,
+#abCardsGrid .card-class,
+#savedPage .card-class {
+  color: var(--hs-copy-2);
+  font-size: 12px;
+  line-height: 1.35;
+  margin-top: 6px;
+  font-weight: 550;
+}
+
+#cardsGrid .odds-badge,
+#abCardsGrid .odds-badge,
+#savedPage .odds-badge {
+  min-width: 104px;
+  padding: 11px 12px 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  background: rgba(7,10,9,.38);
+  text-align: right;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
+}
+#cardsGrid .odds-pct,
+#abCardsGrid .odds-pct,
+#savedPage .odds-pct {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: -.045em;
+  font-weight: 800;
+}
+#cardsGrid .odds-ratio,
+#abCardsGrid .odds-ratio,
+#savedPage .odds-ratio {
+  color: var(--hs-copy-3);
+  font-size: 9.5px;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: .075em;
+  font-weight: 750;
+  margin-top: 6px;
+}
+
+#cardsGrid .fill-badge,
+#abCardsGrid .fill-badge,
+#savedPage .fill-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  margin-top: 10px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255,255,255,.065);
+  border-radius: 999px;
+  background: rgba(255,255,255,.035);
+  font-size: 10px;
+}
+#cardsGrid .fill-pct,
+#abCardsGrid .fill-pct,
+#savedPage .fill-pct { font-weight: 800; }
+#cardsGrid .fill-sub,
+#abCardsGrid .fill-sub,
+#savedPage .fill-sub { color: var(--hs-copy-3); font-weight: 650; }
+
+#cardsGrid .card-info,
+#abCardsGrid .card-info,
+#savedPage .card-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin: 0 -4px;
+  padding: 10px 4px;
+  border-top: 1px solid rgba(255,255,255,.055);
+  border-bottom: 1px solid rgba(255,255,255,.055);
+}
+#cardsGrid .ci,
+#abCardsGrid .ci,
+#savedPage .ci {
+  padding: 7px 10px;
+  min-width: 0;
+}
+#cardsGrid .ci:nth-child(even),
+#abCardsGrid .ci:nth-child(even),
+#savedPage .ci:nth-child(even) {
+  border-left: 1px solid rgba(255,255,255,.045);
+}
+#cardsGrid .ci-label,
+#abCardsGrid .ci-label,
+#savedPage .ci-label {
+  color: var(--hs-copy-3);
+  font-size: 9px;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  font-weight: 750;
+  margin-bottom: 4px;
+}
+#cardsGrid .ci-val,
+#abCardsGrid .ci-val,
+#savedPage .ci-val {
+  color: var(--hs-copy);
+  font-size: 12.5px;
+  line-height: 1.32;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#cardsGrid .card-footer,
+#abCardsGrid .card-footer,
+#savedPage .card-footer {
+  min-height: 28px;
+  margin-top: 12px;
+  color: var(--hs-copy-2);
+}
+
+#cardsGrid .star-btn,
+#abCardsGrid .star-btn,
+#savedPage .star-btn {
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 9px;
+  color: #6c746f;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(8,10,10,.62);
+  opacity: 1 !important;
+  transition: color .15s, border-color .15s, background .15s, transform .15s;
+}
+#cardsGrid .star-btn:hover,
+#abCardsGrid .star-btn:hover,
+#savedPage .star-btn:hover { transform: scale(1.04); border-color: rgba(255,255,255,.15); color: #cbd2ce; }
+#cardsGrid .star-btn.starred,
+#abCardsGrid .star-btn.starred,
+#savedPage .star-btn.starred { color: #f1c75b; background: rgba(241,199,91,.09); border-color: rgba(241,199,91,.25); }
+
+.hs-card-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 13px;
+}
+.hs-view-hunt-btn,
+.hs-card-actions .expand-toggle {
+  position: static !important;
+  width: 100%;
+  min-height: 38px;
+  margin: 0 !important;
+  border-radius: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, transform .12s;
+}
+.hs-view-hunt-btn {
+  border: 1px solid rgba(87,200,107,.32);
+  background: rgba(87,200,107,.11);
+  color: #78dc89;
+}
+.hs-view-hunt-btn:hover { background: rgba(87,200,107,.17); border-color: rgba(87,200,107,.48); transform: translateY(-1px); }
+.hs-card-actions .expand-toggle {
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.035);
+  color: var(--hs-copy-2);
+}
+.hs-card-actions .expand-toggle:hover { border-color: rgba(255,255,255,.14); color: var(--hs-copy); }
+
+#cardsGrid .card-expand,
+#abCardsGrid .card-expand,
+#savedPage .card-expand {
+  border-top-color: rgba(255,255,255,.07);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MAP RESULTS DRAWER CARDS
+   ───────────────────────────────────────────────────────────── */
+.fullmap-results-drawer {
+  background: rgba(16,19,19,.98) !important;
+  border-left-color: rgba(255,255,255,.075) !important;
+}
+.fullmap-results-grid { gap: 10px !important; }
+.fm-card {
+  background: linear-gradient(145deg, rgba(30,34,35,.98), rgba(22,25,26,.98)) !important;
+  border: 1px solid rgba(255,255,255,.085) !important;
+  border-radius: 13px !important;
+  padding: 14px !important;
+  gap: 8px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
+}
+.fm-card:hover {
+  border-color: rgba(87,200,107,.28) !important;
+  box-shadow: 0 10px 24px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.03);
+}
+.fm-card-species {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px !important;
+  line-height: 1.08;
+  letter-spacing: -.015em;
+}
+.fm-card-meta { color: var(--hs-copy-2) !important; line-height: 1.4; }
+.fm-card-odds {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 20px !important;
+  letter-spacing: -.035em;
+}
+.fm-card-bottom {
+  padding-top: 7px;
+  border-top: 1px solid rgba(255,255,255,.055);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SELECTED HUNT / DRAW DETAIL SCREEN
+   ───────────────────────────────────────────────────────────── */
+.draw-detail-wrap.hs-dd-v80-wrap,
+.draw-detail-wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-top: 34px;
+}
+.dd-back-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.dd-back-btn {
+  min-height: 36px;
+  border-radius: 10px !important;
+  background: rgba(255,255,255,.025) !important;
+  border: 1px solid rgba(255,255,255,.075) !important;
+  color: var(--hs-copy-2) !important;
+  font-weight: 650 !important;
+}
+.dd-back-btn:hover { color: var(--hs-copy) !important; border-color: rgba(255,255,255,.14) !important; }
+.dd-save-star {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 12px !important;
+  background: rgba(255,255,255,.035) !important;
+  border: 1px solid rgba(255,255,255,.09) !important;
+  color: #747d77 !important;
+  display: grid !important;
+  place-items: center;
+  font-size: 20px !important;
+}
+.dd-save-star.starred { color: #f1c75b !important; border-color: rgba(241,199,91,.27) !important; background: rgba(241,199,91,.08) !important; }
+
+.dd-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.085) !important;
+  border-left-width: 1px !important;
+  border-radius: 18px !important;
+  padding: 28px 30px !important;
+  margin-bottom: 14px !important;
+  background:
+    radial-gradient(circle at 88% 50%, rgba(87,200,107,.095), transparent 34%),
+    linear-gradient(145deg, rgba(28,32,32,.99), rgba(20,23,24,.99)) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.03) inset;
+}
+.dd-hero::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20px;
+  bottom: 20px;
+  width: 3px;
+  border-radius: 99px;
+  background: var(--hs-green);
+  opacity: .8;
+}
+.dd-hero.yellow::before { background: #e0b64f; }
+.dd-hero.red::before { background: #d36c5a; }
+.dd-species {
+  font-size: clamp(28px, 3vw, 38px) !important;
+  line-height: 1.02 !important;
+  letter-spacing: -.035em !important;
+  color: #f1f4f2 !important;
+}
+.dd-class {
+  margin-top: 8px !important;
+  color: #a7b0ab !important;
+  font-size: 13px !important;
+  font-weight: 600;
+}
+.dd-area {
+  margin-top: 7px !important;
+  color: #67726c !important;
+  font-size: 11.5px !important;
+  line-height: 1.45;
+}
+.dd-hero-right {
+  min-width: 158px;
+  padding: 15px 16px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px;
+  background: rgba(6,9,8,.33);
+}
+.dd-odds-big {
+  font-family: 'DM Sans', sans-serif !important;
+  font-size: 42px !important;
+  line-height: .95 !important;
+  letter-spacing: -.05em;
+}
+.dd-odds-big.new { letter-spacing: .06em !important; font-size: 30px !important; }
+.dd-odds-sub {
+  color: #87918b !important;
+  font-size: 9.5px !important;
+  letter-spacing: .095em !important;
+  margin-top: 7px !important;
+}
+.dd-odds-ratio {
+  color: #59635d !important;
+  font-size: 10px !important;
+  margin-top: 4px !important;
+}
+
+.hs-dd-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 9px;
+  margin: 0 0 14px;
+}
+.hs-dd-metric {
+  min-width: 0;
+  padding: 13px 14px;
+  background: rgba(26,30,30,.76);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 12px;
+}
+.hs-dd-metric-label {
+  color: #5f6963;
+  text-transform: uppercase;
+  letter-spacing: .085em;
+  font-size: 8.5px;
+  line-height: 1.2;
+  font-weight: 800;
+  margin-bottom: 5px;
+}
+.hs-dd-metric-value {
+  color: #dce2de;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hs-dd-new-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0 0 14px;
+  padding: 11px 13px;
+  border: 1px solid rgba(87,200,107,.16);
+  border-radius: 11px;
+  background: rgba(87,200,107,.055);
+  color: #92a99a;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+.hs-dd-new-note strong { color: #78d98a; }
+
+.dd-grid {
+  gap: 12px !important;
+  margin-bottom: 12px !important;
+}
+.dd-card,
+.dd-chart-section {
+  border: 1px solid rgba(255,255,255,.075) !important;
+  border-radius: 14px !important;
+  background: linear-gradient(145deg, rgba(25,29,29,.94), rgba(20,23,24,.94)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.02);
+}
+.dd-card { padding: 18px 20px !important; }
+.dd-chart-section { padding: 20px !important; margin-top: 12px !important; }
+.dd-card-title {
+  color: #63b971 !important;
+  font-size: 9px !important;
+  line-height: 1.2;
+  font-weight: 800 !important;
+  text-transform: uppercase;
+  letter-spacing: .105em !important;
+  margin-bottom: 12px !important;
+}
+.dd-row {
+  min-height: 40px;
+  padding: 9px 0 !important;
+  border-bottom-color: rgba(255,255,255,.052) !important;
+  gap: 14px;
+}
+.dd-row:last-child { border-bottom: 0 !important; }
+.dd-lbl {
+  color: #64706a !important;
+  font-size: 11px !important;
+  line-height: 1.3;
+  font-weight: 550;
+}
+.dd-val {
+  color: #dde3df !important;
+  font-size: 12px !important;
+  line-height: 1.35;
+  font-weight: 700 !important;
+  text-align: right;
+}
+.dd-note {
+  margin-top: 8px;
+  padding: 10px 11px !important;
+  border: 1px solid rgba(224,182,79,.14) !important;
+  border-radius: 9px;
+  background: rgba(224,182,79,.045);
+  color: #a99b77 !important;
+  line-height: 1.45;
+}
+.dd-writeup { margin-top: 12px !important; }
+.dd-wu-section { border-top-color: rgba(255,255,255,.055) !important; }
+.dd-wu-label { color: #87928c !important; }
+.dd-wu-body { color: #9ca6a1 !important; line-height: 1.72 !important; }
+
+/* ─────────────────────────────────────────────────────────────
+   MOBILE: NATIVE-LIKE TOP + BOTTOM NAVIGATION
+   ───────────────────────────────────────────────────────────── */
+.hs-mobile-tabbar,
+.hs-draws-sheet-backdrop { display: none; }
+
+@media (max-width: 768px) {
+  body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+
+  nav {
+    height: calc(52px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 15px 0;
+  }
+  nav .nav-center,
+  nav .nav-hamburger { display: none !important; }
+  .nav-mobile-menu { display: none !important; }
+  .nav-brand-top { font-size: 15px; }
+  .nav-brand-sub { font-size: 8px; letter-spacing: 1px; }
+  #authNavBtn { min-width: 38px; height: 36px; padding: 0 10px; border-radius: 10px; }
+
+  .hs-mobile-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 12000;
+    height: calc(62px + env(safe-area-inset-bottom));
+    padding: 6px 8px env(safe-area-inset-bottom);
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    background: rgba(10,12,12,.965);
+    border-top: 1px solid rgba(255,255,255,.085);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    box-shadow: 0 -10px 32px rgba(0,0,0,.22);
+  }
+  .hs-mobile-tab {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: #626d67;
+    font: 650 9px/1 'DM Sans', sans-serif;
+    cursor: pointer;
+  }
+  .hs-mobile-tab svg { width: 19px; height: 19px; stroke-width: 1.8; }
+  .hs-mobile-tab.active { color: #72d883; }
+  .hs-mobile-tab.active::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    width: 26px;
+    height: 2px;
+    border-radius: 99px;
+    background: #62ce74;
+  }
+
+  .hs-draws-sheet-backdrop.open {
+    position: fixed;
+    inset: 0;
+    z-index: 12100;
+    display: flex;
+    align-items: flex-end;
+    background: rgba(0,0,0,.54);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+  .hs-draws-sheet {
+    width: 100%;
+    padding: 10px 14px calc(16px + env(safe-area-inset-bottom));
+    border: 1px solid rgba(255,255,255,.09);
+    border-bottom: 0;
+    border-radius: 20px 20px 0 0;
+    background: #151919;
+    box-shadow: 0 -18px 46px rgba(0,0,0,.4);
+  }
+  .hs-draws-sheet-handle { width: 34px; height: 4px; margin: 1px auto 14px; border-radius: 99px; background: rgba(255,255,255,.14); }
+  .hs-draws-sheet-title { color: #edf2ef; font: 700 18px/1.2 'Playfair Display', serif; padding: 0 4px 4px; }
+  .hs-draws-sheet-sub { color: #65716a; font-size: 11px; line-height: 1.45; padding: 0 4px 12px; }
+  .hs-draws-choice {
+    width: 100%;
+    min-height: 58px;
+    margin-top: 7px;
+    padding: 11px 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    border-radius: 13px;
+    border: 1px solid rgba(255,255,255,.075);
+    background: rgba(255,255,255,.035);
+    color: #dce3df;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .hs-draws-choice strong { display: block; font-size: 13px; }
+  .hs-draws-choice span { display: block; margin-top: 3px; color: #68736d; font-size: 10px; }
+  .hs-draws-choice-arrow { color: #69d17b !important; font-size: 16px !important; margin: 0 !important; }
+
+  /* cards */
+  #cardsGrid .card,
+  #abCardsGrid .card,
+  #savedPage .card { padding: 17px 15px 15px; border-radius: 14px; }
+  #cardsGrid .card-header,
+  #abCardsGrid .card-header,
+  #savedPage .card-header { padding-right: 34px; gap: 10px; margin-bottom: 13px; }
+  #cardsGrid .card-species,
+  #abCardsGrid .card-species,
+  #savedPage .card-species { font-size: 19px; }
+  #cardsGrid .odds-badge,
+  #abCardsGrid .odds-badge,
+  #savedPage .odds-badge { min-width: 88px; padding: 9px 10px; }
+  #cardsGrid .odds-pct,
+  #abCardsGrid .odds-pct,
+  #savedPage .odds-pct { font-size: 24px; }
+  #cardsGrid .card-info,
+  #abCardsGrid .card-info,
+  #savedPage .card-info { grid-template-columns: 1fr 1fr; }
+  .hs-card-actions { grid-template-columns: 1.15fr .85fr; }
+  .hs-view-hunt-btn,
+  .hs-card-actions .expand-toggle { min-height: 42px; font-size: 11px; }
+
+  /* detail page */
+  .draw-detail-wrap.hs-dd-v80-wrap,
+  .draw-detail-wrap { padding: 14px 14px 90px !important; }
+  .dd-back-row { margin-bottom: 12px; }
+  .dd-hero {
+    padding: 20px 18px !important;
+    border-radius: 15px !important;
+    gap: 16px !important;
+  }
+  .dd-hero::before { top: 17px; bottom: 17px; }
+  .dd-hero-right {
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 10px;
+    align-items: center;
+    text-align: left !important;
+    padding: 12px 13px;
+  }
+  .dd-odds-big { grid-row: 1 / 3; font-size: 34px !important; }
+  .dd-odds-sub { margin-top: 0 !important; align-self: end; }
+  .dd-odds-ratio { align-self: start; margin-top: 2px !important; }
+  .dd-species { font-size: 28px !important; }
+  .hs-dd-metrics { grid-template-columns: 1fr 1fr; gap: 7px; }
+  .hs-dd-metric { padding: 11px 12px; }
+  .dd-grid { grid-template-columns: 1fr !important; }
+  .dd-card { padding: 16px !important; }
+  .dd-chart-section { padding: 16px !important; overflow-x: hidden; }
+}
+
+@media (max-width: 390px) {
+  #cardsGrid .card-info,
+  #abCardsGrid .card-info,
+  #savedPage .card-info { grid-template-columns: 1fr; }
+  #cardsGrid .ci:nth-child(even),
+  #abCardsGrid .ci:nth-child(even),
+  #savedPage .ci:nth-child(even) { border-left: 0; }
+  .hs-card-actions { grid-template-columns: 1fr; }
+}
