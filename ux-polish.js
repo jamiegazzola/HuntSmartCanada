@@ -22,72 +22,6 @@
     if (eyebrow && /2025\s+Season/i.test(eyebrow.textContent || '')) {
       eyebrow.textContent = 'British Columbia & Alberta · 2026/27 Season';
     }
-
-    document.querySelectorAll('[data-hs-gos-copy]').forEach(function (el) {
-      el.textContent = 'Open Seasons';
-    });
-  }
-
-  /* ───────────────────────────────────────────────────────────
-     MOBILE TAB BAR
-     ─────────────────────────────────────────────────────────── */
-  function buildMobileTabs() {
-    if (qs('hsMobileTabbar')) return;
-
-    var bar = document.createElement('nav');
-    bar.id = 'hsMobileTabbar';
-    bar.className = 'hs-mobile-tabbar';
-    bar.setAttribute('aria-label', 'Primary navigation');
-    bar.innerHTML =
-      '<button class="hs-mobile-tab" data-tab="home" type="button">' + ICONS.home + '<span>Home</span></button>' +
-      '<button class="hs-mobile-tab" data-tab="draws" type="button">' + ICONS.draws + '<span>Draws</span></button>' +
-      '<button class="hs-mobile-tab" data-tab="seasons" type="button">' + ICONS.seasons + '<span>Seasons</span></button>' +
-      '<button class="hs-mobile-tab" data-tab="map" type="button">' + ICONS.map + '<span>Map</span></button>' +
-      '<button class="hs-mobile-tab" data-tab="saved" type="button">' + ICONS.saved + '<span>Saved</span></button>';
-    document.body.appendChild(bar);
-
-    var backdrop = document.createElement('div');
-    backdrop.id = 'hsDrawsSheetBackdrop';
-    backdrop.className = 'hs-draws-sheet-backdrop';
-    backdrop.innerHTML =
-      '<div class="hs-draws-sheet" role="dialog" aria-modal="true" aria-label="Choose draw system">' +
-        '<div class="hs-draws-sheet-handle"></div>' +
-        '<div class="hs-draws-sheet-title">Draws</div>' +
-        '<div class="hs-draws-sheet-sub">Choose a province. Your filters and saved hunts stay separate for each draw system.</div>' +
-        '<button type="button" class="hs-draws-choice" data-draw-choice="bc"><span><strong>British Columbia</strong><span>LEH odds, success history and hunt codes</span></span><span class="hs-draws-choice-arrow">→</span></button>' +
-        '<button type="button" class="hs-draws-choice" data-draw-choice="ab"><span><strong>Alberta</strong><span>Personalized odds using your priority points</span></span><span class="hs-draws-choice-arrow">→</span></button>' +
-      '</div>';
-    document.body.appendChild(backdrop);
-
-    function closeSheet() { backdrop.classList.remove('open'); }
-    function openSheet() { backdrop.classList.add('open'); }
-
-    backdrop.addEventListener('click', function (e) {
-      if (e.target === backdrop) closeSheet();
-      var choice = e.target.closest('[data-draw-choice]');
-      if (!choice) return;
-      e.preventDefault();
-      e.stopPropagation();
-      closeSheet();
-      if (choice.dataset.drawChoice === 'bc') {
-        if (typeof window.showPage === 'function') window.showPage('filter');
-      } else if (typeof window.goToAlberta === 'function') {
-        window.goToAlberta();
-      }
-    });
-
-    bar.addEventListener('click', function (e) {
-      var btn = e.target.closest('.hs-mobile-tab');
-      if (!btn) return;
-      var tab = btn.dataset.tab;
-      if (tab === 'draws') { openSheet(); return; }
-      if (tab === 'home' && typeof window.showPage === 'function') window.showPage('home');
-      if (tab === 'seasons' && typeof window.showPage === 'function') window.showPage('bcOpenSeasons');
-      if (tab === 'map' && typeof window.showPage === 'function') window.showPage('map');
-      if (tab === 'saved' && typeof window.showPage === 'function') window.showPage('saved');
-    });
-
-    syncMobileTabs();
   }
 
   function visiblePageId() {
@@ -130,76 +64,65 @@
     });
   }
 
-  function hookPageNavigation() {
-    if (typeof window.showPage !== 'function' || window.showPage._hsPaidUxWrapped) return;
-    var previous = window.showPage;
-    var wrapped = function (page) {
-      var out = previous.apply(this, arguments);
-      window.setTimeout(function () {
-        syncMobileTabs(page);
-        enhanceDetailPage();
-        enhanceCards();
-      }, 30);
-      return out;
-    };
-    wrapped._hsPaidUxWrapped = true;
-    window.showPage = wrapped;
-  }
+  function buildMobileTabs() {
+    if (qs('hsMobileTabbar')) return;
 
-  /* ───────────────────────────────────────────────────────────
-     RESULT CARD ACTION HIERARCHY
-     ─────────────────────────────────────────────────────────── */
-  function addCardActions(card, index, province) {
-    if (!card || card.dataset.hsUxEnhanced === '1') return;
-    var expand = card.querySelector('.card-expand');
-    var toggle = card.querySelector('.expand-toggle');
-    if (!expand || !toggle) return;
+    var bar = document.createElement('nav');
+    bar.id = 'hsMobileTabbar';
+    bar.className = 'hs-mobile-tabbar';
+    bar.setAttribute('aria-label', 'Primary navigation');
+    bar.innerHTML =
+      '<button class="hs-mobile-tab" data-tab="home" type="button">' + ICONS.home + '<span>Home</span></button>' +
+      '<button class="hs-mobile-tab" data-tab="draws" type="button">' + ICONS.draws + '<span>Draws</span></button>' +
+      '<button class="hs-mobile-tab" data-tab="seasons" type="button">' + ICONS.seasons + '<span>Seasons</span></button>' +
+      '<button class="hs-mobile-tab" data-tab="map" type="button">' + ICONS.map + '<span>Map</span></button>' +
+      '<button class="hs-mobile-tab" data-tab="saved" type="button">' + ICONS.saved + '<span>Saved</span></button>';
+    document.body.appendChild(bar);
 
-    card.dataset.hsUxEnhanced = '1';
-    var actions = document.createElement('div');
-    actions.className = 'hs-card-actions';
+    var backdrop = document.createElement('div');
+    backdrop.id = 'hsDrawsSheetBackdrop';
+    backdrop.className = 'hs-draws-sheet-backdrop';
+    backdrop.innerHTML =
+      '<div class="hs-draws-sheet" role="dialog" aria-modal="true" aria-label="Choose draw system">' +
+        '<div class="hs-draws-sheet-handle"></div>' +
+        '<div class="hs-draws-sheet-title">Draws</div>' +
+        '<div class="hs-draws-sheet-sub">Choose a province.</div>' +
+        '<button type="button" class="hs-draws-choice" data-draw-choice="bc"><span><strong>British Columbia</strong><span>LEH draws and historical data</span></span><span class="hs-draws-choice-arrow">→</span></button>' +
+        '<button type="button" class="hs-draws-choice" data-draw-choice="ab"><span><strong>Alberta</strong><span>Draw history and priority profile</span></span><span class="hs-draws-choice-arrow">→</span></button>' +
+      '</div>';
+    document.body.appendChild(backdrop);
 
-    var view = document.createElement('button');
-    view.type = 'button';
-    view.className = 'hs-view-hunt-btn';
-    view.textContent = 'View hunt';
-    view.setAttribute('aria-label', 'Open full hunt details');
-    view.addEventListener('click', function (e) {
+    function closeSheet() { backdrop.classList.remove('open'); }
+    function openSheet() { backdrop.classList.add('open'); }
+
+    backdrop.addEventListener('click', function (e) {
+      if (e.target === backdrop) closeSheet();
+      var choice = e.target.closest('[data-draw-choice]');
+      if (!choice) return;
       e.preventDefault();
       e.stopPropagation();
-      window.__drawDetailReturnPage = province === 'AB' ? 'abDraws' : 'draws';
-      if (province === 'AB' && typeof window.openABDrawDetail === 'function') window.openABDrawDetail(index);
-      if (province === 'BC' && typeof window.openDrawDetail === 'function') window.openDrawDetail(index);
+      closeSheet();
+      if (choice.dataset.drawChoice === 'bc') {
+        if (typeof window.showPage === 'function') window.showPage('filter');
+      } else if (typeof window.goToAlberta === 'function') {
+        window.goToAlberta();
+      }
     });
 
-    toggle.addEventListener('click', function (e) { e.stopPropagation(); });
-    if (/show details/i.test(toggle.textContent || '')) toggle.textContent = 'Quick details';
-
-    expand.parentNode.insertBefore(actions, expand);
-    actions.appendChild(view);
-    actions.appendChild(toggle);
-  }
-
-  function enhanceCards() {
-    var bc = qs('cardsGrid');
-    if (bc) bc.querySelectorAll(':scope > .card').forEach(function (card, i) { addCardActions(card, i, 'BC'); });
-    var ab = qs('abCardsGrid');
-    if (ab) ab.querySelectorAll(':scope > .card').forEach(function (card, i) { addCardActions(card, i, 'AB'); });
-  }
-
-  function watchCardGrids() {
-    ['cardsGrid','abCardsGrid'].forEach(function (id) {
-      var grid = qs(id);
-      if (!grid || grid.dataset.hsUxObserved === '1') return;
-      grid.dataset.hsUxObserved = '1';
-      new MutationObserver(function () { window.requestAnimationFrame(enhanceCards); })
-        .observe(grid, { childList: true });
+    bar.addEventListener('click', function (e) {
+      var btn = e.target.closest('.hs-mobile-tab');
+      if (!btn) return;
+      var tab = btn.dataset.tab;
+      if (tab === 'draws') { openSheet(); return; }
+      if (tab === 'home' && typeof window.showPage === 'function') window.showPage('home');
+      if (tab === 'seasons' && typeof window.showPage === 'function') window.showPage('bcOpenSeasons');
+      if (tab === 'map' && typeof window.showPage === 'function') window.showPage('map');
+      if (tab === 'saved' && typeof window.showPage === 'function') window.showPage('saved');
     });
+
+    syncMobileTabs();
   }
 
-  /* ───────────────────────────────────────────────────────────
-     SELECTED HUNT DETAIL: SUMMARY FIRST, EVIDENCE SECOND
-     ─────────────────────────────────────────────────────────── */
   function detailRowValue(labelStartsWith) {
     var rows = document.querySelectorAll('#drawDetailPage .dd-row');
     for (var i = 0; i < rows.length; i++) {
@@ -245,7 +168,7 @@
       strip.innerHTML =
         metric('Draw code', drawCode) +
         metric('Season', season) +
-        metric(tags && /pts/i.test(tags) ? 'Priority' : 'Tags / quota', tags) +
+        metric('Tags / quota', tags) +
         metric(drive ? 'Drive estimate' : 'Harvest success', drive || harvest);
       if (strip.children.length) hero.insertAdjacentElement('afterend', strip);
     }
@@ -253,7 +176,7 @@
     if (isNew && !page.querySelector('.hs-dd-new-note')) {
       var note = document.createElement('div');
       note.className = 'hs-dd-new-note';
-      note.innerHTML = '<strong>New for 2026/27.</strong><span>This hunt has no prior draw-odds or harvest history yet. HuntSmart will add historical performance as official results become available.</span>';
+      note.innerHTML = '<strong>New for 2026/27.</strong><span>No prior draw-odds or harvest history is available for this hunt yet.</span>';
       var metrics = page.querySelector('.hs-dd-metrics');
       if (metrics) metrics.insertAdjacentElement('afterend', note);
       else hero.insertAdjacentElement('afterend', note);
@@ -268,23 +191,28 @@
       .observe(page, { childList: true, subtree: false });
   }
 
+  function hookPageNavigation() {
+    if (typeof window.showPage !== 'function' || window.showPage._hsPaidUxWrapped) return;
+    var previous = window.showPage;
+    var wrapped = function (page) {
+      var out = previous.apply(this, arguments);
+      window.setTimeout(function () {
+        syncMobileTabs(page);
+        enhanceDetailPage();
+      }, 30);
+      return out;
+    };
+    wrapped._hsPaidUxWrapped = true;
+    window.showPage = wrapped;
+  }
+
   function init() {
     updateProductCopy();
     buildMobileTabs();
     hookPageNavigation();
-    watchCardGrids();
     watchDetailPage();
-    enhanceCards();
     enhanceDetailPage();
     syncMobileTabs();
-
-    /* Cards are rendered asynchronously; one delayed sweep catches initial chunks. */
-    window.setTimeout(function () {
-      watchCardGrids();
-      enhanceCards();
-      updateProductCopy();
-      syncMobileTabs();
-    }, 600);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
