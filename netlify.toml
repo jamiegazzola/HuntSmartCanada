@@ -1,6 +1,7 @@
 # HuntSmart GitHub-backed preview deployment
 [build]
-  publish = "."
+  command = "bash build-preview.sh"
+  publish = "site"
 
 [[headers]]
   for = "/*"
