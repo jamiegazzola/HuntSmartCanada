@@ -3,6 +3,12 @@
   command = "bash build-preview.sh"
   publish = "site"
 
+[build.environment]
+  # Firebase web API keys are intentionally shipped to the browser. Disable
+  # only Netlify's heuristic "likely secret" detection; normal env-var secret
+  # scanning remains enabled.
+  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
+
 [[headers]]
   for = "/*"
   [headers.values]
