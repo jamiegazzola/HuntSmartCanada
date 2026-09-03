@@ -59,6 +59,14 @@ for image in images/hero-bg.jpg images/filter-bg.jpg images/logo.png; do
   cp -p "$image" "site/$image"
 done
 
+# Preview-only paid-product UX layer. Keep this isolated until the release is approved.
+test -s ux-polish.css || { echo "Missing ux-polish.css" >&2; exit 1; }
+test -s ux-polish.js  || { echo "Missing ux-polish.js" >&2; exit 1; }
+printf '\n\n/* === PREVIEW UX POLISH === */\n' >> site/homepage-polish.css
+cat ux-polish.css >> site/homepage-polish.css
+printf '\n\n/* === PREVIEW UX POLISH === */\n' >> site/homepage-polish.js
+cat ux-polish.js >> site/homepage-polish.js
+
 # Keep preview routing local to this deployment.
 cat > site/_redirects <<'EOF'
 /*  /index.html  200
