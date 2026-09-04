@@ -1,0 +1,37 @@
+name: BC Data Integrity Audit
+
+on:
+  push:
+    branches:
+      - preview/live-production-github
+    paths:
+      - draws.json
+      - scripts/audit-bc-data-integrity.mjs
+      - .github/workflows/bc-data-integrity-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out preview branch
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run aggregate integrity audit
+        run: node scripts/audit-bc-data-integrity.mjs draws.json bc-data-integrity-report.json
+
+      - name: Upload aggregate audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bc-data-integrity-report
+          path: bc-data-integrity-report.json
+          if-no-files-found: error
+          retention-days: 14
