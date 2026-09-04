@@ -74,13 +74,40 @@ function coreSig(r) {
   ].join('|');
 }
 
+const MONTHS = new Map([
+  ['JAN',1],['JANUARY',1],['FEB',2],['FEBRUARY',2],['MAR',3],['MARCH',3],
+  ['APR',4],['APRIL',4],['MAY',5],['JUN',6],['JUNE',6],['JUL',7],['JULY',7],
+  ['AUG',8],['AUGUST',8],['SEP',9],['SEPT',9],['SEPTEMBER',9],['OCT',10],['OCTOBER',10],
+  ['NOV',11],['NOVEMBER',11],['DEC',12],['DECEMBER',12]
+]);
+
 function parseMonthDay(v) {
-  const s = String(v ?? '').trim();
-  if (!s) return null;
+  const raw = String(v ?? '').trim();
+  if (!raw) return null;
+  const s = raw.replace(/,/g, '').replace(/\s+/g, ' ').trim();
   let m;
+
+  // ISO or year-first numeric.
   if ((m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/))) return [Number(m[2]), Number(m[3])];
+  // Month/day/year.
   if ((m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/))) return [Number(m[1]), Number(m[2])];
-  if ((m = s.match(/^(\d{1,2})[-/]([A-Z]{3,9})/i))) return null;
+  // Month/day with no year.
+  if ((m = s.match(/^(\d{1,2})[-/](\d{1,2})$/))) return [Number(m[1]), Number(m[2])];
+  // Day-MonthName[-Year] or Day MonthName [Year].
+  if ((m = s.match(/^(\d{1,2})[-\s]([A-Z]{3,9})(?:[-\s](\d{2,4}))?$/i))) {
+    const month = MONTHS.get(m[2].toUpperCase());
+    return month ? [month, Number(m[1])] : null;
+  }
+  // MonthName-Day[-Year] or MonthName Day [Year].
+  if ((m = s.match(/^([A-Z]{3,9})[-\s](\d{1,2})(?:[-\s](\d{2,4}))?$/i))) {
+    const month = MONTHS.get(m[1].toUpperCase());
+    return month ? [month, Number(m[2])] : null;
+  }
+
+  // Conservative Date fallback. Supply a fixed non-leap year when absent.
+  const hasYear = /\b\d{4}\b/.test(s);
+  const parsed = new Date(hasYear ? s : `${s} 2001`);
+  if (!Number.isNaN(parsed.getTime())) return [parsed.getUTCMonth() + 1, parsed.getUTCDate()];
   return null;
 }
 
@@ -89,6 +116,7 @@ function dayOfYear(md) {
   const [month, day] = md;
   if (!(month >= 1 && month <= 12 && day >= 1 && day <= 31)) return null;
   const d = new Date(Date.UTC(2001, month - 1, day));
+  if (d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) return null;
   return Math.floor((d - Date.UTC(2001, 0, 1)) / 86400000) + 1;
 }
 
@@ -99,6 +127,11 @@ function seasonProfile(r) {
     dayOfYear(parseMonthDay(r.s2s)),
     dayOfYear(parseMonthDay(r.s2e))
   ];
+}
+
+function hasPrimarySeason(r) {
+  const p = seasonProfile(r);
+  return Number.isFinite(p[0]) && Number.isFinite(p[1]);
 }
 
 function seasonCompatible(a, b, toleranceDays = 16) {
@@ -152,8 +185,6 @@ function matchesCurrent(o, c, tier) {
 }
 
 function chooseAnchor(allOfficial, current) {
-  // Start strict and progressively relax only if the stricter identity fields do not exist/match.
-  // The result still must resolve to one stable official identity signature in the latest available year.
   for (const tier of [4, 3, 2, 1, 0]) {
     const matches = allOfficial.filter(o => Number.isInteger(o.year) && matchesCurrent(o, current, tier));
     if (!matches.length) continue;
@@ -183,7 +214,7 @@ function median(nums) {
 const draws = JSON.parse(fs.readFileSync(DRAWS_PATH, 'utf8'));
 if (!Array.isArray(draws)) throw new Error('draws.json must be an array');
 
-const res = await fetch(CSV_URL, { headers: { 'user-agent': 'HuntSmart-lineage-integrity-audit/1.0' } });
+const res = await fetch(CSV_URL, { headers: { 'user-agent': 'HuntSmart-lineage-integrity-audit/1.1' } });
 if (!res.ok) throw new Error(`Official LEH survey request failed: ${res.status}`);
 const officialRaw = parseCsv(await res.text());
 const official = officialRaw.map(officialRecord).filter(r => Number.isInteger(r.year) && r.code);
@@ -249,6 +280,7 @@ for (const r of short) {
     before: beforeYears.length,
     anchored_latest_official_year: chosen.latestYear,
     anchor_tier: chosen.tier,
+    anchor_primary_season_parseable: hasPrimarySeason(chosen.anchor),
     exact_code_official_years: exactYears.length,
     exact_code_gain_over_legacy: gainExactVsLegacy,
     strong_predecessor_years: strongPredYears.length,
@@ -268,14 +300,7 @@ const withStrongPredecessor = results.filter(x => x.strong_predecessor_years > 0
 const withReviewPredecessor = results.filter(x => x.review_predecessor_years > 0);
 const withAmbiguity = results.filter(x => x.ambiguous_predecessor_years > 0);
 
-const coverageBuckets = {
-  '2-3': 0,
-  '4-5': 0,
-  '6-9': 0,
-  '10-14': 0,
-  '15-19': 0,
-  '20+': 0
-};
+const coverageBuckets = { '2-3': 0, '4-5': 0, '6-9': 0, '10-14': 0, '15-19': 0, '20+': 0 };
 for (const x of results) {
   const n = x.high_confidence_total_years;
   if (n <= 3) coverageBuckets['2-3']++;
@@ -303,8 +328,11 @@ const topExamples = [...results]
     ambiguous_years_not_included: x.ambiguous_predecessor_years
   }));
 
+const parseableOfficialPrimary = official.filter(hasPrimarySeason).length;
+const parseableAnchors = results.filter(x => x.anchor_primary_season_parseable).length;
+
 const report = {
-  schema_version: 1,
+  schema_version: 2,
   generated_at: new Date().toISOString(),
   scope: 'anonymized-leh-lineage-and-coverage-audit',
   output_contract: 'No hunt code, species, management unit, area, success rate, ranking, or recommendation is emitted.',
@@ -312,14 +340,16 @@ const report = {
     current_records: DRAWS_PATH,
     official_survey: 'BC Limited Entry Hunting Survey Estimates 1984 to 2024',
     official_rows: official.length,
-    official_year_range: [Math.min(...official.map(x => x.year)), Math.max(...official.map(x => x.year))]
+    official_year_range: [Math.min(...official.map(x => x.year)), Math.max(...official.map(x => x.year))],
+    official_rows_with_parseable_primary_season: parseableOfficialPrimary
   },
   method: {
     target_records: 'current HuntSmart records with 2 or 3 legacy yearly_fill_rates observations',
     anchor: 'current code plus progressively strict metadata, resolving to one stable official identity in the latest matching survey year',
+    anchor_tiers: '4=code+species+WMU+class+zone, 3=code+species+WMU+class, 2=code+species+WMU, 1=code+species, 0=code-only unique latest official identity',
     stable_identity: 'species + region + LEH hunt area + WMU + zone + animal class',
     exact_code_coverage: 'all official survey years retaining the anchor stable identity and current hunt code',
-    strong_predecessor_candidate: 'same stable identity, different code, unique code for that year, and season boundaries within 16 days of the current official anchor',
+    strong_predecessor_candidate: 'same stable identity, different code, unique code for that year, and season boundaries within 16 days of the latest official anchor',
     review_policy: 'season-inconsistent or ambiguous predecessor years are counted separately and excluded from high-confidence totals',
     metric_policy: 'legacy success values are not used to validate identity because the legacy data may represent a different source/metric',
     mutation: 'No application data is modified.'
@@ -329,6 +359,7 @@ const report = {
     records_anchored_to_official_identity: results.length,
     records_unanchored: unanchored,
     anchor_tier_counts: anchorTierCounts,
+    anchors_with_parseable_primary_season: parseableAnchors,
     records_with_more_exact_code_official_years_than_legacy: improvedExact.length,
     median_exact_code_years_added_among_improved: median(improvedExact.map(x => x.exact_code_gain_over_legacy)),
     max_exact_code_years_added: improvedExact.length ? Math.max(...improvedExact.map(x => x.exact_code_gain_over_legacy)) : 0,
@@ -344,7 +375,7 @@ const report = {
   interpretation: [
     'Exact-code official coverage is evaluated independently from the legacy success metric, avoiding false rejection caused by mixing different historical data sources.',
     'Different-code years are not auto-merged; only conservative same-identity, season-compatible years are counted as strong predecessor candidates.',
-    'This report is intended to measure whether a lineage-aware rebuild can materially improve historical coverage before any user-facing data migration.'
+    'The report measures whether a lineage-aware rebuild can materially improve historical coverage before any user-facing data migration.'
   ]
 };
 
