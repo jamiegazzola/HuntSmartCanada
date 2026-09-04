@@ -1,0 +1,36 @@
+name: BC LEH Lineage Potential Audit
+
+on:
+  push:
+    branches:
+      - preview/live-production-github
+    paths:
+      - draws.json
+      - scripts/audit-bc-lineage-potential.mjs
+      - .github/workflows/bc-lineage-potential-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lineage-audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out preview branch
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run anonymized lineage audit
+        run: node scripts/audit-bc-lineage-potential.mjs draws.json bc-lineage-potential-report.json
+
+      - name: Upload anonymized report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bc-lineage-potential-report
+          path: bc-lineage-potential-report.json
+          retention-days: 14
