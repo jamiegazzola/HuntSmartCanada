@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>HuntSmart Canada — Modern Mapbox Preview</title>
+</head>
+<body style="margin:0;background:#111;color:#ddd;font-family:system-ui,sans-serif">
+  <div id="previewBoot" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:99999;background:#111">
+    Loading HuntSmart Mapbox preview…
+  </div>
+  <script>
+    (async function () {
+      try {
+        const response = await fetch('./index.html?source=mapbox-preview', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Could not load index.html: ' + response.status);
+        let html = await response.text();
+
+        html = html.replaceAll('mapbox-gl-js/v3.3.0/', 'mapbox-gl-js/v3.30.0/');
+        html = html.replace(
+          '<script defer src="./maps.js"></' + 'script>',
+          '<script src="./maps-modern-preview.js"></' + 'script>'
+        );
+        html = html.replace('</head>', '<meta name="huntsmart-mapbox-preview" content="v3.30.0-standard-satellite">\n</head>');
+
+        document.open();
+        document.write(html);
+        document.close();
+      } catch (err) {
+        document.getElementById('previewBoot').innerHTML = '<div style="max-width:560px;padding:24px"><b>Preview failed to load.</b><br><br>' + String(err.message || err) + '</div>';
+      }
+    })();
+  </script>
+</body>
+</html>
