@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>HuntSmart Canada Preview</title>
+  <style>
+    html,body{height:100%;margin:0;background:#091109;color:#d8f0dc;font-family:system-ui,-apple-system,sans-serif}
+    .loader{height:100%;display:grid;place-items:center;text-align:center;padding:24px}
+    .loader b{display:block;font-size:22px;margin-bottom:8px}.loader span{color:#82a58a}
+  </style>
+</head>
+<body>
+  <div class="loader"><div><b>Loading HuntSmart preview…</b><span>Validated preview mode · production remains unchanged</span></div></div>
+  <script>
+    (async function () {
+      const BUILD_ID = 'preview-20260730-bulletproof-4';
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (reg) { reg.unregister(); });
+          }).catch(function () {});
+        }
+        if (window.caches && caches.keys) {
+          caches.keys().then(function (keys) {
+            keys.forEach(function (key) { caches.delete(key); });
+          }).catch(function () {});
+        }
+
+        const response = await fetch('/production/index.html?preview_build=' + BUILD_ID, { cache: 'no-store' });
+        if (!response.ok) throw new Error('Working app returned HTTP ' + response.status);
+        let html = await response.text();
+
+        function required(pattern, replacement, label) {
+          const next = html.replace(pattern, replacement);
+          if (next === html) throw new Error('Preview validation failed: ' + label);
+          html = next;
+        }
+
+        required(
+          /<title>[^<]*<\/title>/i,
+          '<title>HuntSmart Canada — Preview</title><script>window.HUNTSMART_PREVIEW_MODE=true;window.__HS_PREVIEW_NO_AUTH=true;window.HUNTSMART_BUILD_ID="' + BUILD_ID + '";<\/script>',
+          'preview bootstrap'
+        );
+
+        html = html.replace(/maximum-scale=1\.0,\s*user-scalable=no,\s*/i, '');
+        html = html.replace(/<link[^>]+stripe-styles\.css[^>]*>\s*/i, '');
+        html = html.replace(/<script[^>]+src="\.\/stripe\.js[^>]*><\/script>\s*/i, '');
+        html = html.replace(/<script[^>]+src="\.\/auth\.js[^>]*><\/script>\s*/i, '');
+        html = html.replace(/<script[^>]+src="\.\/hunting-partners\.js[^>]*><\/script>\s*/i, '');
+
+        required(/<div class="hero-eyebrow">[\s\S]*?<\/div>\s*/i, '', 'remove 2025 season line');
+
+        const labels = {
+          navHome: 'Home', navBC: 'BC Draws', navBCOS: 'Open Seasons', navAlberta: 'AB Draws',
+          mNavHome: 'Home', mNavBC: 'BC Draws', mNavBCOS: 'Open Seasons', mNavAlberta: 'Alberta Draws'
+        };
+        Object.keys(labels).forEach(function (id) {
+          const re = new RegExp('(<a[^>]*id="' + id + '"[^>]*>)[\\s\\S]*?(<\\/a>)', 'i');
+          if (!re.test(html)) throw new Error('Preview validation failed: missing ' + id);
+          html = html.replace(re, '$1' + labels[id] + '$2');
+        });
+
+        html = html.replace(/>BC GOS</g, '>Open Seasons<');
+        html = html.replace(/(<span[^>]*gos-tp-label[^>]*>)BC GOS(<\/span>)/gi, '$1Open Seasons$2');
+        html = html.replace("if ('serviceWorker' in navigator && isMobileLike()) {", "if (!window.HUNTSMART_PREVIEW_MODE && 'serviceWorker' in navigator && isMobileLike()) {");
+
+        required(
+          /<link href="\.\/auth-styles\.css([^>]*)>/i,
+          '<link href="/preview/ux.css?v=' + BUILD_ID + '" rel="stylesheet"><link href="./auth-styles.css$1>',
+          'preview stylesheet'
+        );
+
+        required(
+          /(<script defer src="\.\/homepage-polish\.js[^>]*><\/script>)/i,
+          '$1\n<script defer src="/preview/dom-patch.js?v=' + BUILD_ID + '"><\/script>\n<script defer src="/preview/auth-bypass.js?v=' + BUILD_ID + '"><\/script>\n<script defer src="/preview/ux.js?v=' + BUILD_ID + '"><\/script>',
+          'ordered preview scripts'
+        );
+
+        if (/2025 Season/.test(html)) throw new Error('Preview validation failed: dated season text remains');
+        if (!/id="navBCOS"[\s\S]*?>Open Seasons<\/a>/.test(html)) throw new Error('Preview validation failed: desktop Open Seasons label');
+        if (!/id="mNavBCOS"[\s\S]*?>Open Seasons<\/a>/.test(html)) throw new Error('Preview validation failed: mobile Open Seasons label');
+        if (html.indexOf('homepage-polish.js') > html.indexOf('/preview/auth-bypass.js')) throw new Error('Preview validation failed: script order');
+
+        document.open();
+        document.write(html);
+        document.close();
+      } catch (error) {
+        document.body.innerHTML = '<div class="loader"><div><b>Preview stopped instead of publishing a broken build.</b><span>' + String(error.message || error) + '</span></div></div>';
+        console.error('[HuntSmart Preview]', error);
+      }
+    })();
+  </script>
+</body>
+</html>
