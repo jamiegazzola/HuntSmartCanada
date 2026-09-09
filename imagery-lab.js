@@ -4,23 +4,35 @@
 (function () {
   'use strict';
 
-  const STORE_KEY = 'huntsmart_imagery_lab_v1';
+  const STORE_KEY = 'huntsmart_imagery_lab_v2';
   const BC_WMS = 'https://openmaps.gov.bc.ca/ecwp/ecw_wms.dll';
   const SOURCES = {
     standard: {
       label: 'Standard Satellite',
       short: 'Standard',
       provider: 'Mapbox',
-      meta: 'Current global mosaic · capture date varies by tile',
-      note: 'HuntSmart’s current satellite view with Mapbox Standard rendering.',
+      meta: 'Current Mapbox global mosaic · capture date varies by tile',
+      note: 'Current HuntSmart view using Mapbox Standard Satellite.',
       type: 'builtin'
     },
+    esri: {
+      label: 'World Imagery',
+      short: 'Esri',
+      provider: 'Esri',
+      meta: 'Different global imagery mosaic · evaluation source',
+      note: 'A genuinely different global imagery mosaic for a useful A/B comparison. Production licensing/attribution would be reviewed before release.',
+      type: 'xyz',
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution: 'Esri, Vantor, Earthstar Geographics, and the GIS User Community'
+    },
     raw: {
-      label: 'Raw Satellite',
-      short: 'Raw',
+      label: 'Mapbox Original',
+      short: 'Mapbox raw',
       provider: 'Mapbox',
-      meta: 'Same Mapbox satellite tiles · minimal styling',
-      note: 'Useful for checking whether haze/softness comes from the source imagery or the Standard renderer.',
+      meta: 'Same underlying Mapbox satellite imagery · simpler renderer',
+      note: 'This is intentionally the same imagery family as Standard. If these look alike, softness/haze is probably in the source mosaic rather than the Standard renderer.',
       type: 'style',
       style: 'mapbox://styles/mapbox/satellite-v9'
     },
@@ -29,20 +41,26 @@
       short: 'BC 0.5 m',
       provider: 'Province of B.C.',
       meta: '0.5 m orthophoto · 1999 · historical',
-      note: 'Very sharp where covered, but much older than the current satellite mosaic. Sharpness is not recency.',
+      note: 'High spatial detail where covered, but historical. Useful for comparing raw aerial-photo detail, not recency.',
       type: 'wms',
-      layer: 'bc_lowermainland_xc500mm_bcalb_1999',
-      tileSize: 512
+      // WMS requires the Native ID, not the shorter display name.
+      layer: 'regional_mosaics_bc_lowermainland_xc500mm_bcalb_1999',
+      tileSize: 512,
+      maxzoom: 21,
+      attribution: 'Province of British Columbia'
     },
     bcProvince: {
       label: 'BC Province Mosaic',
       short: 'BC 1 m',
       provider: 'Province of B.C.',
       meta: '1 m orthophoto · 1995–2004 · historical',
-      note: 'Province-wide historical comparison layer. Use it to judge detail, not current ground conditions.',
+      note: 'Province-scale historical comparison. Coverage is wider than the Lower Mainland layer but still historical.',
       type: 'wms',
-      layer: 'bc_bc_xc1m_bcalb_1995_2004',
-      tileSize: 512
+      // WMS Native ID from the B.C. imagery service.
+      layer: 'bc_bc_bc_xc1m_bcalb_1995_2004',
+      tileSize: 512,
+      maxzoom: 20,
+      attribution: 'Province of British Columbia'
     }
   };
 
@@ -52,10 +70,13 @@
   let button = null;
   let internalStyleChange = false;
   let bootTimer = null;
+  let sourceErrorHandler = null;
 
   function loadState() {
     try {
-      return Object.assign({ source: 'standard', preset: 'natural', opacity: 100 }, JSON.parse(localStorage.getItem(STORE_KEY) || '{}'));
+      const next = Object.assign({ source: 'standard', preset: 'natural', opacity: 100 }, JSON.parse(localStorage.getItem(STORE_KEY) || '{}'));
+      if (!SOURCES[next.source]) next.source = 'standard';
+      return next;
     } catch (e) {
       return { source: 'standard', preset: 'natural', opacity: 100 };
     }
@@ -90,25 +111,26 @@
   function wmsTile(layer, tileSize) {
     const size = tileSize || 512;
     return BC_WMS +
-      '?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap' +
+      '?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap' +
       '&LAYERS=' + encodeURIComponent(layer) +
-      '&STYLES=&FORMAT=image/jpeg&TRANSPARENT=FALSE' +
-      '&SRS=EPSG:3857&BBOX={bbox-epsg-3857}' +
+      '&STYLES=default&FORMAT=image/jpeg&TRANSPARENT=FALSE' +
+      '&CRS=EPSG:3857&BBOX={bbox-epsg-3857}' +
       '&WIDTH=' + size + '&HEIGHT=' + size;
   }
 
-  function rasterStyle(source) {
-    const attribution = source.provider === 'Province of B.C.'
-      ? 'Province of British Columbia'
-      : 'Mapbox';
+  function customRasterStyle(source) {
+    const tiles = source.type === 'wms'
+      ? [wmsTile(source.layer, source.tileSize)]
+      : source.tiles;
     return {
       version: 8,
       sources: {
         'hs-imagery-raster': {
           type: 'raster',
-          tiles: [wmsTile(source.layer, source.tileSize)],
-          tileSize: source.tileSize || 512,
-          attribution: attribution
+          tiles: tiles,
+          tileSize: source.tileSize || 256,
+          maxzoom: source.maxzoom || 19,
+          attribution: source.attribution || source.provider || ''
         }
       },
       layers: [{
@@ -116,7 +138,7 @@
         type: 'raster',
         source: 'hs-imagery-raster',
         minzoom: 0,
-        maxzoom: 22,
+        maxzoom: 24,
         paint: {
           'raster-fade-duration': 0,
           'raster-opacity': Math.max(0, Math.min(1, state.opacity / 100))
@@ -153,14 +175,34 @@
     syncButton();
   }
 
-  function setCustomStyle(style, callback) {
+  function detachSourceErrorHandler(m) {
+    if (!m || !sourceErrorHandler) return;
+    try { m.off('error', sourceErrorHandler); } catch (e) {}
+    sourceErrorHandler = null;
+  }
+
+  function watchCustomSourceErrors(m, source) {
+    detachSourceErrorHandler(m);
+    sourceErrorHandler = function (evt) {
+      const err = evt && evt.error;
+      const msg = err && err.message ? String(err.message) : '';
+      const sourceId = evt && evt.sourceId ? String(evt.sourceId) : '';
+      if (sourceId === 'hs-imagery-raster' || /hs-imagery-raster|ecw_wms|arcgisonline|World_Imagery/i.test(msg)) {
+        announce(source.label + ' tile request failed. This source may be unavailable at this view or blocked by the provider.', 'warn');
+      }
+    };
+    try { m.on('error', sourceErrorHandler); } catch (e) {}
+  }
+
+  function setCustomStyle(style, source, callback) {
     const m = currentMap();
     if (!m) return;
     const camera = captureCamera(m);
     internalStyleChange = true;
+    watchCustomSourceErrors(m, source);
     try { m.setStyle(style); } catch (e) {
       internalStyleChange = false;
-      announce('Could not load this imagery source.', 'warn');
+      announce('Could not load ' + source.label + '.', 'warn');
       return;
     }
     let finished = false;
@@ -172,12 +214,13 @@
       if (callback) callback();
     };
     try { m.once('style.load', done); } catch (e) {}
-    setTimeout(done, 1800);
+    setTimeout(done, 1900);
   }
 
   function setStandard() {
     const m = currentMap();
     if (!m) return;
+    detachSourceErrorHandler(m);
     state.source = 'standard';
     saveState();
     internalStyleChange = true;
@@ -211,15 +254,15 @@
     }
 
     if (source.type === 'style') {
-      setCustomStyle(source.style, function () {
-        announce(source.label + ' loaded — camera preserved.', 'ok');
+      setCustomStyle(source.style, source, function () {
+        announce(source.label + ' loaded. It uses the same Mapbox imagery family as Standard.', 'ok');
       });
       return;
     }
 
-    if (source.type === 'wms') {
-      setCustomStyle(rasterStyle(source), function () {
-        announce(source.label + ' loaded — historical imagery.', 'ok');
+    if (source.type === 'xyz' || source.type === 'wms') {
+      setCustomStyle(customRasterStyle(source), source, function () {
+        announce(source.label + ' loaded — same camera preserved.', 'ok');
       });
     }
   }
@@ -287,13 +330,13 @@
     const active = SOURCES[state.source] || SOURCES.standard;
     const rasterEditable = state.source !== 'standard';
     return '<div class="hs-img-head">' +
-      '<div><div class="hs-img-kicker">PREVIEW COMPARISON</div><div class="hs-img-title">Imagery Lab</div><div class="hs-img-sub">Same camera. Same terrain. Different imagery.</div></div>' +
+      '<div><div class="hs-img-kicker">PREVIEW COMPARISON</div><div class="hs-img-title">Imagery Lab</div><div class="hs-img-sub">Same camera. Same terrain. Different imagery where noted.</div></div>' +
       '<button type="button" class="hs-img-close" onclick="hsImageryClose()" aria-label="Close">×</button>' +
     '</div>' +
     '<div class="hs-img-current"><span>Current source</span><b>' + esc(active.label) + '</b><small>' + esc(active.meta) + '</small></div>' +
-    '<div class="hs-img-warning">Resolution and age are shown separately. A sharper historical orthophoto can be less useful than a newer satellite capture.</div>' +
+    '<div class="hs-img-warning">Use Standard ↔ Esri for a true source comparison. Mapbox Original uses essentially the same Mapbox imagery and is only a renderer check. B.C. orthophotos are historical.</div>' +
     '<div class="hs-img-sources">' +
-      sourceCard('standard') + sourceCard('raw') + sourceCard('bcLower') + sourceCard('bcProvince') +
+      sourceCard('standard') + sourceCard('esri') + sourceCard('raw') + sourceCard('bcLower') + sourceCard('bcProvince') +
     '</div>' +
     '<div class="hs-img-section">' +
       '<div class="hs-img-label"><span>Image rendering</span><span>' + (rasterEditable ? 'live' : 'use Settings for Standard') + '</span></div>' +
@@ -304,8 +347,8 @@
       '</div>' +
       '<div class="hs-img-opacity"><span>Raster opacity</span><input ' + (!rasterEditable ? 'disabled ' : '') + 'type="range" min="20" max="100" step="1" value="' + Math.round(state.opacity) + '" oninput="hsImageryOpacity(this.value)"><b id="hsImageryOpacityValue">' + Math.round(state.opacity) + '%</b></div>' +
     '</div>' +
-    '<div id="hsImageryStatus" class="hs-img-status">Switch sources to compare the exact same view.</div>' +
-    '<div class="hs-img-foot">B.C. layers are public WMS imagery and are marked historical by capture year.</div>';
+    '<div id="hsImageryStatus" class="hs-img-status">Start with Standard ↔ Esri at the exact same camera position.</div>' +
+    '<div class="hs-img-foot">Preview evaluation only · source age and licensing are tracked separately from visual quality.</div>';
   }
 
   function ensureUI() {
@@ -362,6 +405,7 @@
 
   function attach(nextMap) {
     if (!nextMap || nextMap === map) return;
+    if (map) detachSourceErrorHandler(map);
     map = nextMap;
     if (!map.__hsImageryLabBound) {
       map.__hsImageryLabBound = true;
