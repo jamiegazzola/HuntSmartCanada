@@ -40,6 +40,8 @@ FILES=(
   "card-map-3d-fullscreen-fix.js"
   "world-class-map.css"
   "world-class-map.js"
+  "imagery-lab.css"
+  "imagery-lab.js"
   "terrain-intelligence.css"
   "terrain-intelligence.js"
   "homepage-polish.js"
@@ -73,9 +75,8 @@ cat ux-polish.js >> site/homepage-polish.js
 
 # ---------------------------------------------------------------------------
 # World-class map preview
-# Keep the feature-complete HuntSmart map, but modernize its renderer and
-# satellite style in the built preview only. The source branch remains easy to
-# compare with the previous working preview.
+# Keep the feature-complete HuntSmart map, modernize its renderer and add
+# preview-only imagery/terrain evaluation tools.
 # ---------------------------------------------------------------------------
 python3 - <<'PY'
 from pathlib import Path
@@ -95,18 +96,18 @@ js = js.replace('mapbox-gl-js/v3.3.0/', 'mapbox-gl-js/v3.30.0/')
 js = js.replace('mapbox://styles/mapbox/satellite-streets-v12',
                 'mapbox://styles/mapbox/standard-satellite')
 
-# Load the scoped world-class map styles without modifying the rest of the app.
-wc_css = '<link href="./world-class-map.css?v=20260908" rel="stylesheet"/>'
-if wc_css not in html:
-    html = html.replace('</head>', wc_css + '\n</head>', 1)
-
-terrain_css = '<link href="./terrain-intelligence.css?v=20260908" rel="stylesheet"/>'
-if terrain_css not in html:
-    html = html.replace('</head>', terrain_css + '\n</head>', 1)
+# Load scoped preview map styles without modifying the rest of the app.
+for tag in [
+    '<link href="./world-class-map.css?v=20260909" rel="stylesheet"/>',
+    '<link href="./imagery-lab.css?v=20260909" rel="stylesheet"/>',
+    '<link href="./terrain-intelligence.css?v=20260909" rel="stylesheet"/>',
+]:
+    if tag not in html:
+        html = html.replace('</head>', tag + '\n</head>', 1)
 
 # Load after maps.js so enhancement layers preserve and extend all existing
 # map functions rather than replacing them.
-wc_js = '<script defer src="./world-class-map.js?v=20260908"></script>'
+wc_js = '<script defer src="./world-class-map.js?v=20260909"></script>'
 if wc_js not in html:
     candidates = [
         '<script defer src="./maps.js"></script>',
@@ -121,9 +122,18 @@ if wc_js not in html:
     if not inserted:
         html = html.replace('</body>', wc_js + '\n</body>', 1)
 
-terrain_js = '<script defer src="./terrain-intelligence.js?v=20260908"></script>'
-if terrain_js not in html:
+imagery_js = '<script defer src="./imagery-lab.js?v=20260909"></script>'
+if imagery_js not in html:
     if wc_js in html:
+        html = html.replace(wc_js, wc_js + '\n' + imagery_js, 1)
+    else:
+        html = html.replace('</body>', imagery_js + '\n</body>', 1)
+
+terrain_js = '<script defer src="./terrain-intelligence.js?v=20260909"></script>'
+if terrain_js not in html:
+    if imagery_js in html:
+        html = html.replace(imagery_js, imagery_js + '\n' + terrain_js, 1)
+    elif wc_js in html:
         html = html.replace(wc_js, wc_js + '\n' + terrain_js, 1)
     else:
         html = html.replace('</body>', terrain_js + '\n</body>', 1)
@@ -131,8 +141,10 @@ if terrain_js not in html:
 # Stamp the preview for quick browser/console verification.
 if 'huntsmart-world-map' not in html:
     html = html.replace('</head>', '<meta name="huntsmart-world-map" content="mapbox-3.30-standard-satellite">\n</head>', 1)
+if 'huntsmart-imagery-lab' not in html:
+    html = html.replace('</head>', '<meta name="huntsmart-imagery-lab" content="mapbox-bc-wms-comparison">\n</head>', 1)
 if 'huntsmart-terrain-intelligence' not in html:
-    html = html.replace('</head>', '<meta name="huntsmart-terrain-intelligence" content="chehalis-2110-pilot">\n</head>', 1)
+    html = html.replace('</head>', '<meta name="huntsmart-terrain-intelligence" content="preview-pilot">\n</head>', 1)
 
 index.write_text(html, encoding='utf-8')
 maps.write_text(js, encoding='utf-8')
@@ -153,6 +165,7 @@ EOF
 # Validate the files most likely to break the whole app before Netlify publishes.
 node --check site/maps.js >/dev/null
 node --check site/world-class-map.js >/dev/null
+node --check site/imagery-lab.js >/dev/null
 node --check site/terrain-intelligence.js >/dev/null
 node --check site/homepage-polish.js >/dev/null
 node --check site/bc-open-seasons.js >/dev/null
@@ -162,9 +175,12 @@ node --check site/ab-filters.js >/dev/null
 grep -q 'mapbox-gl-js/v3.30.0/' site/index.html
 grep -q 'mapbox://styles/mapbox/standard-satellite' site/maps.js
 grep -q 'world-class-map.js' site/index.html
+grep -q 'imagery-lab.js' site/index.html
+grep -q 'imagery-lab.css' site/index.html
 grep -q 'terrain-intelligence.js' site/index.html
 grep -q 'terrain-intelligence.css' site/index.html
+test -s site/imagery-lab.css
 test -s site/terrain-intelligence.css
 test -s site/index.html
 
-echo "HuntSmart terrain intelligence preview build complete."
+echo "HuntSmart imagery comparison preview build complete."
