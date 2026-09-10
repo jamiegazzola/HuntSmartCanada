@@ -32,12 +32,17 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install Playwright
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
 
       - name: Record HuntSmart demo
         run: node scripts/capture-promo.mjs
@@ -52,6 +57,7 @@ jobs:
             -an promo-output/huntsmart-promo-1080x1920.mp4
 
       - name: Upload promo videos
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: huntsmart-promo-video
