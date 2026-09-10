@@ -1,0 +1,63 @@
+name: Capture Live HuntSmart Desktop Promo
+
+on:
+  push:
+    branches:
+      - preview/live-production-github
+    paths:
+      - scripts/capture-live-desktop-promo.mjs
+      - .github/workflows/capture-live-desktop-promo.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  HUNTSMART_LIVE_URL: https://huntsmartcanada.netlify.app/
+  HUNTSMART_PROMO_OUT: promo-output-live-desktop
+
+jobs:
+  capture-live-desktop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout automation branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Record live HuntSmart desktop demo
+        run: node scripts/capture-live-desktop-promo.mjs
+
+      - name: Convert to 1080p MP4
+        run: |
+          ffmpeg -y \
+            -i promo-output-live-desktop/huntsmart-live-desktop-promo-raw.webm \
+            -vf "scale=1920:1080:flags=lanczos,fps=30" \
+            -c:v libx264 -preset medium -crf 18 \
+            -pix_fmt yuv420p -movflags +faststart \
+            -an promo-output-live-desktop/huntsmart-live-desktop-promo-1920x1080.mp4
+
+      - name: Upload desktop promo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: huntsmart-live-desktop-promo
+          path: |
+            promo-output-live-desktop/huntsmart-live-desktop-promo-1920x1080.mp4
+            promo-output-live-desktop/huntsmart-live-desktop-promo-raw.webm
+          if-no-files-found: error
+          retention-days: 14
