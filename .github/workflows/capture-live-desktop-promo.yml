@@ -42,11 +42,11 @@ jobs:
       - name: Record live HuntSmart desktop demo
         run: node scripts/capture-live-desktop-promo.mjs
 
-      - name: Convert to 1080p MP4
+      - name: Convert to full-frame 1080p MP4
         run: |
           ffmpeg -y \
             -i promo-output-live-desktop/huntsmart-live-desktop-promo-raw.webm \
-            -vf "scale=1920:1080:flags=lanczos,fps=30" \
+            -vf "crop=1600:900:0:0,scale=1920:1080:flags=lanczos,fps=30" \
             -c:v libx264 -preset medium -crf 18 \
             -pix_fmt yuv420p -movflags +faststart \
             -an promo-output-live-desktop/huntsmart-live-desktop-promo-1920x1080.mp4
