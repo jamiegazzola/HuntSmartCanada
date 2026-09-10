@@ -1,0 +1,62 @@
+name: Capture HuntSmart Promo
+
+on:
+  push:
+    branches:
+      - preview/live-production-github
+    paths:
+      - scripts/capture-promo.mjs
+      - .github/workflows/capture-promo.yml
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: HuntSmart URL to record
+        required: false
+        default: https://huntsmartcanada-preview.netlify.app/
+
+permissions:
+  contents: read
+
+env:
+  HUNTSMART_PROMO_URL: ${{ github.event.inputs.target_url || 'https://huntsmartcanada-preview.netlify.app/' }}
+  HUNTSMART_PROMO_OUT: promo-output
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout preview branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Record HuntSmart demo
+        run: node scripts/capture-promo.mjs
+
+      - name: Convert to social-ready MP4
+        run: |
+          ffmpeg -y \
+            -i promo-output/huntsmart-promo-raw.webm \
+            -vf "scale=1080:1920:flags=lanczos,fps=30" \
+            -c:v libx264 -preset medium -crf 18 \
+            -pix_fmt yuv420p -movflags +faststart \
+            -an promo-output/huntsmart-promo-1080x1920.mp4
+
+      - name: Upload promo videos
+        uses: actions/upload-artifact@v4
+        with:
+          name: huntsmart-promo-video
+          path: |
+            promo-output/huntsmart-promo-1080x1920.mp4
+            promo-output/huntsmart-promo-raw.webm
+          if-no-files-found: error
+          retention-days: 14
