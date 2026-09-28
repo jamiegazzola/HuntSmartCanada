@@ -69,19 +69,38 @@ async function loadABHarvest() {
   if (AB_HARVEST) return;
   try {
     const r = await fetch(AB_HARVEST_URL);
-    const arr = r.ok ? await r.json() : [];
+    const raw = r.ok ? await r.json() : {};
     AB_HARVEST = {};
-    for (const rec of arr) {
-      const key = `${rec.species}||${rec.draw}||${rec.wmu}`;
-      // Prefer draw_choice matches over wmu matches
-      if (!(key in AB_HARVEST) || rec.matchedBy === 'draw_choice') {
-        AB_HARVEST[key] = {
-          pct: rec.participantSuccessPercent,
-          participants: rec.totalParticipants ?? rec.participants ?? rec.licencesIssued ?? rec.total_participants ?? null
-        };
+
+    // Current matched-only export is a lookup object: { "Species||Draw||WMU": pct }.
+    // Retain compatibility with the older record-array export shape as well.
+    if (Array.isArray(raw)) {
+      for (const rec of raw) {
+        const key = `${rec.species}||${rec.draw}||${rec.wmu}`;
+        if (!(key in AB_HARVEST) || rec.matchedBy === 'draw_choice') {
+          AB_HARVEST[key] = {
+            pct: rec.participantSuccessPercent,
+            participants: rec.totalParticipants ?? rec.participants ?? rec.licencesIssued ?? rec.total_participants ?? null
+          };
+        }
+      }
+    } else if (raw && typeof raw === 'object') {
+      for (const [key, value] of Object.entries(raw)) {
+        const pct = typeof value === 'number' ? value : value?.pct ?? value?.participantSuccessPercent;
+        if (pct !== null && pct !== undefined && Number.isFinite(Number(pct))) {
+          AB_HARVEST[key] = {
+            pct: Number(pct),
+            participants: typeof value === 'object' && value
+              ? (value.participants ?? value.totalParticipants ?? value.licencesIssued ?? null)
+              : null
+          };
+        }
       }
     }
-  } catch(e) { AB_HARVEST = {}; }
+  } catch(e) {
+    console.error('[ABHarvest] failed:', e);
+    AB_HARVEST = {};
+  }
 }
 
 async function loadABElkHistory() {
