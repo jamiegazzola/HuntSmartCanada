@@ -33,8 +33,8 @@ let selAreas = new Set(); // applied from filter page fpSelBap
 
 // ── BC ACTUAL ODDS ────────────────────────────────────────────────────────────
 // Use actual draw success % from data catalogue rather than synopsis odds ratio.
-// 2025 results are incomplete (draw just ran), so 2024 is the last reliable year.
-const BC_ACTUAL_ODDS_YEAR = 2024;
+// BC Data Catalogue draw report is finalized through fall 2025.
+const BC_ACTUAL_ODDS_YEAR = 2025;
 
 function getBCActualOdds(r) {
   const ydo = r.yearly_draw_odds || {};
