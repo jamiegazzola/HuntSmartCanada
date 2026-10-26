@@ -53,6 +53,12 @@ FILES=(
   "historical_wildfires_simplified_50m.geojson"
   "hs-offline-lite-sw.js"
   "preview.jpg"
+  "blog.html"
+  "blog.css"
+  "blog.js"
+  "how-to-use-huntsmart.html"
+  "how-does-bc-leh-work.html"
+  "bc-leh-odds-guide.html"
 )
 
 for file in "${FILES[@]}"; do
@@ -74,9 +80,7 @@ printf '\n\n/* === PREVIEW UX POLISH === */\n' >> site/homepage-polish.js
 cat ux-polish.js >> site/homepage-polish.js
 
 # ---------------------------------------------------------------------------
-# World-class map preview
-# Keep the feature-complete HuntSmart map, modernize its renderer and add
-# preview-only imagery/terrain evaluation tools.
+# World-class map preview + Resources navigation
 # ---------------------------------------------------------------------------
 python3 - <<'PY'
 from pathlib import Path
@@ -95,6 +99,22 @@ js = js.replace('mapbox-gl-js/v3.3.0/', 'mapbox-gl-js/v3.30.0/')
 # previously used Satellite Streets (main map + LEH card maps).
 js = js.replace('mapbox://styles/mapbox/satellite-streets-v12',
                 'mapbox://styles/mapbox/standard-satellite')
+
+# Add the public Resources section to desktop, mobile, and home footer navigation.
+# Keep these as ordinary links so the standalone SEO pages remain crawlable.
+desktop_saved = '<a class="nav-link" id="navSaved" onclick="showPage(\'saved\')">Saved <span class="saved-count-badge" id="savedBadge" style="display:none">0</span></a>'
+if 'id="navResources"' not in html and desktop_saved in html:
+    html = html.replace(desktop_saved,
+        '<a class="nav-link" id="navResources" href="./blog.html">Resources</a>\n' + desktop_saved, 1)
+
+mobile_saved = '<a class="nav-link" id="mNavSaved" onclick="showPage(\'saved\');closeNavMenu()">Saved <span class="saved-count-badge" id="savedBadgeMobile" style="display:none">0</span></a>'
+if 'id="mNavResources"' not in html and mobile_saved in html:
+    html = html.replace(mobile_saved,
+        '<a class="nav-link" id="mNavResources" href="./blog.html">Resources</a>\n' + mobile_saved, 1)
+
+footer_saved = '<button class="home-footer-link" onclick="showPage(\'saved\')">Saved</button>'
+if 'href="./blog.html">Resources</a>' not in html and footer_saved in html:
+    html = html.replace(footer_saved, footer_saved + '\n      <a class="home-footer-link" href="./blog.html">Resources</a>', 1)
 
 # Load scoped preview map styles without modifying the rest of the app.
 for tag in [
@@ -145,6 +165,8 @@ if 'huntsmart-imagery-lab' not in html:
     html = html.replace('</head>', '<meta name="huntsmart-imagery-lab" content="mapbox-bc-wms-comparison">\n</head>', 1)
 if 'huntsmart-terrain-intelligence' not in html:
     html = html.replace('</head>', '<meta name="huntsmart-terrain-intelligence" content="preview-pilot">\n</head>', 1)
+if 'huntsmart-resources' not in html:
+    html = html.replace('</head>', '<meta name="huntsmart-resources" content="interactive-guides-v1">\n</head>', 1)
 
 index.write_text(html, encoding='utf-8')
 maps.write_text(js, encoding='utf-8')
@@ -171,6 +193,7 @@ node --check site/homepage-polish.js >/dev/null
 node --check site/bc-open-seasons.js >/dev/null
 node --check site/bc-filters.js >/dev/null
 node --check site/ab-filters.js >/dev/null
+node --check site/blog.js >/dev/null
 
 grep -q 'mapbox-gl-js/v3.30.0/' site/index.html
 grep -q 'mapbox://styles/mapbox/standard-satellite' site/maps.js
@@ -179,8 +202,17 @@ grep -q 'imagery-lab.js' site/index.html
 grep -q 'imagery-lab.css' site/index.html
 grep -q 'terrain-intelligence.js' site/index.html
 grep -q 'terrain-intelligence.css' site/index.html
+grep -q 'id="navResources"' site/index.html
+grep -q 'id="mNavResources"' site/index.html
+grep -q 'huntsmart-resources' site/index.html
+grep -q 'How to Use HuntSmart Canada' site/how-to-use-huntsmart.html
+grep -q 'How Does BC LEH Work?' site/how-does-bc-leh-work.html
+grep -q 'oddsExplorer' site/bc-leh-odds-guide.html
 test -s site/imagery-lab.css
 test -s site/terrain-intelligence.css
+test -s site/blog.html
+test -s site/blog.css
+test -s site/blog.js
 test -s site/index.html
 
-echo "HuntSmart imagery comparison preview build complete."
+echo "HuntSmart preview build complete with Resources guides."
