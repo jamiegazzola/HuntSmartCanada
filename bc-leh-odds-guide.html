@@ -5,69 +5,69 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>BC LEH Odds: Why One Year Can Mislead You | HuntSmart Canada</title>
 <meta name="description" content="Explore historical BC LEH draw odds and learn why multi-year trends can be more useful than looking at a single draw result.">
+<link rel="canonical" href="https://huntsmartcanada.netlify.app/bc-leh-odds-guide.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="BC LEH Odds: Why One Year Can Mislead You | HuntSmart Canada">
+<meta property="og:description" content="Use HuntSmart's historical series to see why multi-year trends matter more than one draw percentage.">
+<meta property="article:published_time" content="2026-10-26">
+<meta property="article:modified_time" content="2026-10-26">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./blog.css?v=20261026a">
+<link rel="stylesheet" href="./blog.css?v=20261026e">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"BC LEH Odds: Why One Year Can Mislead You","datePublished":"2026-10-26","dateModified":"2026-10-26","author":{"@type":"Organization","name":"HuntSmart Canada"},"publisher":{"@type":"Organization","name":"HuntSmart Canada"},"mainEntityOfPage":"https://huntsmartcanada.netlify.app/bc-leh-odds-guide.html","description":"Explore historical BC LEH draw odds and learn why multi-year trends can be more useful than one draw result."}</script>
 </head>
 <body>
-<header class="resource-nav"><a class="resource-brand" href="./index.html"><strong>HuntSmart <span>Canada</span></strong><small>Know your draw odds</small></a><nav><a href="./index.html">App</a><a class="active" href="./blog.html">Resources</a></nav><a class="resource-app-btn" href="./index.html">Open HuntSmart</a></header>
+<header class="resource-nav"><a class="resource-brand" href="./index.html"><strong>HuntSmart <span>Canada</span></strong><small>Know your draw odds</small></a><nav aria-label="Article navigation"><a href="./index.html">App Home</a><a href="./blog.html">Blog</a><a href="./how-does-bc-leh-work.html">BC LEH</a><a class="active" href="./bc-leh-odds-guide.html">Draw Odds</a></nav><a class="resource-app-btn" href="./index.html">Open HuntSmart</a></header>
 <main class="article-shell">
   <header class="article-header">
     <div class="eyebrow">BC LEH Data Guide</div>
     <h1>BC LEH Odds: Why One Year Can Mislead You</h1>
     <p class="dek">Draw odds are useful, but a single percentage can hide the story. Use HuntSmart's historical series to see how an opportunity changed before deciding what the latest number really means.</p>
-    <div class="article-byline"><span>HuntSmart Canada</span><span>Updated October 2026</span><span>Interactive data · 7 min</span></div>
+    <div class="article-byline"><span>HuntSmart Canada</span><span>Published Oct 26, 2026</span><span>Updated Oct 26, 2026</span><span>Interactive data · 7 min</span></div>
   </header>
-  <article class="article-body">
-    <p>If you are comparing BC Limited Entry Hunting opportunities, the latest draw percentage is usually the first number you notice. It should not be the last.</p>
-    <p>Applicant demand can change. Authorization numbers can change. Hunt structures can change. A regulation update or a sudden wave of attention can push hunters toward or away from a particular opportunity.</p>
 
-    <div class="callout"><p><strong>Historical odds do not predict the next draw.</strong> They give context. The value is seeing whether the latest year looks normal, unusually favourable, unusually difficult, or part of a longer trend.</p></div>
+  <div class="article-layout">
+    <article class="article-body">
+      <p>If you are comparing BC Limited Entry Hunting opportunities, the latest draw percentage is usually the first number you notice. It should not be the last.</p>
+      <p>Applicant demand can change. Authorization numbers can change. Hunt structures can change. A regulation update or a sudden wave of attention can push hunters toward or away from a particular opportunity.</p>
+      <div class="callout"><p><strong>Historical odds do not predict the next draw.</strong> They give context. The value is seeing whether the latest year looks normal, unusually favourable, unusually difficult, or part of a longer trend.</p></div>
 
-    <h2>A real HuntSmart historical series</h2>
-    <p>The explorer below loads the historical draw-odds series directly from HuntSmart's current <strong>draws.json</strong> dataset for a BC bison opportunity in MU 7-42. Drag the year slider and watch the selected draw percentage change.</p>
+      <h2 id="series">A real HuntSmart historical series</h2>
+      <p>The explorer below loads the historical draw-odds series directly from HuntSmart's current <strong>draws.json</strong> dataset for a BC bison opportunity in MU 7-42. Drag the year slider and watch the selected draw percentage change.</p>
+      <div class="interactive-card" id="oddsExplorer">
+        <div class="interactive-card-head"><div><h3 id="oddsTitle">Loading HuntSmart data…</h3><p id="oddsSubtitle">Historical draw percentage</p></div></div>
+        <div class="trend-controls"><input id="oddsYearSlider" type="range" min="0" max="1" step="1" value="0" aria-label="Historical draw year"><div class="trend-readout"><strong id="oddsValue">—</strong><span id="oddsYear">—</span></div></div>
+        <svg id="oddsChart" class="trend-chart" viewBox="0 0 720 220" role="img" aria-label="Historical BC LEH draw odds trend"></svg>
+        <p id="oddsInsight">Loading historical series…</p>
+      </div>
 
-    <div class="interactive-card" id="oddsExplorer">
-      <div class="interactive-card-head"><div><h3 id="oddsTitle">Loading HuntSmart data…</h3><p id="oddsSubtitle">Historical draw percentage</p></div></div>
-      <div class="trend-controls"><input id="oddsYearSlider" type="range" min="0" max="1" step="1" value="0" aria-label="Historical draw year"><div class="trend-readout"><strong id="oddsValue">—</strong><span id="oddsYear">—</span></div></div>
-      <svg id="oddsChart" class="trend-chart" viewBox="0 0 720 220" role="img" aria-label="Historical BC LEH draw odds trend"></svg>
-      <p id="oddsInsight">Loading historical series…</p>
-    </div>
+      <h2 id="patterns">What the chart is telling you</h2>
+      <p>The useful question is not “which year was best?” It is “how stable has this opportunity been?” A historical series can reveal three very different patterns:</p>
+      <ul><li><strong>Stable:</strong> the odds stay within a fairly narrow range over many years.</li><li><strong>Trending:</strong> the odds are gradually becoming easier or harder.</li><li><strong>Volatile:</strong> the draw swings sharply, which makes one-year comparisons especially weak.</li></ul>
 
-    <h2>What the chart is telling you</h2>
-    <p>The useful question is not “which year was best?” It is “how stable has this opportunity been?” A historical series can reveal three very different patterns:</p>
-    <ul>
-      <li><strong>Stable:</strong> the odds stay within a fairly narrow range over many years.</li>
-      <li><strong>Trending:</strong> the odds are gradually becoming easier or harder.</li>
-      <li><strong>Volatile:</strong> the draw swings sharply, which makes one-year comparisons especially weak.</li>
-    </ul>
+      <h2 id="change">Why odds can change</h2>
+      <p>Several moving pieces can alter a draw:</p>
+      <ul><li>More or fewer hunters choose the hunt code.</li><li>The number of authorizations changes.</li><li>Season dates or hunt boundaries change.</li><li>Access, fires, weather, or hunter attention changes demand.</li><li>Nearby opportunities become more or less attractive.</li></ul>
 
-    <h2>Why odds can change</h2>
-    <p>Several moving pieces can alter a draw:</p>
-    <ul>
-      <li>More or fewer hunters choose the hunt code.</li>
-      <li>The number of authorizations changes.</li>
-      <li>Season dates or hunt boundaries change.</li>
-      <li>Access, fires, weather, or hunter attention changes demand.</li>
-      <li>Nearby opportunities become more or less attractive.</li>
-    </ul>
+      <h2 id="quality">Do not confuse draw probability with hunt quality</h2>
+      <p>A hunt that is easier to draw is not automatically a better application. Odds answer one part of the decision. You still need to consider whether the area, season, access, travel, animal class, and hunt itself fit your goals.</p>
 
-    <h2>Do not confuse draw probability with hunt quality</h2>
-    <p>A hunt that is easier to draw is not automatically a better application. Odds answer one part of the decision. You still need to consider whether the area, season, access, travel, animal class, and hunt itself fit your goals.</p>
+      <h2 id="use">How to use historical odds in HuntSmart</h2>
+      <ol><li>Filter to the species and areas you can realistically hunt.</li><li>Identify several opportunities that fit your schedule and access.</li><li>Open the historical trend for each finalist.</li><li>Compare the latest number with the longer history.</li><li>Shortlist the hunts that make sense as complete opportunities — not just attractive percentages.</li></ol>
 
-    <h2>How to use historical odds in HuntSmart</h2>
-    <ol>
-      <li>Filter to the species and areas you can realistically hunt.</li>
-      <li>Identify several opportunities that fit your schedule and access.</li>
-      <li>Open the historical trend for each finalist.</li>
-      <li>Compare the latest number with the longer history.</li>
-      <li>Shortlist the hunts that make sense as complete opportunities — not just attractive percentages.</li>
-    </ol>
+      <div class="article-bottom-cta"><div><h3>Compare more than one number.</h3><p>Use HuntSmart to inspect historical draw trends across the opportunities that matter to you.</p></div><a href="./index.html">Explore BC draws →</a></div>
+      <p class="source-note">The chart above uses HuntSmart's historical draw dataset. Historical data is decision support, not a guarantee of future draw results. Confirm current rules and current-year information with official provincial sources.</p>
+    </article>
 
-    <div class="article-bottom-cta"><div><h3>Compare more than one number.</h3><p>Use HuntSmart to inspect historical draw trends across the opportunities that matter to you.</p></div><a href="./index.html">Explore BC draws →</a></div>
-  </article>
+    <aside class="article-rail" aria-label="Article sidebar">
+      <div class="rail-card"><h3>In this guide</h3><div class="rail-links"><a href="#series">Historical series</a><a href="#patterns">Reading the pattern</a><a href="#change">Why odds change</a><a href="#quality">Odds vs hunt quality</a><a href="#use">Using history in HuntSmart</a></div></div>
+      <div class="rail-card"><h3>Article details</h3><div class="rail-meta"><span>Published <b>Oct 26, 2026</b></span><span>Updated <b>Oct 26, 2026</b></span><span>By <b>HuntSmart Canada</b></span><span>Read time <b>7 min</b></span></div></div>
+      <div class="rail-card rail-cta"><h3>Inspect the real trends</h3><p>Use HuntSmart to compare historical draw series across the opportunities you care about.</p><a href="./index.html">Open HuntSmart →</a></div>
+      <div class="rail-card related-card"><h3>Related guides</h3><a href="./how-does-bc-leh-work.html">How Does BC LEH Work?</a><a href="./how-to-use-huntsmart.html">How to Use HuntSmart Canada</a></div>
+    </aside>
+  </div>
 </main>
-<footer class="resource-footer"><span>© 2026 HuntSmart Canada</span><span>Historical data is decision support, not a guarantee of future draw results. Confirm current rules with official provincial sources.</span></footer>
+<footer class="resource-footer"><div class="resource-footer-inner"><div><h4>HuntSmart Canada</h4><p>Data-backed decision tools and hunting draw guides for BC and Alberta hunters.</p></div><div><h4>Guides</h4><div class="footer-links"><a href="./blog.html">Blog & Resources</a><a href="./how-does-bc-leh-work.html">How BC LEH Works</a><a href="./how-to-use-huntsmart.html">How to Use HuntSmart</a></div></div><div><h4>Explore</h4><div class="footer-links"><a href="./index.html">Open HuntSmart</a><a href="./bc-leh-odds-guide.html">Historical Odds Guide</a></div></div></div><div class="resource-footer-bottom"><span>© 2026 HuntSmart Canada</span><span>Historical data is decision support, not a guarantee. Confirm current rules with official provincial sources.</span></div></footer>
 <script src="./blog.js?v=20261026a"></script>
 </body>
 </html>

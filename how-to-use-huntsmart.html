@@ -5,58 +5,66 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>How to Use HuntSmart Canada | Interactive Guide</title>
 <meta name="description" content="An interactive walkthrough of HuntSmart Canada: choose a province, filter hunts, read hunt cards, inspect historical odds, compare draws, and save a shortlist.">
+<link rel="canonical" href="https://huntsmartcanada.netlify.app/how-to-use-huntsmart.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="How to Use HuntSmart Canada | Interactive Guide">
+<meta property="og:description" content="Learn HuntSmart's core workflow with an interactive walkthrough.">
+<meta property="article:published_time" content="2026-10-26">
+<meta property="article:modified_time" content="2026-10-26">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./blog.css?v=20261026a">
+<link rel="stylesheet" href="./blog.css?v=20261026e">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"How to Use HuntSmart Canada","datePublished":"2026-10-26","dateModified":"2026-10-26","author":{"@type":"Organization","name":"HuntSmart Canada"},"publisher":{"@type":"Organization","name":"HuntSmart Canada"},"mainEntityOfPage":"https://huntsmartcanada.netlify.app/how-to-use-huntsmart.html","description":"An interactive walkthrough of HuntSmart Canada's core hunting draw workflow."}</script>
 </head>
 <body>
-<header class="resource-nav"><a class="resource-brand" href="./index.html"><strong>HuntSmart <span>Canada</span></strong><small>Know your draw odds</small></a><nav><a href="./index.html">App</a><a class="active" href="./blog.html">Resources</a></nav><a class="resource-app-btn" href="./index.html">Open HuntSmart</a></header>
+<header class="resource-nav"><a class="resource-brand" href="./index.html"><strong>HuntSmart <span>Canada</span></strong><small>Know your draw odds</small></a><nav aria-label="Article navigation"><a href="./index.html">App Home</a><a href="./blog.html">Blog</a><a class="active" href="./how-to-use-huntsmart.html">App Guide</a><a href="./bc-leh-odds-guide.html">Draw Odds</a></nav><a class="resource-app-btn" href="./index.html">Open HuntSmart</a></header>
 <main class="article-shell">
   <header class="article-header">
     <div class="eyebrow">Interactive App Guide</div>
     <h1>How to Use HuntSmart Canada</h1>
     <p class="dek">Learn the core workflow by using it. This guided demo shows how a hunter goes from a broad idea to a shortlist of draws worth considering.</p>
-    <div class="article-byline"><span>HuntSmart Canada</span><span>Updated October 2026</span><span>Interactive · 6 min</span></div>
+    <div class="article-byline"><span>HuntSmart Canada</span><span>Published Oct 26, 2026</span><span>Updated Oct 26, 2026</span><span>Interactive · 6 min</span></div>
   </header>
-  <article class="article-body">
-    <p>HuntSmart is built around a simple question: <strong>which hunting opportunities actually fit me?</strong> Instead of reading hundreds of rows manually, you narrow the database, inspect the data that matters, and compare only the hunts that survive your filters.</p>
 
-    <div class="interactive-card" id="hsGuide">
-      <div class="interactive-card-head"><div><h3>Try the HuntSmart workflow</h3><p>This is a safe demo. It does not change your account or saved hunts.</p></div><div class="guide-progress" id="guideProgress">Step 1 of 7</div></div>
-      <div class="guide-layout">
-        <div class="guide-steps" id="guideSteps"></div>
-        <div class="guide-screen" id="guideScreen" aria-live="polite"></div>
+  <div class="article-layout">
+    <article class="article-body">
+      <p>HuntSmart is built around a simple question: <strong>which hunting opportunities actually fit me?</strong> Instead of reading hundreds of rows manually, you narrow the database, inspect the data that matters, and compare only the hunts that survive your filters.</p>
+
+      <div class="interactive-card" id="hsGuide">
+        <div class="interactive-card-head"><div><h3>Try the HuntSmart workflow</h3><p>This is a safe demo. It does not change your account or saved hunts.</p></div><div class="guide-progress" id="guideProgress">Step 1 of 7</div></div>
+        <div class="guide-layout"><div class="guide-steps" id="guideSteps"></div><div class="guide-screen" id="guideScreen" aria-live="polite"></div></div>
+        <div class="guide-actions"><button type="button" id="guideBack">Back</button><span class="guide-progress" id="guideTip"></span><button type="button" class="primary" id="guideNext">Next</button></div>
       </div>
-      <div class="guide-actions"><button type="button" id="guideBack">Back</button><span class="guide-progress" id="guideTip"></span><button type="button" class="primary" id="guideNext">Next</button></div>
-    </div>
 
-    <h2>What you just learned</h2>
-    <p>The important part of HuntSmart is not any one number. It is the sequence of decisions:</p>
-    <ol>
-      <li><strong>Choose the jurisdiction.</strong> BC and Alberta use different draw systems.</li>
-      <li><strong>Choose the species.</strong> This removes irrelevant opportunities immediately.</li>
-      <li><strong>Filter geographically and by hunt characteristics.</strong></li>
-      <li><strong>Read a hunt card.</strong> Current odds, season, authorizations, and other context live together.</li>
-      <li><strong>Inspect the historical trend.</strong> One year should not dominate the decision.</li>
-      <li><strong>Save and compare.</strong> Build a shortlist rather than memorizing hunt codes.</li>
-    </ol>
+      <h2 id="workflow">What you just learned</h2>
+      <p>The important part of HuntSmart is not any one number. It is the sequence of decisions:</p>
+      <ol><li><strong>Choose the jurisdiction.</strong> BC and Alberta use different draw systems.</li><li><strong>Choose the species.</strong> This removes irrelevant opportunities immediately.</li><li><strong>Filter geographically and by hunt characteristics.</strong></li><li><strong>Read a hunt card.</strong> Current odds, season, authorizations, and other context live together.</li><li><strong>Inspect the historical trend.</strong> One year should not dominate the decision.</li><li><strong>Save and compare.</strong> Build a shortlist rather than memorizing hunt codes.</li></ol>
 
-    <h2>Why the historical trend matters</h2>
-    <p>When a card shows historical draw information, the goal is to answer a different question from “what were last year's odds?” You are trying to determine whether the current result is typical, whether demand has been moving, and whether the hunt is consistently competitive.</p>
+      <h2 id="history">Why the historical trend matters</h2>
+      <p>When a card shows historical draw information, the goal is to answer a different question from “what were last year's odds?” You are trying to determine whether the current result is typical, whether demand has been moving, and whether the hunt is consistently competitive.</p>
 
-    <h2>Use the map when geography matters first</h2>
-    <p>If you know where you want to hunt but not which code to apply for, the map is often the fastest entry point. Select the relevant areas, then let HuntSmart surface the draws connected to them.</p>
+      <h2 id="map">Use the map when geography matters first</h2>
+      <p>If you know where you want to hunt but not which code to apply for, the map is often the fastest entry point. Select the relevant areas, then let HuntSmart surface the draws connected to them.</p>
 
-    <h2>Use filters when the opportunity matters first</h2>
-    <p>If you care more about species, minimum odds, harvest success, or season timing than a specific management unit, begin with the draw filters. This is especially useful when you are willing to travel for a better opportunity.</p>
+      <h2 id="filters">Use filters when the opportunity matters first</h2>
+      <p>If you care more about species, minimum odds, harvest success, or season timing than a specific management unit, begin with the draw filters. This is especially useful when you are willing to travel for a better opportunity.</p>
 
-    <h2>Save before you decide</h2>
-    <p>A saved list lets you separate discovery from decision-making. Shortlist anything that looks promising, then compare the finalists instead of repeatedly rebuilding the same filters.</p>
+      <h2 id="save">Save before you decide</h2>
+      <p>A saved list lets you separate discovery from decision-making. Shortlist anything that looks promising, then compare the finalists instead of repeatedly rebuilding the same filters.</p>
 
-    <div class="article-bottom-cta"><div><h3>Now try it with the real data.</h3><p>Open HuntSmart and use the same workflow on your actual species, regions, and draw priorities.</p></div><a href="./index.html">Open HuntSmart →</a></div>
-  </article>
+      <div class="article-bottom-cta"><div><h3>Now try it with the real data.</h3><p>Open HuntSmart and use the same workflow on your actual species, regions, and draw priorities.</p></div><a href="./index.html">Open HuntSmart →</a></div>
+      <p class="source-note">The interactive walkthrough uses demonstration values. Use the live app for current HuntSmart data and current provincial publications for legal requirements.</p>
+    </article>
+
+    <aside class="article-rail" aria-label="Article sidebar">
+      <div class="rail-card"><h3>In this guide</h3><div class="rail-links"><a href="#workflow">The core workflow</a><a href="#history">Historical trends</a><a href="#map">Using the map</a><a href="#filters">Using filters</a><a href="#save">Saving & comparing</a></div></div>
+      <div class="rail-card"><h3>Article details</h3><div class="rail-meta"><span>Published <b>Oct 26, 2026</b></span><span>Updated <b>Oct 26, 2026</b></span><span>By <b>HuntSmart Canada</b></span><span>Read time <b>6 min</b></span></div></div>
+      <div class="rail-card rail-cta"><h3>Use the real app</h3><p>Apply this workflow to live BC and Alberta draw data.</p><a href="./index.html">Open HuntSmart →</a></div>
+      <div class="rail-card related-card"><h3>Related guides</h3><a href="./how-does-bc-leh-work.html">How Does BC LEH Work?</a><a href="./bc-leh-odds-guide.html">Why One Year of Odds Can Mislead You</a></div>
+    </aside>
+  </div>
 </main>
-<footer class="resource-footer"><span>© 2026 HuntSmart Canada</span><span>The interactive walkthrough uses demonstration values; use the live app for current HuntSmart data.</span></footer>
+<footer class="resource-footer"><div class="resource-footer-inner"><div><h4>HuntSmart Canada</h4><p>Data-backed decision tools and hunting draw guides for BC and Alberta hunters.</p></div><div><h4>Guides</h4><div class="footer-links"><a href="./blog.html">Blog & Resources</a><a href="./how-does-bc-leh-work.html">How BC LEH Works</a><a href="./bc-leh-odds-guide.html">BC LEH Odds Guide</a></div></div><div><h4>Explore</h4><div class="footer-links"><a href="./index.html">Open HuntSmart</a><a href="./how-to-use-huntsmart.html">App Walkthrough</a></div></div></div><div class="resource-footer-bottom"><span>© 2026 HuntSmart Canada</span><span>Use current official provincial publications for seasons, eligibility, and legal requirements.</span></div></footer>
 <script src="./blog.js?v=20261026a"></script>
 </body>
 </html>
