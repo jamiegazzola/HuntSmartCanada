@@ -59,6 +59,9 @@ FILES=(
   "how-to-use-huntsmart.html"
   "how-does-bc-leh-work.html"
   "bc-leh-odds-guide.html"
+  "how-to-use-huntsmart-map.html"
+  "blog-map-demo.css"
+  "blog-map-demo.js"
 )
 
 for file in "${FILES[@]}"; do
@@ -194,6 +197,7 @@ node --check site/bc-open-seasons.js >/dev/null
 node --check site/bc-filters.js >/dev/null
 node --check site/ab-filters.js >/dev/null
 node --check site/blog.js >/dev/null
+node --check site/blog-map-demo.js >/dev/null
 
 grep -q 'mapbox-gl-js/v3.30.0/' site/index.html
 grep -q 'mapbox://styles/mapbox/standard-satellite' site/maps.js
@@ -208,11 +212,15 @@ grep -q 'huntsmart-resources' site/index.html
 grep -q 'How to Use HuntSmart Canada' site/how-to-use-huntsmart.html
 grep -q 'How Does BC LEH Work?' site/how-does-bc-leh-work.html
 grep -q 'oddsExplorer' site/bc-leh-odds-guide.html
+grep -q 'hsEmbeddedMap' site/how-to-use-huntsmart-map.html
 test -s site/imagery-lab.css
 test -s site/terrain-intelligence.css
 test -s site/blog.html
 test -s site/blog.css
 test -s site/blog.js
+test -s site/how-to-use-huntsmart-map.html
+test -s site/blog-map-demo.css
+test -s site/blog-map-demo.js
 test -s site/index.html
 
 echo "HuntSmart preview build complete with Resources guides."
