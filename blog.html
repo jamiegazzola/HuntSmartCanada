@@ -9,52 +9,106 @@
 <meta property="og:description" content="Learn how hunting draws work, understand historical odds, and use HuntSmart to compare opportunities.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./blog.css?v=20261026c">
+<link rel="stylesheet" href="./blog.css?v=20261026d">
 <style>
-:root{--hs-bg:#0d0f0e;--hs-panel:#121613;--hs-panel-2:#171c18;--hs-border:#252c27;--hs-text:#eef2ef;--hs-muted:#909a93;--hs-green:#4ade80;--hs-green-soft:#76e49a}.resources-home{background:var(--hs-bg);color:var(--hs-text)}
-.resources-home .resource-nav{background:rgba(13,15,14,.96);border-color:#222824}.resources-home .resource-brand strong{color:#eef2ef}.resources-home .resource-brand strong span{color:var(--hs-green)}.resources-home .resource-brand small{color:#77827b}.resources-home .resource-nav nav a{color:#939d96}.resources-home .resource-nav nav a:hover,.resources-home .resource-nav nav a.active{background:#17201a;color:var(--hs-green-soft)}.resources-home .resource-app-btn{background:rgba(74,222,128,.10);border-color:rgba(74,222,128,.42);color:#6fe593}
-.blog-identity{border-bottom:1px solid var(--hs-border);background:linear-gradient(180deg,#111512 0%,#0d0f0e 100%)}.blog-identity-inner{width:min(1180px,calc(100% - 48px));margin:0 auto;padding:54px 0 42px;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:end}.blog-label{display:inline-flex;align-items:center;gap:10px;color:var(--hs-green);font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}.blog-label:before{content:"";width:28px;height:2px;background:var(--hs-green)}.blog-identity h1{margin:10px 0 9px;font-family:'Playfair Display',serif;font-size:clamp(42px,6vw,72px);line-height:.98;letter-spacing:-.04em}.blog-identity h1 span{color:var(--hs-green)}.blog-identity p{max-width:720px;margin:0;color:#aab4ad;font-size:16px;line-height:1.65}.blog-issue{padding-left:26px;border-left:1px solid #313933;color:#7f8b83;font-size:11px;line-height:1.7;text-transform:uppercase;letter-spacing:.08em}.blog-issue strong{display:block;color:#dbe3dd;font-size:13px;letter-spacing:.03em;text-transform:none;margin-bottom:3px}
-.blog-topic-bar{width:min(1180px,calc(100% - 48px));margin:0 auto;display:flex;gap:8px;align-items:center;padding:16px 0;border-bottom:1px solid var(--hs-border);overflow-x:auto;white-space:nowrap}.blog-topic-bar span{margin-right:6px;color:#68736c;font-size:10px;text-transform:uppercase;letter-spacing:.13em;font-weight:800}.blog-topic-bar a{padding:7px 10px;border:1px solid #2a322d;border-radius:999px;background:#121613;color:#9ba49f;font-size:11px;font-weight:700}.blog-topic-bar a:hover{border-color:#3e6049;color:#7ae49b}
-.blog-shell{width:min(1180px,calc(100% - 48px));margin:0 auto;padding:46px 0 68px}.blog-section-title{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:22px}.blog-section-title h2{margin:0;font-family:'Playfair Display',serif;font-size:34px}.blog-section-title p{margin:0;color:#77827b;font-size:12px}.blog-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}.blog-lead{display:flex;flex-direction:column;min-height:430px;padding:30px;border:1px solid #2a352e;border-radius:16px;background:linear-gradient(145deg,rgba(74,222,128,.10),#121613 48%,#0f1210)}.blog-kicker{color:#63df88;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.14em}.blog-lead h2{max-width:620px;margin:14px 0 14px;font-family:'Playfair Display',serif;font-size:clamp(36px,4.5vw,56px);line-height:1.02}.blog-lead p{max-width:650px;margin:0;color:#9ea8a1;font-size:15px;line-height:1.7}.blog-meta{margin-top:auto;padding-top:24px;color:#738078;font-size:11px}.blog-read{margin-top:10px;color:#72e394;font-size:13px;font-weight:800}.blog-list{display:flex;flex-direction:column;border:1px solid var(--hs-border);border-radius:16px;overflow:hidden;background:#111512}.blog-item{display:block;padding:23px 24px}.blog-item+.blog-item{border-top:1px solid var(--hs-border)}.blog-item:hover{background:#151a16}.blog-item h3{margin:8px 0 8px;font-family:'Playfair Display',serif;font-size:27px;line-height:1.08}.blog-item p{margin:0;color:#8f9992;font-size:13px;line-height:1.6}.blog-item .blog-meta{margin:14px 0 0;padding:0}
-.blog-divider{margin:48px 0 0;border-top:1px solid var(--hs-border)}.blog-about{display:grid;grid-template-columns:220px 1fr;gap:36px;padding-top:42px}.blog-about .blog-kicker{padding-top:7px}.blog-about h2{margin:0;font-family:'Playfair Display',serif;font-size:34px;line-height:1.1}.blog-about-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:22px}.blog-about-grid article{padding:20px;border:1px solid var(--hs-border);border-radius:12px;background:#101310}.blog-about-grid b{color:#4ade80;font-size:11px}.blog-about-grid h3{margin:8px 0 7px;font-size:16px}.blog-about-grid p{margin:0;color:#818c84;font-size:12px;line-height:1.6}.blog-data-band{margin-top:46px;display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--hs-border);border-radius:14px;overflow:hidden}.blog-data-band div{padding:22px 24px;background:#101310}.blog-data-band div+div{border-left:1px solid var(--hs-border)}.blog-data-band span,.blog-data-band strong{display:block}.blog-data-band span{color:#718078;font-size:10px;text-transform:uppercase;letter-spacing:.12em}.blog-data-band strong{margin-top:5px;font-family:'Playfair Display',serif;font-size:25px}.resources-home .resources-cta{margin-top:52px}.resources-home .resource-footer{background:#0d0f0e;border-color:#222824;color:#6f7972}
-@media(max-width:850px){.blog-identity-inner{grid-template-columns:1fr}.blog-issue{padding-left:0;border-left:0}.blog-grid{grid-template-columns:1fr}.blog-about{grid-template-columns:1fr}.blog-about-grid{grid-template-columns:1fr}.blog-data-band{grid-template-columns:1fr}.blog-data-band div+div{border-left:0;border-top:1px solid var(--hs-border)}}
-@media(max-width:640px){.blog-identity-inner,.blog-topic-bar,.blog-shell{width:min(100% - 28px,1180px)}.blog-identity-inner{padding:40px 0 30px}.blog-identity h1{font-size:46px}.blog-section-title{align-items:flex-start;flex-direction:column}.blog-lead{min-height:360px;padding:22px}.blog-item{padding:20px}.blog-about-grid{grid-template-columns:1fr}}
+.resources-hero-content{max-width:920px}
+.blog-page-mark{display:inline-flex;align-items:center;gap:10px;margin-bottom:14px;padding:7px 10px;border:1px solid rgba(74,222,128,.38);border-radius:999px;background:rgba(9,15,11,.5);color:#75e59a;font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;backdrop-filter:blur(8px)}
+.blog-page-mark:before{content:"";width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 4px rgba(74,222,128,.10)}
+.resources-hero h1{max-width:860px;font-size:clamp(48px,7vw,78px)}
+.resources-hero h1 .blog-word{display:block;color:#eef2ef}
+.resources-hero h1 .accent{color:#56dc7e}
+.blog-hero-dek{max-width:730px!important}
+.blog-hero-note{display:flex;flex-wrap:wrap;gap:18px;margin-top:24px;color:#849087;font-size:11px}
+.blog-hero-note span{display:flex;align-items:center;gap:7px}
+.blog-hero-note span:before{content:"";width:4px;height:4px;border-radius:50%;background:#4ade80}
+.blog-section-heading{display:flex;align-items:end;justify-content:space-between;gap:28px;margin-bottom:28px}
+.blog-section-heading h2{margin:4px 0 0;font-family:'Playfair Display',serif;font-size:clamp(32px,4vw,48px);line-height:1.04}
+.blog-section-heading p{max-width:430px;margin:0;color:#89948d;font-size:13px}
+.blog-topic-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.blog-topic-strip a{padding:7px 10px;border:1px solid #2a322d;border-radius:999px;background:#111512;color:#9ca69f;font-size:11px;font-weight:700}
+.blog-topic-strip a:hover{border-color:#4b6d56;color:#7be59c}
+@media(max-width:700px){.blog-section-heading{align-items:flex-start;flex-direction:column}.resources-hero h1{font-size:48px}}
 </style>
 </head>
-<body class="resources-home">
+<body>
 <header class="resource-nav">
   <a class="resource-brand" href="./index.html"><strong>HuntSmart <span>Canada</span></strong><small>Know your draw odds</small></a>
-  <nav aria-label="Resources navigation"><a href="./index.html">App</a><a class="active" href="./blog.html">Blog</a></nav>
+  <nav aria-label="Blog navigation">
+    <a href="./index.html">App</a>
+    <a class="active" href="./blog.html">Blog</a>
+  </nav>
   <a class="resource-app-btn" href="./index.html">Open HuntSmart</a>
 </header>
+
 <main>
-  <section class="blog-identity">
-    <div class="blog-identity-inner">
-      <div><div class="blog-label">HuntSmart Blog & Resources</div><h1>Hunting draw <span>knowledge.</span></h1><p>Guides, historical draw analysis, application strategy, and walkthroughs for getting more out of HuntSmart Canada.</p></div>
-      <div class="blog-issue"><strong>Blog & Resources</strong>BC LEH · Alberta Draws<br>Data guides · App walkthroughs</div>
+  <section class="resources-hero">
+    <div class="resources-hero-bg"></div>
+    <div class="resources-hero-overlay"></div>
+    <div class="resources-hero-content">
+      <div class="blog-page-mark">HuntSmart Blog & Resources</div>
+      <h1><span class="blog-word">The HuntSmart Blog.</span><span class="accent">Draw guides, data & strategy.</span></h1>
+      <p class="blog-hero-dek">Practical articles for BC and Alberta hunters — from understanding draw systems and historical odds to getting more out of HuntSmart.</p>
+      <div class="blog-topic-strip"><a href="#latest">Latest guides</a><a href="#latest">BC LEH</a><a href="#latest">Historical odds</a><a href="#latest">Using HuntSmart</a></div>
+      <div class="blog-hero-note"><span>Data-backed guides</span><span>Interactive tools</span><span>Built for application season</span></div>
     </div>
   </section>
 
-  <nav class="blog-topic-bar" aria-label="Blog topics"><span>Topics</span><a href="#featured">Featured</a><a href="#bc-leh">BC LEH</a><a href="#data-guides">Draw Odds</a><a href="#app-guides">Using HuntSmart</a><a href="./index.html">Back to App</a></nav>
-
-  <section class="blog-shell" id="featured">
-    <div class="blog-section-title"><h2>Latest from the HuntSmart Blog</h2><p>Practical hunting-draw information backed by HuntSmart data.</p></div>
-    <div class="blog-grid">
-      <a class="blog-lead" id="app-guides" href="./how-to-use-huntsmart.html"><div class="blog-kicker">Featured · Interactive Guide</div><h2>How to Use HuntSmart Canada</h2><p>Choose your province, narrow the hunt database, understand hunt cards, inspect historical odds, compare opportunities, and build a shortlist step by step.</p><div class="blog-meta">6 min read · Interactive walkthrough</div><div class="blog-read">Read guide →</div></a>
-      <div class="blog-list">
-        <a class="blog-item" id="bc-leh" href="./how-does-bc-leh-work.html"><div class="blog-kicker">BC LEH Guide</div><h3>How Does BC LEH Work?</h3><p>Applications, hunt codes, authorizations, draw odds, and how to compare opportunities.</p><div class="blog-meta">8 min · Beginner guide</div></a>
-        <a class="blog-item" id="data-guides" href="./bc-leh-odds-guide.html"><div class="blog-kicker">Data Guide</div><h3>BC LEH Odds: Why One Year Can Mislead You</h3><p>See why multi-year history can tell you far more than a single draw percentage.</p><div class="blog-meta">7 min · Interactive data</div></a>
-      </div>
+  <section class="resources-shell" id="latest">
+    <div class="blog-section-heading">
+      <div><div class="eyebrow">Latest from the blog</div><h2>Start with these guides.</h2></div>
+      <p>Clear answers to the questions hunters actually ask before choosing where to apply.</p>
     </div>
 
-    <div class="blog-divider"></div>
-    <section class="blog-about"><div class="blog-kicker">What you'll find here</div><div><h2>A blog built around real hunting decisions.</h2><div class="blog-about-grid"><article><b>01</b><h3>Draw guides</h3><p>Plain-language explanations of LEH, priority systems, hunt codes, odds, and authorizations.</p></article><article><b>02</b><h3>Historical analysis</h3><p>Use HuntSmart's data to understand trends instead of overreacting to one season.</p></article><article><b>03</b><h3>App walkthroughs</h3><p>Learn how to turn the information into filters, comparisons, maps, and saved hunts inside HuntSmart.</p></article></div></div></section>
+    <div class="article-grid">
+      <a class="article-card featured" href="./how-to-use-huntsmart.html">
+        <div class="article-kicker">Featured · Interactive Guide</div>
+        <h3>How to Use HuntSmart Canada</h3>
+        <p>Choose a province, filter a species, read a hunt card, understand historical odds, compare opportunities, and build a shortlist — step by step.</p>
+        <div class="article-meta"><span>Interactive</span><span>6 min</span></div>
+        <div class="article-cta">Try the walkthrough →</div>
+      </a>
 
-    <div class="blog-data-band"><div><span>BC opportunities tracked</span><strong>1,000+</strong></div><div><span>Historical BC coverage</span><strong>25+ years</strong></div><div><span>Editorial focus</span><strong>Data-backed</strong></div></div>
+      <a class="article-card" href="./how-does-bc-leh-work.html">
+        <div class="article-kicker">BC LEH Guide</div>
+        <h3>How Does BC LEH Work?</h3>
+        <p>A clear explanation of hunt codes, applications, authorizations, draw odds, and how to choose opportunities without getting lost in the tables.</p>
+        <div class="article-meta"><span>Beginner</span><span>8 min</span></div>
+        <div class="article-cta">Read the guide →</div>
+      </a>
 
-    <section class="resources-cta"><div><div class="eyebrow">Ready to use the data?</div><h2>Move from the blog into HuntSmart.</h2><p>Filter opportunities, inspect historical trends, and build a shortlist with the real app.</p></div><a href="./index.html">Open HuntSmart →</a></section>
+      <a class="article-card" href="./bc-leh-odds-guide.html">
+        <div class="article-kicker">Data Guide</div>
+        <h3>BC LEH Odds: Why One Year Can Mislead You</h3>
+        <p>Use a live HuntSmart historical series to see why trends matter more than a single year's draw percentage.</p>
+        <div class="article-meta"><span>Interactive data</span><span>7 min</span></div>
+        <div class="article-cta">Explore the odds →</div>
+      </a>
+    </div>
+  </section>
+
+  <section class="resource-value-band">
+    <div><strong>1,000+ BC draw opportunities</strong><span>organized into one searchable product</span></div>
+    <div><strong>25+ years of BC history</strong><span>available for many draw series</span></div>
+    <div><strong>Built around real questions</strong><span>not generic hunting content</span></div>
+  </section>
+
+  <section class="resources-shell compact">
+    <div class="section-heading">
+      <div><div class="eyebrow">What the blog covers</div><h2>Learn it here. Use it in HuntSmart.</h2></div>
+    </div>
+    <div class="explain-grid">
+      <article><span>01</span><h3>Draw systems</h3><p>Understand LEH, priority, hunt codes, authorizations, and how each draw system works.</p></article>
+      <article><span>02</span><h3>Odds & trends</h3><p>Use historical data and interactive analysis to put a single season's odds into context.</p></article>
+      <article><span>03</span><h3>HuntSmart guides</h3><p>Learn how to use filters, maps, comparisons, saved hunts, and other app tools more effectively.</p></article>
+    </div>
+  </section>
+
+  <section class="resources-cta">
+    <div><div class="eyebrow">Ready to compare hunts?</div><h2>Take the next step in HuntSmart.</h2><p>Filter opportunities, inspect historical trends, and shortlist the draws that fit how you actually hunt.</p></div>
+    <a href="./index.html">Open HuntSmart →</a>
   </section>
 </main>
+
 <footer class="resource-footer"><span>© 2026 HuntSmart Canada</span><span>Educational content should be used alongside current provincial regulations and official draw information.</span></footer>
 </body>
 </html>
