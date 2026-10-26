@@ -61,7 +61,8 @@ function fpBcRenderMap(geojson) {
     center: [54.0, -124.0], zoom: 5, minZoom: 4, maxZoom: 13,
     zoomControl: true, scrollWheelZoom: true, touchZoom: true, attributionControl: false
   });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains: 'abc', maxZoom: 19 }).addTo(fpBcLeafletInstance);
+  hsAddDarkLeafletTiles(fpBcLeafletInstance);
+  hsInstallLeafletExpandControl('fpBcLeafletMap', fpBcLeafletInstance, 'BC');
 
   const wmusWithDraws = new Set(DATA.map(r => bcNormalizeMU(r.MU)));
 
@@ -75,12 +76,12 @@ function fpBcRenderMap(geojson) {
         const sel = fpBcSelWMU.has(id);
         this.setStyle(sel
           ? { fillColor: '#4ade80', fillOpacity: 0.92, weight: 3, color: '#fff' }
-          : { fillColor: '#fff', fillOpacity: 0.4, weight: 1.5, color: '#4ade80' });
-        const cnt = DATA.filter(r => bcNormalizeMU(r.MU) === id).length;
+          : { fillColor: '#fff', fillOpacity: 0.4, weight: 1.5, color: '#ffffff' });
+        const cnt = DATA.filter(r => bcNormalizeMU(r.MU) === id && (fpSelSpecies.size === 0 || (typeof bcSpeciesMatchesAnySelected === 'function' ? bcSpeciesMatchesAnySelected(r.Species, fpSelSpecies) : fpSelSpecies.has(r.Species)))).length;
         const tipText = cnt > 0
           ? `<b style="color:#4ade80">WMU ${id}</b><br><span style="font-size:11px;color:#aaa">${cnt} draw${cnt !== 1 ? 's' : ''} available</span>`
           : `<b>WMU ${id}</b><br><span style="font-size:11px;color:#888">No draws</span>`;
-        this.bindTooltip(tipText, { sticky: true, direction: 'top', offset: [0, -4], opacity: 1, className: 'ab-wmu-tip' }).openTooltip(e.latlng);
+        this.bindTooltip(tipText, { sticky: true, direction: 'top', offset: [0, -4], opacity: 1, className: 'hs-filter-map-tip ab-wmu-tip' }).openTooltip(e.latlng);
       });
       layer.on('mouseout', function() {
         this.setStyle(fpBcGetStyle(feature, fpBcSelWMU.has(id)));
@@ -100,13 +101,15 @@ function fpBcRenderMap(geojson) {
 
 function fpBcGetStyle(feature, isSelected) {
   const id = feature.properties.wmu_id || '';
-  const hasDraws = DATA.length === 0 || DATA.some(r => bcNormalizeMU(r.MU) === id);
+  const hasAnyDraws = DATA.length === 0 || DATA.some(r => bcNormalizeMU(r.MU) === id);
+  const speciesActive = fpSelSpecies && fpSelSpecies.size > 0;
+  const matchesSpecies = !speciesActive || hsBcWMUHasSpecies(id, fpSelSpecies, DATA);
   return {
-    fillColor:   isSelected ? '#4ade80' : (typeof bcWmuFillColor === 'function' ? bcWmuFillColor(id) : '#6aab76'),
-    fillOpacity: isSelected ? 0.75 : hasDraws ? 0.38 : 0.15,
-    color:       isSelected ? '#ffffff' : '#1a1a1a',
+    fillColor:   isSelected ? '#4ade80' : (matchesSpecies ? (typeof bcWmuFillColor === 'function' ? bcWmuFillColor(id) : '#6aab76') : '#1f2933'),
+    fillOpacity: isSelected ? 0.75 : (!hasAnyDraws ? 0.10 : (speciesActive ? (matchesSpecies ? 0.46 : 0.08) : 0.38)),
+    color:       isSelected ? '#ffffff' : (speciesActive && matchesSpecies ? 'rgba(255,255,255,.22)' : '#18241e'),
     weight:      isSelected ? 2.5 : 0.7,
-    opacity:     isSelected ? 1.0 : 0.75
+    opacity:     isSelected ? 1.0 : (speciesActive && !matchesSpecies ? 0.28 : 0.85)
   };
 }
 
@@ -185,7 +188,7 @@ function fpToggleSpecies(s) {
   const relevant = fpSelSpecies.size===0 ? DATA : DATA.filter(r=>fpSelSpecies.has(r.Species));
   const validMUs = new Set(relevant.map(r=>r.MU_General));
   fpSelMUs.forEach(m => { if (!validMUs.has(m)) fpSelMUs.delete(m); });
-  fpBuildChips(); fpBuildMU(); fpUpdateCta();
+  fpBuildChips(); fpBuildMU(); fpBcRefreshAllStyles(); fpUpdateCta();
 }
 
 function fpToggleMU(n) {
@@ -194,7 +197,7 @@ function fpToggleMU(n) {
 }
 
 function fpClearFilter(type) {
-  if (type==='species') { fpSelSpecies.clear(); fpBuildChips(); fpBuildMU(); }
+  if (type==='species') { fpSelSpecies.clear(); fpBuildChips(); fpBuildMU(); fpBcRefreshAllStyles(); }
   if (type==='class') { fpSelClass.clear(); fpBuildClassChips(); }
   if (type==='mu') { fpSelMUs.clear(); fpBuildMU(); }
   if (type==='bap') { fpSelBap.clear(); }

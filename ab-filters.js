@@ -36,7 +36,7 @@ function abFpToggleSpecies(s) {
   document.querySelectorAll('#abFpSpeciesChips .fp-chip').forEach(b =>
     b.classList.toggle('active', abFpSelSpecies.has(b.textContent.trim()))
   );
-  abFpUpdatePointsSection(); abFpUpdateCount();
+  abFpUpdatePointsSection(); abFpRefreshMapStyles(); abFpUpdateCount();
 }
 function abFpToggleWMU(w) {
   abFpSelWMU.has(w)?abFpSelWMU.delete(w):abFpSelWMU.add(w);
@@ -145,7 +145,8 @@ function abFpInitMap() {
       center: [54.0, -115.0], zoom: 5, minZoom: 4, maxZoom: 13,
       zoomControl: true, scrollWheelZoom: true, touchZoom: true, attributionControl: false
     });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains: 'abc', maxZoom: 19 }).addTo(abFpLeafletInstance);
+    hsAddDarkLeafletTiles(abFpLeafletInstance);
+    hsInstallLeafletExpandControl('abFpLeafletMap', abFpLeafletInstance, 'Alberta');
 
     const allCards = (typeof buildABCards === 'function') ? buildABCards().filter(c => c !== null) : [];
 
@@ -153,17 +154,17 @@ function abFpInitMap() {
       style: feature => abFpGetStyle(feature, abFpSelWMU.has(String(feature.properties.WMUNIT_NUM || ''))),
       onEachFeature: (feature, layer) => {
         const id = String(feature.properties.WMUNIT_NUM || '');
-        const hasDraws = allCards.some(c => String(c.wmu) === id);
+        const hasDraws = allCards.some(c => String(c.wmu) === id || (typeof abCardMatchesWMU === 'function' && abCardMatchesWMU(c, id)));
 
         layer.on('mouseover', function(e) {
           const sel = abFpSelWMU.has(id);
           this.setStyle(sel
             ? { fillColor: '#4ade80', fillOpacity: 0.92, weight: 3, color: '#fff' }
-            : { fillColor: '#fff', fillOpacity: 0.4, weight: 1.5, color: '#4ade80' });
-          const cnt = allCards.filter(c => String(c.wmu) === id).length;
+            : { fillColor: '#fff', fillOpacity: 0.4, weight: 1.5, color: '#ffffff' });
+          const cnt = allCards.filter(c => (String(c.wmu) === id || (typeof abCardMatchesWMU === 'function' && abCardMatchesWMU(c, id))) && (abFpSelSpecies.size === 0 || abFpSelSpecies.has(c.species))).length;
           this.bindTooltip(
             `<b style="color:#4ade80">WMU ${id}</b><br><span style="font-size:11px;color:#aaa">${cnt || 'No'} draw${cnt !== 1 ? 's' : ''}</span>`,
-            { sticky: true, direction: 'top', offset: [0, -4], opacity: 1, className: 'ab-wmu-tip' }
+            { sticky: true, direction: 'top', offset: [0, -4], opacity: 1, className: 'hs-filter-map-tip ab-wmu-tip' }
           ).openTooltip(e.latlng);
         });
         layer.on('mouseout', function() {
@@ -192,13 +193,15 @@ function abFpInitMap() {
 function abFpGetStyle(feature, isSelected) {
   const id = String(feature.properties.WMUNIT_NUM || '');
   const allCards = (typeof buildABCards === 'function') ? buildABCards().filter(c => c !== null) : [];
-  const hasDraws = AB_DATA.length === 0 || allCards.some(c => String(c.wmu) === id);
+  const hasAnyDraws = AB_DATA.length === 0 || allCards.some(c => String(c.wmu) === id || (typeof abCardMatchesWMU === 'function' && abCardMatchesWMU(c, id)));
+  const speciesActive = abFpSelSpecies && abFpSelSpecies.size > 0;
+  const matchesSpecies = !speciesActive || hsAbWMUHasSpecies(id, abFpSelSpecies, allCards);
   return {
-    fillColor:   isSelected ? '#4ade80' : (typeof abWmuFillColor === 'function' ? abWmuFillColor(id) : '#6aab76'),
-    fillOpacity: isSelected ? 0.75 : hasDraws ? 0.38 : 0.15,
-    color:       isSelected ? '#ffffff' : '#1a1a1a',
+    fillColor:   isSelected ? '#4ade80' : (matchesSpecies ? (typeof abWmuFillColor === 'function' ? abWmuFillColor(id) : '#6aab76') : '#1f2933'),
+    fillOpacity: isSelected ? 0.75 : (!hasAnyDraws ? 0.10 : (speciesActive ? (matchesSpecies ? 0.46 : 0.08) : 0.38)),
+    color:       isSelected ? '#ffffff' : (speciesActive && matchesSpecies ? 'rgba(255,255,255,.22)' : '#1a1a1a'),
     weight:      isSelected ? 2.5 : 0.7,
-    opacity:     isSelected ? 1.0 : 0.75
+    opacity:     isSelected ? 1.0 : (speciesActive && !matchesSpecies ? 0.28 : 0.85)
   };
 }
 function abFpRefreshMapStyles() {
@@ -252,7 +255,7 @@ function abFpSetSort(mode,btn) {
   if(btn) btn.classList.add('active');
 }
 function abFpClearFilter(type) {
-  if(type==='species'){abFpSelSpecies.clear();abFpBuildChips();}
+  if(type==='species'){abFpSelSpecies.clear();abFpBuildChips();abFpRefreshMapStyles();}
   if(type==='class'){abFpSelClass.clear();abFpBuildClassChips();}
   if(type==='wmu'){abFpSelWMU.clear();abFpBuildWMU();}
   abFpUpdateCount();

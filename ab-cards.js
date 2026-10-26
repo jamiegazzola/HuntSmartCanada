@@ -549,10 +549,6 @@ function abApplyFilters() {
     return bo - ao;
   });
   else if (abSortMode === 'harvest') results.sort((a,b) => (b.harvestSuccess??-1)-(a.harvestSuccess??-1));
-  else if (abSortMode === 'season') results.sort((a,b) => {
-    function ss(s){if(!s||s==='1')return 9999;const m=s.match(/([A-Za-z]+)\s+(\d+)/);if(!m)return 9999;const mo={Aug:1,Sep:2,Oct:3,Nov:4,Dec:5,Jan:6,Feb:7,Mar:8,Apr:9,May:10,Jun:11,Jul:12};return (mo[m[1].substring(0,3)]||13)*100+parseInt(m[2]);}
-    return ss(a.season)-ss(b.season);
-  });
   else if (abSortMode === 'points') results.sort((a,b)=>(a.minPtsToDraw??9999)-(b.minPtsToDraw??9999));
 
   abLastFilteredCards = results;
@@ -589,6 +585,7 @@ function abBuildSidebarChips() {
 }
 function abToggleSpecies(s) {
   abSelSpecies.has(s) ? abSelSpecies.delete(s) : abSelSpecies.add(s);
+  if (typeof abUpdateMapStyles === 'function') abUpdateMapStyles();
   abApplyFilters();
 }
 function abBuildWMUList() {

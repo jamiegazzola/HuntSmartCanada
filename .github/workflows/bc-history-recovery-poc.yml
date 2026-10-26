@@ -1,0 +1,37 @@
+name: BC History Recovery POC
+
+on:
+  push:
+    branches:
+      - preview/live-production-github
+    paths:
+      - 'draws.json'
+      - 'scripts/poc-bc-history-recovery.mjs'
+      - '.github/workflows/bc-history-recovery-poc.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recovery-poc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out preview branch
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run anonymized recovery proof-of-concept
+        run: node scripts/poc-bc-history-recovery.mjs draws.json bc-history-recovery-poc.json
+
+      - name: Upload anonymized report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bc-history-recovery-poc
+          path: bc-history-recovery-poc.json
+          if-no-files-found: error
+          retention-days: 14

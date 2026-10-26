@@ -1,181 +1,148 @@
-// functions/index.js — HuntSmart Canada
-// Cloud Functions: startFreeTrial, createCheckoutSession, stripeWebhook
+// HuntSmart Canada — RevenueCat entitlement sync (preview branch)
+// This replaces the old hard-coded Stripe function secrets on the preview branch.
+// It does not create charges or checkout sessions. RevenueCat remains the authority
+// for subscription access and Firestore only mirrors the current entitlement state.
 
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { onRequest }          = require("firebase-functions/v2/https");
-const admin                  = require("firebase-admin");
-const Stripe                 = require("stripe");
+const { onRequest } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
+const admin = require("firebase-admin");
 
 admin.initializeApp();
 const db = admin.firestore();
 
-// ── CONFIG — swap sk_test_ for sk_live_ when going live ───────
-const STRIPE_SECRET_KEY    = "sk_test_51TJI1XEJqvSsHrrUPRIAoSSSGc9PK8broRyjggqXrF8m60RFmUkpW0Z9b9blH3rLsbuSxf84EkzMtVkuUx5fGQxP00X0jQSkD0";
-const STRIPE_WEBHOOK_SECRET = "whsec_tla4wBB2rc5vHOxBtit3Kqvc0Iiwqv8J"; // set after step below
-const PRICE_MONTHLY        = "price_1TJLjmEJqvSsHrrUjaGVFN1K";
-const PRICE_YEARLY         = "price_1TJLjmEJqvSsHrrUW0X4SDXt";
-const TRIAL_DAYS           = 7;
+const REVENUECAT_SECRET_API_KEY = defineSecret("REVENUECAT_SECRET_API_KEY");
+const REVENUECAT_WEBHOOK_AUTH = defineSecret("REVENUECAT_WEBHOOK_AUTH");
+const ENTITLEMENT_ID = "premium_maps_analytics";
 
-const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2024-04-10" });
+function uniqueStrings(values) {
+  return [...new Set(values.filter((value) => typeof value === "string" && value.trim()))];
+}
 
-// ─────────────────────────────────────────────────────────────
-// startFreeTrial — called when user clicks "Try Free for 7 Days"
-// Creates a Stripe customer + subscription in trial mode
-// Writes subscriptionStatus: "trialing" to Firestore
-// ─────────────────────────────────────────────────────────────
-exports.startFreeTrial = onCall({ region: "us-central1" }, async (request) => {
-  const uid   = request.auth?.uid;
-  const email = request.auth?.token?.email;
-  if (!uid) throw new HttpsError("unauthenticated", "Must be signed in.");
+async function resolveFirebaseUid(event) {
+  const candidates = uniqueStrings([
+    event.app_user_id,
+    event.original_app_user_id,
+    ...(Array.isArray(event.aliases) ? event.aliases : [])
+  ]).filter((id) => !id.startsWith("$RCAnonymousID:"));
 
-  const userRef = db.collection("users").doc(uid);
-  const snap    = await userRef.get();
-  const data    = snap.data() || {};
-
-  // Don't allow a second trial
-  if (data.subscriptionStatus && data.subscriptionStatus !== "none") {
-    throw new HttpsError("already-exists", "Trial already used.");
+  for (const candidate of candidates) {
+    const snap = await db.collection("users").doc(candidate).get();
+    if (snap.exists) return candidate;
   }
 
-  // Create or reuse Stripe customer
-  let customerId = data.stripeCustomerId;
-  if (!customerId) {
-    const customer = await stripe.customers.create({ email, metadata: { firebaseUID: uid } });
-    customerId = customer.id;
-  }
+  return null;
+}
 
-  // Create subscription with trial — no payment method required yet
-  const subscription = await stripe.subscriptions.create({
-    customer:           customerId,
-    items:              [{ price: PRICE_MONTHLY }],
-    trial_period_days:  TRIAL_DAYS,
-    payment_settings:   { save_default_payment_method: "on_subscription" },
-    trial_settings:     { end_behavior: { missing_payment_method: "cancel" } },
-  });
+function entitlementIsCurrentlyActive(entitlement) {
+  if (!entitlement) return false;
 
-  // Write to Firestore
-  await userRef.set({
-    stripeCustomerId:   customerId,
-    stripeSubId:        subscription.id,
-    subscriptionStatus: "trialing",
-    trialEndDate:       admin.firestore.Timestamp.fromMillis(subscription.trial_end * 1000),
-    plan:               "monthly",
-  }, { merge: true });
+  const now = Date.now();
+  const expiresAt = entitlement.expires_date
+    ? new Date(entitlement.expires_date).getTime()
+    : null;
+  const graceExpiresAt = entitlement.grace_period_expires_date
+    ? new Date(entitlement.grace_period_expires_date).getTime()
+    : null;
 
-  return { ok: true };
-});
+  // A null expiration represents a lifetime entitlement.
+  if (expiresAt === null) return true;
+  if (Number.isFinite(expiresAt) && expiresAt > now) return true;
+  if (Number.isFinite(graceExpiresAt) && graceExpiresAt > now) return true;
+  return false;
+}
 
-// ─────────────────────────────────────────────────────────────
-// createCheckoutSession — called for "pay now" or adding card
-// after trial. Redirects user to Stripe Checkout.
-// ─────────────────────────────────────────────────────────────
-exports.createCheckoutSession = onCall({ region: "us-central1" }, async (request) => {
-  const uid       = request.auth?.uid;
-  const email     = request.auth?.token?.email;
-  const { plan, returnUrl } = request.data || {};
-  if (!uid) throw new HttpsError("unauthenticated", "Must be signed in.");
-
-  const priceId = plan === "yearly" ? PRICE_YEARLY : PRICE_MONTHLY;
-
-  const userRef = db.collection("users").doc(uid);
-  const snap    = await userRef.get();
-  const data    = snap.data() || {};
-
-  // Create or reuse Stripe customer
-  let customerId = data.stripeCustomerId;
-  if (!customerId) {
-    const customer = await stripe.customers.create({ email, metadata: { firebaseUID: uid } });
-    customerId = customer.id;
-    await userRef.set({ stripeCustomerId: customerId }, { merge: true });
-  }
-
-  const sessionParams = {
-    customer:             customerId,
-    mode:                 "subscription",
-    line_items:           [{ price: priceId, quantity: 1 }],
-    success_url:          `${returnUrl}?status=success`,
-    cancel_url:           `${returnUrl}?status=cancelled`,
-    allow_promotion_codes: true,
-    subscription_data:    {},
-  };
-
-  // If user is already trialing, attach to existing sub instead of new trial
-  if (data.subscriptionStatus === "trialing" && data.stripeSubId) {
-    sessionParams.mode = "setup";
-    sessionParams.setup_intent_data = {
-      metadata: { subscription_id: data.stripeSubId, firebase_uid: uid }
-    };
-    delete sessionParams.line_items;
-    delete sessionParams.subscription_data;
-  }
-
-  const session = await stripe.checkout.sessions.create(sessionParams);
-  return { url: session.url };
-});
-
-// ─────────────────────────────────────────────────────────────
-// stripeWebhook — listens for Stripe events and keeps Firestore
-// in sync (subscription activated, cancelled, trial ended, etc.)
-// ─────────────────────────────────────────────────────────────
-exports.stripeWebhook = onRequest({ region: "us-central1" }, async (req, res) => {
-  const sig = req.headers["stripe-signature"];
-  let event;
-
-  try {
-    event = stripe.webhooks.constructEvent(req.rawBody, sig, STRIPE_WEBHOOK_SECRET);
-  } catch (err) {
-    console.error("Webhook signature failed:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  const obj = event.data.object;
-
-  // Find the Firebase user by Stripe customer ID
-  async function getUserRef(customerId) {
-    const q = await db.collection("users")
-      .where("stripeCustomerId", "==", customerId)
-      .limit(1).get();
-    return q.empty ? null : q.docs[0].ref;
-  }
-
-  switch (event.type) {
-    case "customer.subscription.updated":
-    case "customer.subscription.created": {
-      const ref = await getUserRef(obj.customer);
-      if (!ref) break;
-      await ref.set({
-        subscriptionStatus: obj.status,           // "active", "trialing", "past_due", etc.
-        stripeSubId:        obj.id,
-        plan:               obj.items.data[0]?.price.id === PRICE_YEARLY ? "yearly" : "monthly",
-        trialEndDate:       obj.trial_end
-          ? admin.firestore.Timestamp.fromMillis(obj.trial_end * 1000)
-          : null,
-        currentPeriodEnd:   admin.firestore.Timestamp.fromMillis(obj.current_period_end * 1000),
-      }, { merge: true });
-      break;
+exports.revenuecatWebhook = onRequest(
+  {
+    region: "us-central1",
+    secrets: [REVENUECAT_SECRET_API_KEY, REVENUECAT_WEBHOOK_AUTH]
+  },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).send("Method not allowed");
+      return;
     }
 
-    case "customer.subscription.deleted": {
-      const ref = await getUserRef(obj.customer);
-      if (!ref) break;
-      await ref.set({ subscriptionStatus: "cancelled" }, { merge: true });
-      break;
+    const expectedAuth = REVENUECAT_WEBHOOK_AUTH.value();
+    const receivedAuth = req.get("authorization") || "";
+    if (!expectedAuth || receivedAuth !== expectedAuth) {
+      res.status(401).send("Unauthorized");
+      return;
     }
 
-    case "invoice.payment_failed": {
-      const ref = await getUserRef(obj.customer);
-      if (!ref) break;
-      await ref.set({ subscriptionStatus: "past_due" }, { merge: true });
-      break;
+    const event = req.body?.event;
+    if (!event?.id || !event?.app_user_id) {
+      res.status(400).send("Invalid RevenueCat event");
+      return;
     }
 
-    case "invoice.payment_succeeded": {
-      const ref = await getUserRef(obj.customer);
-      if (!ref) break;
-      await ref.set({ subscriptionStatus: "active" }, { merge: true });
-      break;
+    const eventRef = db.collection("revenuecatEvents").doc(event.id);
+    const existingEvent = await eventRef.get();
+    if (existingEvent.exists) {
+      res.status(200).send("Already processed");
+      return;
     }
+
+    const firebaseUid = await resolveFirebaseUid(event);
+    if (!firebaseUid) {
+      console.warn("[revenuecatWebhook] No matching Firebase user", {
+        eventId: event.id,
+        appUserId: event.app_user_id
+      });
+      res.status(200).send("No matching Firebase user");
+      return;
+    }
+
+    const apiResponse = await fetch(
+      `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(event.app_user_id)}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${REVENUECAT_SECRET_API_KEY.value()}`,
+          Accept: "application/json"
+        }
+      }
+    );
+
+    if (!apiResponse.ok) {
+      console.error("[revenuecatWebhook] RevenueCat lookup failed", apiResponse.status);
+      res.status(503).send("RevenueCat lookup failed");
+      return;
+    }
+
+    const customer = await apiResponse.json();
+    const entitlement = customer?.subscriber?.entitlements?.[ENTITLEMENT_ID] || null;
+    const active = entitlementIsCurrentlyActive(entitlement);
+
+    const entitlementRef = db.collection("billingEntitlements").doc(firebaseUid);
+    const batch = db.batch();
+
+    batch.set(
+      entitlementRef,
+      {
+        entitlementId: ENTITLEMENT_ID,
+        active,
+        status: active ? "premium" : "free",
+        productIdentifier: entitlement?.product_identifier || null,
+        expiresAt: entitlement?.expires_date || null,
+        gracePeriodExpiresAt: entitlement?.grace_period_expires_date || null,
+        store: event.store || null,
+        environment: event.environment || null,
+        lastEventType: event.type || null,
+        revenueCatAppUserId: event.app_user_id,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
+
+    batch.set(eventRef, {
+      firebaseUid,
+      appUserId: event.app_user_id,
+      type: event.type || null,
+      environment: event.environment || null,
+      receivedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    await batch.commit();
+    res.status(200).send("OK");
   }
-
-  res.json({ received: true });
-});
+);

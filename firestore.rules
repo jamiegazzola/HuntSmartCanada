@@ -3,33 +3,44 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ── Users ──
-    // Read your own doc, OR read another user's doc if you are in their friends array
+    // Read your own doc, OR read another user's doc if you are in their friends array.
     match /users/{uid} {
       allow read: if request.auth != null && (
         request.auth.uid == uid ||
         request.auth.uid in resource.data.friends
       );
-      // Only write your own doc; friends array updates only (no privilege escalation)
+      // Existing profile data remains user-writable. Billing authority must NOT rely
+      // on user-editable fields in this document.
       allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ── RevenueCat entitlement mirror ──
+    // A signed-in user may read their own mirrored entitlement state, but browser
+    // clients can never create/update/delete it. Firebase Admin / Cloud Functions
+    // write this collection outside client security rules.
+    match /billingEntitlements/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // ── RevenueCat webhook idempotency records ──
+    match /revenuecatEvents/{eventId} {
+      allow read, write: if false;
     }
 
     // ── Friend Requests ──
     match /friendRequests/{requestId} {
-      // Read if you are the sender or recipient
       allow read: if request.auth != null && (
         request.auth.uid == resource.data.from ||
         request.auth.uid == resource.data.to
       );
-      // Create: only if you are the sender and status is pending
       allow create: if request.auth != null &&
         request.auth.uid == request.resource.data.from &&
         request.resource.data.status == 'pending';
-      // Update: only recipient can accept/decline; sender can cancel (delete)
       allow update: if request.auth != null && (
         request.auth.uid == resource.data.to ||
         request.auth.uid == resource.data.from
       );
-      // Delete: sender can retract
       allow delete: if request.auth != null &&
         request.auth.uid == resource.data.from;
     }

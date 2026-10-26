@@ -7,6 +7,65 @@
 let savedProvince = 'BC';
 let savedSortMode = 'odds';
 
+// Saved BC cards can become stale because localStorage stores a copy of the draw.
+// Always hydrate saved/compare records from the latest DATA/draws.json before rendering.
+function _bcFreshDrawForSaved(saved) {
+  if (!saved || typeof DATA === 'undefined' || !Array.isArray(DATA) || DATA.length === 0) return saved;
+  const savedCode = typeof padHuntCode === 'function' ? padHuntCode(saved.Code) : String(saved.Code || '').trim();
+  const savedSpecies = String(saved.Species || '').trim();
+  const savedMU = String(saved.MU || '').trim();
+  const savedZone = String(saved.Zone || '').trim();
+
+  const byExact = DATA.find(r =>
+    (typeof padHuntCode === 'function' ? padHuntCode(r.Code) : String(r.Code || '').trim()) === savedCode &&
+    String(r.Species || '').trim() === savedSpecies &&
+    String(r.MU || '').trim() === savedMU &&
+    String(r.Zone || '').trim() === savedZone
+  );
+  if (byExact) return { ...byExact, _key: saved._key || (typeof bcDrawStableKey === 'function' ? bcDrawStableKey(byExact) : saved._key) };
+
+  const byCodeSpeciesMU = DATA.find(r =>
+    (typeof padHuntCode === 'function' ? padHuntCode(r.Code) : String(r.Code || '').trim()) === savedCode &&
+    String(r.Species || '').trim() === savedSpecies &&
+    String(r.MU || '').trim() === savedMU
+  );
+  if (byCodeSpeciesMU) return { ...byCodeSpeciesMU, _key: saved._key || (typeof bcDrawStableKey === 'function' ? bcDrawStableKey(byCodeSpeciesMU) : saved._key) };
+
+  const byCode = DATA.filter(r => (typeof padHuntCode === 'function' ? padHuntCode(r.Code) : String(r.Code || '').trim()) === savedCode);
+  if (byCode.length === 1) return { ...byCode[0], _key: saved._key || (typeof bcDrawStableKey === 'function' ? bcDrawStableKey(byCode[0]) : saved._key) };
+
+  if (saved._key && typeof bcDrawStableKey === 'function') {
+    const byStableKey = DATA.find(r => bcDrawStableKey(r) === saved._key);
+    if (byStableKey) return { ...byStableKey, _key: saved._key };
+  }
+  return saved;
+}
+
+function refreshSavedBCDrawsFromData() {
+  if (typeof DATA === 'undefined' || !Array.isArray(DATA) || DATA.length === 0 || !Array.isArray(savedDraws)) return;
+  let changed = false;
+  savedDraws = savedDraws.map(saved => {
+    const fresh = _bcFreshDrawForSaved(saved);
+    if (fresh !== saved) changed = true;
+    return fresh;
+  });
+  if (changed) localStorage.setItem('huntodds_saved', JSON.stringify(savedDraws));
+}
+
+function _bcDisplayOddsValue(r) {
+  if (typeof getBCActualOdds === 'function') return getBCActualOdds(r);
+  const pct = parseFloat(r?.['%']);
+  if (isFinite(pct)) return pct;
+  const ydo = r?.yearly_draw_odds || {};
+  const yrs = Object.keys(ydo).map(Number).filter(Number.isFinite).sort((a,b)=>b-a);
+  return yrs.length ? parseFloat(ydo[yrs[0]]) : null;
+}
+
+function _bcDisplayHarvestValue(r) {
+  if (typeof computeHarvestAvg === 'function') return computeHarvestAvg(r?.yearly_fill_rates);
+  return null;
+}
+
 // ── REMOVE SINGLE SAVED DRAW ─────────────────────────────────
 function removeSaved(key) {
   const idx = savedDraws.findIndex(s => s._key === key);
@@ -167,6 +226,7 @@ function renderSavedPage() {
   const sortBar    = document.getElementById('savedSortBar');
   if (!grid) return;
 
+  if (savedProvince === 'BC') refreshSavedBCDrawsFromData();
   updateSavedBadge();
 
   const draws = savedProvince === 'BC' ? savedDraws : abSavedDraws;
@@ -227,18 +287,18 @@ function renderSavedPage() {
   const sorted = [...draws].sort((a, b) => {
     if (savedSortMode === 'harvest') {
       const fa = savedProvince === 'BC'
-        ? computeHarvestAvg(a.yearly_fill_rates)
+        ? _bcDisplayHarvestValue(a)
         : computeABHarvestAvg(a.species, a.wmu);
       const fb = savedProvince === 'BC'
-        ? computeHarvestAvg(b.yearly_fill_rates)
+        ? _bcDisplayHarvestValue(b)
         : computeABHarvestAvg(b.species, b.wmu);
       if (fb === null && fa === null) return 0;
       if (fb === null) return -1;
       if (fa === null) return 1;
       return fb - fa;
     }
-    const ao = savedProvince === 'BC' ? (a['%'] || 0) : (a.personalOdds !== null ? a.personalOdds : a.latestOdds || 0);
-    const bo = savedProvince === 'BC' ? (b['%'] || 0) : (b.personalOdds !== null ? b.personalOdds : b.latestOdds || 0);
+    const ao = savedProvince === 'BC' ? (_bcDisplayOddsValue(a) || 0) : (a.personalOdds !== null ? a.personalOdds : a.latestOdds || 0);
+    const bo = savedProvince === 'BC' ? (_bcDisplayOddsValue(b) || 0) : (b.personalOdds !== null ? b.personalOdds : b.latestOdds || 0);
     return bo - ao;
   });
 
@@ -249,8 +309,11 @@ function renderSavedPage() {
 
 // ── BC SAVED CARD ─────────────────────────────────────────────
 function _buildBCSavedCard(r) {
-  const cls    = oddsClass(r['%']), pct = fmt(r['%']);
-  const fr     = computeHarvestAvg(r.yearly_fill_rates);
+  r = _bcFreshDrawForSaved(r);
+  const oddsVal = _bcDisplayOddsValue(r);
+  const hasOdds = oddsVal !== null && isFinite(oddsVal);
+  const cls    = hasOdds ? oddsClass(oddsVal) : 'new-draw-card', pct = hasOdds ? fmt(oddsVal) : 'No data';
+  const fr     = _bcDisplayHarvestValue(r);
   const frFmt  = fr !== null ? fr + '%' : null;
   const frCls  = fr !== null ? (fr >= 50 ? 'fill-high' : fr >= 25 ? 'fill-mid' : 'fill-low') : 'fill-none';
   const isSel  = compareSelected.has(r._key);
@@ -261,13 +324,14 @@ function _buildBCSavedCard(r) {
         <div>
           <div class="card-species">${r.Species}</div>
           <div class="card-class">${r.Class}${r.Zone ? ' &nbsp;·&nbsp; Zone ' + r.Zone : ''}</div>
+          ${typeof renderBCSpecialBadges === 'function' ? renderBCSpecialBadges(r) : ''}
           ${frFmt
             ? `<span class="fill-badge ${frCls}"><span class="fill-pct">${frFmt}</span><span class="fill-sub">&nbsp;Harvest Success</span></span>`
             : `<span class="fill-badge fill-none"><span class="fill-sub">No Harvest Data</span></span>`}
         </div>
         <div class="odds-badge">
           <div class="odds-pct">${pct}</div>
-          <div class="odds-ratio">${r.Odds}</div>
+          <div class="odds-ratio">${hasOdds ? (typeof BC_ACTUAL_ODDS_YEAR !== 'undefined' ? BC_ACTUAL_ODDS_YEAR : '') : 'No data yet'}</div>
         </div>
       </div>
       <div class="card-info">
@@ -342,9 +406,43 @@ function _buildABSavedCard(c) {
     </div>`;
 }
 
+// Compact BC zone map for compare modal columns
+function _bcCompareSpeciesType(r) {
+  const s = String(r?.Species || '').toUpperCase();
+  if (s.includes('SHEEP') || s.includes('THINHORN') || s.includes('BIGHORN')) return 'MOUNTAIN SHEEP';
+  if (s.includes('GOAT')) return 'MOUNTAIN GOAT';
+  if (s.includes('MOOSE')) return 'MOOSE';
+  if (s.includes('ELK')) return 'ELK';
+  if (s.includes('CARIBOU')) return 'CARIBOU';
+  if (s.includes('BEAR')) return 'BLACK BEAR';
+  if (s.includes('MULE') || s.includes('BLACK-TAILED')) return 'MULE DEER';
+  if (s.includes('WHITE-TAILED') || s.includes('WHITETAIL')) return 'WHITE-TAILED DEER';
+  if (s.includes('BISON')) return 'BISON';
+  if (s.includes('TURKEY')) return 'TURKEY';
+  return 'MOUNTAIN SHEEP';
+}
+function _bcCompareZoneMapHTML(r, idx) {
+  const safeKey = String(r?._key || r?.Code || idx).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const mapId = 'lehMap_cmp_' + idx + '_' + safeKey + '_' + padHuntCode(r.Code);
+  const zoneLabel = r.Zone ? 'Zone ' + r.Zone + ' · MU ' + r.MU : 'MU ' + r.MU;
+  return `<div class="cmp-section cmp-zone-map-section">
+    <div class="cmp-section-label">ZONE MAP</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">
+      <span class="hunt-badge hunt-badge-shared" style="margin:0">${zoneLabel}</span>
+      <div style="display:flex;gap:3px;align-items:center">
+        <button id="${mapId}_btn_satellite" class="leh-map-btn active" data-tile="satellite" onclick="event.stopPropagation();bcCardMapSetLayer('${mapId}','satellite')">Satellite</button>
+        <button id="${mapId}_btn_topo" class="leh-map-btn" data-tile="topo" onclick="event.stopPropagation();bcCardMapSetLayer('${mapId}','topo')">Topo</button>
+      </div>
+    </div>
+    <div id="${mapId}" data-mu="${r.MU || ''}" data-zone="${r.Zone || ''}" data-species-type="${_bcCompareSpeciesType(r)}" class="leh-card-map cmp-zone-map" style="width:100%;aspect-ratio:1/1;border-radius:8px;overflow:hidden;background:#1a1a1a"></div>
+    <div id="${mapId}_status" style="font-size:10px;color:var(--text-muted);padding:4px 2px;font-family:monospace"></div>
+  </div>`;
+}
+
 // ── BC COMPARE MODAL ──────────────────────────────────────────
 function buildComparePanel() {
-  const draws = savedDraws.filter(s => compareSelected.has(s._key));
+  refreshSavedBCDrawsFromData();
+  const draws = savedDraws.filter(s => compareSelected.has(s._key)).map(s => _bcFreshDrawForSaved(s));
   if (draws.length < 2) return;
 
   const existing = document.getElementById('compareModal');
@@ -411,8 +509,8 @@ function buildComparePanel() {
     </div>`;
   }
 
-  const maxOdds    = Math.max(...draws.map(d => d['%'] || 0), 0.01);
-  const maxFill    = Math.max(...draws.map(d => d.fill_rate_3yr || 0), 0.01);
+  const maxOdds    = Math.max(...draws.map(d => _bcDisplayOddsValue(d) || 0), 0.01);
+  const maxFill    = Math.max(...draws.map(d => _bcDisplayHarvestValue(d) || 0), 0.01);
   const maxTags    = Math.max(...draws.map(d => parseInt(d.Tags) || 0), 1);
   const maxDriveKm = Math.max(...draws.map(d => {
     const m = (d.Drive||'').match(/(\d[\d,]*)\s*km/);
@@ -421,18 +519,19 @@ function buildComparePanel() {
 
   const cols = draws.map((r, i) => {
     const color = COLORS[i % COLORS.length];
-    const oddsVal = r['%'] || 0;
-    const fillVal = r.fill_rate_3yr;
+    const oddsVal = _bcDisplayOddsValue(r) || 0;
+    const fillVal = _bcDisplayHarvestValue(r);
     const fillAllTime = r.fill_rate_alltime;
     const driveKm = (() => { const m = (r.Drive||'').match(/(\d[\d,]*)\s*km/); return m ? parseInt(m[1].replace(',','')) : 0; })();
     const driveHrs = (r.Drive||'').match(/\(([^)]+)\)/)?.[1] || '';
     const tags = parseInt(r.Tags) || 0;
     const oddsColor = oddsVal >= 5 ? '#4caf82' : oddsVal >= 1 ? '#e6a817' : '#e05c5c';
-    const fillColor = fillVal >= 0.7 ? '#4caf82' : fillVal >= 0.4 ? '#e6a817' : fillVal != null ? '#e05c5c' : 'var(--text-muted)';
+    const fillColor = fillVal >= 50 ? '#4caf82' : fillVal >= 25 ? '#e6a817' : fillVal != null ? '#e05c5c' : 'var(--text-muted)';
     return `<div class="cmp-col" style="--col-color:${color}">
       <div class="cmp-col-header" style="border-top:3px solid ${color}">
         <div class="cmp-species">${r.Species}</div>
         <div class="cmp-class">${r.Class}${r.Zone ? ' · Zone ' + r.Zone : ''}</div>
+        ${typeof renderBCSpecialBadges === 'function' ? renderBCSpecialBadges(r) : ''}
         <div class="cmp-area">${r.Area} · MU ${r.MU}</div>
         <div class="cmp-region" style="color:${color}">${r.MU_General} — ${r.MU_Name}</div>
       </div>
@@ -446,7 +545,7 @@ function buildComparePanel() {
         </div>
         <div class="cmp-stat">
           <div class="cmp-stat-label">3-Yr Success Rate</div>
-          <div class="cmp-stat-val" style="color:${fillColor}">${fillVal != null ? fmtFill(fillVal) : '—'}</div>
+          <div class="cmp-stat-val" style="color:${fillColor}">${fillVal != null ? fillVal + '%' : '—'}</div>
           ${fillVal != null ? statBar(fillVal, maxFill, fillColor) : ''}
         </div>
         ${fillAllTime != null ? `<div class="cmp-stat">
@@ -467,6 +566,7 @@ function buildComparePanel() {
         <div class="cmp-detail-row"><span class="cmp-dl">Drive</span><span class="cmp-dv">${driveKm > 0 ? driveKm.toLocaleString() + ' km' : '—'}${driveHrs ? ' ('+driveHrs+')' : ''}</span></div>
         ${statBar(driveKm, maxDriveKm, color)}
       </div>
+      ${_bcCompareZoneMapHTML(r, i)}
       <div class="cmp-section">
         <div class="cmp-section-label">DRAW ODDS HISTORY</div>
         ${buildOddsSparkline(r, color)}
@@ -500,7 +600,10 @@ function buildComparePanel() {
     </div>`;
   document.body.appendChild(modal);
   document.body.style.overflow = 'hidden';
-  requestAnimationFrame(() => modal.classList.add('cmp-visible'));
+  requestAnimationFrame(() => {
+    modal.classList.add('cmp-visible');
+    if (typeof initVisibleBCZoneMaps === 'function') setTimeout(() => initVisibleBCZoneMaps(modal), 120);
+  });
 }
 
 // ── AB COMPARE MODAL ──────────────────────────────────────────
