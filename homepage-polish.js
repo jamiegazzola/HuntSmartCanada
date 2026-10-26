@@ -171,3 +171,49 @@
   }
 
 })();
+
+/* HuntSmart public Resources navigation. Isolated from app routing. */
+(function () {
+  'use strict';
+
+  function addResourcesLinks() {
+    var desktopSaved = document.getElementById('navSaved');
+    if (desktopSaved && !document.getElementById('navResources')) {
+      var desktop = document.createElement('a');
+      desktop.className = 'nav-link';
+      desktop.id = 'navResources';
+      desktop.href = './blog.html';
+      desktop.textContent = 'Resources';
+      desktopSaved.parentNode.insertBefore(desktop, desktopSaved);
+    }
+
+    var mobileSaved = document.getElementById('mNavSaved');
+    if (mobileSaved && !document.getElementById('mNavResources')) {
+      var mobile = document.createElement('a');
+      mobile.className = 'nav-link';
+      mobile.id = 'mNavResources';
+      mobile.href = './blog.html';
+      mobile.textContent = 'Resources';
+      mobileSaved.parentNode.insertBefore(mobile, mobileSaved);
+    }
+
+    var footerLinks = document.querySelectorAll('.home-footer-link');
+    var footerSaved = Array.prototype.find.call(footerLinks, function(el) {
+      return (el.textContent || '').trim() === 'Saved';
+    });
+    if (footerSaved && !document.getElementById('footerResources')) {
+      var footer = document.createElement('a');
+      footer.className = 'home-footer-link';
+      footer.id = 'footerResources';
+      footer.href = './blog.html';
+      footer.textContent = 'Resources';
+      footerSaved.parentNode.insertBefore(footer, footerSaved.nextSibling);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', addResourcesLinks);
+  } else {
+    addResourcesLinks();
+  }
+})();
