@@ -62,12 +62,6 @@
           <span>Species</span>
           <select id="demoSpecies">
             <option value="">Choose species</option>
-            <option value="Moose">Moose</option>
-            <option value="Elk">Elk</option>
-            <option value="Mule Deer">Mule Deer</option>
-            <option value="Mountain Goat">Mountain Goat</option>
-            <option value="Black Bear">Black Bear</option>
-            <option value="Caribou">Caribou</option>
           </select>
         </label>
         <div class="demo-basemap-group" aria-label="Basemap">
@@ -178,5 +172,118 @@
 <script src="./bc-wmu-geojson.js"></script>
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <script src="./blog-map-demo.js?v=20261026a"></script>
+<script>
+(() => {
+  'use strict';
+
+  const select = document.getElementById('demoSpecies');
+  const lehButton = document.getElementById('demoModeLEH');
+  const gosButton = document.getElementById('demoModeGOS');
+  if (!select || !lehButton || !gosButton) return;
+
+  let requestId = 0;
+
+  function normalizeSpecies(value) {
+    return String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  }
+
+  function displaySpecies(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\b[a-z]/g, letter => letter.toUpperCase())
+      .replace(/\bLeh\b/g, 'LEH')
+      .replace(/\bWmu\b/g, 'WMU');
+  }
+
+  function collectSpecies(rows, key) {
+    const species = new Map();
+    (Array.isArray(rows) ? rows : []).forEach(row => {
+      const raw = String(row && row[key] != null ? row[key] : '').trim();
+      const normalized = normalizeSpecies(raw);
+      if (normalized && !species.has(normalized)) species.set(normalized, raw);
+    });
+    return Array.from(species.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(entry => entry[1]);
+  }
+
+  function applySpecies(values) {
+    const previous = select.value;
+    const previousNormalized = normalizeSpecies(previous);
+    const preserved = values.find(value => normalizeSpecies(value) === previousNormalized) || '';
+
+    select.replaceChildren(new Option('Choose species', ''));
+    values.forEach(value => select.add(new Option(displaySpecies(value), value)));
+    select.value = preserved;
+    select.dataset.speciesSource = 'dataset';
+
+    if (previous && !preserved) {
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+
+  async function loadLEHSpecies() {
+    const response = await fetch('./draws.json', { cache: 'force-cache' });
+    if (!response.ok) throw new Error('LEH species data failed to load');
+    return collectSpecies(await response.json(), 'Species');
+  }
+
+  function loadGOSRows() {
+    return new Promise((resolve, reject) => {
+      if (typeof BC_OS_DATA_RAW !== 'undefined') {
+        resolve(BC_OS_DATA_RAW);
+        return;
+      }
+
+      const finish = () => {
+        if (typeof BC_OS_DATA_RAW !== 'undefined') resolve(BC_OS_DATA_RAW);
+        else reject(new Error('GOS species data failed to load'));
+      };
+
+      const existing = document.getElementById('hs-demo-gos-data');
+      if (existing) {
+        existing.addEventListener('load', finish, { once: true });
+        existing.addEventListener('error', () => reject(new Error('GOS species data failed to load')), { once: true });
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.id = 'hs-demo-gos-data';
+      script.src = './bc-open-seasons.js';
+      script.onload = () => {
+        script.dataset.loaded = '1';
+        finish();
+      };
+      script.onerror = () => reject(new Error('GOS species data failed to load'));
+      document.body.appendChild(script);
+    });
+  }
+
+  async function loadGOSSpecies() {
+    return collectSpecies(await loadGOSRows(), 'species');
+  }
+
+  async function populateSpecies(mode) {
+    const id = ++requestId;
+    select.disabled = true;
+    try {
+      const values = mode === 'gos' ? await loadGOSSpecies() : await loadLEHSpecies();
+      if (id !== requestId) return;
+      applySpecies(values);
+    } catch (error) {
+      console.warn('[Map guide] Species list:', error);
+    } finally {
+      if (id === requestId) select.disabled = false;
+    }
+  }
+
+  lehButton.addEventListener('click', () => populateSpecies('leh'));
+  gosButton.addEventListener('click', () => populateSpecies('gos'));
+
+  // LEH is the first guided-tour mode, so preload its complete species list.
+  populateSpecies('leh');
+})();
+</script>
 </body>
 </html>
