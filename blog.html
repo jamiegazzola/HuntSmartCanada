@@ -13,6 +13,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./blog.css?v=20261026e">
+<style>
+#blogGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+#blogGrid .article-card{min-height:390px}
+@media(max-width:900px){#blogGrid{grid-template-columns:1fr}#blogGrid .article-card{min-height:0}}
+</style>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Blog","name":"HuntSmart Blog","url":"https://huntsmartcanada.netlify.app/blog.html","description":"Data-backed hunting draw guides for BC and Alberta hunters.","publisher":{"@type":"Organization","name":"HuntSmart Canada","url":"https://huntsmartcanada.netlify.app/"}}</script>
 </head>
 <body>
@@ -37,6 +42,7 @@
       <p>Practical articles for BC and Alberta hunters — from understanding draw systems and historical odds to getting more out of HuntSmart.</p>
       <div class="blog-topic-strip" aria-label="Filter blog guides">
         <button type="button" class="active" data-blog-filter="all">All guides</button>
+        <button type="button" data-blog-filter="map">Map guide</button>
         <button type="button" data-blog-filter="bc">BC LEH</button>
         <button type="button" data-blog-filter="data">Historical odds</button>
         <button type="button" data-blog-filter="app">Using HuntSmart</button>
@@ -52,7 +58,19 @@
     </div>
 
     <div class="article-grid" id="blogGrid">
-      <a class="article-card featured" data-category="app" href="./how-to-use-huntsmart.html">
+      <a class="article-card featured" data-category="app bc map" href="./how-to-use-huntsmart-map.html">
+        <div class="article-visual visual-guide"><span>Live map walkthrough</span><strong>MAP</strong></div>
+        <div class="article-card-body">
+          <div class="article-kicker">Interactive Map Guide</div>
+          <h3>How to Use the HuntSmart Map</h3>
+          <p>Use a real embedded HuntSmart map to learn BC LEH and General Open Seasons. Choose species, click WMUs, inspect actual records, switch map layers, and compare the two systems step by step.</p>
+          <div class="article-byline-compact"><span>Oct 26, 2026</span><span>·</span><span>HuntSmart Canada</span></div>
+          <div class="article-meta"><span>Live map demo</span><span>10 min read</span></div>
+          <div class="article-cta">Use the map walkthrough →</div>
+        </div>
+      </a>
+
+      <a class="article-card" data-category="app" href="./how-to-use-huntsmart.html">
         <div class="article-visual visual-guide"><span>Interactive guide</span><strong>01</strong></div>
         <div class="article-card-body">
           <div class="article-kicker">Using HuntSmart</div>
@@ -93,7 +111,7 @@
   <section class="resource-value-band" aria-label="HuntSmart resource coverage">
     <div><strong>BC + Alberta coverage</strong><span>guides built around both draw systems</span></div>
     <div><strong>25+ years of BC history</strong><span>used to put current draw numbers in context</span></div>
-    <div><strong>Interactive where it helps</strong><span>walkthroughs and historical tools, not generic filler</span></div>
+    <div><strong>Interactive where it helps</strong><span>walkthroughs, maps and historical tools — not generic filler</span></div>
   </section>
 
   <section class="resources-shell compact">
@@ -104,7 +122,7 @@
     <div class="explain-grid">
       <a class="scope-card" href="./how-does-bc-leh-work.html"><span>01</span><h3>Draw systems</h3><p>Understand LEH, hunt codes, authorizations, applications, and how the system fits together.</p><span class="scope-link">Read the BC LEH guide →</span></a>
       <a class="scope-card" href="./bc-leh-odds-guide.html"><span>02</span><h3>Odds & trends</h3><p>Use historical data and interactive analysis to put a single season's draw percentage into context.</p><span class="scope-link">Explore historical odds →</span></a>
-      <a class="scope-card" href="./how-to-use-huntsmart.html"><span>03</span><h3>Using HuntSmart</h3><p>Learn how filters, maps, comparisons, historical trends, and saved hunts work together.</p><span class="scope-link">Try the walkthrough →</span></a>
+      <a class="scope-card" href="./how-to-use-huntsmart-map.html"><span>03</span><h3>Maps & geography</h3><p>Learn the LEH and GOS map by clicking real WMUs, records, layers, and mapped hunt zones.</p><span class="scope-link">Use the map demo →</span></a>
     </div>
   </section>
 
@@ -117,7 +135,7 @@
 <footer class="resource-footer">
   <div class="resource-footer-inner">
     <div><h4>HuntSmart Canada</h4><p>Data-backed decision tools and hunting draw guides for BC and Alberta hunters.</p></div>
-    <div><h4>Guides</h4><div class="footer-links"><a href="./how-to-use-huntsmart.html">How to Use HuntSmart</a><a href="./how-does-bc-leh-work.html">How BC LEH Works</a><a href="./bc-leh-odds-guide.html">BC LEH Odds Guide</a></div></div>
+    <div><h4>Guides</h4><div class="footer-links"><a href="./how-to-use-huntsmart-map.html">Interactive Map Guide</a><a href="./how-to-use-huntsmart.html">How to Use HuntSmart</a><a href="./how-does-bc-leh-work.html">How BC LEH Works</a><a href="./bc-leh-odds-guide.html">BC LEH Odds Guide</a></div></div>
     <div><h4>Explore</h4><div class="footer-links"><a href="./index.html">Open HuntSmart</a><a href="./blog.html">Blog & Resources</a><a href="#latest">Latest Guides</a></div></div>
   </div>
   <div class="resource-footer-bottom"><span>© 2026 HuntSmart Canada</span><span>Educational content should be used alongside current provincial regulations and official draw information.</span></div>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>How to Use the HuntSmart Map | BC LEH & GOS Interactive Guide</title>
+<meta name="description" content="Learn the HuntSmart map by using a live embedded demo. Explore BC LEH and General Open Seasons, choose species, click WMUs, inspect draw and season results, and switch basemaps.">
+<link rel="canonical" href="https://huntsmartcanada.netlify.app/how-to-use-huntsmart-map.html">
+<meta property="og:type" content="article">
+<meta property="og:title" content="How to Use the HuntSmart Map | Interactive BC LEH & GOS Guide">
+<meta property="og:description" content="Use a real embedded HuntSmart map demo to learn BC LEH and General Open Seasons.">
+<meta property="article:published_time" content="2026-10-26">
+<meta property="article:modified_time" content="2026-10-26">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css">
+<link rel="stylesheet" href="./blog.css?v=20261026e">
+<link rel="stylesheet" href="./blog-map-demo.css?v=20261026a">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"How to Use the HuntSmart Map","datePublished":"2026-10-26","dateModified":"2026-10-26","author":{"@type":"Organization","name":"HuntSmart Canada"},"publisher":{"@type":"Organization","name":"HuntSmart Canada"},"mainEntityOfPage":"https://huntsmartcanada.netlify.app/how-to-use-huntsmart-map.html","description":"An interactive guide to HuntSmart's BC LEH and General Open Seasons map."}</script>
+</head>
+<body>
+<header class="resource-nav">
+  <a class="resource-brand" href="./index.html"><strong>HuntSmart <span>Canada</span></strong><small>Know your draw odds</small></a>
+  <nav aria-label="Article navigation">
+    <a href="./index.html">App Home</a>
+    <a href="./blog.html">Blog</a>
+    <a class="active" href="./how-to-use-huntsmart-map.html">Map Guide</a>
+    <a href="./how-to-use-huntsmart.html">App Guide</a>
+  </nav>
+  <a class="resource-app-btn" href="./index.html">Open HuntSmart</a>
+</header>
+
+<main class="article-shell map-article-shell">
+  <header class="article-header">
+    <div class="eyebrow">Interactive Map Guide</div>
+    <h1>How to Use the HuntSmart Map</h1>
+    <p class="dek">Learn the map by actually using it. This embedded teaching version uses HuntSmart's real BC WMU geometry, LEH draw data and zone boundaries, and General Open Seasons data — without changing your account or saved hunts.</p>
+    <div class="article-byline"><span>HuntSmart Canada</span><span>Published Oct 26, 2026</span><span>Updated Oct 26, 2026</span><span>Interactive · 10 min</span></div>
+  </header>
+
+  <section class="map-guide-intro">
+    <div>
+      <div class="eyebrow">Learn by doing</div>
+      <h2>LEH and GOS in one map.</h2>
+      <p>Use <strong>Guided Tour</strong> if you are new to HuntSmart. The tutorial will highlight the control you should use next and react to your clicks. Choose <strong>Explore Freely</strong> at any time to use the demo like a mini map app.</p>
+    </div>
+    <div class="map-guide-key">
+      <span><i class="key-dot key-green"></i> Matching WMU</span>
+      <span><i class="key-dot key-selected"></i> Selected WMU</span>
+      <span><i class="key-line"></i> LEH zone</span>
+    </div>
+  </section>
+
+  <section class="map-guide-breakout" id="interactive-map">
+    <div class="hs-map-demo" id="hsMapDemo">
+      <div class="hs-map-demo-top">
+        <div class="demo-mode-group" aria-label="Map mode">
+          <button type="button" id="demoModeLEH" data-demo-mode="leh">LEH</button>
+          <button type="button" id="demoModeGOS" data-demo-mode="gos">General Open Seasons</button>
+        </div>
+        <label class="demo-species-control" for="demoSpecies">
+          <span>Species</span>
+          <select id="demoSpecies">
+            <option value="">Choose species</option>
+            <option value="Moose">Moose</option>
+            <option value="Elk">Elk</option>
+            <option value="Mule Deer">Mule Deer</option>
+            <option value="Mountain Goat">Mountain Goat</option>
+            <option value="Black Bear">Black Bear</option>
+            <option value="Caribou">Caribou</option>
+          </select>
+        </label>
+        <div class="demo-basemap-group" aria-label="Basemap">
+          <button type="button" class="active" data-demo-basemap="streets">Streets</button>
+          <button type="button" data-demo-basemap="satellite">Satellite</button>
+          <button type="button" data-demo-basemap="topo">Topo</button>
+          <button type="button" id="demo3D">3D</button>
+        </div>
+        <div class="demo-learning-mode">
+          <button type="button" class="active" id="demoGuided">Guided Tour</button>
+          <button type="button" id="demoFree">Explore Freely</button>
+        </div>
+      </div>
+
+      <div class="hs-map-demo-stage">
+        <div class="hs-map-demo-map-wrap" id="demoMapWrap">
+          <div id="hsEmbeddedMap" class="hs-embedded-map" aria-label="Interactive HuntSmart BC map demo"></div>
+          <div class="demo-map-loading" id="demoMapLoading"><span class="demo-spinner"></span><span>Loading HuntSmart map data…</span></div>
+          <div class="demo-map-status" id="demoMapStatus">Choose LEH or GOS to begin</div>
+          <div class="demo-map-zoom" aria-label="Map zoom controls">
+            <button type="button" id="demoZoomIn" aria-label="Zoom in">+</button>
+            <button type="button" id="demoZoomOut" aria-label="Zoom out">−</button>
+          </div>
+        </div>
+
+        <aside class="demo-inspector" id="demoInspector" aria-live="polite">
+          <div class="demo-inspector-empty">
+            <div class="demo-inspector-icon">⌖</div>
+            <h3>Select a map mode</h3>
+            <p>Choose LEH or General Open Seasons, then pick a species. Matching WMUs will light up on the map.</p>
+          </div>
+        </aside>
+      </div>
+
+      <div class="demo-tutorial" id="demoTutorial" aria-live="polite">
+        <div class="demo-step-meta">
+          <span id="demoStepCount">Step 1 of 9</span>
+          <span class="demo-safe-pill">Safe demo · no account changes</span>
+        </div>
+        <div class="demo-step-body">
+          <div>
+            <h3 id="demoStepTitle">Meet the HuntSmart map</h3>
+            <p id="demoStepText">This is a real interactive teaching map. Start the tour and you will use LEH, GOS, species filters, WMUs, layers and real HuntSmart results.</p>
+          </div>
+          <div class="demo-step-actions">
+            <button type="button" id="demoBack">Back</button>
+            <button type="button" class="primary" id="demoNext">Start tour →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="article-layout">
+    <article class="article-body">
+      <h2 id="leh-vs-gos">LEH and GOS answer different questions</h2>
+      <p><strong>LEH mode</strong> helps you understand limited-entry draw opportunities. Pick a species and a Wildlife Management Unit, and the demo shows matching draw records plus any available LEH zone geometry for that WMU and species.</p>
+      <p><strong>General Open Seasons mode</strong> answers a different question: what open-season rows are associated with this species and WMU? The map keeps the same geographic workflow but replaces draw cards with current GOS season rows from HuntSmart's dataset.</p>
+
+      <div class="callout"><p><strong>Important:</strong> the map is a decision and learning tool, not a legal boundary source. GOS rules can include subzones, special conditions, weapon restrictions, class restrictions, closures, and synopsis updates that are more specific than a WMU fill. Always confirm the current official provincial publications before hunting.</p></div>
+
+      <h2 id="species-first">1. Start with the species when you are flexible on location</h2>
+      <p>Selecting a species dims WMUs that do not have matching HuntSmart records. This turns the whole province into a visual shortlist. It is useful when you know what you want to hunt but are still deciding where.</p>
+
+      <h2 id="geography-first">2. Click a WMU when geography matters first</h2>
+      <p>If you already know the area you can realistically hunt, click the WMU. The panel beside the map shows the relevant LEH draw opportunities or GOS season rows. That is the fastest way to move from geography to the underlying hunting data.</p>
+
+      <h2 id="leh-zones">3. LEH zones are more specific than the WMU</h2>
+      <p>When HuntSmart has mapped LEH zone geometry for the selected species and WMU, the demo draws those zones in gold. That makes the distinction between the broad WMU and the more specific LEH hunt area visible instead of burying it in a table.</p>
+
+      <h2 id="layers">4. Change the basemap when terrain changes the decision</h2>
+      <p>Streets is useful for orientation. Satellite is useful for seeing land cover and access context. Topo and 3D terrain help you understand relief. The embedded guide lets you switch among the same map styles used by the HuntSmart mapping experience.</p>
+
+      <h2 id="workflow">5. A practical map workflow</h2>
+      <ol>
+        <li>Choose <strong>LEH</strong> or <strong>General Open Seasons</strong>.</li>
+        <li>Select the species you care about.</li>
+        <li>Scan the highlighted WMUs.</li>
+        <li>Click a WMU you can realistically hunt.</li>
+        <li>Read the draw or season information beside the map.</li>
+        <li>Switch layers if terrain or access matters.</li>
+        <li>Use the full HuntSmart app when you are ready to compare more opportunities.</li>
+      </ol>
+
+      <div class="article-bottom-cta"><div><h3>Ready to use the full map?</h3><p>Open HuntSmart to explore the complete map, draw cards, GOS tools, saved hunts, and the rest of the live dataset.</p></div><a href="./index.html">Open HuntSmart →</a></div>
+      <p class="source-note">This embedded guide loads HuntSmart's current BC WMU geometry, draw dataset, LEH zone dataset, and GOS dataset. It is designed for product education; always verify legal boundaries, seasons, methods, eligibility, and restrictions against current official sources.</p>
+    </article>
+
+    <aside class="article-rail" aria-label="Article sidebar">
+      <div class="rail-card"><h3>In this guide</h3><div class="rail-links"><a href="#interactive-map">Interactive map demo</a><a href="#leh-vs-gos">LEH vs GOS</a><a href="#species-first">Species-first search</a><a href="#geography-first">Geography-first search</a><a href="#leh-zones">LEH zones</a><a href="#layers">Basemaps & 3D</a><a href="#workflow">Practical workflow</a></div></div>
+      <div class="rail-card"><h3>Article details</h3><div class="rail-meta"><span>Published <b>Oct 26, 2026</b></span><span>Updated <b>Oct 26, 2026</b></span><span>By <b>HuntSmart Canada</b></span><span>Read time <b>10 min</b></span></div></div>
+      <div class="rail-card rail-cta"><h3>Use the real app</h3><p>Move from the teaching demo into the complete HuntSmart map and live hunt data.</p><a href="./index.html">Open HuntSmart →</a></div>
+      <div class="rail-card related-card"><h3>Related guides</h3><a href="./how-to-use-huntsmart.html">How to Use HuntSmart Canada</a><a href="./how-does-bc-leh-work.html">How Does BC LEH Work?</a><a href="./bc-leh-odds-guide.html">Why One Year of Odds Can Mislead You</a></div>
+    </aside>
+  </div>
+</main>
+
+<footer class="resource-footer">
+  <div class="resource-footer-inner">
+    <div><h4>HuntSmart Canada</h4><p>Data-backed decision tools and hunting draw guides for BC and Alberta hunters.</p></div>
+    <div><h4>Guides</h4><div class="footer-links"><a href="./how-to-use-huntsmart-map.html">Interactive Map Guide</a><a href="./how-to-use-huntsmart.html">App Walkthrough</a><a href="./how-does-bc-leh-work.html">How BC LEH Works</a><a href="./bc-leh-odds-guide.html">BC LEH Odds Guide</a></div></div>
+    <div><h4>Explore</h4><div class="footer-links"><a href="./index.html">Open HuntSmart</a><a href="./blog.html">Blog & Resources</a></div></div>
+  </div>
+  <div class="resource-footer-bottom"><span>© 2026 HuntSmart Canada</span><span>Use current official provincial publications for seasons, eligibility, boundaries, and legal requirements.</span></div>
+</footer>
+
+<script src="./config.js"></script>
+<script src="./bc-wmu-geojson.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<script src="./blog-map-demo.js?v=20261026a"></script>
+</body>
+</html>
