@@ -153,13 +153,6 @@
   pointer-events: none !important;
 }
 
-/* Future/progressive-enhancement toolbar children stay out of the permanent
-   research row. Species is the only in-map research filter; Layers is floated
-   independently at bottom-left. */
-#mapPage .fullmap-toolbar-main > *:not(#fullMapSpeciesSelect):not(#hsWorldSettingsBtn) {
-  display: none !important;
-}
-
 #mapPage #fullMapSpeciesSelect {
   display: block !important;
   pointer-events: auto !important;
@@ -188,7 +181,7 @@
   z-index: 9300 !important;
 }
 
-/* Reuse the existing settings visual language as the single Layers control. */
+/* Reuse the existing world-class settings panel as the single Layers control. */
 #mapPage #hsWorldSettingsBtn {
   display: inline-flex !important;
   position: fixed !important;
