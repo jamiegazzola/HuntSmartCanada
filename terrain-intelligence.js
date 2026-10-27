@@ -11,6 +11,32 @@
     return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
   }
 
+  function ensureWorldSettingsCompatibility() {
+    var toolbar = document.querySelector('#mapPage .fullmap-toolbar-main');
+    var mapPage = document.getElementById('mapPage');
+    if (!toolbar || !mapPage) return;
+
+    // world-class-map.js still looks for the older v4 hook. Preserve the
+    // current markup and provide the compatibility class instead of cloning UI.
+    toolbar.classList.add('fullmap-toolbar-main-v4');
+
+    var button = document.getElementById('hsWorldSettingsBtn');
+    if (!button) {
+      // Its MutationObserver watches mapPage class/style changes and will call
+      // ensureDesktopSettings() once the compatibility hook exists.
+      mapPage.classList.toggle('hs-world-settings-ready-pulse');
+      setTimeout(function () {
+        mapPage.classList.toggle('hs-world-settings-ready-pulse');
+      }, 0);
+      return;
+    }
+
+    var label = button.querySelector('span');
+    if (label && label.textContent !== 'Layers') label.textContent = 'Layers';
+    button.setAttribute('aria-label', 'Map layers and display settings');
+    button.title = 'Map layers and display settings';
+  }
+
   function hideLegacyMobileProvinceControls() {
     ['hsTpBC','hsTpAB'].forEach(function (id) {
       var el = document.getElementById(id);
@@ -134,6 +160,7 @@
   }
 
   function settleLEHView() {
+    ensureWorldSettingsCompatibility();
     hideLegacyMobileProvinceControls();
     forceCloseLegacyMobileModals();
     forceCloseMobileDrawer();
@@ -198,15 +225,17 @@
 
   function boot() {
     injectGuardStyles();
+    ensureWorldSettingsCompatibility();
     hideLegacyMobileProvinceControls();
     forceCloseLegacyMobileModals();
     enforceMobileDrawerContract();
     patchPublicController();
     document.addEventListener('click', onModeClick, true);
 
-    [250,700,1200,2200].forEach(function (delay) {
+    [50,250,700,1200,2200].forEach(function (delay) {
       setTimeout(function () {
         patchPublicController();
+        ensureWorldSettingsCompatibility();
         hideLegacyMobileProvinceControls();
         forceCloseLegacyMobileModals();
         enforceMobileDrawerContract();
@@ -214,6 +243,7 @@
     });
 
     window.addEventListener('resize', function () {
+      ensureWorldSettingsCompatibility();
       hideLegacyMobileProvinceControls();
       forceCloseLegacyMobileModals();
       enforceMobileDrawerContract();

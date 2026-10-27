@@ -8,6 +8,7 @@ on:
       - imagery-lab.js
       - imagery-lab.css
       - terrain-intelligence.css
+      - terrain-intelligence.js
       - bc-open-seasons.js
       - maps.js
       - index.html
