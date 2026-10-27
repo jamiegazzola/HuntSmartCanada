@@ -12,7 +12,7 @@
     labels: true,
     poi: false,
     light: 'day',
-    basemap: 'satellite'
+    basemap: 'streets'
   };
 
   let settings = loadSettings();
@@ -46,7 +46,7 @@
   }
 
   function currentBasemap() {
-    try { return _fullMapStyle || settings.basemap || 'satellite'; } catch (e) { return settings.basemap || 'satellite'; }
+    try { return _fullMapStyle || settings.basemap || 'streets'; } catch (e) { return settings.basemap || 'streets'; }
   }
 
   function current3D() {
@@ -131,11 +131,11 @@
       }
     } catch (e) {}
 
-    // First visit to this preview opens on the feature we are evaluating.
+    // First visit defaults to Dark while preserving any saved basemap choice afterwards.
     try {
       if (!localStorage.getItem(FIRST_RUN_KEY)) {
-        if (typeof _fullMapStyle !== 'undefined') _fullMapStyle = 'satellite';
-        settings.basemap = 'satellite';
+        if (typeof _fullMapStyle !== 'undefined') _fullMapStyle = 'streets';
+        settings.basemap = 'streets';
         saveSettings();
         localStorage.setItem(FIRST_RUN_KEY, '1');
       } else if (typeof _fullMapStyle !== 'undefined' && settings.basemap) {
