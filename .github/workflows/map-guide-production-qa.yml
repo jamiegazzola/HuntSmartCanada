@@ -87,8 +87,8 @@ jobs:
               for (const x of xs) {
                 await page.mouse.click(box.x + box.width*x, box.y + box.height*y);
                 await page.waitForTimeout(180);
-                const title = await page.locator('#demoStepTitle').textContent();
-                if (/^Read the /.test(title || '')) return true;
+                const step = await page.locator('#hsMapDemo').getAttribute('data-guide-step');
+                if (step === '5') return true;
               }
             }
             return false;
@@ -139,31 +139,39 @@ jobs:
 
             assert(await clickMatchingWMU(page), `Could not select a highlighted WMU for ${label(firstMode)}.`);
             await page.waitForFunction(() => document.getElementById('hsMapDemo')?.dataset.guideStep === '5');
+            await page.waitForTimeout(80);
 
             const firstTitle = await page.locator('#demoStepTitle').textContent();
             const firstInspector = await inspectorMode(page);
             const firstDataset = await page.locator('#hsMapDemo').getAttribute('data-guide-first-mode');
-            const compareText = await page.locator('#demoNext').textContent();
+            const nextLessonText = await page.locator('#demoNext').textContent();
             assert(firstInspector === firstMode, `Inspector mode mismatch: expected ${firstMode}, got ${firstInspector}`);
             assert(firstDataset === firstMode, `Guide first-mode mismatch: expected ${firstMode}, got ${firstDataset}`);
             assert((firstTitle || '').includes(label(firstMode)), `Step 5 title contradicts ${label(firstMode)}: ${firstTitle}`);
-            assert((compareText || '').includes(label(opposite(firstMode))), `Compare action points to wrong system: ${compareText}`);
+            assert(/^Understand your /.test(firstTitle || ''), `Step 5 should teach the current system, got: ${firstTitle}`);
+            assert((nextLessonText || '').includes(label(opposite(firstMode))), `Next lesson points to wrong system: ${nextLessonText}`);
+            assert(!/compare/i.test(nextLessonText || ''), `Direct comparison wording returned: ${nextLessonText}`);
             await page.screenshot({ path:`qa-artifacts/${firstMode}-01-first-result.png`, fullPage:false });
 
             await page.locator('#demoNext').click();
-            await page.waitForFunction(() => /^Switch to /.test(document.getElementById('demoStepTitle')?.textContent || ''));
+            await page.waitForFunction(() => /^Now explore /.test(document.getElementById('demoStepTitle')?.textContent || ''));
+            const lessonText = await page.locator('#demoStepText').textContent();
+            assert(/different question/i.test(lessonText || ''), `Second-system lesson does not explain the conceptual difference: ${lessonText}`);
+
             const secondMode = opposite(firstMode);
             await page.locator(secondMode === 'leh' ? '#demoModeLEH' : '#demoModeGOS').click();
             await page.waitForFunction(() => document.getElementById('hsMapDemo')?.dataset.guideStep === '7', null, { timeout:30000 });
+            await page.waitForTimeout(80);
 
             const secondTitle = await page.locator('#demoStepTitle').textContent();
             const secondInspector = await inspectorMode(page);
-            assert(secondInspector === secondMode, `Comparison inspector mismatch: expected ${secondMode}, got ${secondInspector}`);
-            assert((secondTitle || '').includes(label(secondMode)), `Comparison title contradicts rendered result: ${secondTitle}`);
-            await page.screenshot({ path:`qa-artifacts/${firstMode}-02-comparison.png`, fullPage:false });
+            assert(secondInspector === secondMode, `Second lesson inspector mismatch: expected ${secondMode}, got ${secondInspector}`);
+            assert(/^Understand your /.test(secondTitle || ''), `Second result is not framed as its own lesson: ${secondTitle}`);
+            assert((secondTitle || '').includes(label(secondMode)), `Second lesson title contradicts rendered result: ${secondTitle}`);
+            await page.screenshot({ path:`qa-artifacts/${firstMode}-02-second-system.png`, fullPage:false });
 
             await context.close();
-            return { firstMode, firstTitle, firstInspector, compareText, secondTitle, secondInspector, errors };
+            return { firstMode, firstTitle, firstInspector, nextLessonText, secondTitle, secondInspector, errors };
           }
 
           (async () => {
@@ -173,7 +181,7 @@ jobs:
             results.push(await runFlow(browser, 'gos'));
             fs.writeFileSync('qa-artifacts/qa-summary.json', JSON.stringify({ url, results }, null, 2));
             await browser.close();
-            console.log('Map guide production QA passed for LEH-first and GOS-first flows.');
+            console.log('Map guide production QA passed for separate LEH-first and GOS-first lesson flows.');
           })().catch(error => {
             console.error(error.stack || error.message || error);
             process.exit(1);
