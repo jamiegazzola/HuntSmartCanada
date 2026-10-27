@@ -62,9 +62,11 @@ for name in ['site/admin.html', 'site/admin/index.html']:
     p.write_text(text, encoding='utf-8')
 PY
 
-node --check site/hs-analytics.js >/dev/null
-node --check site/hs-auth-attribution.js >/dev/null
-node --check site/admin-growth.js >/dev/null
+# These are browser ES modules. Parse them as modules for syntax validation;
+# do not execute them in Node (they include browser-only HTTPS imports/APIs).
+node --input-type=module --check < site/hs-analytics.js >/dev/null
+node --input-type=module --check < site/hs-auth-attribution.js >/dev/null
+node --input-type=module --check < site/admin-growth.js >/dev/null
 
 grep -q 'hs-analytics.js' site/index.html
 grep -q 'hs-auth-attribution.js' site/index.html
