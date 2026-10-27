@@ -1,0 +1,93 @@
+name: HuntSmart Interactive Map Production QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - imagery-lab.js
+      - imagery-lab.css
+      - bc-open-seasons.js
+      - maps.js
+      - index.html
+      - build-preview.sh
+      - .github/workflows/interactive-map-production-qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  production-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Validate live unified map
+        env:
+          URL: https://huntsmartcanada.ca/
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const assert = (v,m) => { if (!v) throw new Error(m); };
+          (async()=>{
+            const browser = await chromium.launch({headless:true});
+            for (const viewport of [{width:1440,height:1000},{width:390,height:844}]) {
+              const page = await browser.newPage({viewport});
+              const errors=[];
+              page.on('pageerror',e=>errors.push(e.message));
+              let ready=false;
+              for(let i=0;i<30&&!ready;i++){
+                await page.goto(`${process.env.URL}?interactive-map-qa=${Date.now()}-${i}`,{waitUntil:'domcontentloaded',timeout:45000});
+                await page.waitForTimeout(1800);
+                ready = await page.evaluate(()=>!!window.__HUNTSMART_INTERACTIVE_MAP__);
+                if(!ready) await page.waitForTimeout(4000);
+              }
+              assert(ready,'Interactive Map controller was not live.');
+              const nav = await page.locator('#navMap').textContent();
+              assert(/Interactive Map/i.test(nav||''),'Map nav was not renamed.');
+              assert(await page.locator('#navBCOS').evaluate(el=>getComputedStyle(el).display==='none'),'Legacy BC GOS nav still visible.');
+
+              await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.open('leh',{province:'BC'}));
+              await page.waitForTimeout(1000);
+              let s=await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
+              assert(s.controller.mode==='leh'&&s.controller.province==='BC','BC LEH is not the default Interactive Map mode.');
+
+              await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
+              await page.waitForTimeout(1200);
+              await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.selectGOSRegion('3'));
+              await page.waitForTimeout(300);
+              await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.setGOSSpecies('Bighorn Sheep'));
+              await page.waitForTimeout(500);
+              s=await page.evaluate(()=>({state:window.__HUNTSMART_INTERACTIVE_MAP__.getState(),active:window.__HUNTSMART_INTERACTIVE_MAP__.activeGOSWMUs()}));
+              assert(s.state.regions.length===1&&String(s.state.regions[0])==='3','Region 3 scope was lost after species selection.');
+              assert(s.state.species==='Bighorn Sheep','Bighorn Sheep selection did not persist.');
+              assert(s.active.length>0,'Region 3 Bighorn Sheep produced no active WMUs; inspect source data or scoping.');
+              assert(s.active.every(id=>String(id).startsWith('3-')),'Species selection broadened outside Region 3: '+JSON.stringify(s.active));
+
+              await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('leh'));
+              await page.waitForTimeout(1200);
+              s=await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
+              assert(s.controller.mode==='leh','Could not switch back to LEH.');
+              assert((s.wmus||[]).length>0 && (s.wmus||[]).every(id=>String(id).startsWith('3-')),'Region 3 geography was not preserved into LEH.');
+              assert(!errors.length,'Page errors: '+errors.join(' | '));
+              await page.screenshot({path:`interactive-map-${viewport.width}.png`,fullPage:false});
+              await page.close();
+            }
+            await browser.close();
+            console.log('Unified Interactive Map production QA passed.');
+          })().catch(e=>{console.error(e.stack||e);process.exit(1);});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: interactive-map-production-qa-${{ github.run_number }}
+          path: interactive-map-*.png
+          if-no-files-found: warn
+          retention-days: 14
