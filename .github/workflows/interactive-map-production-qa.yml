@@ -7,6 +7,7 @@ on:
     paths:
       - imagery-lab.js
       - imagery-lab.css
+      - terrain-intelligence.css
       - bc-open-seasons.js
       - maps.js
       - index.html
@@ -74,13 +75,85 @@ jobs:
 
               await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.open('leh',{province:'BC'}));
               await page.waitForFunction(()=>document.getElementById('mapPage')?.style.display !== 'none',{timeout:30000});
-              await page.waitForTimeout(900);
+              await page.waitForFunction(()=>typeof fullMapInstance !== 'undefined' && !!fullMapInstance,{timeout:30000});
+              await page.waitForTimeout(1100);
               let s=await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
               assert(s.controller.mode==='leh'&&s.controller.province==='BC','BC LEH is not the default Interactive Map mode.');
+
+              const lehLayout = await page.evaluate(() => {
+                const visible = el => !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
+                const rect = el => {
+                  if (!el) return null;
+                  const r = el.getBoundingClientRect();
+                  const cs = getComputedStyle(el);
+                  return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height,display:cs.display,position:cs.position};
+                };
+                const controls = [document.getElementById('fullMapControlStack'),document.getElementById('hsBrCluster')].filter(visible).map(rect);
+                return {
+                  viewport:{width:innerWidth,height:innerHeight},
+                  nav:rect(document.querySelector('nav')),
+                  page:rect(document.getElementById('mapPage')),
+                  map:rect(document.getElementById('fullMapLeaflet')),
+                  shell:rect(document.querySelector('#mapPage > .hs-im-shellbar')),
+                  toolbar:rect(document.querySelector('#mapPage .fullmap-topbar')),
+                  layers:rect(document.getElementById('hsWorldSettingsBtn')),
+                  controls
+                };
+              });
+
+              assert(lehLayout.map && lehLayout.nav && lehLayout.map.top <= lehLayout.nav.bottom + 4,
+                'LEH map is still pushed down by permanent map chrome: '+JSON.stringify(lehLayout));
+              assert(lehLayout.shell && lehLayout.shell.position==='absolute',
+                'Unified mode selector is not floating over the LEH map: '+JSON.stringify(lehLayout.shell));
+              if (viewport.width > 768) {
+                assert(lehLayout.toolbar && lehLayout.toolbar.position==='absolute',
+                  'LEH species toolbar is not floating: '+JSON.stringify(lehLayout.toolbar));
+                assert(lehLayout.layers && lehLayout.layers.display!=='none',
+                  'Desktop Layers control is not visible: '+JSON.stringify(lehLayout.layers));
+              }
+              assert(lehLayout.controls.length>0,'No visible LEH + / - / 3D control stack.');
+              lehLayout.controls.forEach(control => {
+                assert(control.bottom <= viewport.height - 8 && control.top >= 0,
+                  'LEH bottom-right controls are clipped: '+JSON.stringify(control));
+                assert(control.right <= viewport.width - 8,
+                  'LEH bottom-right controls overflow horizontally: '+JSON.stringify(control));
+              });
 
               await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
               await page.waitForFunction(()=>document.getElementById('bcOpenSeasonsPage')?.style.display !== 'none',{timeout:30000});
               await page.waitForFunction(()=>typeof osMapInstance !== 'undefined' && !!osMapInstance,{timeout:30000});
+              await page.waitForTimeout(700);
+
+              const gosLayout = await page.evaluate(() => {
+                const visible = el => !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
+                const rect = el => {
+                  if (!el) return null;
+                  const r = el.getBoundingClientRect();
+                  const cs = getComputedStyle(el);
+                  return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height,display:cs.display,position:cs.position};
+                };
+                const controls = [document.getElementById('osMapControlStack'),document.getElementById('gosBrCluster')].filter(visible).map(rect);
+                return {
+                  viewport:{width:innerWidth,height:innerHeight},
+                  nav:rect(document.querySelector('nav')),
+                  map:rect(document.getElementById('osMap')),
+                  shell:rect(document.querySelector('#bcOpenSeasonsPage > .hs-im-shellbar')),
+                  toolbar:rect(document.querySelector('#bcOpenSeasonsPage .os-topbar')),
+                  controls
+                };
+              });
+              assert(gosLayout.map && gosLayout.nav && gosLayout.map.top <= gosLayout.nav.bottom + 4,
+                'GOS map is still pushed down by permanent map chrome: '+JSON.stringify(gosLayout));
+              assert(gosLayout.shell && gosLayout.shell.position==='absolute',
+                'Unified mode selector is not floating over the GOS map: '+JSON.stringify(gosLayout.shell));
+              assert(gosLayout.controls.length>0,'No visible GOS + / - / 3D control stack.');
+              gosLayout.controls.forEach(control => {
+                assert(control.bottom <= viewport.height - 8 && control.top >= 0,
+                  'GOS bottom-right controls are clipped: '+JSON.stringify(control));
+                assert(control.right <= viewport.width - 8,
+                  'GOS bottom-right controls overflow horizontally: '+JSON.stringify(control));
+              });
+
               await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.selectGOSRegion('3'));
               await page.waitForTimeout(250);
 
@@ -109,39 +182,6 @@ jobs:
               assert(s.controller.mode==='leh','Could not switch back to LEH.');
               assert((s.wmus||[]).length>0 && (s.wmus||[]).every(id=>String(id).startsWith('3-')),'Region 3 geography was not preserved into LEH.');
               assert(!errors.length,'Page errors: '+errors.join(' | '));
-
-              if (viewport.width === 390) {
-                const diagnostic = await page.evaluate(() => {
-                  const describe = el => {
-                    const r = el.getBoundingClientRect();
-                    const cs = getComputedStyle(el);
-                    return {
-                      tag: el.tagName,
-                      id: el.id || '',
-                      cls: String(el.className || '').slice(0,180),
-                      rect: [Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)],
-                      display: cs.display,
-                      position: cs.position,
-                      z: cs.zIndex,
-                      bg: cs.backgroundColor,
-                      opacity: cs.opacity,
-                      style: (el.getAttribute('style') || '').slice(0,220)
-                    };
-                  };
-                  const points = [[195,400],[20,400],[195,220],[370,400]].map(([x,y]) => ({
-                    point:[x,y],
-                    stack: document.elementsFromPoint(x,y).slice(0,10).map(describe)
-                  }));
-                  const minArea = innerWidth * innerHeight * 0.20;
-                  const large = [...document.querySelectorAll('#mapPage *')].map(el => ({el,r:el.getBoundingClientRect()}))
-                    .filter(x => x.r.width * x.r.height >= minArea && x.r.width > 0 && x.r.height > 0 && getComputedStyle(x.el).display !== 'none')
-                    .sort((a,b)=>(b.r.width*b.r.height)-(a.r.width*a.r.height))
-                    .slice(0,20)
-                    .map(x => describe(x.el));
-                  return { points, large };
-                });
-                console.log('MOBILE_DOM_DIAGNOSTIC='+JSON.stringify(diagnostic));
-              }
 
               await page.screenshot({path:`interactive-map-${viewport.width}.png`,fullPage:false});
               await page.close();
