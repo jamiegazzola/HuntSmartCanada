@@ -12,6 +12,8 @@
     species: document.getElementById('demoSpecies'),
     mapWrap: document.getElementById('demoMapWrap'),
     inspector: document.getElementById('demoInspector'),
+    tutorial: document.getElementById('demoTutorial'),
+    stage: root.querySelector('.hs-map-demo-stage'),
     back: document.getElementById('demoBack'),
     next: document.getElementById('demoNext'),
     stepCount: document.getElementById('demoStepCount'),
@@ -23,19 +25,36 @@
 
   if (Object.values(els).some(value => !value)) return;
 
+  const rail = document.createElement('div');
+  rail.className = 'demo-guide-rail';
+  els.stage.insertBefore(rail, els.inspector);
+  rail.appendChild(els.tutorial);
+  rail.appendChild(els.inspector);
+
   const style = document.createElement('style');
   style.textContent = `
     .hs-map-demo.demo-custom-guide.demo-free-mode .demo-tutorial{display:block!important}
-    .hs-map-demo.demo-inspector-hidden .hs-map-demo-stage{grid-template-columns:minmax(0,1fr)!important}
-    .hs-map-demo.demo-inspector-hidden .demo-inspector{display:none!important}
+    .hs-map-demo .demo-guide-rail{min-width:0;max-height:650px;display:flex;flex-direction:column;border-left:1px solid #252c27;background:#111512;overflow:hidden}
+    .hs-map-demo .demo-guide-rail .demo-tutorial{position:static!important;top:auto!important;left:auto!important;width:auto!important;margin:0!important;padding:22px!important;border:0!important;border-bottom:1px solid #252c27!important;border-radius:0!important;background:#0f1310!important;box-shadow:none!important;backdrop-filter:none!important;flex:0 0 auto}
+    .hs-map-demo .demo-guide-rail .demo-inspector{min-height:0;max-height:none;border-left:0;flex:1 1 auto;overflow:auto}
+    .hs-map-demo .demo-guide-rail .demo-inspector[hidden]{display:none!important}
+    .hs-map-demo.demo-rail-hidden .hs-map-demo-stage{grid-template-columns:minmax(0,1fr)!important}
+    .hs-map-demo.demo-rail-hidden .demo-guide-rail{display:none!important}
     .hs-map-demo .demo-guide-mode-choice{position:relative;z-index:12!important;border-color:var(--demo-gold,#e7b94a)!important;box-shadow:0 0 0 2px rgba(231,185,74,.92),0 0 0 7px rgba(231,185,74,.16),0 0 34px rgba(231,185,74,.34)!important;animation:demoGoldPulse 1.65s ease-in-out infinite}
     .hs-map-demo.demo-guide-mode-step .hs-map-demo-top>*:not(.demo-mode-group){opacity:.35;filter:saturate(.55);transition:opacity .2s ease,filter .2s ease}
     .hs-map-demo .demo-guide-result{border-left-color:rgba(231,185,74,.55)!important;box-shadow:inset 2px 0 0 rgba(231,185,74,.45),0 0 28px rgba(231,185,74,.08)}
     .hs-map-demo.demo-custom-guide .demo-step-body{display:block}
     .hs-map-demo.demo-custom-guide .demo-step-actions{margin-top:18px;justify-content:flex-end}
     .hs-map-demo.demo-custom-guide .demo-step-body>div:first-child{max-width:100%}
-    @media(max-width:1050px){.hs-map-demo.demo-inspector-hidden .hs-map-demo-map-wrap{height:620px}}
-    @media(max-width:700px){.hs-map-demo.demo-inspector-hidden .hs-map-demo-map-wrap{height:460px}}
+    @media(max-width:1050px){
+      .hs-map-demo .demo-guide-rail{max-height:none;border-left:0;border-top:1px solid #252c27}
+      .hs-map-demo .demo-guide-rail .demo-inspector{max-height:none}
+      .hs-map-demo.demo-rail-hidden .hs-map-demo-map-wrap{height:620px}
+    }
+    @media(max-width:700px){
+      .hs-map-demo .demo-guide-rail .demo-tutorial{padding:18px!important}
+      .hs-map-demo.demo-rail-hidden .hs-map-demo-map-wrap{height:460px}
+    }
     @media(prefers-reduced-motion:reduce){.hs-map-demo .demo-guide-mode-choice{animation:none!important}}
   `;
   document.head.appendChild(style);
@@ -59,7 +78,9 @@
     const empty = !!els.inspector.querySelector('.demo-inspector-empty');
     const heading = (els.inspector.querySelector('h3')?.textContent || '').toLowerCase();
     const isError = heading.includes('could not load');
-    root.classList.toggle('demo-inspector-hidden', empty && !isError);
+    const hideInspector = empty && !isError;
+    els.inspector.hidden = hideInspector;
+    root.classList.toggle('demo-rail-hidden', !started && hideInspector);
     window.setTimeout(() => window.dispatchEvent(new Event('resize')), 0);
   }
 
@@ -183,6 +204,7 @@
     pendingCompare = false;
     step = 0;
     root.classList.add('demo-custom-guide', 'demo-free-mode');
+    root.classList.remove('demo-rail-hidden');
     els.guided.classList.add('active');
     els.free.classList.remove('active');
     syncInspectorVisibility();
