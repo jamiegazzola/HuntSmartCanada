@@ -160,7 +160,8 @@ const MAPBOX_TOKEN = 'pk.eyJ1IjoiamFtaWVnYXp6b2xhIiwiYSI6ImNtcGdpbzM3dzA2ejAyd3E
 
 // Load the guided-tour controller only on the interactive map guide, after the stable map core is ready.
 window.addEventListener('load', () => {
-  if (!document.getElementById('hsMapDemo')) return;
+  const guideRoot = document.getElementById('hsMapDemo');
+  if (!guideRoot) return;
 
   if (!document.getElementById('hs-map-guide-controller')) {
     const script = document.createElement('script');
@@ -185,5 +186,105 @@ window.addEventListener('load', () => {
     };
     new MutationObserver(updateZoneNote).observe(inspector, { childList:true, subtree:true, characterData:true });
     updateZoneNote();
+  }
+
+  // Keep the teaching copy conceptually correct: LEH and GOS are separate hunting
+  // workflows that answer different questions, not competing versions of one result.
+  if (!guideRoot.dataset.workflowCopyObserver) {
+    guideRoot.dataset.workflowCopyObserver = '1';
+
+    const title = document.getElementById('demoStepTitle');
+    const text = document.getElementById('demoStepText');
+    const next = document.getElementById('demoNext');
+
+    const label = mode => mode === 'leh' ? 'LEH' : 'General Open Seasons';
+    const opposite = mode => mode === 'leh' ? 'gos' : 'leh';
+    const setCopy = (element, value) => {
+      if (element && element.textContent !== value) element.textContent = value;
+    };
+
+    const updateGuideCopy = () => {
+      if (!title || !text || !next) return;
+      const step = Number(guideRoot.dataset.guideStep || 1);
+      const firstMode = guideRoot.dataset.guideFirstMode || '';
+      const renderedMode = guideRoot.dataset.guideRenderedMode || '';
+
+      if (step === 1) {
+        setCopy(title, 'Meet the HuntSmart map');
+        setCopy(text, 'This guided tour teaches LEH and General Open Seasons as two different tools. You will learn what each system answers and how to use both on the map.');
+        setCopy(next, 'Start tour →');
+        return;
+      }
+
+      if (step === 2) {
+        setCopy(title, 'Choose a hunting system');
+        setCopy(text, 'Start with either Limited Entry Hunting or General Open Seasons. We will teach what that system answers first, then show the other one as a separate workflow.');
+        setCopy(next, 'Choose LEH or GOS to continue');
+        return;
+      }
+
+      if (step === 5 && renderedMode) {
+        if (renderedMode === 'leh') {
+          setCopy(title, 'Understand your LEH result');
+          setCopy(text, 'LEH answers: what limited-entry draw opportunities exist here for this species? Review the draw odds, hunt codes, classes, dates and mapped LEH zones below.');
+          setCopy(next, 'Next: Explore General Open Seasons →');
+        } else {
+          setCopy(title, 'Understand your General Open Seasons result');
+          setCopy(text, 'General Open Seasons answers: what hunting opportunities are available here without winning an LEH draw? Review the season rows and restrictions for this species and WMU below.');
+          setCopy(next, 'Next: Explore LEH →');
+        }
+        return;
+      }
+
+      if (step === 6 && firstMode) {
+        const targetMode = opposite(firstMode);
+        setCopy(title, `Now explore ${label(targetMode)}`);
+        setCopy(
+          text,
+          targetMode === 'gos'
+            ? 'LEH showed you draw-only opportunities. General Open Seasons answers a different question: what hunting opportunities are available here without winning an LEH draw?'
+            : 'General Open Seasons showed opportunities available without an LEH draw. LEH answers a different question: what limited-entry draw opportunities exist here for this species?'
+        );
+        setCopy(next, `Open ${label(targetMode)}`);
+        return;
+      }
+
+      if (step === 7 && renderedMode) {
+        setCopy(title, `Understand your ${label(renderedMode)} result`);
+        setCopy(
+          text,
+          renderedMode === 'gos'
+            ? 'These are the General Open Seasons rows for this species and WMU. They describe open-season opportunities and restrictions—not a competing LEH odds result.'
+            : 'These are the LEH draw records for this species and WMU. They describe limited-entry opportunities that require a successful draw authorization.'
+        );
+        setCopy(next, 'Try a map layer →');
+        return;
+      }
+
+      if (step === 9) {
+        setCopy(title, 'You are ready to explore');
+        setCopy(text, 'You now know what LEH and General Open Seasons each answer, how to inspect a WMU, and how to change the map view.');
+        setCopy(next, 'Explore freely');
+      }
+    };
+
+    let copyUpdateQueued = false;
+    const queueGuideCopyUpdate = () => {
+      if (copyUpdateQueued) return;
+      copyUpdateQueued = true;
+      queueMicrotask(() => {
+        copyUpdateQueued = false;
+        updateGuideCopy();
+      });
+    };
+
+    new MutationObserver(queueGuideCopyUpdate).observe(guideRoot, {
+      attributes:true,
+      attributeFilter:['data-guide-step','data-guide-first-mode','data-guide-rendered-mode'],
+      childList:true,
+      subtree:true,
+      characterData:true
+    });
+    queueGuideCopyUpdate();
   }
 });
