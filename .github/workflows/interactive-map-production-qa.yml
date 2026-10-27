@@ -7,6 +7,7 @@ on:
     paths:
       - imagery-lab.js
       - imagery-lab.css
+      - world-class-map.js
       - terrain-intelligence.css
       - terrain-intelligence.js
       - bc-open-seasons.js
@@ -80,6 +81,7 @@ jobs:
               await page.waitForTimeout(1100);
               let s=await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
               assert(s.controller.mode==='leh'&&s.controller.province==='BC','BC LEH is not the default Interactive Map mode.');
+              assert(await page.evaluate(()=>String(_fullMapStyle||''))==='streets','LEH default basemap is not Dark.');
 
               const lehLayout = await page.evaluate(() => {
                 const visible = el => !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
@@ -124,6 +126,7 @@ jobs:
               await page.waitForFunction(()=>document.getElementById('bcOpenSeasonsPage')?.style.display !== 'none',{timeout:30000});
               await page.waitForFunction(()=>typeof osMapInstance !== 'undefined' && !!osMapInstance,{timeout:30000});
               await page.waitForTimeout(700);
+              assert(await page.evaluate(()=>String(osMapStyle||''))==='streets','GOS default basemap is not Dark.');
 
               const gosLayout = await page.evaluate(() => {
                 const visible = el => !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
