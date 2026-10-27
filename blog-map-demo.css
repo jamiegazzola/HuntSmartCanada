@@ -59,12 +59,39 @@
 .mapboxgl-ctrl-logo,.mapboxgl-ctrl-attrib{opacity:.45}
 .mapboxgl-popup-content{background:#111512!important;color:#e8eeea!important;border:1px solid #2d3731!important;border-radius:10px!important;font-family:'DM Sans',sans-serif!important;padding:10px 12px!important}
 .mapboxgl-popup-tip{border-top-color:#111512!important;border-bottom-color:#111512!important}
+
+/* Guided-tour attention system */
+:root{--demo-gold:#e7b94a;--demo-gold-soft:#ffdd83}
+.hs-map-demo{position:relative}
+.demo-tutorial{position:absolute;z-index:18;top:82px;left:18px;width:min(470px,calc(100% - 376px));border:1px solid rgba(231,185,74,.48);border-radius:14px;background:rgba(10,13,11,.95);box-shadow:0 18px 48px rgba(0,0,0,.38),0 0 0 1px rgba(231,185,74,.06);backdrop-filter:blur(14px)}
+.demo-step-meta{color:#bcae82}.demo-step-meta:before{content:"Guided tour";color:var(--demo-gold-soft)}
+.demo-safe-pill{border-color:rgba(231,185,74,.28);color:#a99c73}
+.demo-step-body h3{color:#fff3ca}.demo-step-body p{color:#b7b3a5}
+.demo-step-actions .primary:disabled{opacity:.55;cursor:not-allowed;box-shadow:none!important}
+.demo-target{position:relative;z-index:12!important;border-color:var(--demo-gold)!important;box-shadow:0 0 0 2px rgba(231,185,74,.92),0 0 0 7px rgba(231,185,74,.16),0 0 34px rgba(231,185,74,.34)!important;animation:demoGoldPulse 1.65s ease-in-out infinite}
+.demo-target::after{content:"";position:absolute;inset:-5px;border:1px solid rgba(255,221,131,.72);border-radius:12px;pointer-events:none;animation:demoSpark 1.65s ease-in-out infinite}
+.hs-map-demo-map-wrap.demo-target:after{content:"Click a highlighted WMU";position:absolute;left:50%;top:50%;z-index:20;transform:translate(-50%,-50%);padding:11px 14px;border:1px solid rgba(231,185,74,.8);border-radius:10px;background:rgba(9,11,9,.94);color:#ffe7a3;font-size:12px;font-weight:900;box-shadow:0 0 32px rgba(231,185,74,.26);pointer-events:none}
+.hs-map-demo:has(.demo-target) .hs-map-demo-top>*{transition:opacity .2s ease,filter .2s ease}
+.hs-map-demo:has(#demoModeLEH.demo-target) .hs-map-demo-top>*:not(.demo-mode-group),.hs-map-demo:has(#demoModeGOS.demo-target) .hs-map-demo-top>*:not(.demo-mode-group){opacity:.36;filter:saturate(.55)}
+.hs-map-demo:has(#demoModeLEH.demo-target) .demo-mode-group button:not(#demoModeLEH),.hs-map-demo:has(#demoModeGOS.demo-target) .demo-mode-group button:not(#demoModeGOS){opacity:.35}
+.hs-map-demo:has(.demo-species-control.demo-target) .hs-map-demo-top>*:not(.demo-species-control){opacity:.36;filter:saturate(.55)}
+.hs-map-demo:has(.demo-basemap-group.demo-target) .hs-map-demo-top>*:not(.demo-basemap-group){opacity:.38;filter:saturate(.55)}
+.hs-map-demo:has(.hs-map-demo-map-wrap.demo-target) .hs-map-demo-top{opacity:.48}
+@keyframes demoGoldPulse{0%,100%{box-shadow:0 0 0 2px rgba(231,185,74,.72),0 0 0 6px rgba(231,185,74,.12),0 0 22px rgba(231,185,74,.18)}50%{box-shadow:0 0 0 2px rgba(255,221,131,1),0 0 0 10px rgba(231,185,74,.20),0 0 44px rgba(231,185,74,.42)}}
+@keyframes demoSpark{0%,100%{opacity:.34;transform:scale(.985)}50%{opacity:1;transform:scale(1.025)}}
+@supports (animation-timeline: scroll()){
+  body::before{content:"";position:fixed;z-index:80;top:67px;left:0;width:100%;height:2px;pointer-events:none;background:linear-gradient(90deg,#4ade80,#86e9a4);transform:scaleX(0);transform-origin:left center;animation:mapReadProgress linear both;animation-timeline:scroll(root)}
+  @keyframes mapReadProgress{to{transform:scaleX(1)}}
+}
+@media(prefers-reduced-motion:reduce){.demo-target,.demo-target::after{animation:none!important}}
+
 @media(max-width:1050px){
   .hs-map-demo-top{grid-template-columns:1fr 1fr}
   .hs-map-demo-stage{grid-template-columns:1fr;min-height:0}
   .hs-map-demo-map-wrap{height:560px}
   .demo-inspector{border-left:0;border-top:1px solid #252c27;max-height:none;min-height:240px}
   .demo-inspector-empty{min-height:240px}
+  .demo-tutorial{width:min(470px,calc(100% - 36px))}
 }
 @media(max-width:700px){
   .map-guide-intro{align-items:flex-start;flex-direction:column}
@@ -79,4 +106,5 @@
   .demo-step-actions{width:100%}
   .demo-step-actions button{flex:1}
   .demo-safe-pill{display:none}
+  .demo-tutorial{position:relative;top:auto;left:auto;width:auto;margin:0;border-left:0;border-right:0;border-radius:0;box-shadow:none}
 }

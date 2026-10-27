@@ -1,0 +1,25 @@
+/* HuntSmart article UX enhancements */
+:root{--hs-tutorial-gold:#e7b94a;--hs-tutorial-gold-soft:#ffd978;}
+html{scroll-padding-top:92px}
+@supports (animation-timeline: scroll()){
+  body::before{content:"";position:fixed;z-index:80;top:67px;left:0;width:100%;height:2px;pointer-events:none;background:linear-gradient(90deg,#4ade80,#86e9a4);transform:scaleX(0);transform-origin:left center;animation:hsReadProgress linear both;animation-timeline:scroll(root)}
+  @keyframes hsReadProgress{to{transform:scaleX(1)}}
+}
+#hsGuide .guide-step-btn{gap:12px;align-items:center;text-align:left}
+#hsGuide .guide-step-btn b{flex:0 0 28px;width:28px;height:28px;margin-right:2px;border-radius:999px;font-variant-numeric:tabular-nums}
+#hsGuide .guide-step-btn span{display:block;min-width:0;line-height:1.25}
+#hsGuide .guide-step-btn.active{border-color:rgba(231,185,74,.88);background:rgba(231,185,74,.08);color:#fff3c9;box-shadow:0 0 0 2px rgba(231,185,74,.12),0 0 24px rgba(231,185,74,.15)}
+#hsGuide .guide-step-btn.active b{border-color:var(--hs-tutorial-gold);color:var(--hs-tutorial-gold-soft);background:rgba(231,185,74,.10)}
+#hsGuide .guide-progress{font-variant-numeric:tabular-nums}
+#hsGuide:has(.guide-step-btn[data-guide-step="0"].active) .guide-screen [data-prov],
+#hsGuide:has(.guide-step-btn[data-guide-step="1"].active) .guide-screen [data-species],
+#hsGuide:has(.guide-step-btn[data-guide-step="3"].active) .guide-screen [data-hunt],
+#hsGuide:has(.guide-step-btn[data-guide-step="5"].active) #demoSaveBtn{position:relative;border-color:rgba(231,185,74,.78);box-shadow:0 0 0 1px rgba(231,185,74,.2),0 0 24px rgba(231,185,74,.13);animation:hsTutorialPulse 1.8s ease-in-out infinite}
+#hsGuide:has(.guide-step-btn[data-guide-step="2"].active) #guideNext,
+#hsGuide:has(.guide-step-btn[data-guide-step="4"].active) #guideNext{border-color:var(--hs-tutorial-gold);color:#211803;background:var(--hs-tutorial-gold);box-shadow:0 0 24px rgba(231,185,74,.22);animation:hsTutorialPulse 1.8s ease-in-out infinite}
+#hsGuide .guide-screen .choice-btn.active{outline-offset:2px}
+#hsGuide .guide-actions{padding-top:4px}
+#hsGuide #guideTip{max-width:360px;text-align:center;line-height:1.35;color:#89958d}
+@keyframes hsTutorialPulse{0%,100%{box-shadow:0 0 0 1px rgba(231,185,74,.18),0 0 18px rgba(231,185,74,.10)}50%{box-shadow:0 0 0 3px rgba(231,185,74,.24),0 0 34px rgba(231,185,74,.22)}}
+@media(prefers-reduced-motion:reduce){#hsGuide [data-prov],#hsGuide [data-species],#hsGuide [data-hunt],#hsGuide #demoSaveBtn,#hsGuide #guideNext{animation:none!important}}
+@media(max-width:700px){#hsGuide .guide-step-btn b{flex-basis:26px;width:26px;height:26px}#hsGuide #guideTip{order:3;width:100%;max-width:none;text-align:left}}
