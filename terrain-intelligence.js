@@ -11,26 +11,139 @@
     return !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
   }
 
+  function currentBase() {
+    try { return String(_fullMapStyle || 'streets'); } catch (_) { return 'streets'; }
+  }
+
+  function current3D() {
+    try { return !!_fullMapTerrain3D; } catch (_) { return false; }
+  }
+
+  function currentOverlayVisibility() {
+    try { return Math.max(0, Math.min(100, Math.round(Number(_fullMapWMUOpacity) * 100))); } catch (_) { return 100; }
+  }
+
+  function fallbackLayersHTML() {
+    var base = currentBase();
+    var terrain = current3D();
+    var visibility = currentOverlayVisibility();
+    var slider = 100 - visibility;
+    function choice(label, active, action, extra) {
+      return '<button type="button" class="hs-wc-choice ' + (extra || '') + (active ? ' active' : '') + '" onclick="' + action + '">' + label + '</button>';
+    }
+    return '<div class="hs-wc-panel-head">' +
+      '<div><div class="hs-wc-panel-title">Map layers</div><div class="hs-wc-panel-sub">Basemap, terrain and boundary visibility</div></div>' +
+      '<button type="button" class="hs-wc-close" onclick="hsFallbackCloseLayers()" aria-label="Close layers">×</button>' +
+      '</div>' +
+      '<div class="hs-wc-panel-body">' +
+        '<section class="hs-wc-section">' +
+          '<div class="hs-wc-label"><span>Basemap</span></div>' +
+          '<div class="hs-wc-seg three">' +
+            choice('Satellite', base === 'satellite', "hsFallbackSetBase('satellite')", 'satellite') +
+            choice('Topo', base === 'topo', "hsFallbackSetBase('topo')", '') +
+            choice('Dark', base === 'streets', "hsFallbackSetBase('streets')", '') +
+          '</div>' +
+        '</section>' +
+        '<section class="hs-wc-section">' +
+          '<div class="hs-wc-label"><span>Terrain</span></div>' +
+          '<div class="hs-wc-seg two">' +
+            choice('2D', !terrain, 'hsFallbackSet3D(false)', '') +
+            choice('3D', terrain, 'hsFallbackSet3D(true)', '') +
+          '</div>' +
+        '</section>' +
+        '<section class="hs-wc-section">' +
+          '<div class="hs-wc-label"><span>Boundary visibility</span><span class="hs-wc-live">' + visibility + '%</span></div>' +
+          '<div class="hs-wc-slider-row">' +
+            '<input type="range" min="0" max="100" step="1" value="' + slider + '" oninput="hsFallbackSetOverlayOpacity(this.value)">' +
+            '<span class="hs-wc-slider-value">' + visibility + '%</span>' +
+          '</div>' +
+          '<div class="hs-wc-note">Reduce boundary fill when you want satellite imagery and terrain to dominate.</div>' +
+        '</section>' +
+      '</div>';
+  }
+
+  function renderFallbackLayers() {
+    var panel = document.getElementById('hsWorldSettingsPanel');
+    if (!panel || panel.dataset.hsFallbackLayers !== '1') return;
+    panel.innerHTML = fallbackLayersHTML();
+  }
+
+  function ensureFallbackLayersControl() {
+    if (isMobile()) return;
+    var toolbar = document.querySelector('#mapPage .fullmap-toolbar-main');
+    var container = document.querySelector('#mapPage .fullmap-container');
+    if (!toolbar || !container) return;
+
+    var button = document.getElementById('hsWorldSettingsBtn');
+    if (!button) {
+      button = document.createElement('button');
+      button.type = 'button';
+      button.id = 'hsWorldSettingsBtn';
+      button.className = 'hs-wc-settings-btn';
+      button.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h7M15 18h5"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="13" cy="18" r="2"/></svg><span>Layers</span>';
+      button.setAttribute('aria-label', 'Map layers and display settings');
+      button.title = 'Map layers and display settings';
+      button.onclick = function (event) {
+        event.stopPropagation();
+        var panel = document.getElementById('hsWorldSettingsPanel');
+        if (!panel) return;
+        var opening = !panel.classList.contains('open');
+        panel.classList.toggle('open', opening);
+        button.classList.toggle('is-open', opening);
+        if (opening) renderFallbackLayers();
+      };
+      toolbar.appendChild(button);
+    }
+
+    var panel = document.getElementById('hsWorldSettingsPanel');
+    if (!panel) {
+      panel = document.createElement('aside');
+      panel.id = 'hsWorldSettingsPanel';
+      panel.className = 'hs-wc-settings-panel';
+      panel.dataset.hsFallbackLayers = '1';
+      panel.setAttribute('aria-label', 'Map layers and display settings');
+      container.appendChild(panel);
+      renderFallbackLayers();
+    }
+
+    var label = button.querySelector('span');
+    if (label && label.textContent !== 'Layers') label.textContent = 'Layers';
+  }
+
+  window.hsFallbackCloseLayers = function () {
+    var panel = document.getElementById('hsWorldSettingsPanel');
+    var button = document.getElementById('hsWorldSettingsBtn');
+    if (panel) panel.classList.remove('open');
+    if (button) button.classList.remove('is-open');
+  };
+  window.hsFallbackSetBase = function (type) {
+    try { if (typeof fullMapSetTile === 'function') fullMapSetTile(type); } catch (_) {}
+    setTimeout(renderFallbackLayers, 80);
+  };
+  window.hsFallbackSet3D = function (on) {
+    try {
+      if (current3D() !== !!on && typeof fullMapToggle3D === 'function') fullMapToggle3D();
+    } catch (_) {}
+    setTimeout(renderFallbackLayers, 80);
+  };
+  window.hsFallbackSetOverlayOpacity = function (value) {
+    var slider = Math.max(0, Math.min(100, Number(value) || 0));
+    try { if (typeof fullMapSetLEHOpacity === 'function') fullMapSetLEHOpacity(slider / 100); } catch (_) {}
+    setTimeout(renderFallbackLayers, 30);
+  };
+
   function ensureWorldSettingsCompatibility() {
     var toolbar = document.querySelector('#mapPage .fullmap-toolbar-main');
     var mapPage = document.getElementById('mapPage');
     if (!toolbar || !mapPage) return;
 
-    // world-class-map.js still looks for the older v4 hook. Preserve the
-    // current markup and provide the compatibility class instead of cloning UI.
+    // world-class-map.js still supports the older v4 hook. Preserve compatibility
+    // when that enhancement loads, but guarantee a native fallback below.
     toolbar.classList.add('fullmap-toolbar-main-v4');
+    ensureFallbackLayersControl();
 
     var button = document.getElementById('hsWorldSettingsBtn');
-    if (!button) {
-      // Its MutationObserver watches mapPage class/style changes and will call
-      // ensureDesktopSettings() once the compatibility hook exists.
-      mapPage.classList.toggle('hs-world-settings-ready-pulse');
-      setTimeout(function () {
-        mapPage.classList.toggle('hs-world-settings-ready-pulse');
-      }, 0);
-      return;
-    }
-
+    if (!button) return;
     var label = button.querySelector('span');
     if (label && label.textContent !== 'Layers') label.textContent = 'Layers';
     button.setAttribute('aria-label', 'Map layers and display settings');
