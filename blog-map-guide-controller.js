@@ -24,6 +24,7 @@
   if (![stage,mapWrap,inspector,tutorial,guided,free,leh,gos,species,back,next,stepCount,stepTitle,stepText,btn3D,basemapGroup].every(Boolean)) return;
 
   const rail = document.createElement('aside');
+  rail.id = 'demoGuideRail';
   rail.className = 'demo-guide-rail';
   rail.setAttribute('aria-label','Guided tour and map results');
 
@@ -41,27 +42,41 @@
   const style = document.createElement('style');
   style.textContent = `
     .hs-map-demo.demo-custom-guide .hs-map-demo-stage{grid-template-columns:minmax(0,1fr) 340px!important}
-    .hs-map-demo.demo-custom-guide .demo-guide-rail{display:flex;flex-direction:column;min-width:0;border-left:1px solid #252c27;background:#111512;max-height:650px;overflow:auto}
-    .hs-map-demo.demo-custom-guide .demo-guide-slot{flex:0 0 auto}
-    .hs-map-demo.demo-custom-guide .demo-results-slot{flex:1 1 auto;min-height:0}
-    .hs-map-demo.demo-custom-guide .demo-tutorial{display:block!important;position:static!important;inset:auto!important;width:auto!important;max-width:none!important;margin:0!important;padding:24px 22px 22px!important;border:0!important;border-bottom:1px solid #252c27!important;border-radius:0!important;background:#101411!important;box-shadow:none!important;backdrop-filter:none!important}
+    .hs-map-demo.demo-custom-guide .demo-guide-rail{display:flex!important;flex-direction:column!important;min-width:0!important;border-left:1px solid #252c27!important;background:#111512!important;max-height:650px!important;overflow:auto!important}
+    .hs-map-demo.demo-custom-guide .demo-guide-slot{display:block!important;flex:0 0 auto!important;min-width:0!important;width:100%!important}
+    .hs-map-demo.demo-custom-guide .demo-results-slot{display:none!important}
+    .hs-map-demo.demo-custom-guide .demo-results-slot.has-results{display:block!important;flex:1 1 auto!important;min-height:0!important;border-top:1px solid #252c27!important}
+
+    .hs-map-demo.demo-custom-guide .demo-tutorial{
+      display:block!important;position:static!important;inset:auto!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;
+      width:100%!important;max-width:none!important;min-width:0!important;height:auto!important;margin:0!important;padding:22px!important;
+      border:0!important;border-radius:0!important;background:#101411!important;box-shadow:none!important;backdrop-filter:none!important;overflow:visible!important;
+    }
+    .hs-map-demo.demo-custom-guide .demo-step-meta{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:10px!important;flex-wrap:wrap!important;width:100%!important;margin:0 0 18px!important}
+    .hs-map-demo.demo-custom-guide .demo-step-meta:before{display:block!important;flex:0 0 100%!important;margin:0 0 2px!important;color:#ffdd83!important;font-size:10px!important;line-height:1.2!important}
+    .hs-map-demo.demo-custom-guide .demo-safe-pill{display:inline-flex!important;max-width:100%!important;white-space:normal!important;line-height:1.25!important}
+    .hs-map-demo.demo-custom-guide .demo-step-body{display:block!important;width:100%!important;min-width:0!important}
+    .hs-map-demo.demo-custom-guide .demo-step-body>div:first-child{display:block!important;width:100%!important;min-width:0!important;max-width:none!important}
+    .hs-map-demo.demo-custom-guide .demo-step-body h3{display:block!important;width:100%!important;max-width:none!important;margin:0 0 10px!important;font-size:26px!important;line-height:1.12!important;white-space:normal!important;word-break:normal!important;overflow-wrap:normal!important;color:#fff3ca!important}
+    .hs-map-demo.demo-custom-guide .demo-step-body p{display:block!important;width:100%!important;max-width:none!important;margin:0!important;font-size:13px!important;line-height:1.6!important;white-space:normal!important;word-break:normal!important;overflow-wrap:break-word!important;color:#b7b3a5!important}
+    .hs-map-demo.demo-custom-guide .demo-step-actions{display:flex!important;width:100%!important;gap:8px!important;margin:22px 0 0!important;justify-content:stretch!important}
+    .hs-map-demo.demo-custom-guide .demo-step-actions button{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:1 1 0!important;min-width:0!important;white-space:normal!important}
+
     .hs-map-demo.demo-custom-guide .demo-inspector{display:block!important;border:0!important;background:#111512!important;max-height:none!important;overflow:visible!important}
-    .hs-map-demo.demo-custom-guide .demo-inspector-empty:not(.demo-guide-error){display:none!important}
-    .hs-map-demo.demo-custom-guide .demo-step-body{display:block!important}
-    .hs-map-demo.demo-custom-guide .demo-step-body>div:first-child{max-width:none!important}
-    .hs-map-demo.demo-custom-guide .demo-step-body h3{font-size:26px;line-height:1.08;margin:0 0 8px}
-    .hs-map-demo.demo-custom-guide .demo-step-body p{font-size:13px;line-height:1.65;color:#a8b0aa}
-    .hs-map-demo.demo-custom-guide .demo-step-actions{margin-top:20px;justify-content:flex-start}
-    .hs-map-demo.demo-custom-guide .demo-step-actions button{flex:1}
-    .hs-map-demo.demo-custom-guide .demo-step-meta{align-items:flex-start;flex-wrap:wrap;row-gap:7px}
+    .hs-map-demo.demo-custom-guide .demo-inspector-empty{display:none!important}
     .hs-map-demo .demo-guide-mode-choice{position:relative;z-index:12!important;border-color:var(--demo-gold,#e7b94a)!important;box-shadow:0 0 0 2px rgba(231,185,74,.92),0 0 0 7px rgba(231,185,74,.16),0 0 34px rgba(231,185,74,.34)!important;animation:demoGoldPulse 1.65s ease-in-out infinite}
     .hs-map-demo.demo-guide-mode-step .hs-map-demo-top>*:not(.demo-mode-group){opacity:.35;filter:saturate(.55)}
     .hs-map-demo.demo-custom-guide .demo-guide-result{box-shadow:inset 3px 0 0 rgba(231,185,74,.45)}
     .hs-map-demo.demo-free-clean .hs-map-demo-stage{grid-template-columns:minmax(0,1fr)!important}
     .hs-map-demo.demo-free-clean .demo-guide-rail{display:none!important}
+
     @media(max-width:1050px){
       .hs-map-demo.demo-custom-guide .hs-map-demo-stage{grid-template-columns:1fr!important}
-      .hs-map-demo.demo-custom-guide .demo-guide-rail{border-left:0;border-top:1px solid #252c27;max-height:none}
+      .hs-map-demo.demo-custom-guide .demo-guide-rail{border-left:0!important;border-top:1px solid #252c27!important;max-height:none!important}
+    }
+    @media(max-width:700px){
+      .hs-map-demo.demo-custom-guide .demo-tutorial{padding:18px!important}
+      .hs-map-demo.demo-custom-guide .demo-step-actions{flex-direction:column!important}
     }
     @media(prefers-reduced-motion:reduce){.hs-map-demo .demo-guide-mode-choice{animation:none!important}}
   `;
@@ -98,17 +113,18 @@
     return !!inspector.querySelector('.demo-inspector-head,.demo-result-card,.demo-zone-note');
   }
 
-  function hidePlaceholder(){
-    const empty = inspector.querySelector('.demo-inspector-empty');
-    if (!empty) return;
-    const text = (empty.textContent||'').toLowerCase();
-    empty.classList.toggle('demo-guide-error', text.includes('could not load'));
+  function syncResults(){
+    const visible = hasResults();
+    resultsSlot.classList.toggle('has-results', visible);
+    const empties = inspector.querySelectorAll('.demo-inspector-empty');
+    empties.forEach(el => { el.style.display = 'none'; el.setAttribute('aria-hidden','true'); });
+    return visible;
   }
 
   function render(){
     if (!started) return;
     clearTargets();
-    hidePlaceholder();
+    syncResults();
     const spec = steps[step]();
     stepCount.textContent = `Step ${step+1} of ${steps.length}`;
     stepTitle.textContent = spec.title;
@@ -147,7 +163,7 @@
     setTimeout(()=>window.dispatchEvent(new Event('resize')),0);
   }
 
-  // Put the legacy guide into free mode first, then let this controller own the guided experience.
+  // Put the legacy guide into free mode once, then let this controller own the guided experience.
   free.click();
   startTour();
 
@@ -179,9 +195,9 @@
   btn3D.addEventListener('click',()=>{if(started&&step===7)setTimeout(()=>go(8),160);});
 
   new MutationObserver(()=>{
-    hidePlaceholder();
-    if(!started) return;
-    if(step===3&&hasResults()) setTimeout(()=>go(4),140);
-    else if(step===5&&pendingCompare&&hasResults()){pendingCompare=false;setTimeout(()=>go(6),140);}
+    const visible = syncResults();
+    if(!started || !visible) return;
+    if(step===3) setTimeout(()=>go(4),140);
+    else if(step===5&&pendingCompare){pendingCompare=false;setTimeout(()=>go(6),140);}
   }).observe(inspector,{childList:true,subtree:true,characterData:true});
 })();
