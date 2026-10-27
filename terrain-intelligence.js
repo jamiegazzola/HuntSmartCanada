@@ -57,6 +57,14 @@
     }
   }
 
+  function revealMobileCluster(cluster) {
+    if (!cluster) return;
+    cluster.classList.remove('hs-hidden', 'hidden', 'drawer-open');
+    cluster.style.removeProperty('display');
+    cluster.style.removeProperty('opacity');
+    cluster.style.removeProperty('visibility');
+  }
+
   function enforceMobileDrawerContract() {
     if (!isMobile()) return;
     var drawer = document.getElementById('fullMapResultsDrawer');
@@ -69,7 +77,7 @@
     if (!open) {
       drawer.style.setProperty('display', 'none', 'important');
       if (body) body.classList.remove('hs-drawer-open');
-      if (cluster) cluster.classList.remove('hs-hidden');
+      revealMobileCluster(cluster);
       if (cards) cards.classList.remove('hs-active');
     } else {
       drawer.style.setProperty('display', 'flex', 'important');
@@ -87,7 +95,7 @@
       drawer.style.setProperty('display', 'none', 'important');
     }
     if (body) body.classList.remove('hs-drawer-open');
-    if (cluster) cluster.classList.remove('hs-hidden');
+    revealMobileCluster(cluster);
     if (cards) cards.classList.remove('hs-active');
   }
 
