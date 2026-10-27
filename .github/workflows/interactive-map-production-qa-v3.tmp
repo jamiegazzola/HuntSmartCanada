@@ -1,0 +1,200 @@
+name: HuntSmart Interactive Map Production QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - imagery-lab.js
+      - imagery-lab.css
+      - terrain-intelligence.css
+      - terrain-intelligence.js
+      - bc-open-seasons.js
+      - maps.js
+      - index.html
+      - build-preview.sh
+      - .github/workflows/interactive-map-production-qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  production-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Validate live unified map
+        env:
+          URL: https://huntsmartcanada.ca/
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const assert = (v,m) => { if (!v) throw new Error(m); };
+
+          async function openLive(page) {
+            let lastError = null;
+            for (let i = 0; i < 12; i++) {
+              try {
+                await page.goto(`${process.env.URL}?interactive-map-qa=${Date.now()}-${i}`, {
+                  waitUntil: 'commit',
+                  timeout: 30000
+                });
+                await page.waitForFunction(
+                  () => !!window.__HUNTSMART_INTERACTIVE_MAP__,
+                  null,
+                  { timeout: 30000 }
+                );
+                return;
+              } catch (error) {
+                lastError = error;
+                await page.waitForTimeout(2500);
+              }
+            }
+            throw lastError || new Error('Could not load the live Interactive Map controller.');
+          }
+
+          (async()=>{
+            const browser = await chromium.launch({headless:true});
+            for (const viewport of [{width:1440,height:1000},{width:390,height:844}]) {
+              const page = await browser.newPage({viewport});
+              const errors=[];
+              page.on('pageerror',e=>errors.push(e.message));
+
+              await openLive(page);
+
+              const nav = await page.locator('#navMap').textContent();
+              assert(/Interactive Map/i.test(nav||''),'Map nav was not renamed.');
+              assert(await page.locator('#navBCOS').evaluate(el=>getComputedStyle(el).display==='none'),'Legacy BC GOS nav still visible.');
+
+              await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.open('leh',{province:'BC'}));
+              await page.waitForFunction(()=>document.getElementById('mapPage')?.style.display !== 'none',{timeout:30000});
+              await page.waitForFunction(()=>typeof fullMapInstance !== 'undefined' && !!fullMapInstance,{timeout:30000});
+              await page.waitForTimeout(1100);
+              let s=await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
+              assert(s.controller.mode==='leh'&&s.controller.province==='BC','BC LEH is not the default Interactive Map mode.');
+
+              const lehLayout = await page.evaluate(() => {
+                const visible = el => !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
+                const rect = el => {
+                  if (!el) return null;
+                  const r = el.getBoundingClientRect();
+                  const cs = getComputedStyle(el);
+                  return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height,display:cs.display,position:cs.position};
+                };
+                const controls = [document.getElementById('fullMapControlStack'),document.getElementById('hsBrCluster')].filter(visible).map(rect);
+                return {
+                  viewport:{width:innerWidth,height:innerHeight},
+                  nav:rect(document.querySelector('nav')),
+                  page:rect(document.getElementById('mapPage')),
+                  map:rect(document.getElementById('fullMapLeaflet')),
+                  shell:rect(document.querySelector('#mapPage > .hs-im-shellbar')),
+                  toolbar:rect(document.querySelector('#mapPage .fullmap-topbar')),
+                  layers:rect(document.getElementById('hsWorldSettingsBtn')),
+                  controls
+                };
+              });
+
+              assert(lehLayout.map && lehLayout.nav && lehLayout.map.top <= lehLayout.nav.bottom + 4,
+                'LEH map is still pushed down by permanent map chrome: '+JSON.stringify(lehLayout));
+              assert(lehLayout.shell && lehLayout.shell.position==='absolute',
+                'Unified mode selector is not floating over the LEH map: '+JSON.stringify(lehLayout.shell));
+              if (viewport.width > 768) {
+                assert(lehLayout.toolbar && lehLayout.toolbar.position==='absolute',
+                  'LEH species toolbar is not floating: '+JSON.stringify(lehLayout.toolbar));
+                assert(lehLayout.layers && lehLayout.layers.display!=='none',
+                  'Desktop Layers control is not visible: '+JSON.stringify(lehLayout.layers));
+              }
+              assert(lehLayout.controls.length>0,'No visible LEH + / - / 3D control stack.');
+              lehLayout.controls.forEach(control => {
+                assert(control.bottom <= viewport.height - 8 && control.top >= 0,
+                  'LEH bottom-right controls are clipped: '+JSON.stringify(control));
+                assert(control.right <= viewport.width - 8,
+                  'LEH bottom-right controls overflow horizontally: '+JSON.stringify(control));
+              });
+
+              await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
+              await page.waitForFunction(()=>document.getElementById('bcOpenSeasonsPage')?.style.display !== 'none',{timeout:30000});
+              await page.waitForFunction(()=>typeof osMapInstance !== 'undefined' && !!osMapInstance,{timeout:30000});
+              await page.waitForTimeout(700);
+
+              const gosLayout = await page.evaluate(() => {
+                const visible = el => !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
+                const rect = el => {
+                  if (!el) return null;
+                  const r = el.getBoundingClientRect();
+                  const cs = getComputedStyle(el);
+                  return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height,display:cs.display,position:cs.position};
+                };
+                const controls = [document.getElementById('osMapControlStack'),document.getElementById('gosBrCluster')].filter(visible).map(rect);
+                return {
+                  viewport:{width:innerWidth,height:innerHeight},
+                  nav:rect(document.querySelector('nav')),
+                  map:rect(document.getElementById('osMap')),
+                  shell:rect(document.querySelector('#bcOpenSeasonsPage > .hs-im-shellbar')),
+                  toolbar:rect(document.querySelector('#bcOpenSeasonsPage .os-topbar')),
+                  controls
+                };
+              });
+              assert(gosLayout.map && gosLayout.nav && gosLayout.map.top <= gosLayout.nav.bottom + 4,
+                'GOS map is still pushed down by permanent map chrome: '+JSON.stringify(gosLayout));
+              assert(gosLayout.shell && gosLayout.shell.position==='absolute',
+                'Unified mode selector is not floating over the GOS map: '+JSON.stringify(gosLayout.shell));
+              assert(gosLayout.controls.length>0,'No visible GOS + / - / 3D control stack.');
+              gosLayout.controls.forEach(control => {
+                assert(control.bottom <= viewport.height - 8 && control.top >= 0,
+                  'GOS bottom-right controls are clipped: '+JSON.stringify(control));
+                assert(control.right <= viewport.width - 8,
+                  'GOS bottom-right controls overflow horizontally: '+JSON.stringify(control));
+              });
+
+              await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.selectGOSRegion('3'));
+              await page.waitForTimeout(250);
+
+              const sheep = await page.locator('#osSpeciesSel option').evaluateAll(options => {
+                const match = options.find(option => option.value && /bighorn/i.test(option.textContent || option.value));
+                return match ? { value:match.value, label:match.textContent } : {
+                  value:'',
+                  label:'',
+                  available:options.map(o=>o.textContent).filter(Boolean)
+                };
+              });
+              assert(sheep.value, 'Region 3 species list has no Bighorn Sheep option. Available: '+JSON.stringify(sheep.available||[]));
+              await page.evaluate(species=>window.__HUNTSMART_INTERACTIVE_MAP__.setGOSSpecies(species), sheep.value);
+              await page.waitForTimeout(350);
+              s=await page.evaluate(()=>({state:window.__HUNTSMART_INTERACTIVE_MAP__.getState(),active:window.__HUNTSMART_INTERACTIVE_MAP__.activeGOSWMUs()}));
+              assert(s.state.regions.length===1&&String(s.state.regions[0])==='3','Region 3 scope was lost after species selection.');
+              assert(s.state.species===sheep.value,'Bighorn Sheep selection did not persist.');
+              assert(s.active.length>0,'Region 3 '+sheep.label+' produced no active WMUs; inspect source data or scoping.');
+              assert(s.active.every(id=>String(id).startsWith('3-')),'Species selection broadened outside Region 3: '+JSON.stringify(s.active));
+
+              await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('leh'));
+              await page.waitForFunction(()=>document.getElementById('mapPage')?.style.display !== 'none',{timeout:30000});
+              await page.waitForFunction(()=>typeof fullMapInstance !== 'undefined' && !!fullMapInstance,{timeout:30000});
+              await page.waitForTimeout(500);
+              s=await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
+              assert(s.controller.mode==='leh','Could not switch back to LEH.');
+              assert((s.wmus||[]).length>0 && (s.wmus||[]).every(id=>String(id).startsWith('3-')),'Region 3 geography was not preserved into LEH.');
+              assert(!errors.length,'Page errors: '+errors.join(' | '));
+
+              await page.screenshot({path:`interactive-map-${viewport.width}.png`,fullPage:false});
+              await page.close();
+            }
+            await browser.close();
+            console.log('Unified Interactive Map production QA passed.');
+          })().catch(e=>{console.error(e.stack||e);process.exit(1);});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: interactive-map-production-qa-${{ github.run_number }}
+          path: interactive-map-*.png
+          if-no-files-found: warn
+          retention-days: 14
