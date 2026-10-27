@@ -1,0 +1,42 @@
+name: Capture HuntSmart Blog Card Screenshots
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/capture-blog-card-screenshots.mjs
+      - .github/workflows/capture-blog-card-screenshots.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  HUNTSMART_LIVE_URL: https://huntsmartcanada.ca/
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Capture real HuntSmart UI
+        run: node scripts/capture-blog-card-screenshots.mjs
+      - name: Commit captured screenshots
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add images/blog-cards/*.jpg
+          if git diff --cached --quiet; then
+            echo "No screenshot changes"
+            exit 0
+          fi
+          git commit -m "assets(blog): refresh real HuntSmart card screenshots"
+          git push origin HEAD:main
