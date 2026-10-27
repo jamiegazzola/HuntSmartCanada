@@ -1,12 +1,13 @@
-/* HuntSmart Unified Interactive Map controller.
-   Legacy filename retained by build pipeline; this replaces the old Imagery Lab UI.
-   Goals: one Interactive Map tab, BC LEH default, GOS alternate mode, Alberta unchanged,
-   persistent geographic scope, and guided map walkthroughs. */
+/* HuntSmart Unified Interactive Map controller v1.1
+   Legacy filename retained by the existing build pipeline.
+   Consumer behavior: one Interactive Map tab, BC LEH default, BC GOS alternate,
+   Alberta preserved, strict geographic scope, and guided walkthroughs. */
 (function () {
   'use strict';
 
-  if (window.__HUNTSMART_INTERACTIVE_MAP_V1__) return;
-  window.__HUNTSMART_INTERACTIVE_MAP_V1__ = true;
+  if (window.__HUNTSMART_INTERACTIVE_MAP_V11__) return;
+  window.__HUNTSMART_INTERACTIVE_MAP_V11__ = true;
+  window.__HUNTSMART_INTERACTIVE_MAP_SCRIPT_LOADED__ = true;
 
   const state = {
     mode: 'leh',
@@ -14,70 +15,78 @@
     switching: false,
     guide: null,
     guideSnapshot: null,
-    guideBoundTarget: null
+    guideTarget: null
   };
 
   const rawShowPage = typeof window.showPage === 'function' ? window.showPage : null;
   const rawFullMapSetProvince = typeof window.fullMapSetProvince === 'function' ? window.fullMapSetProvince : null;
 
-  function normalize(s) {
-    return String(s || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
-  }
-
   function safe(fn, fallback) {
-    try { return fn(); } catch (e) { return fallback; }
+    try { return fn(); } catch (_) { return fallback; }
   }
 
-  function currentVisibleSurface() {
-    const gos = document.getElementById('bcOpenSeasonsPage');
-    if (gos && gos.style.display !== 'none') return 'gos';
-    const map = document.getElementById('mapPage');
-    if (map && map.style.display !== 'none') return 'leh';
+  function normalize(value) {
+    return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function esc(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  function visible(el) {
+    return !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none');
+  }
+
+  function surface() {
+    if (visible(document.getElementById('bcOpenSeasonsPage'))) return 'gos';
+    if (visible(document.getElementById('mapPage'))) return 'leh';
     return '';
   }
 
-  function getGOSRegionKeys() {
+  function gosRegions() {
     try {
       if (typeof osSelectedRegionKeys === 'function') return osSelectedRegionKeys().map(String);
-    } catch (e) {}
+    } catch (_) {}
     try {
       if (typeof osSelectedRegions !== 'undefined' && osSelectedRegions instanceof Set) return [...osSelectedRegions].map(String);
-    } catch (e) {}
+    } catch (_) {}
     try {
       if (typeof osSelectedRegion !== 'undefined' && osSelectedRegion != null && String(osSelectedRegion)) return [String(osSelectedRegion)];
-    } catch (e) {}
+    } catch (_) {}
     return [];
   }
 
-  function getGOSWMU() {
-    try { return String(osSelectedWMU || ''); } catch (e) { return ''; }
+  function gosWMU() {
+    try { return String(osSelectedWMU || ''); } catch (_) { return ''; }
   }
 
-  function getGOSSpecies() {
-    try { return String(osSelSpecies || ''); } catch (e) { return ''; }
+  function gosSpecies() {
+    try { return String(osSelSpecies || ''); } catch (_) { return ''; }
   }
 
-  function getLEHWMUs() {
-    try { return [...fullMapSelRegions].map(String); } catch (e) { return []; }
+  function lehWMUs() {
+    try { return [...fullMapSelRegions].map(String); } catch (_) { return []; }
   }
 
-  function getLEHSpecies() {
-    try { return String(fullMapSelectedSpecies || ''); } catch (e) { return ''; }
+  function lehSpecies() {
+    try { return String(fullMapSelectedSpecies || ''); } catch (_) { return ''; }
   }
 
-  function regionKeyForWMU(wmu) {
+  function regionForWMU(wmu) {
     const id = String(wmu || '');
     if (!id) return '';
     try {
       if (typeof osWMURegion === 'function') {
-        const k = osWMURegion(id);
-        if (k) return String(k);
+        const region = osWMURegion(id);
+        if (region) return String(region);
       }
-    } catch (e) {}
+    } catch (_) {}
     return id.split('-')[0] || '';
   }
 
-  function captureCamera(map) {
+  function camera(map) {
     if (!map || typeof map.getCenter !== 'function') return null;
     try {
       const c = map.getCenter();
@@ -87,118 +96,90 @@
         pitch: typeof map.getPitch === 'function' ? map.getPitch() : 0,
         bearing: typeof map.getBearing === 'function' ? map.getBearing() : 0
       };
-    } catch (e) { return null; }
+    } catch (_) { return null; }
   }
 
-  function captureCurrent() {
-    const surface = currentVisibleSurface();
-    if (surface === 'gos') {
+  function snapshot() {
+    if (surface() === 'gos') {
       return {
-        surface: 'gos', province: 'BC', mode: 'gos',
-        regions: getGOSRegionKeys(),
-        wmu: getGOSWMU(),
-        species: getGOSSpecies(),
+        mode: 'gos', province: 'BC', regions: gosRegions(), wmu: gosWMU(), species: gosSpecies(),
         month: safe(() => String(osSelMonth || ''), ''),
         method: safe(() => String(osSelMethod || ''), ''),
-        camera: safe(() => captureCamera(osMapInstance), null)
+        camera: safe(() => camera(osMapInstance), null)
       };
     }
-    if (surface === 'leh') {
+    if (surface() === 'leh') {
       return {
-        surface: 'leh', province: safe(() => String(fullMapProvince || 'BC'), 'BC'), mode: 'leh',
-        wmus: getLEHWMUs(),
-        species: getLEHSpecies(),
-        camera: safe(() => captureCamera(fullMapInstance), null),
+        mode: 'leh', province: safe(() => String(fullMapProvince || state.province), state.province),
+        wmus: lehWMUs(), species: lehSpecies(),
         style: safe(() => String(_fullMapStyle || 'satellite'), 'satellite'),
-        terrain3D: safe(() => !!_fullMapTerrain3D, false)
+        terrain3D: safe(() => !!_fullMapTerrain3D, false),
+        camera: safe(() => camera(fullMapInstance), null)
       };
     }
-    return { surface: '', province: state.province, mode: state.mode };
+    return { mode: state.mode, province: state.province };
   }
 
-  function waitFor(test, cb, attempts) {
-    let left = attempts || 30;
-    const tick = function () {
-      let ok = false;
-      try { ok = !!test(); } catch (e) {}
-      if (ok) { cb(); return; }
+  function waitFor(test, callback, attempts) {
+    let left = attempts || 50;
+    const run = function () {
+      let ready = false;
+      try { ready = !!test(); } catch (_) {}
+      if (ready) return callback();
       left -= 1;
-      if (left > 0) setTimeout(tick, 100);
+      if (left > 0) setTimeout(run, 100);
     };
-    tick();
+    run();
   }
 
-  function mapSpeciesToLEH(species) {
-    const requested = normalize(species);
-    if (!requested) return '';
-    const available = safe(() => _fullMapAllSpecies(), []);
-    const exact = available.find(s => normalize(s) === requested);
-    if (exact) return exact;
-    const aliases = [
-      [/bighorn sheep|thinhorn sheep|stone sheep|dall sheep/, /mountain sheep|sheep/],
-      [/mule deer black tailed|black tailed deer|blacktail/, /mule deer/],
-      [/white tailed deer|whitetail deer/, /white tailed deer|whitetail/]
-    ];
-    for (const pair of aliases) {
-      if (!pair[0].test(requested)) continue;
-      const hit = available.find(s => pair[1].test(normalize(s)));
-      if (hit) return hit;
-    }
-    return '';
+  function removeExperimentalUI() {
+    [
+      'hsImageryLabBtn','hsImageryPanel',
+      'hsTerrainLaunch','hsTerrainPanel',
+      'hsWorldSettingsBtn','hsWorldSettingsPanel'
+    ].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    });
   }
 
   function contextualGOSRows(ignoreSpecies) {
     try {
       if (typeof osSelectedRegionsRows === 'function') return osSelectedRegionsRows({ ignoreSpecies: !!ignoreSpecies });
-    } catch (e) {}
+    } catch (_) {}
     try {
       if (typeof BC_OS_DATA !== 'undefined') {
-        return BC_OS_DATA.filter(r => typeof osRowPassesGlobalFilters === 'function' ? osRowPassesGlobalFilters(r, !!ignoreSpecies) : true);
+        return BC_OS_DATA.filter(row => typeof osRowPassesGlobalFilters === 'function' ? osRowPassesGlobalFilters(row, !!ignoreSpecies) : true);
       }
-    } catch (e) {}
+    } catch (_) {}
     return [];
-  }
-
-  function mapSpeciesToGOS(species) {
-    const requested = normalize(species);
-    if (!requested) return '';
-    const rows = contextualGOSRows(true);
-    const available = [...new Set(rows.map(r => r.species).filter(Boolean))];
-    const exact = available.find(s => normalize(s) === requested);
-    if (exact) return exact;
-    if (/mountain sheep|sheep/.test(requested)) {
-      const regions = getGOSRegionKeys();
-      const preferred = regions.some(k => ['3','4','5'].includes(String(k))) ? /bighorn/ : /thinhorn|stone/;
-      const hit = available.find(s => preferred.test(normalize(s))) || available.find(s => /sheep/.test(normalize(s)));
-      if (hit) return hit;
-    }
-    if (/mule deer/.test(requested)) {
-      const hit = available.find(s => /mule deer|black tailed/.test(normalize(s)));
-      if (hit) return hit;
-    }
-    return '';
   }
 
   function refreshGOSSpeciesOptions() {
     const select = document.getElementById('osSpeciesSel');
     if (!select) return;
-    const selected = getGOSSpecies();
+    const selected = gosSpecies();
     const rows = contextualGOSRows(true);
     let species = [...new Set(rows.map(r => r.species).filter(Boolean))].sort((a,b) => a.localeCompare(b));
-    if (selected && !species.includes(selected)) species = [selected].concat(species);
-    select.innerHTML = '<option value="">All species</option>' + species.map(sp => '<option value="' + String(sp).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;') + '">' + sp + '</option>').join('');
+    if (selected && !species.includes(selected)) species.unshift(selected);
+    select.innerHTML = '<option value="">All species</option>' + species.map(sp => '<option value="' + esc(sp) + '">' + esc(sp) + '</option>').join('');
     select.value = selected;
   }
 
-  function refreshGOS() {
-    try { if (typeof osSyncFilterControls === 'function') osSyncFilterControls(); } catch (e) {}
-    try { if (typeof osRefreshMapStates === 'function') osRefreshMapStates(); } catch (e) {}
-    try { if (typeof osRenderPanel === 'function') osRenderPanel(); } catch (e) {}
+  function refreshGOS(options) {
+    const opts = options || {};
+    try { if (typeof osSyncFilterControls === 'function') osSyncFilterControls(); } catch (_) {}
+    try { if (typeof osRefreshMapStates === 'function') osRefreshMapStates(); } catch (_) {}
+    try { if (typeof osRenderPanel === 'function') osRenderPanel(); } catch (_) {}
     refreshGOSSpeciesOptions();
-    syncShellbars();
+    syncUI();
+    if (opts.fitRegion) {
+      try { if (typeof osFitRegions === 'function') osFitRegions([opts.fitRegion]); } catch (_) {}
+    }
   }
 
-  function selectRegionExclusive(regionKey) {
+  // Geography is an explicit scope. Choosing species/month/method never broadens it.
+  function setGOSRegion(regionKey) {
     const key = String(regionKey || '');
     if (!key) return;
     try {
@@ -212,12 +193,13 @@
       if (typeof osSelectedWMU !== 'undefined') osSelectedWMU = null;
       if (typeof osSelectedOpportunity !== 'undefined') osSelectedOpportunity = '';
       if (typeof osUserClosedPanel !== 'undefined') osUserClosedPanel = false;
-      refreshGOS();
-      if (typeof osFitRegions === 'function') osFitRegions([key]);
-    } catch (e) { console.warn('[Interactive Map] Region selection failed', e); }
+      refreshGOS({ fitRegion:key });
+    } catch (error) {
+      console.warn('[Interactive Map] Could not set GOS region', error);
+    }
   }
 
-  function selectSpeciesScoped(species) {
+  function setGOSSpecies(species) {
     try {
       const keepWMU = typeof osSelectedWMU !== 'undefined' ? osSelectedWMU : null;
       osSelSpecies = String(species || '');
@@ -225,63 +207,100 @@
       if (typeof osSelectedWMU !== 'undefined') osSelectedWMU = keepWMU;
       if (typeof osUserClosedPanel !== 'undefined') osUserClosedPanel = false;
       refreshGOS();
-    } catch (e) { console.warn('[Interactive Map] Species filter failed', e); }
+    } catch (error) {
+      console.warn('[Interactive Map] Could not set GOS species', error);
+    }
   }
 
-  function setMonthScoped(value) {
+  function setGOSMonth(month) {
     try {
       const keepWMU = typeof osSelectedWMU !== 'undefined' ? osSelectedWMU : null;
-      osSelMonth = String(value || '');
+      osSelMonth = String(month || '');
       if (typeof osSelectedOpportunity !== 'undefined') osSelectedOpportunity = '';
       if (typeof osSelectedWMU !== 'undefined') osSelectedWMU = keepWMU;
       if (typeof osUserClosedPanel !== 'undefined') osUserClosedPanel = false;
       refreshGOS();
-    } catch (e) {}
+    } catch (_) {}
   }
 
-  function setMethodScoped(value) {
+  function setGOSMethod(method) {
     try {
       const keepWMU = typeof osSelectedWMU !== 'undefined' ? osSelectedWMU : null;
-      osSelMethod = String(value || '');
+      osSelMethod = String(method || '');
       if (typeof osSelectedOpportunity !== 'undefined') osSelectedOpportunity = '';
       if (typeof osSelectedWMU !== 'undefined') osSelectedWMU = keepWMU;
       if (typeof osUserClosedPanel !== 'undefined') osUserClosedPanel = false;
       refreshGOS();
-    } catch (e) {}
+    } catch (_) {}
   }
 
   function patchGOSScope() {
-    try { osToggleRegionSelection = selectRegionExclusive; } catch (e) {}
-    try { osSelectRegion = selectRegionExclusive; } catch (e) {}
-    try { osSelectSpecies = selectSpeciesScoped; } catch (e) {}
-    try { osOnSpecies = selectSpeciesScoped; } catch (e) {}
-    try { osOnMonth = setMonthScoped; } catch (e) {}
-    try { osOnMethod = setMethodScoped; } catch (e) {}
-    window.osToggleRegionSelection = selectRegionExclusive;
-    window.osSelectRegion = selectRegionExclusive;
-    window.osSelectSpecies = selectSpeciesScoped;
-    window.osOnSpecies = selectSpeciesScoped;
-    window.osOnMonth = setMonthScoped;
-    window.osOnMethod = setMethodScoped;
+    try { osToggleRegionSelection = setGOSRegion; } catch (_) {}
+    try { osSelectRegion = setGOSRegion; } catch (_) {}
+    try { osSelectSpecies = setGOSSpecies; } catch (_) {}
+    try { osOnSpecies = setGOSSpecies; } catch (_) {}
+    try { osOnMonth = setGOSMonth; } catch (_) {}
+    try { osOnMethod = setGOSMethod; } catch (_) {}
+    window.osToggleRegionSelection = setGOSRegion;
+    window.osSelectRegion = setGOSRegion;
+    window.osSelectSpecies = setGOSSpecies;
+    window.osOnSpecies = setGOSSpecies;
+    window.osOnMonth = setGOSMonth;
+    window.osOnMethod = setGOSMethod;
+  }
+
+  function speciesForLEH(species) {
+    const requested = normalize(species);
+    if (!requested) return '';
+    const all = safe(() => _fullMapAllSpecies(), []);
+    let hit = all.find(s => normalize(s) === requested);
+    if (hit) return hit;
+    if (/bighorn sheep|thinhorn sheep|stone sheep|dall sheep|mountain sheep/.test(requested)) {
+      hit = all.find(s => /sheep/.test(normalize(s)));
+      if (hit) return hit;
+    }
+    if (/black tailed|blacktail|mule deer/.test(requested)) {
+      hit = all.find(s => /mule deer/.test(normalize(s)));
+      if (hit) return hit;
+    }
+    return '';
+  }
+
+  function speciesForGOS(species) {
+    const requested = normalize(species);
+    if (!requested) return '';
+    const all = [...new Set(contextualGOSRows(true).map(r => r.species).filter(Boolean))];
+    let hit = all.find(s => normalize(s) === requested);
+    if (hit) return hit;
+    if (/sheep/.test(requested)) {
+      const regionKeys = gosRegions();
+      const wanted = regionKeys.some(k => ['3','4','5'].includes(String(k))) ? /bighorn/ : /thinhorn|stone/;
+      hit = all.find(s => wanted.test(normalize(s))) || all.find(s => /sheep/.test(normalize(s)));
+      if (hit) return hit;
+    }
+    if (/mule deer/.test(requested)) {
+      hit = all.find(s => /mule deer|black tailed/.test(normalize(s)));
+      if (hit) return hit;
+    }
+    return '';
   }
 
   function fitLEHRegion(regionKey) {
     try {
       if (!fullMapInstance || typeof turf === 'undefined') return;
       const geo = (typeof bcWmuGeoJSON !== 'undefined' && bcWmuGeoJSON) || (typeof BC_WMU_GEOJSON !== 'undefined' && BC_WMU_GEOJSON);
-      if (!geo || !geo.features) return;
-      const feats = geo.features.filter(f => regionKeyForWMU(f.properties && f.properties.wmu_id) === String(regionKey));
-      if (!feats.length) return;
-      const box = turf.bbox({ type:'FeatureCollection', features:feats });
-      fullMapInstance.fitBounds([[box[0],box[1]],[box[2],box[3]]], { padding:70, maxZoom:8.8, duration:700 });
-    } catch (e) {}
+      const features = (geo && geo.features || []).filter(f => regionForWMU(f.properties && f.properties.wmu_id) === String(regionKey));
+      if (!features.length) return;
+      const box = turf.bbox({ type:'FeatureCollection', features });
+      fullMapInstance.fitBounds([[box[0],box[1]],[box[2],box[3]]], { padding:70, maxZoom:8.8, duration:650 });
+    } catch (_) {}
   }
 
-  function selectLEHRegion(regionKey) {
+  function setLEHRegion(regionKey) {
     try {
       const key = String(regionKey || '');
       if (!key) return;
-      const ids = _fullMapAllWMUs().filter(id => regionKeyForWMU(id) === key);
+      const ids = _fullMapAllWMUs().filter(id => regionForWMU(id) === key);
       fullMapSelRegions.clear();
       ids.forEach(id => fullMapSelRegions.add(id));
       fullMapSelectedWMU = '';
@@ -291,142 +310,60 @@
       fullMapUpdateLEHSpeciesDropdown();
       fullMapMobileRefresh();
       fitLEHRegion(key);
-    } catch (e) { console.warn('[Interactive Map] LEH region scope failed', e); }
+      syncUI();
+    } catch (error) {
+      console.warn('[Interactive Map] Could not set LEH region', error);
+    }
   }
 
-  function applyCamera(map, camera) {
-    if (!map || !camera || !camera.center) return;
-    try { map.jumpTo({ center:camera.center, zoom:camera.zoom, pitch:camera.pitch || 0, bearing:camera.bearing || 0 }); } catch (e) {}
+  function applyCamera(map, snap) {
+    if (!map || !snap || !snap.center) return;
+    try { map.jumpTo({ center:snap.center, zoom:snap.zoom, pitch:snap.pitch || 0, bearing:snap.bearing || 0 }); } catch (_) {}
   }
 
-  function applyTransferToGOS(snapshot) {
-    if (!snapshot) return;
-    waitFor(() => typeof osMapInstance !== 'undefined' && osMapInstance, function () {
+  function transferToGOS(from) {
+    waitFor(() => typeof osMapInstance !== 'undefined' && !!osMapInstance, function () {
       patchGOSScope();
-      const wmus = snapshot.wmus || (snapshot.wmu ? [snapshot.wmu] : []);
-      const regionKeys = snapshot.regions && snapshot.regions.length ? snapshot.regions : [...new Set(wmus.map(regionKeyForWMU).filter(Boolean))];
-      if (regionKeys.length === 1) selectRegionExclusive(regionKeys[0]);
-      const targetWmu = snapshot.wmu || (wmus.length === 1 ? wmus[0] : '');
-      if (targetWmu) {
-        try { if (typeof osSelectWMU === 'function') osSelectWMU(targetWmu); } catch (e) {}
+      const wmus = from.wmus || (from.wmu ? [from.wmu] : []);
+      const regions = from.regions && from.regions.length ? from.regions : [...new Set(wmus.map(regionForWMU).filter(Boolean))];
+      if (regions.length === 1) setGOSRegion(regions[0]);
+      const targetWMU = from.wmu || (wmus.length === 1 ? wmus[0] : '');
+      if (targetWMU) {
+        try { if (typeof osSelectWMU === 'function') osSelectWMU(targetWMU); } catch (_) {}
       }
-      const mappedSpecies = mapSpeciesToGOS(snapshot.species || '');
-      if (mappedSpecies) selectSpeciesScoped(mappedSpecies);
-      if (snapshot.month) setMonthScoped(snapshot.month);
-      if (snapshot.method) setMethodScoped(snapshot.method);
-      setTimeout(() => applyCamera(osMapInstance, snapshot.camera), 120);
-      syncShellbars();
+      const mapped = speciesForGOS(from.species || '');
+      if (mapped) setGOSSpecies(mapped);
+      if (from.month) setGOSMonth(from.month);
+      if (from.method) setGOSMethod(from.method);
+      setTimeout(() => applyCamera(osMapInstance, from.camera), 100);
+      syncUI();
     });
   }
 
-  function applyTransferToLEH(snapshot) {
-    if (!snapshot) return;
-    waitFor(() => typeof fullMapInstance !== 'undefined' && fullMapInstance, function () {
-      const wmus = snapshot.wmus || (snapshot.wmu ? [snapshot.wmu] : []);
-      const regions = snapshot.regions && snapshot.regions.length ? snapshot.regions : [...new Set(wmus.map(regionKeyForWMU).filter(Boolean))];
-      if (snapshot.wmu) {
-        try { fullMapSelectWMU(snapshot.wmu, false); } catch (e) {}
+  function transferToLEH(from) {
+    waitFor(() => typeof fullMapInstance !== 'undefined' && !!fullMapInstance, function () {
+      const wmus = from.wmus || (from.wmu ? [from.wmu] : []);
+      const regions = from.regions && from.regions.length ? from.regions : [...new Set(wmus.map(regionForWMU).filter(Boolean))];
+      if (from.wmu) {
+        try { fullMapSelectWMU(from.wmu, false); } catch (_) {}
       } else if (wmus.length === 1) {
-        try { fullMapSelectWMU(wmus[0], false); } catch (e) {}
+        try { fullMapSelectWMU(wmus[0], false); } catch (_) {}
       } else if (regions.length === 1) {
-        selectLEHRegion(regions[0]);
+        setLEHRegion(regions[0]);
       }
-      const mapped = mapSpeciesToLEH(snapshot.species || '');
+      const mapped = speciesForLEH(from.species || '');
       if (mapped) {
-        try { fullMapSetSpecies(mapped); } catch (e) {}
+        try { fullMapSetSpecies(mapped); } catch (_) {}
       }
-      if (snapshot.style && ['satellite','topo','streets'].includes(snapshot.style)) {
-        try { if (_fullMapStyle !== snapshot.style) fullMapSetTile(snapshot.style); } catch (e) {}
+      if (from.style && ['satellite','topo','streets'].includes(from.style)) {
+        try { if (_fullMapStyle !== from.style) fullMapSetTile(from.style); } catch (_) {}
       }
-      setTimeout(() => applyCamera(fullMapInstance, snapshot.camera), 180);
-      syncShellbars();
+      setTimeout(() => applyCamera(fullMapInstance, from.camera), 150);
+      syncUI();
     });
   }
 
-  function callRawShowPage(page) {
-    if (rawShowPage) return rawShowPage.call(window, page);
-  }
-
-  function openInteractive(mode, opts) {
-    opts = opts || {};
-    const targetProvince = opts.province || (mode === 'gos' ? 'BC' : state.province || 'BC');
-    if (state.switching) return;
-    state.switching = true;
-    const transfer = opts.transfer || null;
-
-    if (mode === 'gos') {
-      state.mode = 'gos';
-      state.province = 'BC';
-      callRawShowPage('bcOpenSeasons');
-      setTimeout(function () {
-        patchGOSScope();
-        ensureShellbars();
-        syncShellbars();
-        if (transfer) applyTransferToGOS(transfer);
-        state.switching = false;
-      }, 80);
-      return;
-    }
-
-    state.mode = 'leh';
-    state.province = targetProvince;
-    callRawShowPage('map');
-    setTimeout(function () {
-      try {
-        if (typeof fullMapProvince !== 'undefined' && fullMapProvince !== targetProvince && rawFullMapSetProvince) rawFullMapSetProvince(targetProvince);
-        else if (typeof fullMapInit === 'function') fullMapInit();
-      } catch (e) {}
-      ensureShellbars();
-      syncShellbars();
-      if (transfer && targetProvince === 'BC') applyTransferToLEH(transfer);
-      state.switching = false;
-    }, 80);
-  }
-
-  function switchMode(mode) {
-    if (state.province === 'AB' && mode === 'gos') {
-      state.province = 'BC';
-    }
-    const snapshot = captureCurrent();
-    openInteractive(mode, { province: mode === 'gos' ? 'BC' : state.province, transfer: snapshot });
-  }
-
-  function switchProvince(province) {
-    const prov = String(province || 'BC').toUpperCase();
-    const snapshot = captureCurrent();
-    if (prov === 'AB') {
-      state.province = 'AB';
-      openInteractive('leh', { province:'AB', transfer:null });
-    } else {
-      state.province = 'BC';
-      if (state.mode === 'gos') openInteractive('gos', { province:'BC', transfer:snapshot });
-      else openInteractive('leh', { province:'BC', transfer:snapshot });
-    }
-  }
-
-  function scopeLabel() {
-    if (state.province === 'AB') return 'Alberta draw map';
-    if (state.mode === 'gos') {
-      const regions = getGOSRegionKeys();
-      const wmu = getGOSWMU();
-      const species = getGOSSpecies();
-      const bits = ['BC'];
-      if (regions.length === 1) bits.push('Region ' + regions[0]);
-      if (wmu) bits.push('WMU ' + wmu);
-      if (species) bits.push(species);
-      return bits.join('  ›  ');
-    }
-    const wmus = getLEHWMUs();
-    const species = getLEHSpecies();
-    const regions = [...new Set(wmus.map(regionKeyForWMU).filter(Boolean))];
-    const bits = ['BC'];
-    if (regions.length === 1 && wmus.length > 1) bits.push('Region ' + regions[0]);
-    if (wmus.length === 1) bits.push('WMU ' + wmus[0]);
-    if (species) bits.push(species);
-    return bits.join('  ›  ');
-  }
-
-  function shellHTML() {
+  function shellMarkup() {
     return '<div class="hs-im-title"><span class="hs-im-kicker">HUNT RESEARCH</span><strong>Interactive Map</strong></div>' +
       '<div class="hs-im-controls">' +
         '<div class="hs-im-seg hs-im-province" aria-label="Province">' +
@@ -442,51 +379,130 @@
       '<div class="hs-im-scope" data-hs-im-scope></div>';
   }
 
-  function ensureShellbar(page, surface) {
+  function ensureShell(page, kind) {
     if (!page) return;
-    let bar = page.querySelector(':scope > .hs-im-shellbar');
-    if (!bar) {
-      bar = document.createElement('div');
-      bar.className = 'hs-im-shellbar';
-      bar.dataset.surface = surface;
-      bar.innerHTML = shellHTML();
-      page.insertBefore(bar, page.firstChild);
-      bar.addEventListener('click', function (e) {
-        const p = e.target.closest('[data-hs-im-province]');
-        if (p) { switchProvince(p.dataset.hsImProvince); return; }
-        const m = e.target.closest('[data-hs-im-mode]');
-        if (m) { switchMode(m.dataset.hsImMode); return; }
-        if (e.target.closest('[data-hs-im-guide]')) openGuideChooser();
-      });
-    }
+    let bar = page.querySelector('.hs-im-shellbar');
+    if (bar) return;
+    bar = document.createElement('div');
+    bar.className = 'hs-im-shellbar';
+    bar.dataset.surface = kind;
+    bar.innerHTML = shellMarkup();
+    page.insertBefore(bar, page.firstChild);
+    bar.addEventListener('click', function (event) {
+      const province = event.target.closest('[data-hs-im-province]');
+      if (province) return switchProvince(province.dataset.hsImProvince);
+      const mode = event.target.closest('[data-hs-im-mode]');
+      if (mode) return switchMode(mode.dataset.hsImMode);
+      if (event.target.closest('[data-hs-im-guide]')) openGuide();
+    });
   }
 
-  function ensureShellbars() {
-    ensureShellbar(document.getElementById('mapPage'), 'leh');
-    ensureShellbar(document.getElementById('bcOpenSeasonsPage'), 'gos');
+  function ensureShells() {
+    ensureShell(document.getElementById('mapPage'), 'leh');
+    ensureShell(document.getElementById('bcOpenSeasonsPage'), 'gos');
+  }
+
+  function scopeText() {
+    if (state.province === 'AB') return 'Alberta draw map';
+    const bits = ['BC'];
+    if (state.mode === 'gos') {
+      const regions = gosRegions();
+      const wmu = gosWMU();
+      if (regions.length === 1) bits.push('Region ' + regions[0]);
+      if (wmu) bits.push('WMU ' + wmu);
+      if (gosSpecies()) bits.push(gosSpecies());
+    } else {
+      const wmus = lehWMUs();
+      const regions = [...new Set(wmus.map(regionForWMU).filter(Boolean))];
+      if (regions.length === 1 && wmus.length > 1) bits.push('Region ' + regions[0]);
+      if (wmus.length === 1) bits.push('WMU ' + wmus[0]);
+      if (lehSpecies()) bits.push(lehSpecies());
+    }
+    return bits.join('  ›  ');
   }
 
   function syncNav() {
     ['navHome','navBC','navAlberta','navMap','navSaved','navBCOS'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.classList.remove('active');
+      const el = document.getElementById(id);
+      if (el) el.classList.remove('active');
     });
-    if (currentVisibleSurface()) {
+    if (surface()) {
       const map = document.getElementById('navMap');
       if (map) map.classList.add('active');
     }
   }
 
-  function syncShellbars() {
-    ensureShellbars();
+  function syncUI() {
+    ensureShells();
+    const label = scopeText();
     document.querySelectorAll('.hs-im-shellbar').forEach(bar => {
       bar.querySelectorAll('[data-hs-im-province]').forEach(btn => btn.classList.toggle('active', btn.dataset.hsImProvince === state.province));
-      const mode = bar.querySelector('.hs-im-mode');
-      if (mode) mode.style.display = state.province === 'BC' ? '' : 'none';
+      const modeGroup = bar.querySelector('.hs-im-mode');
+      if (modeGroup) modeGroup.style.display = state.province === 'BC' ? '' : 'none';
       bar.querySelectorAll('[data-hs-im-mode]').forEach(btn => btn.classList.toggle('active', btn.dataset.hsImMode === state.mode));
       const scope = bar.querySelector('[data-hs-im-scope]');
-      if (scope) scope.textContent = scopeLabel();
+      if (scope && scope.textContent !== label) scope.textContent = label;
     });
     syncNav();
+  }
+
+  function callRawPage(page) {
+    if (rawShowPage) return rawShowPage.call(window, page);
+  }
+
+  function openInteractive(mode, options) {
+    const opts = options || {};
+    if (state.switching) return;
+    state.switching = true;
+    const from = opts.transfer || null;
+
+    if (mode === 'gos') {
+      state.mode = 'gos';
+      state.province = 'BC';
+      callRawPage('bcOpenSeasons');
+      setTimeout(function () {
+        patchGOSScope();
+        removeExperimentalUI();
+        syncUI();
+        if (from) transferToGOS(from);
+        state.switching = false;
+      }, 100);
+      return;
+    }
+
+    state.mode = 'leh';
+    state.province = String(opts.province || state.province || 'BC').toUpperCase();
+    callRawPage('map');
+    setTimeout(function () {
+      try {
+        if (rawFullMapSetProvince && typeof fullMapProvince !== 'undefined' && fullMapProvince !== state.province) rawFullMapSetProvince(state.province);
+        else if (typeof fullMapInit === 'function') fullMapInit();
+      } catch (_) {}
+      removeExperimentalUI();
+      syncUI();
+      if (from && state.province === 'BC') transferToLEH(from);
+      state.switching = false;
+    }, 100);
+  }
+
+  function switchMode(mode) {
+    const next = mode === 'gos' ? 'gos' : 'leh';
+    if (next === state.mode && ((next === 'gos' && surface() === 'gos') || (next === 'leh' && surface() === 'leh'))) return;
+    const from = snapshot();
+    openInteractive(next, { province: next === 'gos' ? 'BC' : state.province, transfer:from });
+  }
+
+  function switchProvince(province) {
+    const next = String(province || 'BC').toUpperCase();
+    const from = snapshot();
+    if (next === 'AB') {
+      state.province = 'AB';
+      state.mode = 'leh';
+      openInteractive('leh', { province:'AB' });
+    } else {
+      state.province = 'BC';
+      openInteractive(state.mode === 'gos' ? 'gos' : 'leh', { province:'BC', transfer:from });
+    }
   }
 
   function patchNavigation() {
@@ -495,31 +511,37 @@
       navMap.textContent = 'Interactive Map';
       navMap.onclick = function () { openInteractive('leh', { province:'BC' }); };
     }
-    const mNavMap = document.getElementById('mNavMap');
-    if (mNavMap) {
-      mNavMap.textContent = 'Interactive Map';
-      mNavMap.onclick = function () { openInteractive('leh', { province:'BC' }); try { closeNavMenu(); } catch(e) {} };
+    const mobileMap = document.getElementById('mNavMap');
+    if (mobileMap) {
+      mobileMap.textContent = 'Interactive Map';
+      mobileMap.onclick = function () {
+        openInteractive('leh', { province:'BC' });
+        try { closeNavMenu(); } catch (_) {}
+      };
     }
-    ['navBCOS','mNavBCOS'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
-    document.querySelectorAll('.home-footer-link').forEach(btn => {
-      if (/^map$/i.test((btn.textContent || '').trim())) {
-        btn.textContent = 'Interactive Map';
-        btn.onclick = function () { openInteractive('leh', { province:'BC' }); };
+    ['navBCOS','mNavBCOS'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    document.querySelectorAll('.home-footer-link').forEach(el => {
+      if (/^map$/i.test((el.textContent || '').trim())) {
+        el.textContent = 'Interactive Map';
+        el.onclick = function () { openInteractive('leh', { province:'BC' }); };
       }
     });
-    document.querySelectorAll('button.hiw-btn').forEach(btn => {
-      if (/open map/i.test(btn.textContent || '')) {
-        btn.textContent = 'Open Interactive Map';
-        btn.onclick = function () { openInteractive('leh', { province:'BC' }); };
+    document.querySelectorAll('.hiw-btn').forEach(el => {
+      if (/open map/i.test(el.textContent || '')) {
+        el.textContent = 'Open Interactive Map';
+        el.onclick = function () { openInteractive('leh', { province:'BC' }); };
       }
     });
   }
 
-  function patchShowPage() {
+  function patchGlobalNavigation() {
     if (!rawShowPage) return;
     window.showPage = function (page) {
-      if (page === 'map') { openInteractive('leh', { province:'BC' }); return; }
-      if (page === 'bcOpenSeasons') { openInteractive('gos', { province:'BC' }); return; }
+      if (page === 'map') return openInteractive('leh', { province:'BC' });
+      if (page === 'bcOpenSeasons') return openInteractive('gos', { province:'BC' });
       const result = rawShowPage.apply(window, arguments);
       setTimeout(syncNav, 0);
       return result;
@@ -528,140 +550,119 @@
 
   function patchProvinceSetter() {
     if (!rawFullMapSetProvince) return;
-    const patched = function (prov) {
+    const wrapped = function (province) {
       const result = rawFullMapSetProvince.apply(window, arguments);
-      state.province = String(prov || 'BC').toUpperCase();
+      state.province = String(province || 'BC').toUpperCase();
       state.mode = 'leh';
-      setTimeout(syncShellbars, 0);
+      setTimeout(syncUI, 0);
       return result;
     };
-    try { fullMapSetProvince = patched; } catch (e) {}
-    window.fullMapSetProvince = patched;
-  }
-
-  function removeExperimentalUI() {
-    ['hsImageryLabBtn','hsTerrainLaunch','hsWorldSettingsBtn','hsImageryPanel','hsTerrainPanel','hsWorldSettingsPanel'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.remove();
-    });
+    try { fullMapSetProvince = wrapped; } catch (_) {}
+    window.fullMapSetProvince = wrapped;
   }
 
   function ensureGuide() {
-    let root = document.getElementById('hsInteractiveGuide');
-    if (root) return root;
-    root = document.createElement('aside');
-    root.id = 'hsInteractiveGuide';
-    root.className = 'hs-im-guide';
-    root.setAttribute('aria-live','polite');
-    root.innerHTML = '<div class="hs-im-guide-head"><div><span>GUIDED WALKTHROUGH</span><strong id="hsImGuideTitle">Learn the map</strong></div><button type="button" id="hsImGuideClose" aria-label="Close guide">×</button></div><div id="hsImGuideBody" class="hs-im-guide-body"></div>';
-    document.body.appendChild(root);
-    root.querySelector('#hsImGuideClose').addEventListener('click', exitGuide);
-    return root;
-  }
-
-  function openGuideChooser() {
-    const root = ensureGuide();
-    clearGuideTarget();
-    state.guide = null;
-    root.classList.add('open');
-    root.querySelector('#hsImGuideTitle').textContent = 'Choose a walkthrough';
-    root.querySelector('#hsImGuideBody').innerHTML =
-      '<p class="hs-im-guide-intro">Learn the real HuntSmart map by using the controls yourself.</p>' +
-      '<button type="button" class="hs-im-guide-choice" data-tour="leh"><b>Research an LEH hunt</b><span>Species, WMUs, draw results and terrain.</span></button>' +
-      '<button type="button" class="hs-im-guide-choice" data-tour="gos"><b>Research a General Open Season</b><span>Region scope, species, WMUs and regulations.</span></button>' +
-      '<button type="button" class="hs-im-guide-choice" data-tour="map"><b>Learn the map</b><span>Search, basemap and 3D controls.</span></button>';
-    root.querySelectorAll('[data-tour]').forEach(btn => btn.addEventListener('click', () => startTour(btn.dataset.tour)));
+    let guide = document.getElementById('hsInteractiveGuide');
+    if (guide) return guide;
+    guide = document.createElement('aside');
+    guide.id = 'hsInteractiveGuide';
+    guide.className = 'hs-im-guide';
+    guide.setAttribute('aria-live', 'polite');
+    guide.innerHTML = '<div class="hs-im-guide-head"><div><span>GUIDED WALKTHROUGH</span><strong id="hsImGuideTitle">Learn HuntSmart</strong></div><button type="button" id="hsImGuideClose" aria-label="Close guide">×</button></div><div class="hs-im-guide-body" id="hsImGuideBody"></div>';
+    document.body.appendChild(guide);
+    guide.querySelector('#hsImGuideClose').addEventListener('click', exitGuide);
+    return guide;
   }
 
   const TOURS = {
     leh: [
-      { title:'Limited Entry mode', text:'BC opens in Limited Entry by default. This mode connects WMUs to LEH draw opportunities and historical draw data.', target:'[data-hs-im-mode="leh"]' },
-      { title:'Choose a species', text:'Select the species you want to research. Your geographic selection stays in place when you change species.', target:'#fullMapSpeciesSelect', action:'change' },
-      { title:'Choose a WMU', text:'Click a WMU on the map. HuntSmart will scope the draw results to that geography instead of broadening your search elsewhere.', target:'#fullMapLeaflet', action:'click' },
-      { title:'Read the matching draws', text:'The results panel is derived from the same selected geography and species shown on the map.', target:'#fullMapResultsDrawer' },
-      { title:'Change the map style', text:'Use Satellite, Topo or Dark without losing your hunt selections.', target:'.fullmap-basemap-buttons', action:'click' },
-      { title:'Inspect terrain in 3D', text:'3D changes the terrain view only. It never resets your hunt research.', target:'#fullMapMap3DToggleBtn', action:'click' },
-      { title:'You are ready', text:'Switch to General Open Seasons at any time and HuntSmart will preserve the most specific geography it can.', finish:true }
+      {title:'Limited Entry mode', text:'BC Interactive Map opens in Limited Entry by default. LEH connects geography to draw opportunities and historical results.', target:'[data-hs-im-mode="leh"]'},
+      {title:'Choose a species', text:'Choose the species you want to research. Geography stays selected when species changes.', target:'#fullMapSpeciesSelect', event:'change'},
+      {title:'Choose a WMU', text:'Click a WMU. HuntSmart scopes the draw results to that geography instead of broadening elsewhere.', target:'#fullMapLeaflet', event:'click'},
+      {title:'Read matching draws', text:'The results panel uses the same WMU and species shown on the map.', target:'#fullMapResultsDrawer'},
+      {title:'Change map style', text:'Satellite, Topo and Dark change only the basemap. Your hunt selections remain.', target:'.fullmap-basemap-buttons', event:'click'},
+      {title:'Use 3D terrain', text:'3D changes terrain presentation only; it never resets your hunt research.', target:'#fullMapMap3DToggleBtn, #fullMap3DBtn', event:'click'},
+      {title:'Ready to explore', text:'Switch to General Open Seasons at any time. HuntSmart preserves the most specific shared geography it can.', finish:true}
     ],
     gos: [
-      { title:'General Open Seasons', text:'GOS uses the same BC geography but answers a different question: what can you hunt without drawing this LEH opportunity?', target:'[data-hs-im-mode="gos"]' },
-      { title:'Choose a region', text:'Click a BC region. Once selected, that region becomes your scope until you explicitly leave it.', target:'#osMap', action:'click' },
-      { title:'Choose a species', text:'Now choose a species. HuntSmart only highlights matching WMUs inside your selected region.', target:'#osSpeciesSel', action:'change' },
-      { title:'Choose a matching WMU', text:'Click a highlighted WMU to narrow the scope again. Changing species afterward will keep this WMU selected.', target:'#osMap', action:'click' },
-      { title:'Read the season rules', text:'Season dates, class, method, bag limit and notes are shown for the current scope.', target:'#osResultsPanel' },
-      { title:'Optional hunting layers', text:'Use Layers for contextual hunting intelligence such as historical wildfire. These layers do not change the legal season results.', target:'#osLayersBtn', action:'click' },
-      { title:'You are ready', text:'The official provincial regulations remain the legal source. HuntSmart makes the research faster and easier to understand.', finish:true }
+      {title:'General Open Seasons', text:'GOS uses the same BC geography but shows seasons that do not depend on the selected LEH opportunity.', target:'[data-hs-im-mode="gos"]'},
+      {title:'Choose a region', text:'Click a region. That region becomes your scope until you explicitly leave it.', target:'#osMap', event:'click'},
+      {title:'Choose a species', text:'Now choose a species. HuntSmart highlights matching WMUs only inside the selected region.', target:'#osSpeciesSel', event:'change'},
+      {title:'Choose a matching WMU', text:'Click a highlighted WMU to narrow the geography again. Changing species will keep the WMU selected.', target:'#osMap', event:'click'},
+      {title:'Read the season rules', text:'Review season dates, class, method, bag limit and notes for the current scope.', target:'#osResultsPanel'},
+      {title:'Optional hunting layers', text:'Layers such as historical wildfire add context without changing legal season results.', target:'#osLayersBtn', event:'click'},
+      {title:'Ready to explore', text:'HuntSmart speeds up research; current provincial regulations remain the legal source.', finish:true}
     ],
     map: [
-      { title:'Search', text:'Search a city, WMU or coordinates without clearing your research filters.', target:'.fullmap-floating-search, .os-search-wrap' },
-      { title:'Map style', text:'Satellite shows land cover, Topo emphasizes terrain, and Dark gives a clean geographic view.', target:'.fullmap-basemap-buttons, .os-basemap-buttons', action:'click' },
-      { title:'2D and 3D', text:'Use 3D to read terrain relief. Switching views does not alter hunting data.', target:'#fullMapMap3DToggleBtn, .os-2d3d-toggle', action:'click' },
-      { title:'Switch hunting systems', text:'LEH and GOS share geography. Switching systems preserves region, WMU and species wherever possible.', target:'.hs-im-mode', action:'click' },
-      { title:'Done', text:'You can reopen Guide at any time.', finish:true }
+      {title:'Search', text:'Search city, WMU or coordinates without clearing your research filters.', target:'.fullmap-floating-search, .os-search-wrap'},
+      {title:'Map style', text:'Satellite emphasizes land cover, Topo emphasizes terrain and Dark gives a clean geographic view.', target:'.fullmap-basemap-buttons, .os-basemap-buttons', event:'click'},
+      {title:'2D and 3D', text:'Use 3D to read relief without changing hunting data.', target:'#fullMapMap3DToggleBtn, #fullMap3DBtn, .os-2d3d-toggle', event:'click'},
+      {title:'Switch systems', text:'LEH and GOS share geography. Switching preserves region, WMU and species wherever possible.', target:'.hs-im-mode', event:'click'},
+      {title:'Done', text:'Reopen Guide any time.', finish:true}
     ]
   };
 
-  function snapshotForGuide() {
-    return captureCurrent();
-  }
-
-  function restoreGuideSnapshot(snapshot) {
-    if (!snapshot || !snapshot.surface) return;
-    if (snapshot.province === 'AB') openInteractive('leh', { province:'AB' });
-    else if (snapshot.mode === 'gos') openInteractive('gos', { province:'BC', transfer:snapshot });
-    else openInteractive('leh', { province:'BC', transfer:snapshot });
-  }
-
-  function startTour(type) {
-    state.guideSnapshot = snapshotForGuide();
-    state.guide = { type:type, step:0 };
-    if (type === 'gos' && currentVisibleSurface() !== 'gos') switchMode('gos');
-    if (type === 'leh' && (currentVisibleSurface() !== 'leh' || state.province !== 'BC')) openInteractive('leh', { province:'BC', transfer:captureCurrent() });
-    setTimeout(renderGuideStep, 250);
-  }
-
   function clearGuideTarget() {
     document.querySelectorAll('.hs-im-guide-target').forEach(el => el.classList.remove('hs-im-guide-target'));
-    state.guideBoundTarget = null;
+    state.guideTarget = null;
   }
 
-  function targetForStep(step) {
-    if (!step || !step.target) return null;
-    const selectors = step.target.split(',').map(s => s.trim());
-    for (const sel of selectors) {
-      const visible = [...document.querySelectorAll(sel)].find(el => el.getClientRects().length && getComputedStyle(el).display !== 'none');
-      if (visible) return visible;
+  function firstVisible(selectors) {
+    if (!selectors) return null;
+    for (const selector of selectors.split(',').map(s => s.trim())) {
+      const el = [...document.querySelectorAll(selector)].find(visible);
+      if (el) return el;
     }
     return null;
   }
 
-  function renderGuideStep() {
-    const root = ensureGuide();
-    const guide = state.guide;
-    if (!guide) return;
-    const steps = TOURS[guide.type] || [];
-    const step = steps[guide.step];
-    if (!step) { finishGuide(); return; }
+  function openGuide() {
+    const guide = ensureGuide();
     clearGuideTarget();
-    root.classList.add('open');
-    root.querySelector('#hsImGuideTitle').textContent = step.title;
-    const body = root.querySelector('#hsImGuideBody');
-    const progress = Math.round(((guide.step + 1) / steps.length) * 100);
+    state.guide = null;
+    guide.classList.add('open');
+    guide.querySelector('#hsImGuideTitle').textContent = 'Choose a walkthrough';
+    guide.querySelector('#hsImGuideBody').innerHTML =
+      '<p class="hs-im-guide-intro">Learn the real HuntSmart map by using the controls yourself.</p>' +
+      '<button type="button" class="hs-im-guide-choice" data-tour="leh"><b>Research an LEH hunt</b><span>Species, WMUs, draw results and terrain.</span></button>' +
+      '<button type="button" class="hs-im-guide-choice" data-tour="gos"><b>Research a General Open Season</b><span>Region scope, species, WMUs and regulations.</span></button>' +
+      '<button type="button" class="hs-im-guide-choice" data-tour="map"><b>Learn the map</b><span>Search, map styles and 3D.</span></button>';
+    guide.querySelectorAll('[data-tour]').forEach(button => button.addEventListener('click', () => startGuide(button.dataset.tour)));
+  }
+
+  function startGuide(type) {
+    state.guideSnapshot = snapshot();
+    state.guide = { type, step:0 };
+    if (type === 'gos' && surface() !== 'gos') switchMode('gos');
+    if (type === 'leh' && (surface() !== 'leh' || state.province !== 'BC')) openInteractive('leh', { province:'BC', transfer:snapshot() });
+    setTimeout(renderGuide, 250);
+  }
+
+  function renderGuide() {
+    if (!state.guide) return;
+    const guide = ensureGuide();
+    const steps = TOURS[state.guide.type] || [];
+    const step = steps[state.guide.step];
+    if (!step) return finishGuide();
+    clearGuideTarget();
+    guide.classList.add('open');
+    guide.querySelector('#hsImGuideTitle').textContent = step.title;
+    const body = guide.querySelector('#hsImGuideBody');
+    const progress = Math.round(((state.guide.step + 1) / steps.length) * 100);
     body.innerHTML = '<div class="hs-im-guide-progress"><i style="width:' + progress + '%"></i></div>' +
-      '<div class="hs-im-guide-count">Step ' + (guide.step + 1) + ' of ' + steps.length + '</div>' +
-      '<p>' + step.text + '</p>' +
-      '<div class="hs-im-guide-actions"><button type="button" data-guide-back ' + (guide.step === 0 ? 'disabled' : '') + '>Back</button>' +
-      (step.finish ? '<button type="button" data-guide-finish>Explore freely</button>' : '<button type="button" data-guide-next ' + (step.action ? 'disabled' : '') + '>' + (step.action ? 'Complete the highlighted action' : 'Next') + '</button>') + '</div>';
-    const target = targetForStep(step);
+      '<div class="hs-im-guide-count">Step ' + (state.guide.step + 1) + ' of ' + steps.length + '</div>' +
+      '<p>' + esc(step.text) + '</p>' +
+      '<div class="hs-im-guide-actions"><button type="button" data-guide-back ' + (state.guide.step === 0 ? 'disabled' : '') + '>Back</button>' +
+      (step.finish ? '<button type="button" data-guide-finish>Explore freely</button>' : '<button type="button" data-guide-next ' + (step.event ? 'disabled' : '') + '>' + (step.event ? 'Complete highlighted action' : 'Next') + '</button>') + '</div>';
+    const target = firstVisible(step.target);
     if (target) {
       target.classList.add('hs-im-guide-target');
-      state.guideBoundTarget = target;
-      try { target.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'nearest' }); } catch (e) {}
+      state.guideTarget = target;
     }
     const back = body.querySelector('[data-guide-back]');
-    if (back) back.addEventListener('click', () => { if (guide.step > 0) { guide.step -= 1; renderGuideStep(); } });
+    if (back) back.addEventListener('click', () => { if (state.guide && state.guide.step > 0) { state.guide.step -= 1; renderGuide(); } });
     const next = body.querySelector('[data-guide-next]');
-    if (next && !step.action) next.addEventListener('click', advanceGuide);
+    if (next && !step.event) next.addEventListener('click', advanceGuide);
     const finish = body.querySelector('[data-guide-finish]');
     if (finish) finish.addEventListener('click', finishGuide);
   }
@@ -669,88 +670,84 @@
   function advanceGuide() {
     if (!state.guide) return;
     state.guide.step += 1;
-    renderGuideStep();
+    renderGuide();
   }
 
   function finishGuide() {
     clearGuideTarget();
     state.guide = null;
     state.guideSnapshot = null;
-    const root = ensureGuide();
-    root.classList.remove('open');
+    ensureGuide().classList.remove('open');
   }
 
   function exitGuide() {
-    const snapshot = state.guideSnapshot;
+    const restore = state.guideSnapshot;
     clearGuideTarget();
     state.guide = null;
     state.guideSnapshot = null;
-    const root = ensureGuide();
-    root.classList.remove('open');
-    if (snapshot) restoreGuideSnapshot(snapshot);
+    ensureGuide().classList.remove('open');
+    if (!restore) return;
+    if (restore.province === 'AB') openInteractive('leh', { province:'AB' });
+    else if (restore.mode === 'gos') openInteractive('gos', { province:'BC', transfer:restore });
+    else openInteractive('leh', { province:'BC', transfer:restore });
   }
 
-  function guideActionListener(e) {
-    const guide = state.guide;
-    if (!guide) return;
-    const step = (TOURS[guide.type] || [])[guide.step];
-    if (!step || !step.action || !state.guideBoundTarget) return;
-    if (e.type !== step.action) return;
-    if (state.guideBoundTarget === e.target || state.guideBoundTarget.contains(e.target)) {
-      setTimeout(advanceGuide, 260);
-    }
+  function guideAction(event) {
+    if (!state.guide || !state.guideTarget) return;
+    const step = (TOURS[state.guide.type] || [])[state.guide.step];
+    if (!step || step.event !== event.type) return;
+    if (event.target === state.guideTarget || state.guideTarget.contains(event.target)) setTimeout(advanceGuide, 220);
   }
 
-  function observeUI() {
-    const observer = new MutationObserver(function () {
-      removeExperimentalUI();
-      ensureShellbars();
-      syncShellbars();
-    });
-    observer.observe(document.documentElement, { childList:true, subtree:true });
-  }
-
-  function exposeDebugAPI() {
+  function exposeAPI() {
     window.__HUNTSMART_INTERACTIVE_MAP__ = {
-      version: '1.0.0',
+      version: '1.1.0',
       open: openInteractive,
-      switchMode: switchMode,
-      switchProvince: switchProvince,
+      switchMode,
+      switchProvince,
+      selectGOSRegion: setGOSRegion,
+      setGOSSpecies,
+      activeGOSWMUs: function () {
+        try { return typeof osActiveWMUs === 'function' ? [...osActiveWMUs()].map(String) : []; } catch (_) { return []; }
+      },
       getState: function () {
-        const snap = captureCurrent();
+        const snap = snapshot();
         return {
           controller: { mode:state.mode, province:state.province },
-          surface: snap.surface,
+          surface: surface(),
           regions: snap.regions || [],
           wmu: snap.wmu || '',
           wmus: snap.wmus || [],
           species: snap.species || '',
-          scopeLabel: scopeLabel()
+          scopeLabel: scopeText()
         };
-      },
-      selectGOSRegion: selectRegionExclusive,
-      setGOSSpecies: selectSpeciesScoped,
-      activeGOSWMUs: function () { try { return typeof osActiveWMUs === 'function' ? [...osActiveWMUs()].map(String) : []; } catch(e) { return []; } }
+      }
     };
   }
 
   function bootstrap() {
     patchNavigation();
-    patchShowPage();
+    patchGlobalNavigation();
     patchProvinceSetter();
     patchGOSScope();
-    ensureShellbars();
+    ensureShells();
     removeExperimentalUI();
-    exposeDebugAPI();
-    syncShellbars();
-    observeUI();
-    document.addEventListener('change', guideActionListener, true);
-    document.addEventListener('click', guideActionListener, true);
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && state.guide) exitGuide(); });
-    setTimeout(removeExperimentalUI, 500);
-    setTimeout(removeExperimentalUI, 1200);
+    exposeAPI();
+    syncUI();
+    document.addEventListener('click', guideAction, true);
+    document.addEventListener('change', guideAction, true);
+    document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && state.guide) exitGuide(); });
+    setTimeout(removeExperimentalUI, 300);
+    setTimeout(removeExperimentalUI, 900);
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrap, { once:true });
-  else bootstrap();
+  try {
+    // This script is injected after the map markup and map controller scripts.
+    // Bootstrap immediately so external fonts/analytics cannot delay map controls.
+    bootstrap();
+    window.__HUNTSMART_INTERACTIVE_MAP_BOOT_OK__ = true;
+  } catch (error) {
+    window.__HUNTSMART_INTERACTIVE_MAP_BOOT_ERROR__ = String(error && (error.stack || error.message) || error);
+    console.error('[Interactive Map] bootstrap failed', error);
+  }
 })();
