@@ -65,6 +65,28 @@
     if (cards) cards.classList.remove('hs-active');
   }
 
+  function forceCloseLegacyMobileModals() {
+    if (!isMobile()) return;
+
+    var scrim = document.getElementById('hsScrim');
+    if (scrim) {
+      scrim.classList.remove('hs-open');
+      scrim.style.setProperty('display', 'none', 'important');
+    }
+
+    var oldScrim = document.getElementById('hsModalScrim');
+    if (oldScrim) {
+      oldScrim.classList.remove('visible');
+      oldScrim.style.setProperty('display', 'none', 'important');
+      oldScrim.innerHTML = '';
+    }
+
+    ['hsRbLayers','hsRbSearch','hsRbCards','hsRbLEH','hsRailLayers','hsRailSearch','hsRailCards','hsRailLEH'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.classList.remove('hs-active', 'active');
+    });
+  }
+
   function regionForWMU(id) {
     var value = String(id || '');
     if (!value) return '';
@@ -113,6 +135,7 @@
 
   function settleLEHView() {
     hideLegacyMobileProvinceControls();
+    forceCloseLegacyMobileModals();
     forceCloseMobileDrawer();
     fitSelectedLEHRegion();
     try {
@@ -127,6 +150,7 @@
     style.textContent = [
       '@media (max-width:768px){',
       '#hsTpBC,#hsTpAB{display:none!important}',
+      '#hsScrim:not(.hs-open),#hsModalScrim:not(.visible){display:none!important}',
       '#mapPage #fullMapResultsDrawer:not(.hs-drawer-open){display:none!important}',
       '#mapPage #fullMapResultsDrawer.hs-drawer-open{display:flex!important}',
       '}'
@@ -144,8 +168,8 @@
       api.switchMode = function (mode) {
         var result = originalSwitchMode.apply(this, arguments);
         if (mode === 'leh') {
-          setTimeout(settleLEHView, 350);
-          setTimeout(settleLEHView, 850);
+          setTimeout(settleLEHView, 250);
+          setTimeout(settleLEHView, 700);
         }
         return result;
       };
@@ -156,8 +180,8 @@
       api.open = function (mode, options) {
         var result = originalOpen.apply(this, arguments);
         if (mode === 'leh') {
-          setTimeout(settleLEHView, 350);
-          setTimeout(settleLEHView, 850);
+          setTimeout(settleLEHView, 250);
+          setTimeout(settleLEHView, 700);
         }
         return result;
       };
@@ -168,13 +192,14 @@
   function onModeClick(event) {
     var button = event.target && event.target.closest ? event.target.closest('[data-hs-im-mode="leh"]') : null;
     if (!button) return;
-    setTimeout(settleLEHView, 350);
-    setTimeout(settleLEHView, 850);
+    setTimeout(settleLEHView, 250);
+    setTimeout(settleLEHView, 700);
   }
 
   function boot() {
     injectGuardStyles();
     hideLegacyMobileProvinceControls();
+    forceCloseLegacyMobileModals();
     enforceMobileDrawerContract();
     patchPublicController();
     document.addEventListener('click', onModeClick, true);
@@ -183,12 +208,14 @@
       setTimeout(function () {
         patchPublicController();
         hideLegacyMobileProvinceControls();
+        forceCloseLegacyMobileModals();
         enforceMobileDrawerContract();
       }, delay);
     });
 
     window.addEventListener('resize', function () {
       hideLegacyMobileProvinceControls();
+      forceCloseLegacyMobileModals();
       enforceMobileDrawerContract();
     });
   }
