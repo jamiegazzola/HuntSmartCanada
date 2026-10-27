@@ -3,30 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>HuntSmart Blog — BC & Alberta Hunting Draw Guides</title>
-<meta name="description" content="The HuntSmart Blog: practical, data-backed guides for BC LEH, Alberta hunting draws, historical odds, draw strategy, and using HuntSmart Canada.">
-<link rel="canonical" href="https://huntsmartcanada.netlify.app/blog.html">
-<meta property="og:title" content="HuntSmart Blog — Draw Guides & Hunting Data">
-<meta property="og:description" content="Learn how hunting draws work, understand historical odds, and use HuntSmart to compare opportunities.">
+<title>HuntSmart Journal — BC & Alberta Hunting Draw Guides</title>
+<meta name="description" content="HuntSmart Journal publishes practical, data-backed guides for BC LEH, Alberta hunting draws, historical odds, hunting maps, and using HuntSmart Canada.">
+<link rel="canonical" href="https://huntsmartcanada.ca/blog">
+<meta property="og:title" content="HuntSmart Journal — Draw Guides, Data & Hunting Intelligence">
+<meta property="og:description" content="Research, practical guides, and product education for Canadian draw hunters.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://huntsmartcanada.netlify.app/blog.html">
+<meta property="og:url" content="https://huntsmartcanada.ca/blog">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./blog.css?v=20261026e">
-<style>
-#blogGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
-#blogGrid .article-card{min-height:0}
-main>.resources-shell:first-child{padding-top:44px}
-@media(max-width:900px){#blogGrid{grid-template-columns:1fr}#blogGrid .article-card{min-height:0}main>.resources-shell:first-child{padding-top:28px}}
-</style>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"Blog","name":"HuntSmart Blog","url":"https://huntsmartcanada.netlify.app/blog.html","description":"Data-backed hunting draw guides for BC and Alberta hunters.","publisher":{"@type":"Organization","name":"HuntSmart Canada","url":"https://huntsmartcanada.netlify.app/"}}</script>
+<link rel="stylesheet" href="./blog.css?v=20261026f">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Blog","name":"HuntSmart Journal","url":"https://huntsmartcanada.ca/blog","description":"Research and practical hunting draw guides for BC and Alberta hunters.","publisher":{"@type":"Organization","name":"HuntSmart Canada","url":"https://huntsmartcanada.ca/"}}</script>
 </head>
 <body>
 <header class="resource-nav">
   <a class="resource-brand" href="./index.html"><strong>HuntSmart <span>Canada</span></strong><small>Know your draw odds</small></a>
   <nav aria-label="Blog navigation">
     <a href="./index.html">App Home</a>
-    <a class="active" href="./blog.html">Blog</a>
+    <a class="active" href="./blog.html">Journal</a>
     <a href="#latest">Guides</a>
     <a href="./bc-leh-odds-guide.html">Draw Odds</a>
   </nav>
@@ -34,90 +28,148 @@ main>.resources-shell:first-child{padding-top:44px}
 </header>
 
 <main>
-  <section class="resources-shell" id="latest">
+  <section class="editorial-masthead">
+    <div class="editorial-masthead-grid">
+      <div>
+        <div class="eyebrow">HuntSmart Journal</div>
+        <h1>Research, guides & <span>hunting intelligence.</span></h1>
+        <p class="lede">Practical Canadian hunting content built around real draw data, real maps, and real decisions — not generic filler. Learn the systems, understand the numbers, and use HuntSmart more effectively.</p>
+      </div>
+      <div class="editorial-side-note">
+        <strong>Built for hunters making real application decisions.</strong>
+        BC LEH, Alberta draws, historical odds, maps, regulations, and HuntSmart product education — presented with the same data-first approach as the app.
+      </div>
+    </div>
+
+    <div class="blog-discovery" aria-label="Find HuntSmart guides">
+      <label class="blog-search" for="blogSearch"><span>⌕</span><input id="blogSearch" type="search" placeholder="Search guides, odds, maps, BC LEH…" autocomplete="off"></label>
+      <div class="blog-topic-strip" aria-label="Filter blog guides">
+        <button type="button" class="active" data-blog-filter="all">All</button>
+        <button type="button" data-blog-filter="bc">BC LEH</button>
+        <button type="button" data-blog-filter="data">Odds & data</button>
+        <button type="button" data-blog-filter="map">Maps</button>
+        <button type="button" data-blog-filter="app">Using HuntSmart</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="resources-shell editorial-feed" id="latest">
     <div class="blog-section-heading">
-      <div><div class="eyebrow">Latest from the blog</div><h2>Guides built around real hunting decisions.</h2></div>
-      <p>Clear answers, useful context, and interactive tools — without digging through years of tables first.</p>
+      <div><div class="eyebrow">Featured & latest</div><h2>Useful enough to change a hunting decision.</h2></div>
+      <p>Every guide should answer a real question, show useful context, and give you something actionable to do next.</p>
     </div>
 
     <div class="article-grid" id="blogGrid">
-      <a class="article-card featured" data-category="app bc map" href="./how-to-use-huntsmart-map.html">
+      <a class="article-card featured" data-category="app bc map" data-search="how to use huntsmart map bc leh general open seasons wmu map layers" href="./how-to-use-huntsmart-map.html">
         <div class="article-card-body">
-          <div class="article-kicker">Interactive Map Guide</div>
+          <div class="article-kicker">Featured · Interactive Map Guide</div>
           <h3>How to Use the HuntSmart Map</h3>
-          <p>Use a real embedded HuntSmart map to learn BC LEH and General Open Seasons. Choose species, click WMUs, inspect actual records, switch map layers, and compare the two systems step by step.</p>
-          <div class="article-byline-compact"><span>Oct 26, 2026</span><span>·</span><span>HuntSmart Canada</span></div>
+          <p>Learn BC LEH and General Open Seasons with a real embedded HuntSmart map. Choose species, click WMUs, inspect real records, switch map layers, and understand the geography behind the opportunity.</p>
+          <div class="article-byline-compact"><span>Oct 26, 2026</span><span>HuntSmart Canada</span></div>
           <div class="article-meta"><span>Live map demo</span><span>10 min read</span></div>
           <div class="article-cta">Use the map walkthrough →</div>
         </div>
       </a>
 
-      <a class="article-card" data-category="app" href="./how-to-use-huntsmart.html">
+      <a class="article-card" data-category="app" data-search="how to use huntsmart canada app workflow filters hunt cards historical odds shortlist" href="./how-to-use-huntsmart.html">
         <div class="article-card-body">
-          <div class="article-kicker">Using HuntSmart</div>
+          <div class="article-kicker">Product Guide</div>
           <h3>How to Use HuntSmart Canada</h3>
-          <p>Choose a province, filter a species, read a hunt card, understand historical odds, compare opportunities, and build a shortlist — step by step.</p>
-          <div class="article-byline-compact"><span>Oct 26, 2026</span><span>·</span><span>HuntSmart Canada</span></div>
+          <p>Go from a broad hunting idea to a shortlist of real opportunities. Learn the core workflow: province, species, filters, hunt cards, historical trends, and saved comparisons.</p>
+          <div class="article-byline-compact"><span>Oct 26, 2026</span><span>HuntSmart Canada</span></div>
           <div class="article-meta"><span>Interactive</span><span>6 min read</span></div>
           <div class="article-cta">Try the walkthrough →</div>
         </div>
       </a>
 
-      <a class="article-card" data-category="bc" href="./how-does-bc-leh-work.html">
+      <a class="article-card" data-category="bc" data-search="how does bc leh work limited entry hunting hunt codes applications authorizations draw odds" href="./how-does-bc-leh-work.html">
         <div class="article-card-body">
-          <div class="article-kicker">BC LEH</div>
+          <div class="article-kicker">BC LEH · Essential Guide</div>
           <h3>How Does BC LEH Work?</h3>
-          <p>A clear explanation of hunt codes, applications, authorizations, draw odds, and how to compare opportunities without getting lost in the tables.</p>
-          <div class="article-byline-compact"><span>Oct 26, 2026</span><span>·</span><span>HuntSmart Canada</span></div>
+          <p>A clear explanation of hunt codes, applications, authorizations, draw odds, and how to compare opportunities without getting lost in provincial tables.</p>
+          <div class="article-byline-compact"><span>Oct 26, 2026</span><span>HuntSmart Canada</span></div>
           <div class="article-meta"><span>Beginner guide</span><span>8 min read</span></div>
           <div class="article-cta">Read the guide →</div>
         </div>
       </a>
 
-      <a class="article-card" data-category="data bc" href="./bc-leh-odds-guide.html">
+      <a class="article-card" data-category="data bc" data-search="bc leh odds historical trends draw percentage data one year misleading" href="./bc-leh-odds-guide.html">
         <div class="article-card-body">
-          <div class="article-kicker">Draw Odds</div>
+          <div class="article-kicker">HuntSmart Research · Draw Odds</div>
           <h3>BC LEH Odds: Why One Year Can Mislead You</h3>
-          <p>Use a live HuntSmart historical series to see why multi-year context matters more than a single year's draw percentage.</p>
-          <div class="article-byline-compact"><span>Oct 26, 2026</span><span>·</span><span>HuntSmart Canada</span></div>
+          <p>Use a live HuntSmart historical series to see why multi-year context matters more than a single year's draw percentage — and what stability, trends, and volatility actually tell you.</p>
+          <div class="article-byline-compact"><span>Oct 26, 2026</span><span>HuntSmart Canada</span></div>
           <div class="article-meta"><span>Interactive data</span><span>7 min read</span></div>
           <div class="article-cta">Explore the odds →</div>
         </div>
       </a>
     </div>
+    <div class="blog-empty" id="blogEmpty">No HuntSmart guides match that search yet.</div>
   </section>
 
-  <section class="resource-value-band" aria-label="HuntSmart resource coverage">
-    <div><strong>BC + Alberta coverage</strong><span>guides built around both draw systems</span></div>
-    <div><strong>25+ years of BC history</strong><span>used to put current draw numbers in context</span></div>
-    <div><strong>Interactive where it helps</strong><span>walkthroughs, maps and historical tools — not generic filler</span></div>
+  <section class="resource-value-band" aria-label="HuntSmart editorial standards">
+    <div><strong>Data-backed</strong><span>Historical draw information and real HuntSmart datasets where they add value.</span></div>
+    <div><strong>Interactive where useful</strong><span>Maps, trend explorers, and product walkthroughs instead of passive filler.</span></div>
+    <div><strong>Built for decisions</strong><span>Every article should help you understand, compare, shortlist, or act.</span></div>
   </section>
 
   <section class="resources-shell compact">
     <div class="section-heading">
-      <div><div class="eyebrow">Browse by topic</div><h2>Go deeper on the question you are trying to answer.</h2></div>
-      <p>Each topic leads directly into the most useful guide currently available.</p>
+      <div><div class="eyebrow">Explore by question</div><h2>Start with what you are trying to figure out.</h2></div>
+      <p>HuntSmart's editorial library is organized around the decisions hunters actually make before an application or hunt.</p>
     </div>
     <div class="explain-grid">
-      <a class="scope-card" href="./how-does-bc-leh-work.html"><span>01</span><h3>Draw systems</h3><p>Understand LEH, hunt codes, authorizations, applications, and how the system fits together.</p><span class="scope-link">Read the BC LEH guide →</span></a>
-      <a class="scope-card" href="./bc-leh-odds-guide.html"><span>02</span><h3>Odds & trends</h3><p>Use historical data and interactive analysis to put a single season's draw percentage into context.</p><span class="scope-link">Explore historical odds →</span></a>
-      <a class="scope-card" href="./how-to-use-huntsmart-map.html"><span>03</span><h3>Maps & geography</h3><p>Learn the LEH and GOS map by clicking real WMUs, records, layers, and mapped hunt zones.</p><span class="scope-link">Use the map demo →</span></a>
+      <a class="scope-card" href="./how-does-bc-leh-work.html"><span>01 · Draw systems</span><h3>How does the draw actually work?</h3><p>Understand LEH, hunt codes, authorizations, applications, and how the pieces fit together.</p><span class="scope-link">Read the BC LEH guide →</span></a>
+      <a class="scope-card" href="./bc-leh-odds-guide.html"><span>02 · Data</span><h3>What do the odds really mean?</h3><p>Put a single season's draw percentage into multi-year context and understand stability, trends, and volatility.</p><span class="scope-link">Explore historical odds →</span></a>
+      <a class="scope-card" href="./how-to-use-huntsmart-map.html"><span>03 · Geography</span><h3>Where does this opportunity exist?</h3><p>Move from species to WMU, LEH zone, map layer, and real HuntSmart results using the interactive map guide.</p><span class="scope-link">Use the map demo →</span></a>
     </div>
   </section>
 
   <section class="resources-cta">
-    <div><div class="eyebrow">Ready to use what you learned?</div><h2>Compare real opportunities in HuntSmart.</h2><p>Filter hunts, inspect historical trends, and build a shortlist with the live app.</p></div>
+    <div><div class="eyebrow">Move from research to a decision</div><h2>Compare the real opportunities in HuntSmart.</h2><p>Filter hunts, inspect historical trends, use the map, and build a shortlist with the live app.</p></div>
     <div class="resources-cta-actions"><a class="secondary" href="#latest">Keep reading ↑</a><a class="primary" href="./index.html">Open HuntSmart →</a></div>
   </section>
 </main>
 
 <footer class="resource-footer">
   <div class="resource-footer-inner">
-    <div><h4>HuntSmart Canada</h4><p>Data-backed decision tools and hunting draw guides for BC and Alberta hunters.</p></div>
-    <div><h4>Guides</h4><div class="footer-links"><a href="./how-to-use-huntsmart-map.html">Interactive Map Guide</a><a href="./how-to-use-huntsmart.html">How to Use HuntSmart</a><a href="./how-does-bc-leh-work.html">How BC LEH Works</a><a href="./bc-leh-odds-guide.html">BC LEH Odds Guide</a></div></div>
-    <div><h4>Explore</h4><div class="footer-links"><a href="./index.html">Open HuntSmart</a><a href="./blog.html">Blog & Resources</a><a href="#latest">Latest Guides</a></div></div>
+    <div><h4>HuntSmart Canada</h4><p>Data-backed decision tools and hunting draw intelligence for BC and Alberta hunters.</p></div>
+    <div><h4>Journal</h4><div class="footer-links"><a href="./how-to-use-huntsmart-map.html">Interactive Map Guide</a><a href="./how-to-use-huntsmart.html">How to Use HuntSmart</a><a href="./how-does-bc-leh-work.html">How BC LEH Works</a><a href="./bc-leh-odds-guide.html">BC LEH Odds Guide</a></div></div>
+    <div><h4>Explore</h4><div class="footer-links"><a href="./index.html">Open HuntSmart</a><a href="#latest">Latest Guides</a></div></div>
   </div>
   <div class="resource-footer-bottom"><span>© 2026 HuntSmart Canada</span><span>Educational content should be used alongside current provincial regulations and official draw information.</span></div>
 </footer>
+
+<script>
+(() => {
+  const buttons = [...document.querySelectorAll('[data-blog-filter]')];
+  const cards = [...document.querySelectorAll('#blogGrid .article-card')];
+  const input = document.getElementById('blogSearch');
+  const empty = document.getElementById('blogEmpty');
+  let activeFilter = 'all';
+
+  function applyFilters() {
+    const query = (input?.value || '').trim().toLowerCase();
+    let visible = 0;
+    cards.forEach(card => {
+      const cats = (card.dataset.category || '').split(/\s+/);
+      const haystack = `${card.dataset.search || ''} ${card.textContent || ''}`.toLowerCase();
+      const categoryMatch = activeFilter === 'all' || cats.includes(activeFilter);
+      const searchMatch = !query || haystack.includes(query);
+      const show = categoryMatch && searchMatch;
+      card.hidden = !show;
+      if (show) visible++;
+    });
+    empty?.classList.toggle('show', visible === 0);
+  }
+
+  buttons.forEach(button => button.addEventListener('click', () => {
+    activeFilter = button.dataset.blogFilter || 'all';
+    buttons.forEach(b => b.classList.toggle('active', b === button));
+    applyFilters();
+  }));
+  input?.addEventListener('input', applyFilters);
+})();
+</script>
 </body>
 </html>
