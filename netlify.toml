@@ -1,5 +1,6 @@
-# HuntSmart GitHub-backed preview deployment
+# HuntSmart GitHub-backed production deployment
 [build]
+  # Build the core app first, then inject growth analytics/admin intelligence.
   command = "bash build-preview.sh && bash build-analytics.sh"
   publish = "site"
 
