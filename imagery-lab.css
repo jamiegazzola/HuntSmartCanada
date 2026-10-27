@@ -126,6 +126,32 @@
   .hs-im-title .hs-im-kicker { display:none; }
   .hs-im-seg button,.hs-im-guide-btn { min-height:36px; padding:7px 10px; font-size:10px; }
   .hs-im-province button[data-hs-im-province="AB"] { padding-left:9px; padding-right:9px; }
+
+  /* The legacy mobile stylesheet defines #hsRail several times. In the unified map
+     it must stay a compact right-side tool capsule, never stretch over the map. */
+  #mapPage #hsRail {
+    inset:54px 8px auto auto !important;
+    left:auto !important;
+    right:8px !important;
+    top:54px !important;
+    bottom:auto !important;
+    width:46px !important;
+    min-width:46px !important;
+    max-width:46px !important;
+    height:auto !important;
+    min-height:0 !important;
+    max-height:none !important;
+    flex:0 0 auto !important;
+    align-self:auto !important;
+  }
+  #mapPage #hsRail .hs-rb,
+  #mapPage #hsRail .hs-rail-btn {
+    width:38px !important;
+    min-width:38px !important;
+    max-width:38px !important;
+    flex:0 0 38px !important;
+  }
+
   .hs-im-guide { top:auto; right:8px; bottom:8px; width:calc(100vw - 16px); max-height:46vh; border-radius:16px; transform:translateY(calc(100% + 24px)); }
   .hs-im-guide.open { transform:translateY(0); }
   .hs-im-guide-target { outline-offset:2px !important; box-shadow:0 0 0 4px rgba(231,185,74,.13) !important; }
