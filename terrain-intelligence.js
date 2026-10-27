@@ -50,6 +50,21 @@
     }
   }
 
+  function forceCloseMobileDrawer() {
+    if (!isMobile()) return;
+    var drawer = document.getElementById('fullMapResultsDrawer');
+    var body = document.getElementById('fullMapBody');
+    var cluster = document.getElementById('hsBrCluster');
+    var cards = document.getElementById('hsRbCards');
+    if (drawer) {
+      drawer.classList.remove('hs-drawer-open');
+      drawer.style.setProperty('display', 'none', 'important');
+    }
+    if (body) body.classList.remove('hs-drawer-open');
+    if (cluster) cluster.classList.remove('hs-hidden');
+    if (cards) cards.classList.remove('hs-active');
+  }
+
   function regionForWMU(id) {
     var value = String(id || '');
     if (!value) return '';
@@ -98,7 +113,7 @@
 
   function settleLEHView() {
     hideLegacyMobileProvinceControls();
-    enforceMobileDrawerContract();
+    forceCloseMobileDrawer();
     fitSelectedLEHRegion();
     try {
       if (typeof fullMapInstance !== 'undefined' && fullMapInstance) fullMapInstance.resize();
