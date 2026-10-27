@@ -83,12 +83,22 @@ jobs:
               await page.waitForFunction(()=>typeof osMapInstance !== 'undefined' && !!osMapInstance,{timeout:30000});
               await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.selectGOSRegion('3'));
               await page.waitForTimeout(250);
-              await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.setGOSSpecies('Bighorn Sheep'));
+
+              const sheep = await page.locator('#osSpeciesSel option').evaluateAll(options => {
+                const match = options.find(option => option.value && /bighorn/i.test(option.textContent || option.value));
+                return match ? { value:match.value, label:match.textContent } : {
+                  value:'',
+                  label:'',
+                  available:options.map(o=>o.textContent).filter(Boolean)
+                };
+              });
+              assert(sheep.value, 'Region 3 species list has no Bighorn Sheep option. Available: '+JSON.stringify(sheep.available||[]));
+              await page.evaluate(species=>window.__HUNTSMART_INTERACTIVE_MAP__.setGOSSpecies(species), sheep.value);
               await page.waitForTimeout(350);
               s=await page.evaluate(()=>({state:window.__HUNTSMART_INTERACTIVE_MAP__.getState(),active:window.__HUNTSMART_INTERACTIVE_MAP__.activeGOSWMUs()}));
               assert(s.state.regions.length===1&&String(s.state.regions[0])==='3','Region 3 scope was lost after species selection.');
-              assert(s.state.species==='Bighorn Sheep','Bighorn Sheep selection did not persist.');
-              assert(s.active.length>0,'Region 3 Bighorn Sheep produced no active WMUs; inspect source data or scoping.');
+              assert(s.state.species===sheep.value,'Bighorn Sheep selection did not persist.');
+              assert(s.active.length>0,'Region 3 '+sheep.label+' produced no active WMUs; inspect source data or scoping.');
               assert(s.active.every(id=>String(id).startsWith('3-')),'Species selection broadened outside Region 3: '+JSON.stringify(s.active));
 
               await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('leh'));
