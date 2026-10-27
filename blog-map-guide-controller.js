@@ -70,6 +70,42 @@
     .hs-map-demo.demo-free-clean .hs-map-demo-stage{grid-template-columns:minmax(0,1fr)!important}
     .hs-map-demo.demo-free-clean .demo-guide-rail{display:none!important}
 
+    /* Step 4 uses a dedicated, non-animated hint instead of the generic .demo-target overlay. */
+    .hs-map-demo.demo-custom-guide .hs-map-demo-map-wrap.demo-map-step-active{
+      position:relative!important;
+      z-index:1!important;
+      animation:none!important;
+      box-shadow:none!important;
+      border-color:inherit!important;
+    }
+    .hs-map-demo.demo-custom-guide .hs-map-demo-map-wrap.demo-map-step-active::before{content:none!important}
+    .hs-map-demo.demo-custom-guide .hs-map-demo-map-wrap.demo-map-step-active::after{
+      content:"Click a highlighted WMU"!important;
+      position:absolute!important;
+      inset:auto!important;
+      left:50%!important;
+      top:24px!important;
+      right:auto!important;
+      bottom:auto!important;
+      transform:translateX(-50%)!important;
+      width:max-content!important;
+      max-width:calc(100% - 40px)!important;
+      height:auto!important;
+      padding:9px 12px!important;
+      border:1px solid rgba(231,185,74,.68)!important;
+      border-radius:999px!important;
+      background:rgba(9,11,9,.92)!important;
+      color:#ffe7a3!important;
+      font-size:12px!important;
+      font-weight:900!important;
+      line-height:1.2!important;
+      box-shadow:0 8px 22px rgba(0,0,0,.28)!important;
+      animation:none!important;
+      pointer-events:none!important;
+      white-space:nowrap!important;
+      z-index:20!important;
+    }
+
     @media(max-width:1050px){
       .hs-map-demo.demo-custom-guide .hs-map-demo-stage{grid-template-columns:1fr!important}
       .hs-map-demo.demo-custom-guide .demo-guide-rail{border-left:0!important;border-top:1px solid #252c27!important;max-height:none!important}
@@ -77,6 +113,7 @@
     @media(max-width:700px){
       .hs-map-demo.demo-custom-guide .demo-tutorial{padding:18px!important}
       .hs-map-demo.demo-custom-guide .demo-step-actions{flex-direction:column!important}
+      .hs-map-demo.demo-custom-guide .hs-map-demo-map-wrap.demo-map-step-active::after{white-space:normal!important;text-align:center!important}
     }
     @media(prefers-reduced-motion:reduce){.hs-map-demo .demo-guide-mode-choice{animation:none!important}}
   `;
@@ -105,6 +142,7 @@
   function clearTargets(){
     root.querySelectorAll('.demo-target').forEach(el=>el.classList.remove('demo-target'));
     root.querySelectorAll('.demo-guide-mode-choice').forEach(el=>el.classList.remove('demo-guide-mode-choice'));
+    mapWrap.classList.remove('demo-map-step-active');
     root.classList.remove('demo-guide-mode-step');
     inspector.classList.remove('demo-guide-result');
   }
@@ -138,7 +176,7 @@
       leh.classList.add('demo-guide-mode-choice');
       gos.classList.add('demo-guide-mode-choice');
     } else if(spec.target==='species') species.classList.add('demo-target');
-    else if(spec.target==='map') mapWrap.classList.add('demo-target');
+    else if(spec.target==='map') mapWrap.classList.add('demo-map-step-active');
     else if(spec.target==='result') inspector.classList.add('demo-guide-result');
     else if(spec.target==='other-mode') (otherMode()==='leh'?leh:gos).classList.add('demo-target');
     else if(spec.target==='layers') basemapGroup.classList.add('demo-target');
