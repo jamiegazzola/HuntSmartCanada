@@ -16,7 +16,8 @@
 <style>
 #blogGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
 #blogGrid .article-card{min-height:390px}
-@media(max-width:900px){#blogGrid{grid-template-columns:1fr}#blogGrid .article-card{min-height:0}}
+main>.resources-shell:first-child{padding-top:44px}
+@media(max-width:900px){#blogGrid{grid-template-columns:1fr}#blogGrid .article-card{min-height:0}main>.resources-shell:first-child{padding-top:28px}}
 </style>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Blog","name":"HuntSmart Blog","url":"https://huntsmartcanada.netlify.app/blog.html","description":"Data-backed hunting draw guides for BC and Alberta hunters.","publisher":{"@type":"Organization","name":"HuntSmart Canada","url":"https://huntsmartcanada.netlify.app/"}}</script>
 </head>
@@ -33,24 +34,6 @@
 </header>
 
 <main>
-  <section class="resources-hero">
-    <div class="resources-hero-bg"></div>
-    <div class="resources-hero-overlay"></div>
-    <div class="resources-hero-content">
-      <div class="blog-page-mark">HuntSmart Blog & Resources</div>
-      <h1>The HuntSmart Blog.<br><span>Draw guides, data & strategy.</span></h1>
-      <p>Practical articles for BC and Alberta hunters — from understanding draw systems and historical odds to getting more out of HuntSmart.</p>
-      <div class="blog-topic-strip" aria-label="Filter blog guides">
-        <button type="button" class="active" data-blog-filter="all">All guides</button>
-        <button type="button" data-blog-filter="map">Map guide</button>
-        <button type="button" data-blog-filter="bc">BC LEH</button>
-        <button type="button" data-blog-filter="data">Historical odds</button>
-        <button type="button" data-blog-filter="app">Using HuntSmart</button>
-      </div>
-      <div class="blog-hero-note"><span>Data-backed guides</span><span>Interactive tools</span><span>BC + Alberta coverage</span></div>
-    </div>
-  </section>
-
   <section class="resources-shell" id="latest">
     <div class="blog-section-heading">
       <div><div class="eyebrow">Latest from the blog</div><h2>Guides built around real hunting decisions.</h2></div>
@@ -140,20 +123,5 @@
   </div>
   <div class="resource-footer-bottom"><span>© 2026 HuntSmart Canada</span><span>Educational content should be used alongside current provincial regulations and official draw information.</span></div>
 </footer>
-<script>
-(() => {
-  const buttons = [...document.querySelectorAll('[data-blog-filter]')];
-  const cards = [...document.querySelectorAll('#blogGrid .article-card')];
-  buttons.forEach(button => button.addEventListener('click', () => {
-    const filter = button.dataset.blogFilter;
-    buttons.forEach(b => b.classList.toggle('active', b === button));
-    cards.forEach(card => {
-      const cats = (card.dataset.category || '').split(/\s+/);
-      card.style.display = filter === 'all' || cats.includes(filter) ? '' : 'none';
-    });
-    document.getElementById('latest').scrollIntoView({behavior:'smooth', block:'start'});
-  }));
-})();
-</script>
 </body>
 </html>
