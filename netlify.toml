@@ -1,7 +1,8 @@
 # HuntSmart GitHub-backed production deployment
 [build]
-  # Build the core app first, then inject growth analytics/admin intelligence.
-  command = "bash build-preview.sh && bash build-analytics.sh"
+  # Build the core app, then publish the map-guide controller that the clean
+  # /blog/... route depends on before injecting analytics/admin intelligence.
+  command = "bash build-preview.sh && cp blog-map-guide-controller.js site/blog-map-guide-controller.js && python3 -c \"from pathlib import Path; ps=[Path('site/how-to-use-huntsmart-map.html'),Path('site/blog/how-to-use-huntsmart-map/index.html')]; [p.write_text(p.read_text(encoding='utf-8').replace('./blog-map-guide-controller.js','/blog-map-guide-controller.js'),encoding='utf-8') for p in ps]\" && bash build-analytics.sh"
   publish = "site"
 
 [build.environment]
