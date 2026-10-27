@@ -110,6 +110,39 @@ jobs:
               assert((s.wmus||[]).length>0 && (s.wmus||[]).every(id=>String(id).startsWith('3-')),'Region 3 geography was not preserved into LEH.');
               assert(!errors.length,'Page errors: '+errors.join(' | '));
 
+              if (viewport.width === 390) {
+                const diagnostic = await page.evaluate(() => {
+                  const describe = el => {
+                    const r = el.getBoundingClientRect();
+                    const cs = getComputedStyle(el);
+                    return {
+                      tag: el.tagName,
+                      id: el.id || '',
+                      cls: String(el.className || '').slice(0,180),
+                      rect: [Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)],
+                      display: cs.display,
+                      position: cs.position,
+                      z: cs.zIndex,
+                      bg: cs.backgroundColor,
+                      opacity: cs.opacity,
+                      style: (el.getAttribute('style') || '').slice(0,220)
+                    };
+                  };
+                  const points = [[195,400],[20,400],[195,220],[370,400]].map(([x,y]) => ({
+                    point:[x,y],
+                    stack: document.elementsFromPoint(x,y).slice(0,10).map(describe)
+                  }));
+                  const minArea = innerWidth * innerHeight * 0.20;
+                  const large = [...document.querySelectorAll('#mapPage *')].map(el => ({el,r:el.getBoundingClientRect()}))
+                    .filter(x => x.r.width * x.r.height >= minArea && x.r.width > 0 && x.r.height > 0 && getComputedStyle(x.el).display !== 'none')
+                    .sort((a,b)=>(b.r.width*b.r.height)-(a.r.width*a.r.height))
+                    .slice(0,20)
+                    .map(x => describe(x.el));
+                  return { points, large };
+                });
+                console.log('MOBILE_DOM_DIAGNOSTIC='+JSON.stringify(diagnostic));
+              }
+
               await page.screenshot({path:`interactive-map-${viewport.width}.png`,fullPage:false});
               await page.close();
             }
