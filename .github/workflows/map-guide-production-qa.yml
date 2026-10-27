@@ -1,0 +1,195 @@
+name: HuntSmart Map Guide Production QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - how-to-use-huntsmart-map.html
+      - blog-map-demo.js
+      - blog-map-demo.css
+      - blog-map-guide-controller.js
+      - build-preview.sh
+      - .github/workflows/map-guide-production-qa.yml
+
+permissions:
+  contents: read
+
+env:
+  MAP_GUIDE_URL: https://huntsmartcanada.ca/blog/how-to-use-huntsmart-map/
+
+jobs:
+  production-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Test live map walkthrough
+        shell: bash
+        run: |
+          mkdir -p qa-artifacts
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+
+          const url = process.env.MAP_GUIDE_URL;
+          const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+          const assert = (condition, message) => {
+            if (!condition) throw new Error(message);
+          };
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const context = await browser.newContext({
+              viewport: { width: 1440, height: 1000 },
+              deviceScaleFactor: 1
+            });
+            const page = await context.newPage();
+
+            const consoleErrors = [];
+            page.on('console', msg => {
+              if (msg.type() === 'error') consoleErrors.push(msg.text());
+            });
+            page.on('pageerror', err => consoleErrors.push(err.message));
+
+            // Netlify production can trail GitHub by a few seconds. Retry until
+            // the controller is actually present in the rendered production page.
+            let ready = false;
+            let lastState = null;
+            for (let attempt = 1; attempt <= 24; attempt += 1) {
+              await page.goto(`${url}?qa=${Date.now()}-${attempt}`, {
+                waitUntil: 'domcontentloaded',
+                timeout: 45000
+              });
+              await page.waitForSelector('#hsMapDemo', { timeout: 15000 });
+              await page.waitForTimeout(1200);
+
+              lastState = await page.evaluate(() => ({
+                controllerScript: Array.from(document.scripts).some(script =>
+                  (script.src || '').includes('blog-map-guide-controller.js')
+                ),
+                guideRail: !!document.getElementById('demoGuideRail'),
+                tutorialParent: document.getElementById('demoTutorial')?.parentElement?.id || null,
+                oldEmptyVisible: (() => {
+                  const el = document.querySelector('#demoInspector .demo-inspector-empty');
+                  if (!el) return false;
+                  const style = getComputedStyle(el);
+                  return style.display !== 'none' && style.visibility !== 'hidden' && el.getClientRects().length > 0;
+                })()
+              }));
+
+              if (lastState.controllerScript && lastState.guideRail && lastState.tutorialParent === 'demoGuideRail') {
+                ready = true;
+                break;
+              }
+              await sleep(5000);
+            }
+
+            assert(ready, `Production never reached expected guide-rail structure. Last state: ${JSON.stringify(lastState)}`);
+
+            await page.waitForSelector('.mapboxgl-canvas', { timeout: 30000 });
+            await page.waitForTimeout(1500);
+
+            const initial = await page.evaluate(() => {
+              const rail = document.getElementById('demoGuideRail');
+              const tutorial = document.getElementById('demoTutorial');
+              const empty = document.querySelector('#demoInspector .demo-inspector-empty');
+              const emptyVisible = empty ? (() => {
+                const style = getComputedStyle(empty);
+                return style.display !== 'none' && style.visibility !== 'hidden' && empty.getClientRects().length > 0;
+              })() : false;
+              const tutorialRect = tutorial?.getBoundingClientRect();
+              const mapRect = document.getElementById('demoMapWrap')?.getBoundingClientRect();
+              return {
+                tutorialParent: tutorial?.parentElement?.id || null,
+                emptyVisible,
+                tutorialLeft: tutorialRect?.left || 0,
+                mapRight: mapRect?.right || 0,
+                railExists: !!rail
+              };
+            });
+
+            assert(initial.railExists, 'Dedicated guide rail is missing.');
+            assert(initial.tutorialParent === 'demoGuideRail', `Tutorial is not inside guide rail; parent=${initial.tutorialParent}`);
+            assert(!initial.emptyVisible, 'Legacy “Select a map mode” empty state is still visible during Guided Tour.');
+            assert(initial.tutorialLeft >= initial.mapRight - 2, 'Tutorial is still visually overlaying the map instead of living in the right rail.');
+
+            await page.screenshot({ path: 'qa-artifacts/01-guide-rail-initial.png', fullPage: false });
+
+            await page.locator('#demoNext').click();
+            await page.waitForFunction(() => document.getElementById('demoStepTitle')?.textContent?.includes('Choose a hunting system'));
+
+            const modeState = await page.evaluate(() => ({
+              lehHighlighted: document.getElementById('demoModeLEH')?.classList.contains('demo-guide-mode-choice'),
+              gosHighlighted: document.getElementById('demoModeGOS')?.classList.contains('demo-guide-mode-choice'),
+              step: document.getElementById('demoStepCount')?.textContent || ''
+            }));
+            assert(modeState.lehHighlighted && modeState.gosHighlighted, 'Step 2 does not highlight both LEH and GOS.');
+            await page.screenshot({ path: 'qa-artifacts/02-mode-choice-highlighted.png', fullPage: false });
+
+            await page.locator('#demoModeGOS').click();
+            await page.waitForFunction(() => document.getElementById('demoStepTitle')?.textContent?.includes('Choose a species'));
+            await page.waitForFunction(() => document.querySelectorAll('#demoSpecies option').length > 1, null, { timeout: 30000 });
+
+            const firstSpecies = await page.locator('#demoSpecies option').evaluateAll(options => {
+              const option = options.find(item => item.value);
+              return option ? option.value : '';
+            });
+            assert(firstSpecies, 'GOS species list did not populate.');
+            await page.selectOption('#demoSpecies', firstSpecies);
+            await page.waitForFunction(() => document.getElementById('demoStepTitle')?.textContent?.includes('Pick a highlighted WMU'));
+            await page.screenshot({ path: 'qa-artifacts/03-gos-species-selected.png', fullPage: false });
+
+            const finalState = await page.evaluate(() => ({
+              guideRail: !!document.getElementById('demoGuideRail'),
+              tutorialParent: document.getElementById('demoTutorial')?.parentElement?.id || null,
+              stepTitle: document.getElementById('demoStepTitle')?.textContent || '',
+              oldEmptyTextVisible: Array.from(document.querySelectorAll('#demoInspector .demo-inspector-empty')).some(el => {
+                const style = getComputedStyle(el);
+                return el.textContent.includes('Select a map mode') && style.display !== 'none' && el.getClientRects().length > 0;
+              })
+            }));
+
+            assert(finalState.guideRail, 'Guide rail disappeared during interaction.');
+            assert(finalState.tutorialParent === 'demoGuideRail', 'Tutorial left the guide rail during interaction.');
+            assert(!finalState.oldEmptyTextVisible, 'Legacy empty-state copy became visible during the tour.');
+
+            fs.writeFileSync('qa-artifacts/qa-summary.json', JSON.stringify({
+              url,
+              initial,
+              modeState,
+              finalState,
+              consoleErrors
+            }, null, 2));
+
+            if (consoleErrors.length) {
+              console.log('Browser console/page errors observed:');
+              consoleErrors.forEach(error => console.log(`- ${error}`));
+            }
+
+            await browser.close();
+            console.log('Map guide production QA passed.');
+          })().catch(error => {
+            console.error(error.stack || error.message || error);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Upload QA screenshots and summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: map-guide-production-qa-${{ github.run_number }}
+          path: qa-artifacts/
+          if-no-files-found: warn
+          retention-days: 14
