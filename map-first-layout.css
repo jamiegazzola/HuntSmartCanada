@@ -1,0 +1,364 @@
+/* HuntSmart Interactive Map — map-first production layout. */
+
+/* The map owns the viewport below the 56px global navigation. */
+#mapPage,
+#bcOpenSeasonsPage {
+  position: relative !important;
+  height: calc(100dvh - 56px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  background: #0c100d;
+}
+
+#mapPage > .fullmap-page,
+#bcOpenSeasonsPage > .os-page {
+  position: relative !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+
+#mapPage > .fullmap-page {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#mapPage .fullmap-body {
+  position: relative !important;
+  flex: 1 1 auto !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  background: #0c100d;
+}
+
+#mapPage .fullmap-container {
+  position: relative !important;
+  flex: 1 1 auto !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+#mapPage #fullMapLeaflet {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+#bcOpenSeasonsPage > .os-page {
+  display: flex !important;
+  flex-direction: column !important;
+  background: #0c100d;
+}
+
+#bcOpenSeasonsPage .os-body {
+  position: relative !important;
+  flex: 1 1 auto !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+#bcOpenSeasonsPage .os-map-wrap,
+#bcOpenSeasonsPage #osMap {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+/* Shared province / regulation mode selector floats over the terrain. */
+#mapPage > .hs-im-shellbar,
+#bcOpenSeasonsPage > .hs-im-shellbar {
+  position: absolute !important;
+  top: 14px !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  z-index: 9400 !important;
+  display: flex !important;
+  align-items: center !important;
+  width: max-content !important;
+  max-width: calc(100vw - 420px) !important;
+  min-height: 0 !important;
+  padding: 4px !important;
+  gap: 6px !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 12px !important;
+  background: rgba(13,17,15,.93) !important;
+  box-shadow: 0 12px 32px rgba(0,0,0,.34) !important;
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+}
+
+#mapPage > .hs-im-shellbar .hs-im-title,
+#mapPage > .hs-im-shellbar .hs-im-scope,
+#bcOpenSeasonsPage > .hs-im-shellbar .hs-im-title,
+#bcOpenSeasonsPage > .hs-im-shellbar .hs-im-scope {
+  display: none !important;
+}
+
+#mapPage > .hs-im-shellbar .hs-im-controls,
+#bcOpenSeasonsPage > .hs-im-shellbar .hs-im-controls {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-wrap: nowrap !important;
+  gap: 6px !important;
+  overflow: visible !important;
+  padding: 0 !important;
+  width: auto !important;
+}
+
+#mapPage > .hs-im-shellbar .hs-im-seg,
+#bcOpenSeasonsPage > .hs-im-shellbar .hs-im-seg {
+  background: rgba(255,255,255,.035) !important;
+  border-color: rgba(255,255,255,.10) !important;
+}
+
+#mapPage > .hs-im-shellbar .hs-im-seg button,
+#mapPage > .hs-im-shellbar .hs-im-guide-btn,
+#bcOpenSeasonsPage > .hs-im-shellbar .hs-im-seg button,
+#bcOpenSeasonsPage > .hs-im-shellbar .hs-im-guide-btn {
+  min-height: 36px !important;
+  padding: 7px 11px !important;
+}
+
+/* LEH: search stays upper-left; species becomes the only second-row research control. */
+#mapPage .province-toggle-group {
+  display: none !important;
+}
+
+#mapPage .fullmap-topbar {
+  position: absolute !important;
+  top: 66px !important;
+  left: 14px !important;
+  right: auto !important;
+  z-index: 9250 !important;
+  width: auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  pointer-events: none !important;
+}
+
+#mapPage .fullmap-toolbar-main {
+  display: flex !important;
+  width: auto !important;
+  min-width: 0 !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  justify-content: flex-start !important;
+  pointer-events: none !important;
+}
+
+#mapPage #fullMapSpeciesSelect {
+  display: block !important;
+  pointer-events: auto !important;
+  width: 184px !important;
+  min-width: 184px !important;
+  max-width: 220px !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  padding: 0 34px 0 12px !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 12px !important;
+  background: rgba(13,17,15,.93) !important;
+  color: #f2f5f2 !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,.28) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+#mapPage .fullmap-basemap-buttons,
+#mapPage #fullMapClearBtn,
+#mapPage #fullMapExpandBtn {
+  display: none !important;
+}
+
+#mapPage .fullmap-floating-search {
+  z-index: 9300 !important;
+}
+
+/* Reuse the existing world-class settings panel as the single Layers control. */
+#mapPage #hsWorldSettingsBtn {
+  display: inline-flex !important;
+  position: fixed !important;
+  left: 16px !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: max(16px, env(safe-area-inset-bottom)) !important;
+  z-index: 9450 !important;
+  min-height: 42px !important;
+  padding: 0 13px !important;
+  border-radius: 11px !important;
+  border: 1px solid rgba(255,255,255,.13) !important;
+  background: rgba(13,17,15,.93) !important;
+  color: #e8eee9 !important;
+  box-shadow: 0 12px 32px rgba(0,0,0,.34) !important;
+  pointer-events: auto !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+#mapPage #hsWorldSettingsPanel {
+  display: block !important;
+  position: fixed !important;
+  left: 16px !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: 68px !important;
+  z-index: 9460 !important;
+  width: min(360px, calc(100vw - 32px)) !important;
+  max-height: min(570px, calc(100dvh - 150px)) !important;
+}
+
+/* Bottom-right navigation stays familiar and is always inside the visible viewport. */
+#mapPage #fullMapControlStack,
+#bcOpenSeasonsPage #osMapControlStack {
+  position: fixed !important;
+  right: 16px !important;
+  left: auto !important;
+  top: auto !important;
+  bottom: max(16px, env(safe-area-inset-bottom)) !important;
+  z-index: 9440 !important;
+  margin: 0 !important;
+  transform: none !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: 0 12px 32px rgba(0,0,0,.34) !important;
+}
+
+#mapPage #fullMapControlStack button,
+#bcOpenSeasonsPage #osMapControlStack button {
+  min-width: 44px !important;
+  width: 44px !important;
+  min-height: 44px !important;
+  height: 44px !important;
+}
+
+@media (min-width: 769px) {
+  #mapPage #fullMapBody.hs-drawer-open #fullMapControlStack {
+    right: 426px !important;
+  }
+}
+
+/* GOS: search and research filters float rather than reserving a toolbar row. */
+#bcOpenSeasonsPage .os-topbar {
+  position: absolute !important;
+  inset: 0 auto auto 0 !important;
+  z-index: 9250 !important;
+  width: 100% !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  pointer-events: none !important;
+}
+
+#bcOpenSeasonsPage #osSearchWrap {
+  position: absolute !important;
+  top: 14px !important;
+  left: 14px !important;
+  z-index: 2 !important;
+  pointer-events: auto !important;
+}
+
+#bcOpenSeasonsPage .os-toolbar-actions {
+  position: absolute !important;
+  top: 66px !important;
+  left: 14px !important;
+  z-index: 2 !important;
+  display: flex !important;
+  width: auto !important;
+  max-width: calc(100vw - 90px) !important;
+  padding: 4px !important;
+  gap: 5px !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+  border-radius: 12px !important;
+  background: rgba(13,17,15,.91) !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,.28) !important;
+  pointer-events: auto !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+#bcOpenSeasonsPage .os-basemap-buttons,
+#bcOpenSeasonsPage .os-2d3d-toggle,
+#bcOpenSeasonsPage .os-dock-clear {
+  display: none !important;
+}
+
+#bcOpenSeasonsPage #osSpeciesSel,
+#bcOpenSeasonsPage #osFilterBtn,
+#bcOpenSeasonsPage #osLayersBtn {
+  min-height: 36px !important;
+  border-radius: 8px !important;
+}
+
+#bcOpenSeasonsPage .os-toolbar-popovers {
+  pointer-events: auto !important;
+}
+
+@media (max-width: 1199px) and (min-width: 769px) {
+  #mapPage > .hs-im-shellbar,
+  #bcOpenSeasonsPage > .hs-im-shellbar {
+    left: auto !important;
+    right: 14px !important;
+    transform: none !important;
+    max-width: calc(100vw - 390px) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  #mapPage,
+  #bcOpenSeasonsPage {
+    height: calc(100dvh - 56px) !important;
+  }
+
+  #mapPage > .hs-im-shellbar,
+  #bcOpenSeasonsPage > .hs-im-shellbar {
+    top: 8px !important;
+    left: 8px !important;
+    right: 8px !important;
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    justify-content: center !important;
+    padding: 3px !important;
+    overflow-x: auto !important;
+  }
+
+  #mapPage > .hs-im-shellbar .hs-im-controls,
+  #bcOpenSeasonsPage > .hs-im-shellbar .hs-im-controls {
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    gap: 4px !important;
+  }
+
+  #mapPage > .hs-im-shellbar .hs-im-seg button,
+  #mapPage > .hs-im-shellbar .hs-im-guide-btn,
+  #bcOpenSeasonsPage > .hs-im-shellbar .hs-im-seg button,
+  #bcOpenSeasonsPage > .hs-im-shellbar .hs-im-guide-btn {
+    min-height: 34px !important;
+    padding: 6px 9px !important;
+    font-size: 10px !important;
+  }
+
+  #mapPage #hsBrCluster,
+  #bcOpenSeasonsPage #gosBrCluster {
+    right: 10px !important;
+    left: auto !important;
+    top: auto !important;
+    bottom: max(12px, env(safe-area-inset-bottom)) !important;
+  }
+
+  #mapPage #hsWorldSettingsBtn,
+  #mapPage #hsWorldSettingsPanel {
+    display: none !important;
+  }
+}
