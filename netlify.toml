@@ -1,8 +1,9 @@
 # HuntSmart GitHub-backed production deployment
 [build]
   # Build the core app, publish the map-guide controller, inject analytics/admin
-  # intelligence, then add the crawlable SEO/AEO, search-growth, and interactive research layers.
-  command = "bash build-preview.sh && cp blog-map-guide-controller.js site/blog-map-guide-controller.js && python3 -c \"from pathlib import Path; ps=[Path('site/how-to-use-huntsmart-map.html'),Path('site/blog/how-to-use-huntsmart-map/index.html')]; [p.write_text(p.read_text(encoding='utf-8').replace('./blog-map-guide-controller.js','/blog-map-guide-controller.js'),encoding='utf-8') for p in ps]\" && bash build-analytics.sh && python3 build-seo-aeo.py && python3 build-search-growth.py && python3 build-interactive-research.py"
+  # intelligence, then add the crawlable SEO/AEO, search-growth, interactive research,
+  # and scoped research-card styling.
+  command = "bash build-preview.sh && cp blog-map-guide-controller.js site/blog-map-guide-controller.js && python3 -c \"from pathlib import Path; ps=[Path('site/how-to-use-huntsmart-map.html'),Path('site/blog/how-to-use-huntsmart-map/index.html')]; [p.write_text(p.read_text(encoding='utf-8').replace('./blog-map-guide-controller.js','/blog-map-guide-controller.js'),encoding='utf-8') for p in ps]\" && bash build-analytics.sh && python3 build-seo-aeo.py && python3 build-search-growth.py && python3 build-interactive-research.py && python3 build-dark-research-cards.py"
   publish = "site"
 
 [build.environment]
