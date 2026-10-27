@@ -1,6 +1,6 @@
 # HuntSmart GitHub-backed preview deployment
 [build]
-  command = "bash build-preview.sh"
+  command = "bash build-preview.sh && bash build-analytics.sh"
   publish = "site"
 
 [build.environment]
