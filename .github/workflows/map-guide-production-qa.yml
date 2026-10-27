@@ -9,6 +9,7 @@ on:
       - blog-map-demo.js
       - blog-map-demo.css
       - blog-map-guide-controller.js
+      - config.js
       - build-preview.sh
       - .github/workflows/map-guide-production-qa.yml
 
@@ -56,9 +57,10 @@ jobs:
                 rail: !!document.getElementById('demoGuideRail'),
                 tutorialParent: document.getElementById('demoTutorial')?.parentElement?.className || '',
                 controllerScript: Array.from(document.scripts).some(s => (s.src || '').includes('blog-map-guide-controller.js')),
-                hasStateModel: Object.prototype.hasOwnProperty.call(document.getElementById('hsMapDemo')?.dataset || {}, 'guideStep')
+                hasStateModel: Object.prototype.hasOwnProperty.call(document.getElementById('hsMapDemo')?.dataset || {}, 'guideStep'),
+                zoneHoverHook: !!window.__HUNTSMART_MAP_GUIDE__?.__hsZoneHoverHooks
               }));
-              if (state.rail && state.controllerScript && state.hasStateModel) return state;
+              if (state.rail && state.controllerScript && state.hasStateModel && state.zoneHoverHook) return state;
               await page.waitForTimeout(5000);
             }
             throw new Error(`Production controller did not become ready: ${JSON.stringify(state)}`);
@@ -107,7 +109,8 @@ jobs:
             const errors = [];
             page.on('pageerror', error => errors.push(error.message));
 
-            await waitForPublishedController(page);
+            const published = await waitForPublishedController(page);
+            assert(published.zoneHoverHook, 'LEH zone hover enhancement is not installed on the live Mapbox instance.');
             await page.waitForSelector('.mapboxgl-canvas', { timeout:30000 });
             await page.waitForTimeout(900);
 
