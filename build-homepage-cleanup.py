@@ -7,6 +7,15 @@ if not home.exists():
 
 text = home.read_text(encoding='utf-8')
 
+# Remove the homepage hero eyebrow/season label entirely. This is intentionally
+# visual-only cleanup; the page title and core product copy remain unchanged.
+text, eyebrow_removed = re.subn(
+    r'<div\s+class=["\']hero-eyebrow["\'][^>]*>.*?</div>',
+    '',
+    text,
+    flags=re.I | re.S,
+)
+
 # Remove the older footer-style research nav when present.
 text, nav_removed = re.subn(
     r'<nav\s+aria-label="HuntSmart research links"[^>]*>.*?</nav>',
@@ -48,8 +57,10 @@ text = re.sub(
 home.write_text(text, encoding='utf-8')
 
 final = home.read_text(encoding='utf-8')
+if re.search(r'class=["\']hero-eyebrow["\']', final, flags=re.I):
+    raise SystemExit('Homepage cleanup failed: hero eyebrow still present.')
 for href in research_hrefs:
     if re.search(rf'<a\b[^>]*href=["\']{re.escape(href)}["\']', final, flags=re.I):
         raise SystemExit(f'Homepage cleanup failed: research link still present: {href}')
 
-print(f'Homepage cleanup complete: removed {nav_removed} research nav block(s) and {anchor_removed} deep-research homepage link(s).')
+print(f'Homepage cleanup complete: removed {eyebrow_removed} hero eyebrow(s), {nav_removed} research nav block(s), and {anchor_removed} deep-research homepage link(s).')
