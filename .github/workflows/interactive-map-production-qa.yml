@@ -75,8 +75,19 @@ jobs:
               assert(/Interactive Map/i.test(nav||''),'Map nav was not renamed.');
               assert(await page.locator('#navBCOS').evaluate(el=>getComputedStyle(el).display==='none'),'Legacy BC GOS nav still visible.');
 
+              // Enter the actual visible Map surface first. Initializing a Mapbox
+              // instance while Home is still visible produces valid state but zero-size controls.
+              await page.evaluate(()=>document.getElementById('navMap')?.click());
+              await page.waitForFunction(()=>{
+                const el=document.getElementById('mapPage');
+                return !!el && getComputedStyle(el).display !== 'none';
+              },{timeout:30000});
+
               await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.open('leh',{province:'BC'}));
-              await page.waitForFunction(()=>document.getElementById('mapPage')?.style.display !== 'none',{timeout:30000});
+              await page.waitForFunction(()=>{
+                const el=document.getElementById('mapPage');
+                return !!el && getComputedStyle(el).display !== 'none';
+              },{timeout:30000});
               await page.waitForFunction(()=>typeof fullMapInstance !== 'undefined' && !!fullMapInstance,{timeout:30000});
               await page.waitForTimeout(1100);
               let s=await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
@@ -149,7 +160,10 @@ jobs:
               });
 
               await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
-              await page.waitForFunction(()=>document.getElementById('bcOpenSeasonsPage')?.style.display !== 'none',{timeout:30000});
+              await page.waitForFunction(()=>{
+                const el=document.getElementById('bcOpenSeasonsPage');
+                return !!el && getComputedStyle(el).display !== 'none';
+              },{timeout:30000});
               await page.waitForFunction(()=>typeof osMapInstance !== 'undefined' && !!osMapInstance,{timeout:30000});
               await page.waitForTimeout(700);
               assert(await page.evaluate(()=>String(osMapStyle||''))==='streets','GOS default basemap is not Dark.');
@@ -215,7 +229,10 @@ jobs:
               assert(s.active.every(id=>String(id).startsWith('3-')),'Species selection broadened outside Region 3: '+JSON.stringify(s.active));
 
               await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('leh'));
-              await page.waitForFunction(()=>document.getElementById('mapPage')?.style.display !== 'none',{timeout:30000});
+              await page.waitForFunction(()=>{
+                const el=document.getElementById('mapPage');
+                return !!el && getComputedStyle(el).display !== 'none';
+              },{timeout:30000});
               await page.waitForFunction(()=>typeof fullMapInstance !== 'undefined' && !!fullMapInstance,{timeout:30000});
               await page.waitForTimeout(500);
               s=await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
