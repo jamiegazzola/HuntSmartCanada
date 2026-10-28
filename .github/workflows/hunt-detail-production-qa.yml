@@ -54,9 +54,9 @@ jobs:
             assert(found, 'Target BC draw 6039 / MU 6-20 not found');
             await page.waitForFunction(() => {
               const p = document.getElementById('drawDetailPage');
-              return !!(p && p.getClientRects().length && p.querySelector('.hs-pd'));
+              return !!(p && p.getClientRects().length && getComputedStyle(p).display !== 'none');
             }, null, { timeout:15000 });
-            await page.waitForTimeout(900);
+            await page.waitForTimeout(1000);
           }
 
           async function snapshot(page) {
@@ -67,10 +67,12 @@ jobs:
               return {
                 viewport:{width:innerWidth,height:innerHeight},
                 page:rect(p),
+                premium:!!p?.querySelector('.hs-pd'),
                 shell:rect(p?.querySelector('.hs-pd')),
                 hero:rect(p?.querySelector('.hs-pd-hero')),
                 map:rect(document.getElementById('ddPremiumMap')),
                 title:p?.querySelector('.hs-pd-title')?.textContent?.trim() || '',
+                fallbackTitle:p?.querySelector('.dd-species')?.textContent?.trim() || '',
                 odds:p?.querySelector('.hs-pd-odd b')?.textContent?.trim() || '',
                 actions:Array.from(p?.querySelectorAll('.hs-pd-actions button') || []).map(x => x.textContent.trim()),
                 quick:Array.from(p?.querySelectorAll('.hs-pd-q') || []).map(x => x.textContent.replace(/\s+/g,' ').trim()),
@@ -80,13 +82,15 @@ jobs:
                 hasSources:/Official sources/i.test(text),
                 hasOpportunityScore:/HuntSmart\s+Opportunity\s+Score|HuntSmart\s+Score/i.test(text),
                 overflowX:document.documentElement.scrollWidth > innerWidth + 2,
-                sourceLinks:Array.from(p?.querySelectorAll('.hs-pd-links a') || []).map(a => a.href)
+                sourceLinks:Array.from(p?.querySelectorAll('.hs-pd-links a') || []).map(a => a.href),
+                textSample:text.slice(0,500)
               };
             });
           }
 
           function verify(name,s) {
             assert(s.page && s.page.width > 300, `${name}: detail page missing`);
+            assert(s.premium, `${name}: premium detail layer did not render; fallback title=${s.fallbackTitle}; sample=${s.textSample}`);
             assert(s.shell && s.shell.left >= -1 && s.shell.right <= s.viewport.width + 1, `${name}: content overflows viewport`);
             assert(/Tinhorn Sheep/i.test(s.title), `${name}: target species title missing: ${s.title}`);
             assert(/42/.test(s.odds), `${name}: expected current draw odds not shown: ${s.odds}`);
@@ -102,20 +106,25 @@ jobs:
 
           (async () => {
             const browser = await chromium.launch({headless:true});
+            const errors=[];
 
             const desktop = await browser.newPage({viewport:{width:1440,height:900}});
-            const errors=[]; desktop.on('pageerror',e=>errors.push('desktop: '+e.message));
+            desktop.on('pageerror',e=>errors.push('desktop: '+e.message));
             await load(desktop); await openTarget(desktop);
-            const ds = await snapshot(desktop); verify('desktop',ds);
+            const ds = await snapshot(desktop);
             console.log('DESKTOP',JSON.stringify(ds));
+            console.log('ERRORS_AFTER_DESKTOP',JSON.stringify(errors));
             await desktop.screenshot({path:'hunt-detail-desktop.png',fullPage:false});
+            verify('desktop',ds);
 
             const mobile = await browser.newPage({viewport:{width:390,height:844},hasTouch:true});
             mobile.on('pageerror',e=>errors.push('mobile: '+e.message));
             await load(mobile); await openTarget(mobile);
-            const ms = await snapshot(mobile); verify('mobile',ms);
+            const ms = await snapshot(mobile);
             console.log('MOBILE',JSON.stringify(ms));
+            console.log('ERRORS_AFTER_MOBILE',JSON.stringify(errors));
             await mobile.screenshot({path:'hunt-detail-mobile.png',fullPage:false});
+            verify('mobile',ms);
 
             assert(!errors.length, 'Page errors: '+errors.join(' | '));
             await browser.close();
