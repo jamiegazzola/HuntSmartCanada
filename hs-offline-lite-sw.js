@@ -1,9 +1,9 @@
-/* HuntSmart offline-lite cache: app shell + local data only. Map tiles may still need network/provider cache. */
-const HS_CACHE = 'huntsmart-offline-lite-v78';
+/* HuntSmart offline-lite cache: app shell + local data only. Heavy map overlays load on demand. */
+const HS_CACHE = 'huntsmart-offline-lite-v79';
 const HS_CORE = [
   './', './index.html', './style.css', './maps.js', './bc-open-seasons.js',
   './data.js', './draws.json', './bc-draws.js', './bc-filters.js', './bc-detail.js',
-  './ab-draws.js', './ab-filters.js', './leh_zones.json', './historical_wildfires_simplified_50m.geojson'
+  './ab-draws.js', './ab-filters.js'
 ];
 self.addEventListener('install', event => {
   event.waitUntil((async () => {

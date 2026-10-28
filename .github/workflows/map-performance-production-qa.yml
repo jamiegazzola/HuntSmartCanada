@@ -1,0 +1,147 @@
+name: HuntSmart Map Performance Production QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - map-performance-runtime.js
+      - build-map-performance.py
+      - hs-offline-lite-sw.js
+      - netlify.toml
+      - .github/workflows/map-performance-production-qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  map-performance-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Validate lazy geometry and map journeys on production
+        env:
+          URL: https://huntsmartcanada.ca/
+          EXPECTED_MAP_PERF_VERSION: 2026-10-28-v1
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const assert = (value, message) => { if (!value) throw new Error(message); };
+          const expected = process.env.EXPECTED_MAP_PERF_VERSION;
+
+          async function waitForDeployment(browser) {
+            let last = '';
+            for (let i = 0; i < 40; i++) {
+              const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true });
+              try {
+                await page.goto(`${process.env.URL}?map-perf-deploy=${Date.now()}-${i}`, {
+                  waitUntil: 'domcontentloaded',
+                  timeout: 30000
+                });
+                const got = await page.evaluate(() => window.__HS_MAP_PERFORMANCE__?.version || '');
+                last = got;
+                if (got === expected) {
+                  await page.close();
+                  return;
+                }
+              } catch (error) {
+                last = error.message;
+              }
+              await page.close();
+              await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+            throw new Error(`Production map-performance gate failed. Last value: ${last}`);
+          }
+
+          function isGeometryUrl(url) {
+            return /\/bc-wmu-geojson\.js|\/ab-wmu-geojson(?:-[123])?\.js/.test(url);
+          }
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            await waitForDeployment(browser);
+
+            const context = await browser.newContext({
+              viewport: { width: 390, height: 844 },
+              hasTouch: true,
+              serviceWorkers: 'block'
+            });
+            const page = await context.newPage();
+            const pageErrors = [];
+            const requests = [];
+            page.on('pageerror', error => pageErrors.push(error.message));
+            page.on('request', request => requests.push(request.url()));
+
+            await page.goto(`${process.env.URL}?map-perf-qa=${Date.now()}`, {
+              waitUntil: 'domcontentloaded',
+              timeout: 30000
+            });
+            await page.waitForFunction(v => window.__HS_MAP_PERFORMANCE__?.version === v, expected, { timeout: 30000 });
+            await page.waitForTimeout(750);
+
+            const homeState = await page.evaluate(() => ({
+              version: window.__HS_MAP_PERFORMANCE__?.version || '',
+              bcLoaded: window.__HS_MAP_PERFORMANCE__?.snapshot().bcGeometryLoaded || false,
+              abLoaded: window.__HS_MAP_PERFORMANCE__?.snapshot().abGeometryLoaded || false,
+              eagerGeometryScripts: Array.from(document.scripts)
+                .map(s => s.src)
+                .filter(src => /bc-wmu-geojson\.js|ab-wmu-geojson(?:-[123])?\.js/.test(src))
+            }));
+            assert(homeState.version === expected, `Wrong runtime version ${JSON.stringify(homeState)}`);
+            assert(!homeState.bcLoaded && !homeState.abLoaded, `Geometry loaded on Home ${JSON.stringify(homeState)}`);
+            assert(homeState.eagerGeometryScripts.length === 0, `Eager geometry script tags remain ${JSON.stringify(homeState.eagerGeometryScripts)}`);
+            assert(requests.filter(isGeometryUrl).length === 0, `Geometry requested before Map: ${JSON.stringify(requests.filter(isGeometryUrl))}`);
+
+            const bcStarted = Date.now();
+            await page.evaluate(() => document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click());
+            await page.waitForFunction(() => {
+              const perf = window.__HS_MAP_PERFORMANCE__?.snapshot();
+              return perf?.bcGeometryLoaded && typeof fullMapInstance !== 'undefined' && !!fullMapInstance;
+            }, null, { timeout: 30000 });
+            const bcInteractiveMs = Date.now() - bcStarted;
+
+            const afterBc = requests.filter(isGeometryUrl);
+            assert(afterBc.some(url => /\/bc-wmu-geojson\.js/.test(url)), `BC geometry was not requested after opening Map: ${JSON.stringify(afterBc)}`);
+            assert(!afterBc.some(url => /\/ab-wmu-geojson/.test(url)), `AB geometry loaded before province switch: ${JSON.stringify(afterBc)}`);
+
+            const abStarted = Date.now();
+            await page.evaluate(() => fullMapSetProvince('AB'));
+            await page.waitForFunction(() => {
+              const perf = window.__HS_MAP_PERFORMANCE__?.snapshot();
+              return perf?.abGeometryLoaded &&
+                typeof fullMapProvince !== 'undefined' && fullMapProvince === 'AB' &&
+                typeof fullMapInstance !== 'undefined' && !!fullMapInstance;
+            }, null, { timeout: 30000 });
+            const abInteractiveMs = Date.now() - abStarted;
+
+            const afterAb = requests.filter(isGeometryUrl);
+            assert(afterAb.some(url => /\/ab-wmu-geojson-1\.js/.test(url)), 'AB geometry part 1 was not requested');
+            assert(afterAb.some(url => /\/ab-wmu-geojson-2\.js/.test(url)), 'AB geometry part 2 was not requested');
+            assert(afterAb.some(url => /\/ab-wmu-geojson-3\.js/.test(url)), 'AB geometry part 3 was not requested');
+            assert(afterAb.some(url => /\/ab-wmu-geojson\.js/.test(url)), 'AB geometry assembly was not requested');
+
+            const snapshot = await page.evaluate(() => window.__HS_MAP_PERFORMANCE__.snapshot());
+            assert(!pageErrors.length, `Page errors: ${pageErrors.join(' | ')}`);
+
+            console.log('MAP_PERF_METRICS', JSON.stringify({
+              bcInteractiveMs,
+              abInteractiveMs,
+              runtime: snapshot
+            }));
+            console.log('HuntSmart map performance production QA passed: geometry stays off Home and loads only for the selected map province.');
+
+            await context.close();
+            await browser.close();
+          })().catch(error => {
+            console.error(error.stack || error);
+            process.exit(1);
+          });
+          NODE
