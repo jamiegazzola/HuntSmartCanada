@@ -1,0 +1,241 @@
+/* HuntSmart mobile map polish.
+   Mobile-only overrides. Desktop map controls are intentionally untouched. */
+
+@media (max-width: 768px) {
+  /* Keep the map viewport stable on iOS/Android and prevent page-level horizontal drift. */
+  #mapPage,
+  #bcOpenSeasonsPage,
+  #mapPage > .fullmap-page,
+  #bcOpenSeasonsPage > .os-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+  }
+
+  /* One compact, thumb-friendly top mode strip. It scrolls only when the device is too narrow. */
+  #mapPage > .hs-im-shellbar,
+  #bcOpenSeasonsPage > .hs-im-shellbar {
+    box-sizing: border-box !important;
+    top: 8px !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    max-width: none !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-x: contain !important;
+    scroll-snap-type: x proximity !important;
+    touch-action: pan-x !important;
+  }
+
+  #mapPage > .hs-im-shellbar::-webkit-scrollbar,
+  #bcOpenSeasonsPage > .hs-im-shellbar::-webkit-scrollbar,
+  #mapPage > .hs-im-shellbar .hs-im-controls::-webkit-scrollbar,
+  #bcOpenSeasonsPage > .hs-im-shellbar .hs-im-controls::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  #mapPage > .hs-im-shellbar .hs-im-controls,
+  #bcOpenSeasonsPage > .hs-im-shellbar .hs-im-controls {
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex: 0 0 auto !important;
+    width: max-content !important;
+    min-width: max-content !important;
+    height: 44px !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  #mapPage > .hs-im-shellbar .hs-im-seg,
+  #bcOpenSeasonsPage > .hs-im-shellbar .hs-im-seg {
+    box-sizing: border-box !important;
+    flex: 0 0 auto !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    padding: 3px !important;
+    gap: 2px !important;
+    border-radius: 12px !important;
+    scroll-snap-align: start !important;
+  }
+
+  #mapPage > .hs-im-shellbar .hs-im-seg button,
+  #bcOpenSeasonsPage > .hs-im-shellbar .hs-im-seg button {
+    box-sizing: border-box !important;
+    min-width: 44px !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 0 10px !important;
+    border-radius: 9px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  #mapPage > .hs-im-shellbar .hs-im-guide-btn,
+  #bcOpenSeasonsPage > .hs-im-shellbar .hs-im-guide-btn {
+    box-sizing: border-box !important;
+    flex: 0 0 auto !important;
+    min-width: 52px !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    padding: 0 11px !important;
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    scroll-snap-align: start !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  /* Floating navigation sits above the fixed HuntSmart tab bar, not underneath it. */
+  body #mapPage #hsBrCluster,
+  body #bcOpenSeasonsPage #gosBrCluster,
+  body #mapPage #fullMapControlStack,
+  body #bcOpenSeasonsPage #osMapControlStack {
+    position: fixed !important;
+    right: 10px !important;
+    left: auto !important;
+    top: auto !important;
+    bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+    z-index: 9440 !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  body #mapPage #hsBrCluster .hs-br-btn,
+  body #bcOpenSeasonsPage #gosBrCluster .hs-br-btn,
+  body #mapPage #fullMapControlStack button,
+  body #bcOpenSeasonsPage #osMapControlStack button {
+    box-sizing: border-box !important;
+    width: 46px !important;
+    min-width: 46px !important;
+    max-width: 46px !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    max-height: 46px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 13px !important;
+    border: 1px solid rgba(255,255,255,.13) !important;
+    background: rgba(11,15,13,.90) !important;
+    color: #f5f7f5 !important;
+    box-shadow: 0 7px 20px rgba(0,0,0,.28) !important;
+    backdrop-filter: blur(14px) saturate(115%) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(115%) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  #mapPage #hsBrCluster .hs-br-btn-label,
+  #bcOpenSeasonsPage #gosBrCluster .hs-br-btn-label {
+    display: none !important;
+  }
+
+  /* Preserve the intended order: 3D first, then zoom controls. */
+  #mapPage #hs3DBtn,
+  #bcOpenSeasonsPage #gos3DBtn,
+  #mapPage #fullMapMap3DToggleBtn,
+  #bcOpenSeasonsPage #os3DBtn {
+    order: -1 !important;
+  }
+
+  /* Prevent transient results/drawers from pushing controls under the bottom nav. */
+  #mapPage #fullMapBody.hs-drawer-open #hsBrCluster,
+  #mapPage #fullMapBody.hs-drawer-open #fullMapControlStack {
+    bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Clear keyboard focus without adding permanent visual noise on touch devices. */
+  #mapPage button:focus-visible,
+  #bcOpenSeasonsPage button:focus-visible,
+  #mapPage select:focus-visible,
+  #bcOpenSeasonsPage select:focus-visible,
+  #mapPage input:focus-visible,
+  #bcOpenSeasonsPage input:focus-visible {
+    outline: 2px solid rgba(101,213,118,.78) !important;
+    outline-offset: 2px !important;
+  }
+
+  /* iOS input zoom prevention without inflating button typography. */
+  #mapPage input,
+  #mapPage select,
+  #bcOpenSeasonsPage input,
+  #bcOpenSeasonsPage select {
+    font-size: 16px !important;
+  }
+
+  /* Desktop-only settings remain absent on mobile; mobile uses the existing Layers workflow. */
+  #mapPage #hsWorldSettingsBtn,
+  #mapPage #hsWorldSettingsPanel {
+    display: none !important;
+  }
+}
+
+@media (max-width: 390px) {
+  /* Small phones: preserve 44px targets while trimming horizontal padding. */
+  #mapPage > .hs-im-shellbar,
+  #bcOpenSeasonsPage > .hs-im-shellbar {
+    left: 6px !important;
+    right: 6px !important;
+    gap: 5px !important;
+  }
+
+  #mapPage > .hs-im-shellbar .hs-im-controls,
+  #bcOpenSeasonsPage > .hs-im-shellbar .hs-im-controls {
+    gap: 5px !important;
+  }
+
+  #mapPage > .hs-im-shellbar .hs-im-seg button,
+  #bcOpenSeasonsPage > .hs-im-shellbar .hs-im-seg button {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    font-size: 10.5px !important;
+  }
+
+  body #mapPage #hsBrCluster,
+  body #bcOpenSeasonsPage #gosBrCluster,
+  body #mapPage #fullMapControlStack,
+  body #bcOpenSeasonsPage #osMapControlStack {
+    right: 8px !important;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) and (max-width: 768px) {
+  /* Avoid sticky hover states on phones/tablets. */
+  #mapPage button:hover,
+  #bcOpenSeasonsPage button:hover {
+    transform: none !important;
+  }
+}
