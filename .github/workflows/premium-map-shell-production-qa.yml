@@ -59,11 +59,8 @@ jobs:
             throw lastError || new Error('Could not load the production premium map shell.');
           }
 
-          async function enterLEH(page, mobile) {
-            await page.evaluate((useMobileTab) => {
-              if (useMobileTab) document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click();
-              else document.getElementById('navMap')?.click();
-            }, mobile);
+          async function enterLEH(page) {
+            await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.open('leh', { province:'BC' }));
             await page.waitForFunction(() => {
               const root = document.getElementById('mapPage');
               return !!(root && root.getClientRects().length && getComputedStyle(root).display !== 'none');
@@ -107,7 +104,7 @@ jobs:
               page.on('pageerror', error => errors.push(error.message));
 
               await load(page);
-              await enterLEH(page, viewport.mobile);
+              await enterLEH(page);
 
               const before = await page.locator('#fullMapLeaflet').evaluate(el => {
                 const r = el.getBoundingClientRect();
@@ -156,7 +153,7 @@ jobs:
               console.log(`PREMIUM MAP ${viewport.width}`, JSON.stringify({ before, state }));
               await page.screenshot({ path:`premium-map-shell-${viewport.width}.png`, fullPage:false });
 
-              assert(state.mapDisplay !== 'none' && state.homeDisplay === 'none' && state.surface === 'leh', 'Production navigation did not settle on the LEH map.');
+              assert(state.mapDisplay !== 'none' && state.homeDisplay === 'none' && state.surface === 'leh', 'LEH map controller did not settle on the map surface.');
               assert(state.premium, 'Premium map shell class is missing.');
               assert(state.open, 'Premium results-open state was not set.');
               assert(state.cards > 0, 'Selected WMU produced no hunt cards.');
