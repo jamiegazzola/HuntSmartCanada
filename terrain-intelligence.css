@@ -260,8 +260,8 @@
 }
 
 /* Bottom-right navigation: three separate floating buttons, no connecting black rail. */
-#mapPage #fullMapControlStack,
-#bcOpenSeasonsPage #osMapControlStack {
+body #mapPage #fullMapControlStack,
+body #bcOpenSeasonsPage #osMapControlStack {
   position: fixed !important;
   right: 16px !important;
   left: auto !important;
@@ -271,6 +271,9 @@
   margin: 0 !important;
   transform: none !important;
   display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
   flex-direction: column !important;
   gap: 8px !important;
   padding: 0 !important;
@@ -281,8 +284,14 @@
   box-shadow: none !important;
 }
 
-#mapPage #fullMapControlStack button,
-#bcOpenSeasonsPage #osMapControlStack button {
+body #mapPage #fullMapControlStack button,
+body #bcOpenSeasonsPage #osMapControlStack button {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  align-items: center !important;
+  justify-content: center !important;
   min-width: 44px !important;
   width: 44px !important;
   min-height: 44px !important;
@@ -434,13 +443,16 @@
     font-size: 10px !important;
   }
 
-  #mapPage #hsBrCluster,
-  #bcOpenSeasonsPage #gosBrCluster {
+  body #mapPage #hsBrCluster,
+  body #bcOpenSeasonsPage #gosBrCluster {
     right: 10px !important;
     left: auto !important;
     top: auto !important;
     bottom: max(12px, env(safe-area-inset-bottom)) !important;
     display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
     flex-direction: column !important;
     gap: 8px !important;
     padding: 0 !important;
@@ -450,8 +462,14 @@
     overflow: visible !important;
   }
 
-  #mapPage #hsBrCluster .hs-br-btn,
-  #bcOpenSeasonsPage #gosBrCluster .hs-br-btn {
+  body #mapPage #hsBrCluster .hs-br-btn,
+  body #bcOpenSeasonsPage #gosBrCluster .hs-br-btn {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    align-items: center !important;
+    justify-content: center !important;
     margin: 0 !important;
     border-radius: 11px !important;
     border: 1px solid rgba(255,255,255,.14) !important;
