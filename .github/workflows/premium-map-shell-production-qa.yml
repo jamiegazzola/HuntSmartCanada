@@ -57,8 +57,11 @@ jobs:
             throw lastError || new Error('Could not load the production premium map shell.');
           }
 
-          async function enterLEH(page) {
-            await page.evaluate(() => document.getElementById('navMap')?.click());
+          async function enterLEH(page, mobile) {
+            await page.evaluate((useMobileTab) => {
+              if (useMobileTab) document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click();
+              else document.getElementById('navMap')?.click();
+            }, mobile);
             await page.waitForFunction(() => {
               const root = document.getElementById('mapPage');
               return !!(root && root.getClientRects().length && getComputedStyle(root).display !== 'none');
@@ -102,7 +105,7 @@ jobs:
               page.on('pageerror', error => errors.push(error.message));
 
               await load(page);
-              await enterLEH(page);
+              await enterLEH(page, viewport.mobile);
 
               const before = await page.locator('#fullMapLeaflet').evaluate(el => {
                 const r = el.getBoundingClientRect();
