@@ -1,7 +1,5 @@
-// HuntSmart Canada — RevenueCat entitlement sync (preview branch)
-// This replaces the old hard-coded Stripe function secrets on the preview branch.
-// It does not create charges or checkout sessions. RevenueCat remains the authority
-// for subscription access and Firestore only mirrors the current entitlement state.
+// HuntSmart Canada — Firebase Functions
+// RevenueCat entitlement sync + privacy-safe aggregate growth analytics.
 
 const { onRequest } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
@@ -50,6 +48,133 @@ function entitlementIsCurrentlyActive(entitlement) {
   if (Number.isFinite(graceExpiresAt) && graceExpiresAt > now) return true;
   return false;
 }
+
+function asDate(value) {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isProUser(user) {
+  const tier = String(user.subscriptionTier || "").toLowerCase();
+  const status = String(user.subscriptionStatus || "").toLowerCase();
+  return tier === "pro_monthly" || tier === "pro_annual" ||
+    (status === "active" && tier.startsWith("pro"));
+}
+
+function normalizedSource(user) {
+  const raw = String(user.firstTouchSource || user.referralSource || "direct").trim().toLowerCase();
+  if (!raw || raw === "direct" || raw === "(direct)") return "Direct";
+  if (raw.includes("google") && !raw.includes("ads")) return "Google Organic";
+  if (raw.includes("google_ads") || raw.includes("google ads")) return "Google Ads";
+  if (raw.includes("facebook") || raw === "fb" || raw.includes("fb.com")) return "Facebook";
+  if (raw.includes("instagram")) return "Instagram";
+  if (raw.includes("youtube") || raw.includes("youtu.be")) return "YouTube";
+  if (raw.includes("reddit")) return "Reddit";
+  if (raw.includes("bing") && !raw.includes("ads")) return "Bing Organic";
+  if (raw.includes("microsoft_ads")) return "Microsoft Ads";
+  if (raw.includes("huntsmartcanada")) return "Legacy internal referral";
+  return raw.replace(/^www\./, "").replace(/(^|[-_.])\w/g, (match) => match.toUpperCase());
+}
+
+function normalizedBlogPath(user) {
+  const path = String(user.firstTouchPath || "").trim();
+  if (!path.startsWith("/blog")) return "";
+  return path.replace(/\/+$/, "/");
+}
+
+function aggregateUsers(users, keyFn) {
+  const rows = new Map();
+
+  for (const user of users) {
+    const key = keyFn(user);
+    if (!key) continue;
+
+    const current = rows.get(key) || { key, signups: 0, pro: 0, latest: null };
+    current.signups += 1;
+    if (isProUser(user)) current.pro += 1;
+
+    const created = asDate(user.createdAt);
+    if (created && (!current.latest || created > current.latest)) current.latest = created;
+    rows.set(key, current);
+  }
+
+  return [...rows.values()]
+    .sort((a, b) => b.signups - a.signups || b.pro - a.pro || a.key.localeCompare(b.key))
+    .map((row) => ({
+      key: row.key,
+      signups: row.signups,
+      pro: row.pro,
+      proRate: row.signups ? Number((row.pro / row.signups).toFixed(4)) : 0,
+      latestSignupAt: row.latest ? row.latest.toISOString() : null
+    }));
+}
+
+function summarizeWindow(allUsers, days) {
+  const cutoff = days ? Date.now() - days * 86400000 : null;
+  const users = cutoff
+    ? allUsers.filter((user) => {
+        const created = asDate(user.createdAt);
+        return created && created.getTime() >= cutoff;
+      })
+    : allUsers;
+
+  const measured = users.filter((user) => user.firstTouchSource || user.referralSource);
+  const blogUsers = users.filter((user) => normalizedBlogPath(user));
+  const proUsers = users.filter(isProUser);
+  const blogProUsers = blogUsers.filter(isProUser);
+
+  return {
+    signups: users.length,
+    proAccounts: proUsers.length,
+    blogAttributedSignups: blogUsers.length,
+    blogAttributedPro: blogProUsers.length,
+    attributionCoverage: users.length ? Number((measured.length / users.length).toFixed(4)) : 0,
+    sources: aggregateUsers(users, normalizedSource),
+    blogs: aggregateUsers(blogUsers, normalizedBlogPath)
+  };
+}
+
+exports.growthSummary = onRequest(
+  {
+    region: "us-central1",
+    cors: true,
+    timeoutSeconds: 30,
+    memory: "256MiB"
+  },
+  async (req, res) => {
+    if (req.method !== "GET") {
+      res.status(405).json({ error: "Method not allowed" });
+      return;
+    }
+
+    try {
+      const snap = await db.collection("users").get();
+      const users = snap.docs.map((doc) => doc.data());
+
+      res.set("Cache-Control", "public, max-age=300, s-maxage=300");
+      res.status(200).json({
+        schemaVersion: 1,
+        generatedAt: new Date().toISOString(),
+        privacy: {
+          aggregateOnly: true,
+          userIdentifiersIncluded: false,
+          emailsIncluded: false,
+          namesIncluded: false
+        },
+        windows: {
+          last7Days: summarizeWindow(users, 7),
+          last30Days: summarizeWindow(users, 30),
+          allTime: summarizeWindow(users, 0)
+        }
+      });
+    } catch (error) {
+      console.error("[growthSummary] failed", error);
+      res.status(500).json({ error: "Growth summary unavailable" });
+    }
+  }
+);
 
 exports.revenuecatWebhook = onRequest(
   {
