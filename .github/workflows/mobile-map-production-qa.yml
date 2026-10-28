@@ -1,0 +1,178 @@
+name: HuntSmart Mobile Map Production QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - mobile-map-polish.css
+      - terrain-intelligence.css
+      - imagery-lab.js
+      - terrain-intelligence.js
+      - maps.js
+      - bc-open-seasons.js
+      - index.html
+      - ux-polish.js
+      - build-preview.sh
+      - netlify.toml
+      - .github/workflows/mobile-map-production-qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-map-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Validate live mobile map controls
+        env:
+          URL: https://huntsmartcanada.ca/
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const assert = (value, message) => { if (!value) throw new Error(message); };
+          const visible = el => !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
+
+          async function openLive(page) {
+            let lastError;
+            for (let i = 0; i < 12; i++) {
+              try {
+                await page.goto(`${process.env.URL}?mobile-map-qa=${Date.now()}-${i}`, { waitUntil:'commit', timeout:30000 });
+                await page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__, null, { timeout:30000 });
+                await page.waitForFunction(() => {
+                  const tab = document.querySelector('.hs-mobile-tab[data-tab="map"]');
+                  return !!(tab && tab.getClientRects().length);
+                }, null, { timeout:30000 });
+                return;
+              } catch (error) {
+                lastError = error;
+                await page.waitForTimeout(2500);
+              }
+            }
+            throw lastError || new Error('Could not load live mobile map.');
+          }
+
+          async function enterMap(page) {
+            await page.locator('.hs-mobile-tab[data-tab="map"]').click();
+            await page.waitForFunction(() => {
+              const map = document.getElementById('mapPage');
+              const home = document.getElementById('homePage');
+              return !!(map && map.getClientRects().length && getComputedStyle(map).display !== 'none' && (!home || getComputedStyle(home).display === 'none'));
+            }, null, { timeout:30000 });
+            await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.open('leh', { province:'BC' }));
+            await page.waitForFunction(() => typeof fullMapInstance !== 'undefined' && !!fullMapInstance, null, { timeout:30000 });
+            await page.waitForTimeout(1000);
+          }
+
+          function mobileSnapshot(surface) {
+            const root = surface === 'leh' ? document.getElementById('mapPage') : document.getElementById('bcOpenSeasonsPage');
+            const shell = root && root.querySelector(':scope > .hs-im-shellbar');
+            const cluster = document.getElementById(surface === 'leh' ? 'hsBrCluster' : 'gosBrCluster');
+            const legacy = document.getElementById(surface === 'leh' ? 'fullMapControlStack' : 'osMapControlStack');
+            const tabbar = document.querySelector('.hs-mobile-tabbar');
+            const rail = root && root.querySelector('.hs-rail');
+            const duplicateLeh = surface === 'leh' ? document.getElementById('hsRbLEH') : null;
+            const zoomGroup = cluster && cluster.querySelector('.hs-zoom-grp');
+            const navButtons = cluster ? Array.from(cluster.querySelectorAll('.hs-bb')).filter(visible) : [];
+            const shellButtons = shell ? Array.from(shell.querySelectorAll('button')).filter(visible) : [];
+            const railButtons = rail ? Array.from(rail.querySelectorAll('.hs-rb')).filter(visible) : [];
+            const rect = el => {
+              if (!el) return null;
+              const r = el.getBoundingClientRect();
+              const cs = getComputedStyle(el);
+              return { left:r.left, right:r.right, top:r.top, bottom:r.bottom, width:r.width, height:r.height, display:cs.display, position:cs.position };
+            };
+            const style = el => {
+              if (!el) return null;
+              const cs = getComputedStyle(el);
+              return { display:cs.display, background:cs.backgroundColor, borderTop:cs.borderTopWidth, borderRight:cs.borderRightWidth, borderBottom:cs.borderBottomWidth, borderLeft:cs.borderLeftWidth, boxShadow:cs.boxShadow };
+            };
+            const mode = key => shell && shell.querySelector(`[data-hs-im-mode="${key}"]`);
+            return {
+              shell:rect(shell),
+              shellButtons:shellButtons.map(rect),
+              lehAfter: mode('leh') ? getComputedStyle(mode('leh'),'::after').content : '',
+              gosAfter: mode('gos') ? getComputedStyle(mode('gos'),'::after').content : '',
+              rail:rect(rail),
+              railButtons:railButtons.map(rect),
+              duplicateLehVisible:visible(duplicateLeh),
+              legacyVisible:visible(legacy),
+              cluster:rect(cluster),
+              clusterStyle:style(cluster),
+              zoomGroup:rect(zoomGroup),
+              zoomGroupStyle:style(zoomGroup),
+              navButtons:navButtons.map(rect),
+              tabbar:rect(tabbar)
+            };
+          }
+
+          (async () => {
+            const browser = await chromium.launch({ headless:true });
+            const page = await browser.newPage({ viewport:{width:390,height:844}, isMobile:true, hasTouch:true });
+            const errors=[];
+            page.on('pageerror', error => errors.push(error.message));
+
+            await openLive(page);
+            await enterMap(page);
+
+            const leh = await page.evaluate(mobileSnapshot, 'leh');
+            console.log('MOBILE LEH', JSON.stringify(leh));
+            await page.screenshot({ path:'mobile-map-leh-390.png', fullPage:false });
+
+            assert(leh.shell && leh.shell.left >= 4 && leh.shell.right <= 386, 'LEH top selector overflows phone: '+JSON.stringify(leh.shell));
+            assert(leh.shellButtons.length >= 5 && leh.shellButtons.every(button => button.height >= 44), 'LEH top touch targets are undersized: '+JSON.stringify(leh.shellButtons));
+            assert(/LEH/.test(leh.lehAfter), 'Mobile Limited Entry label was not shortened to LEH: '+leh.lehAfter);
+            assert(/GOS/.test(leh.gosAfter), 'Mobile General Open Seasons label was not shortened to GOS: '+leh.gosAfter);
+            assert(!leh.duplicateLehVisible, 'Duplicate LEH rail button is still visible.');
+            assert(!leh.legacyVisible, 'Legacy connected desktop control stack is still visible on mobile.');
+            assert(leh.railButtons.length === 3, 'Mobile utility rail should contain only Layers, Search and Cards: '+JSON.stringify(leh.railButtons));
+            assert(leh.railButtons.every(button => button.width >= 44 && button.height >= 44), 'Utility rail touch target is too small: '+JSON.stringify(leh.railButtons));
+            assert(leh.navButtons.length === 3, 'LEH should show exactly three + / - / 3D mobile buttons: '+JSON.stringify(leh.navButtons));
+            assert(leh.navButtons.every(button => button.width >= 44 && button.height >= 44), 'LEH navigation touch target is too small: '+JSON.stringify(leh.navButtons));
+            assert(leh.zoomGroupStyle && leh.zoomGroupStyle.background === 'rgba(0, 0, 0, 0)' && leh.zoomGroupStyle.boxShadow === 'none', 'LEH + / - still have a connecting container: '+JSON.stringify(leh.zoomGroupStyle));
+            assert(leh.navButtons[1].top - leh.navButtons[0].bottom >= 4, 'LEH + / - are still visually joined: '+JSON.stringify(leh.navButtons));
+            assert(!leh.tabbar || leh.cluster.bottom <= leh.tabbar.top - 6, 'LEH navigation overlaps bottom tab bar: '+JSON.stringify({cluster:leh.cluster,tabbar:leh.tabbar}));
+
+            await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
+            await page.waitForFunction(() => {
+              const page = document.getElementById('bcOpenSeasonsPage');
+              return !!(page && page.getClientRects().length && getComputedStyle(page).display !== 'none');
+            }, null, { timeout:30000 });
+            await page.waitForFunction(() => typeof osMapInstance !== 'undefined' && !!osMapInstance, null, { timeout:30000 });
+            await page.waitForTimeout(700);
+
+            const gos = await page.evaluate(mobileSnapshot, 'gos');
+            console.log('MOBILE GOS', JSON.stringify(gos));
+            await page.screenshot({ path:'mobile-map-gos-390.png', fullPage:false });
+
+            assert(gos.shell && gos.shell.left >= 4 && gos.shell.right <= 386, 'GOS top selector overflows phone: '+JSON.stringify(gos.shell));
+            assert(gos.shellButtons.length >= 5 && gos.shellButtons.every(button => button.height >= 44), 'GOS top touch targets are undersized: '+JSON.stringify(gos.shellButtons));
+            assert(/LEH/.test(gos.lehAfter) && /GOS/.test(gos.gosAfter), 'GOS mobile mode abbreviations are missing.');
+            assert(!gos.legacyVisible, 'GOS legacy connected control stack is still visible on mobile.');
+            assert(gos.navButtons.length === 3, 'GOS should show exactly three + / - / 3D mobile buttons: '+JSON.stringify(gos.navButtons));
+            assert(gos.navButtons.every(button => button.width >= 44 && button.height >= 44), 'GOS navigation touch target is too small: '+JSON.stringify(gos.navButtons));
+            assert(gos.zoomGroupStyle && gos.zoomGroupStyle.background === 'rgba(0, 0, 0, 0)' && gos.zoomGroupStyle.boxShadow === 'none', 'GOS + / - still have a connecting container: '+JSON.stringify(gos.zoomGroupStyle));
+            assert(gos.navButtons[1].top - gos.navButtons[0].bottom >= 4, 'GOS + / - are still visually joined: '+JSON.stringify(gos.navButtons));
+            assert(!gos.tabbar || gos.cluster.bottom <= gos.tabbar.top - 6, 'GOS navigation overlaps bottom tab bar: '+JSON.stringify({cluster:gos.cluster,tabbar:gos.tabbar}));
+            assert(!errors.length, 'Page errors: '+errors.join(' | '));
+
+            await browser.close();
+            console.log('HuntSmart mobile map production QA passed.');
+          })().catch(error => { console.error(error.stack || error); process.exit(1); });
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-map-production-qa-${{ github.run_number }}
+          path: mobile-map-*.png
+          if-no-files-found: warn
+          retention-days: 14
