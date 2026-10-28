@@ -68,6 +68,7 @@ jobs:
           async function openMap(page, mobile=false) {
             await page.goto(`${process.env.URL}?map-system-qa=${Date.now()}`, {waitUntil:'domcontentloaded', timeout:30000});
             await page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__, null, {timeout:30000});
+            await page.waitForTimeout(mobile ? 450 : 100);
             await page.evaluate((isMobile) => {
               if (isMobile) document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click();
               else document.getElementById('navMap')?.click();
@@ -239,8 +240,24 @@ jobs:
             page.on('pageerror',e=>errors.push(e.message));
             await openMap(page,true);
 
+            await page.waitForFunction(() => {
+              const el=document.querySelector('#mapPage > .hs-im-shellbar');
+              return !!(el && el.getClientRects().length && getComputedStyle(el).display!=='none');
+            }, null, {timeout:6000}).catch(async () => {
+              const debug=await page.evaluate(() => ({
+                mapVisible:!!document.getElementById('mapPage')?.getClientRects().length,
+                width:innerWidth,
+                shells:Array.from(document.querySelectorAll('.hs-im-shellbar')).map(el=>({
+                  parent:el.parentElement?.id||el.parentElement?.className||'',
+                  display:getComputedStyle(el).display,
+                  rect:el.getBoundingClientRect().toJSON()
+                })),
+                mobileTabVisible:!!document.getElementById('hsMobileTabbar')?.getClientRects().length
+              }));
+              throw new Error('LEH mobile shell missing: '+JSON.stringify(debug));
+            });
             const lehShell=page.locator('#mapPage > .hs-im-shellbar');
-            assert(await lehShell.isVisible(),'LEH mobile shell missing.');
+            assert(await lehShell.isVisible(),'LEH mobile shell missing after readiness check.');
             assert(!(await page.locator('#fullMapControlStack').isVisible()),'LEH legacy mobile control stack is visible.');
 
             await switchGOS(page);
