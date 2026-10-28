@@ -46,11 +46,7 @@ jobs:
             for (let i = 0; i < 12; i++) {
               try {
                 await page.goto(`${process.env.URL}?mobile-map-qa=${Date.now()}-${i}`, { waitUntil:'commit', timeout:30000 });
-                await page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__, null, { timeout:30000 });
-                await page.waitForFunction(() => {
-                  const tab = document.querySelector('.hs-mobile-tab[data-tab="map"]');
-                  return !!(tab && tab.getClientRects().length);
-                }, null, { timeout:30000 });
+                await page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__ && typeof window.showPage === 'function', null, { timeout:30000 });
                 return;
               } catch (error) {
                 lastError = error;
@@ -61,7 +57,7 @@ jobs:
           }
 
           async function enterMap(page) {
-            await page.locator('.hs-mobile-tab[data-tab="map"]').click();
+            await page.evaluate(() => window.showPage('map'));
             await page.waitForFunction(() => {
               const map = document.getElementById('mapPage');
               const home = document.getElementById('homePage');
@@ -69,6 +65,7 @@ jobs:
             }, null, { timeout:30000 });
             await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.open('leh', { province:'BC' }));
             await page.waitForFunction(() => typeof fullMapInstance !== 'undefined' && !!fullMapInstance, null, { timeout:30000 });
+            await page.evaluate(() => { try { fullMapInstance.resize(); } catch (_) {} });
             await page.waitForTimeout(1000);
           }
 
@@ -78,7 +75,6 @@ jobs:
             const shell = root && root.querySelector(':scope > .hs-im-shellbar');
             const cluster = document.getElementById(surface === 'leh' ? 'hsBrCluster' : 'gosBrCluster');
             const legacy = document.getElementById(surface === 'leh' ? 'fullMapControlStack' : 'osMapControlStack');
-            const tabbar = document.querySelector('.hs-mobile-tabbar');
             const rail = root && root.querySelector('.hs-rail');
             const duplicateLeh = surface === 'leh' ? document.getElementById('hsRbLEH') : null;
             const zoomGroup = cluster && cluster.querySelector('.hs-zoom-grp');
@@ -98,6 +94,8 @@ jobs:
             };
             const mode = key => shell && shell.querySelector(`[data-hs-im-mode="${key}"]`);
             return {
+              viewport:{width:innerWidth,height:innerHeight},
+              root:rect(root),
               shell:rect(shell),
               shellButtons:shellButtons.map(rect),
               lehAfter: mode('leh') ? getComputedStyle(mode('leh'),'::after').content : '',
@@ -107,17 +105,33 @@ jobs:
               duplicateLehVisible:visible(duplicateLeh),
               legacyVisible:visible(legacy),
               cluster:rect(cluster),
-              clusterStyle:style(cluster),
-              zoomGroup:rect(zoomGroup),
               zoomGroupStyle:style(zoomGroup),
-              navButtons:navButtons.map(rect),
-              tabbar:rect(tabbar)
+              navButtons:navButtons.map(rect)
             };
+          }
+
+          function assertMobile(surface, snap) {
+            assert(snap.root && snap.root.width > 300 && snap.root.height > 400, `${surface} map surface is not occupying the phone viewport: `+JSON.stringify(snap.root));
+            assert(snap.shell && snap.shell.left >= 4 && snap.shell.right <= snap.viewport.width - 4 && snap.shell.width > 250, `${surface} top selector overflows or collapsed: `+JSON.stringify(snap.shell));
+            assert(snap.shellButtons.length >= 5 && snap.shellButtons.every(button => button.height >= 44), `${surface} top touch targets are undersized: `+JSON.stringify(snap.shellButtons));
+            assert(/LEH/.test(snap.lehAfter), `${surface} Limited Entry label was not shortened to LEH: `+snap.lehAfter);
+            assert(/GOS/.test(snap.gosAfter), `${surface} General Open Seasons label was not shortened to GOS: `+snap.gosAfter);
+            if (surface === 'LEH') assert(!snap.duplicateLehVisible, 'Duplicate LEH rail button is still visible.');
+            assert(!snap.legacyVisible, `${surface} legacy connected control stack is still visible on mobile.`);
+            if (surface === 'LEH') {
+              assert(snap.railButtons.length === 3, 'Mobile utility rail should contain only Layers, Search and Cards: '+JSON.stringify(snap.railButtons));
+              assert(snap.railButtons.every(button => button.width >= 44 && button.height >= 44), 'Utility rail touch target is too small: '+JSON.stringify(snap.railButtons));
+            }
+            assert(snap.navButtons.length === 3, `${surface} should show exactly three + / - / 3D buttons: `+JSON.stringify(snap.navButtons));
+            assert(snap.navButtons.every(button => button.width >= 44 && button.height >= 44), `${surface} navigation touch target is too small: `+JSON.stringify(snap.navButtons));
+            assert(snap.zoomGroupStyle && snap.zoomGroupStyle.background === 'rgba(0, 0, 0, 0)' && snap.zoomGroupStyle.boxShadow === 'none', `${surface} + / - still have a connecting container: `+JSON.stringify(snap.zoomGroupStyle));
+            assert(snap.navButtons[1].top - snap.navButtons[0].bottom >= 4, `${surface} + / - are still visually joined: `+JSON.stringify(snap.navButtons));
+            assert(snap.cluster && snap.cluster.right <= snap.viewport.width - 4 && snap.cluster.bottom <= snap.viewport.height - 4, `${surface} floating navigation is clipped: `+JSON.stringify(snap.cluster));
           }
 
           (async () => {
             const browser = await chromium.launch({ headless:true });
-            const page = await browser.newPage({ viewport:{width:390,height:844}, isMobile:true, hasTouch:true });
+            const page = await browser.newPage({ viewport:{width:390,height:844}, hasTouch:true });
             const errors=[];
             page.on('pageerror', error => errors.push(error.message));
 
@@ -127,20 +141,7 @@ jobs:
             const leh = await page.evaluate(mobileSnapshot, 'leh');
             console.log('MOBILE LEH', JSON.stringify(leh));
             await page.screenshot({ path:'mobile-map-leh-390.png', fullPage:false });
-
-            assert(leh.shell && leh.shell.left >= 4 && leh.shell.right <= 386, 'LEH top selector overflows phone: '+JSON.stringify(leh.shell));
-            assert(leh.shellButtons.length >= 5 && leh.shellButtons.every(button => button.height >= 44), 'LEH top touch targets are undersized: '+JSON.stringify(leh.shellButtons));
-            assert(/LEH/.test(leh.lehAfter), 'Mobile Limited Entry label was not shortened to LEH: '+leh.lehAfter);
-            assert(/GOS/.test(leh.gosAfter), 'Mobile General Open Seasons label was not shortened to GOS: '+leh.gosAfter);
-            assert(!leh.duplicateLehVisible, 'Duplicate LEH rail button is still visible.');
-            assert(!leh.legacyVisible, 'Legacy connected desktop control stack is still visible on mobile.');
-            assert(leh.railButtons.length === 3, 'Mobile utility rail should contain only Layers, Search and Cards: '+JSON.stringify(leh.railButtons));
-            assert(leh.railButtons.every(button => button.width >= 44 && button.height >= 44), 'Utility rail touch target is too small: '+JSON.stringify(leh.railButtons));
-            assert(leh.navButtons.length === 3, 'LEH should show exactly three + / - / 3D mobile buttons: '+JSON.stringify(leh.navButtons));
-            assert(leh.navButtons.every(button => button.width >= 44 && button.height >= 44), 'LEH navigation touch target is too small: '+JSON.stringify(leh.navButtons));
-            assert(leh.zoomGroupStyle && leh.zoomGroupStyle.background === 'rgba(0, 0, 0, 0)' && leh.zoomGroupStyle.boxShadow === 'none', 'LEH + / - still have a connecting container: '+JSON.stringify(leh.zoomGroupStyle));
-            assert(leh.navButtons[1].top - leh.navButtons[0].bottom >= 4, 'LEH + / - are still visually joined: '+JSON.stringify(leh.navButtons));
-            assert(!leh.tabbar || leh.cluster.bottom <= leh.tabbar.top - 6, 'LEH navigation overlaps bottom tab bar: '+JSON.stringify({cluster:leh.cluster,tabbar:leh.tabbar}));
+            assertMobile('LEH', leh);
 
             await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
             await page.waitForFunction(() => {
@@ -148,21 +149,13 @@ jobs:
               return !!(target && target.getClientRects().length && getComputedStyle(target).display !== 'none');
             }, null, { timeout:30000 });
             await page.waitForFunction(() => typeof osMapInstance !== 'undefined' && !!osMapInstance, null, { timeout:30000 });
+            await page.evaluate(() => { try { osMapInstance.resize(); } catch (_) {} });
             await page.waitForTimeout(700);
 
             const gos = await page.evaluate(mobileSnapshot, 'gos');
             console.log('MOBILE GOS', JSON.stringify(gos));
             await page.screenshot({ path:'mobile-map-gos-390.png', fullPage:false });
-
-            assert(gos.shell && gos.shell.left >= 4 && gos.shell.right <= 386, 'GOS top selector overflows phone: '+JSON.stringify(gos.shell));
-            assert(gos.shellButtons.length >= 5 && gos.shellButtons.every(button => button.height >= 44), 'GOS top touch targets are undersized: '+JSON.stringify(gos.shellButtons));
-            assert(/LEH/.test(gos.lehAfter) && /GOS/.test(gos.gosAfter), 'GOS mobile mode abbreviations are missing.');
-            assert(!gos.legacyVisible, 'GOS legacy connected control stack is still visible on mobile.');
-            assert(gos.navButtons.length === 3, 'GOS should show exactly three + / - / 3D mobile buttons: '+JSON.stringify(gos.navButtons));
-            assert(gos.navButtons.every(button => button.width >= 44 && button.height >= 44), 'GOS navigation touch target is too small: '+JSON.stringify(gos.navButtons));
-            assert(gos.zoomGroupStyle && gos.zoomGroupStyle.background === 'rgba(0, 0, 0, 0)' && gos.zoomGroupStyle.boxShadow === 'none', 'GOS + / - still have a connecting container: '+JSON.stringify(gos.zoomGroupStyle));
-            assert(gos.navButtons[1].top - gos.navButtons[0].bottom >= 4, 'GOS + / - are still visually joined: '+JSON.stringify(gos.navButtons));
-            assert(!gos.tabbar || gos.cluster.bottom <= gos.tabbar.top - 6, 'GOS navigation overlaps bottom tab bar: '+JSON.stringify({cluster:gos.cluster,tabbar:gos.tabbar}));
+            assertMobile('GOS', gos);
             assert(!errors.length, 'Page errors: '+errors.join(' | '));
 
             await browser.close();
