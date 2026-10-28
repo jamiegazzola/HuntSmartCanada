@@ -92,6 +92,29 @@ jobs:
                   return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height,display:cs.display,position:cs.position};
                 };
                 const controls = [document.getElementById('fullMapControlStack'),document.getElementById('hsBrCluster')].filter(visible).map(rect);
+                const controlDebug = ['fullMapControlStack','hsBrCluster'].map(id => {
+                  const el = document.getElementById(id);
+                  if (!el) return {id,exists:false};
+                  const cs = getComputedStyle(el);
+                  const r = el.getBoundingClientRect();
+                  const parent = el.parentElement;
+                  const pcs = parent ? getComputedStyle(parent) : null;
+                  return {
+                    id,
+                    exists:true,
+                    connected:el.isConnected,
+                    rects:el.getClientRects().length,
+                    rect:{top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height},
+                    display:cs.display,
+                    visibility:cs.visibility,
+                    opacity:cs.opacity,
+                    position:cs.position,
+                    classes:el.className,
+                    inlineStyle:el.getAttribute('style')||'',
+                    parent:parent ? {id:parent.id,className:parent.className,display:pcs.display,visibility:pcs.visibility} : null,
+                    children:el.children.length
+                  };
+                });
                 return {
                   viewport:{width:innerWidth,height:innerHeight},
                   nav:rect(document.querySelector('nav')),
@@ -100,9 +123,12 @@ jobs:
                   shell:rect(document.querySelector('#mapPage > .hs-im-shellbar')),
                   toolbar:rect(document.querySelector('#mapPage .fullmap-topbar')),
                   layers:rect(document.getElementById('hsWorldSettingsBtn')),
-                  controls
+                  controls,
+                  controlDebug
                 };
               });
+              console.log('LEH CONTROL DEBUG', JSON.stringify(lehLayout.controlDebug));
+              await page.screenshot({path:`interactive-map-leh-debug-${viewport.width}.png`,fullPage:false});
 
               assert(lehLayout.map && lehLayout.nav && lehLayout.map.top <= lehLayout.nav.bottom + 4,
                 'LEH map is still pushed down by permanent map chrome: '+JSON.stringify(lehLayout));
@@ -114,7 +140,7 @@ jobs:
                 assert(lehLayout.layers && lehLayout.layers.display!=='none',
                   'Desktop Layers control is not visible: '+JSON.stringify(lehLayout.layers));
               }
-              assert(lehLayout.controls.length>0,'No visible LEH + / - / 3D control stack.');
+              assert(lehLayout.controls.length>0,'No visible LEH + / - / 3D control stack: '+JSON.stringify(lehLayout.controlDebug));
               lehLayout.controls.forEach(control => {
                 assert(control.bottom <= viewport.height - 8 && control.top >= 0,
                   'LEH bottom-right controls are clipped: '+JSON.stringify(control));
@@ -137,20 +163,30 @@ jobs:
                   return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height,display:cs.display,position:cs.position};
                 };
                 const controls = [document.getElementById('osMapControlStack'),document.getElementById('gosBrCluster')].filter(visible).map(rect);
+                const controlDebug = ['osMapControlStack','gosBrCluster'].map(id => {
+                  const el = document.getElementById(id);
+                  if (!el) return {id,exists:false};
+                  const cs = getComputedStyle(el);
+                  const r = el.getBoundingClientRect();
+                  return {id,exists:true,rects:el.getClientRects().length,rect:{top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height},display:cs.display,visibility:cs.visibility,opacity:cs.opacity,position:cs.position,classes:el.className,inlineStyle:el.getAttribute('style')||'',children:el.children.length};
+                });
                 return {
                   viewport:{width:innerWidth,height:innerHeight},
                   nav:rect(document.querySelector('nav')),
                   map:rect(document.getElementById('osMap')),
                   shell:rect(document.querySelector('#bcOpenSeasonsPage > .hs-im-shellbar')),
                   toolbar:rect(document.querySelector('#bcOpenSeasonsPage .os-topbar')),
-                  controls
+                  controls,
+                  controlDebug
                 };
               });
+              console.log('GOS CONTROL DEBUG', JSON.stringify(gosLayout.controlDebug));
+              await page.screenshot({path:`interactive-map-gos-debug-${viewport.width}.png`,fullPage:false});
               assert(gosLayout.map && gosLayout.nav && gosLayout.map.top <= gosLayout.nav.bottom + 4,
                 'GOS map is still pushed down by permanent map chrome: '+JSON.stringify(gosLayout));
               assert(gosLayout.shell && gosLayout.shell.position==='absolute',
                 'Unified mode selector is not floating over the GOS map: '+JSON.stringify(gosLayout.shell));
-              assert(gosLayout.controls.length>0,'No visible GOS + / - / 3D control stack.');
+              assert(gosLayout.controls.length>0,'No visible GOS + / - / 3D control stack: '+JSON.stringify(gosLayout.controlDebug));
               gosLayout.controls.forEach(control => {
                 assert(control.bottom <= viewport.height - 8 && control.top >= 0,
                   'GOS bottom-right controls are clipped: '+JSON.stringify(control));
