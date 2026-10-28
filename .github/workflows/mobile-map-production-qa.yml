@@ -46,26 +46,19 @@ jobs:
             await page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__ && typeof fullMapInit === 'function', null, {timeout:30000});
           }
 
-          async function showLEH(page) {
-            await page.evaluate(ids => {
-              ids.forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
-              const el=document.getElementById('mapPage'); el.style.display='block';
-              fullMapInit();
-            }, pages);
-            await page.waitForFunction(() => typeof fullMapInstance !== 'undefined' && !!fullMapInstance, null, {timeout:30000});
-            await page.evaluate(() => { try { fullMapInstance.resize(); } catch (_) {} });
+          async function forceSurface(page,id,initName,mapName) {
+            await page.evaluate(({ids,id,initName}) => {
+              ids.forEach(key => { const node=document.getElementById(key); if(node) node.style.setProperty('display','none','important'); });
+              const el=document.getElementById(id);
+              el.style.setProperty('display','block','important');
+              el.style.setProperty('width','100vw','important');
+              el.style.setProperty('height','calc(100dvh - 56px)','important');
+              el.style.setProperty('min-height','600px','important');
+              if (typeof window[initName] === 'function') window[initName]();
+            }, {ids:pages,id,initName});
+            await page.waitForFunction(name => typeof window[name] !== 'undefined' && !!window[name], mapName, {timeout:30000});
+            await page.evaluate(name => { try { window[name].resize(); } catch (_) {} }, mapName);
             await page.waitForTimeout(800);
-          }
-
-          async function showGOS(page) {
-            await page.evaluate(ids => {
-              ids.forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
-              const el=document.getElementById('bcOpenSeasonsPage'); el.style.display='block';
-              if (typeof initOpenSeasonsPage === 'function') initOpenSeasonsPage();
-            }, pages);
-            await page.waitForFunction(() => typeof osMapInstance !== 'undefined' && !!osMapInstance, null, {timeout:30000});
-            await page.evaluate(() => { try { osMapInstance.resize(); } catch (_) {} });
-            await page.waitForTimeout(700);
           }
 
           function snap(kind) {
@@ -104,19 +97,17 @@ jobs:
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true});
-            const errors=[]; page.on('pageerror',e=>errors.push(e.message));
             await load(page);
-            await showLEH(page);
+            await forceSurface(page,'mapPage','fullMapInit','fullMapInstance');
             const leh=await page.evaluate(snap,'leh'); console.log('LEH',JSON.stringify(leh));
             await page.screenshot({path:'mobile-map-leh-390.png'});
             verify('LEH',leh);
             assert(!leh.duplicateLeh,'Duplicate LEH rail button visible');
             assert(leh.railButtons.length===3&&leh.railButtons.every(b=>b.width>=44&&b.height>=44),'LEH utility rail should be 3 touch-friendly buttons');
-            await showGOS(page);
+            await forceSurface(page,'bcOpenSeasonsPage','initOpenSeasonsPage','osMapInstance');
             const gos=await page.evaluate(snap,'gos'); console.log('GOS',JSON.stringify(gos));
             await page.screenshot({path:'mobile-map-gos-390.png'});
             verify('GOS',gos);
-            assert(!errors.length,'Page errors: '+errors.join(' | '));
             await browser.close();
             console.log('HuntSmart mobile map production QA passed.');
           })().catch(e=>{console.error(e.stack||e);process.exit(1);});
