@@ -1,0 +1,197 @@
+name: HuntSmart Premium Map Shell Production QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - map-premium-shell.js
+      - netlify.toml
+      - .github/workflows/premium-map-shell-production-qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  premium-map-shell-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Validate live selected-unit inspector
+        env:
+          URL: https://huntsmartcanada.ca/
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const assert = (value, message) => { if (!value) throw new Error(message); };
+
+          async function load(page) {
+            let lastError;
+            for (let i = 0; i < 10; i++) {
+              try {
+                await page.goto(`${process.env.URL}?premium-map-shell-qa=${Date.now()}-${i}`, {
+                  waitUntil: 'commit',
+                  timeout: 30000
+                });
+                await page.waitForFunction(() =>
+                  !!window.__HUNTSMART_INTERACTIVE_MAP__ &&
+                  !!window.__HUNTSMART_PREMIUM_MAP_SHELL__,
+                  null,
+                  { timeout: 30000 }
+                );
+                return;
+              } catch (error) {
+                lastError = error;
+                await page.waitForTimeout(2000);
+              }
+            }
+            throw lastError || new Error('Could not load the production premium map shell.');
+          }
+
+          async function enterLEH(page) {
+            await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.open('leh', { province:'BC' }));
+            await page.waitForFunction(() => {
+              const root = document.getElementById('mapPage');
+              return !!(root && root.getClientRects().length && getComputedStyle(root).display !== 'none');
+            }, null, { timeout:30000 });
+            await page.waitForFunction(() => typeof fullMapInstance !== 'undefined' && !!fullMapInstance, null, { timeout:30000 });
+            await page.waitForTimeout(800);
+          }
+
+          async function selectWMU(page, id) {
+            await page.evaluate((wmu) => {
+              fullMapSelRegions.clear();
+              fullMapSelRegions.add(wmu);
+              fullMapSelectedWMU = wmu;
+              if (typeof fullMapRefreshStyles === 'function') fullMapRefreshStyles();
+              if (typeof fullMapUpdateChips === 'function') fullMapUpdateChips();
+              if (typeof fullMapUpdateLEHSpeciesDropdown === 'function') fullMapUpdateLEHSpeciesDropdown();
+              fullMapShowResults();
+            }, id);
+            await page.waitForFunction(() => {
+              const drawer = document.getElementById('fullMapResultsDrawer');
+              return !!(drawer && getComputedStyle(drawer).display !== 'none' && drawer.querySelector('.fm-card'));
+            }, null, { timeout:15000 });
+            await page.waitForTimeout(250);
+          }
+
+          function rect(el) {
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            const s = getComputedStyle(el);
+            return { left:r.left, right:r.right, top:r.top, bottom:r.bottom, width:r.width, height:r.height, position:s.position, display:s.display, opacity:Number(s.opacity || 1) };
+          }
+
+          function intersects(a, b) {
+            if (!a || !b) return false;
+            return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+          }
+
+          (async () => {
+            const browser = await chromium.launch({ headless:true });
+
+            for (const viewport of [
+              { width:1440, height:1000, mobile:false },
+              { width:390, height:844, mobile:true }
+            ]) {
+              const page = await browser.newPage({ viewport:{ width:viewport.width, height:viewport.height }, hasTouch:viewport.mobile });
+              const errors = [];
+              page.on('pageerror', error => errors.push(error.message));
+
+              await load(page);
+              await enterLEH(page);
+
+              const before = await page.evaluate(() => rect(document.getElementById('fullMapLeaflet')));
+              await selectWMU(page, '3-17');
+
+              const state = await page.evaluate(({ mobile }) => {
+                const map = rect(document.getElementById('fullMapLeaflet'));
+                const drawerEl = document.getElementById('fullMapResultsDrawer');
+                const drawer = rect(drawerEl);
+                const shell = rect(document.querySelector('#mapPage > .hs-im-shellbar'));
+                const search = rect(document.getElementById('fullMapSearchWrap'));
+                const toolbar = rect(document.querySelector('#mapPage .fullmap-topbar'));
+                const controls = rect(document.getElementById(mobile ? 'hsBrCluster' : 'fullMapControlStack'));
+                const rail = rect(document.getElementById('hsRail'));
+                const layers = rect(document.getElementById('hsWorldSettingsBtn'));
+                return {
+                  map, drawer, shell, search, toolbar, controls, rail, layers,
+                  premium:document.getElementById('mapPage').classList.contains('hs-premium-map'),
+                  open:document.getElementById('mapPage').classList.contains('hs-premium-results-open'),
+                  expanded:document.getElementById('mapPage').classList.contains('hs-premium-results-expanded'),
+                  drawerClasses:drawerEl ? drawerEl.className : '',
+                  summary:!!document.querySelector('#fullMapResultsDrawer .hs-premium-inspector-summary'),
+                  kicker:!!document.querySelector('#fullMapResultsDrawer .hs-premium-kicker'),
+                  cards:document.querySelectorAll('#fullMapResultsDrawer .fm-card').length,
+                  title:(document.getElementById('fullMapResultsTitle')?.textContent || '').trim()
+                };
+              }, { mobile:viewport.mobile });
+
+              console.log(`PREMIUM MAP ${viewport.width}`, JSON.stringify({ before, state }));
+              await page.screenshot({ path:`premium-map-shell-${viewport.width}.png`, fullPage:false });
+
+              assert(state.premium, 'Premium map shell class is missing.');
+              assert(state.open, 'Premium results-open state was not set.');
+              assert(state.cards > 0, 'Selected WMU produced no hunt cards.');
+              assert(/3-17/.test(state.title), `Inspector is not scoped to WMU 3-17: ${state.title}`);
+              assert(Math.abs(before.width - state.map.width) <= 2, `Map canvas width changed when inspector opened: ${before.width} -> ${state.map.width}`);
+              assert(Math.abs(before.left - state.map.left) <= 2, 'Map canvas shifted horizontally when inspector opened.');
+
+              if (!viewport.mobile) {
+                assert(state.drawer.position === 'absolute', `Desktop inspector is not an overlay: ${JSON.stringify(state.drawer)}`);
+                assert(state.drawer.width >= 340 && state.drawer.width <= 420, `Desktop inspector width is outside premium range: ${state.drawer.width}`);
+                assert(state.drawer.right <= viewport.width - 8 && state.drawer.bottom <= viewport.height - 8, 'Desktop inspector is clipped by viewport.');
+                assert(state.summary && state.kicker, 'Desktop inspector premium summary/header is missing.');
+                assert(!intersects(state.drawer, state.shell), 'Desktop inspector overlaps BC/Alberta/LEH/GOS/Guide controls.');
+                assert(!intersects(state.drawer, state.search), 'Desktop inspector overlaps search.');
+                assert(!intersects(state.drawer, state.toolbar), 'Desktop inspector overlaps species/layers controls.');
+                assert(state.controls && state.controls.right <= state.drawer.left - 8, `Desktop 3D/+/- controls overlap inspector: ${JSON.stringify({ controls:state.controls, drawer:state.drawer })}`);
+                assert(state.layers && state.layers.display !== 'none', 'Desktop Layers button is not visible.');
+              } else {
+                assert(/hs-drawer-open/.test(state.drawerClasses), 'Mobile inspector did not enter drawer-open state.');
+                assert(/is-collapsed/.test(state.drawerClasses), 'Mobile inspector should open as a compact peek sheet.');
+                assert(state.drawer.width >= viewport.width - 2, `Mobile sheet is not full width: ${state.drawer.width}`);
+                assert(state.drawer.height >= 116 && state.drawer.height <= 140, `Mobile peek height is wrong: ${state.drawer.height}`);
+                assert(state.drawer.bottom >= viewport.height - 2, 'Mobile sheet is not anchored to the bottom.');
+                assert(state.controls && state.controls.bottom <= state.drawer.top - 6, `Mobile 3D/+/- controls overlap sheet: ${JSON.stringify({ controls:state.controls, drawer:state.drawer })}`);
+
+                await page.evaluate(() => document.getElementById('fullMapResultsDrawer')?.classList.remove('is-collapsed'));
+                await page.waitForTimeout(250);
+                const expanded = await page.evaluate(() => ({
+                  drawer:rect(document.getElementById('fullMapResultsDrawer')),
+                  controls:rect(document.getElementById('hsBrCluster')),
+                  rail:rect(document.getElementById('hsRail')),
+                  pageExpanded:document.getElementById('mapPage').classList.contains('hs-premium-results-expanded')
+                }));
+                assert(expanded.drawer.height >= 300, `Expanded mobile sheet is too short: ${expanded.drawer.height}`);
+                assert(expanded.pageExpanded, 'Expanded mobile state class is missing.');
+                if (expanded.controls) assert(expanded.controls.opacity <= 0.05, 'Mobile navigation controls should fade while sheet is expanded.');
+                if (expanded.rail) assert(expanded.rail.opacity <= 0.05, 'Mobile utility rail should fade while sheet is expanded.');
+              }
+
+              assert(!errors.length, `Page errors: ${errors.join(' | ')}`);
+              await page.close();
+            }
+
+            await browser.close();
+            console.log('Premium selected-unit inspector production QA passed.');
+          })().catch(error => {
+            console.error(error.stack || error);
+            process.exit(1);
+          });
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: premium-map-shell-production-qa-${{ github.run_number }}
+          path: premium-map-shell-*.png
+          if-no-files-found: warn
+          retention-days: 14
