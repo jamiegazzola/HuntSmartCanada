@@ -1,0 +1,115 @@
+/* HuntSmart mobile Interactive Map top-row hardening.
+   Keeps the shared province/mode/guide controls on one readable row at 320–430px. */
+@media (max-width: 768px) {
+  #mapPage > .hs-im-shellbar,
+  #bcOpenSeasonsPage > .hs-im-shellbar {
+    overflow: visible !important;
+  }
+
+  #mapPage > .hs-im-shellbar .hs-im-controls,
+  #bcOpenSeasonsPage > .hs-im-shellbar .hs-im-controls {
+    justify-content: center !important;
+    width: 100% !important;
+    gap: 4px !important;
+    overflow: visible !important;
+  }
+
+  #mapPage > .hs-im-shellbar .hs-im-seg,
+  #bcOpenSeasonsPage > .hs-im-shellbar .hs-im-seg {
+    flex: 0 0 auto !important;
+    min-height: 46px !important;
+    height: 46px !important;
+    padding: 1px !important;
+    gap: 1px !important;
+  }
+
+  #mapPage > .hs-im-shellbar [data-hs-im-province],
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-province] {
+    box-sizing: border-box !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 !important;
+  }
+
+  #mapPage > .hs-im-shellbar [data-hs-im-province="AB"],
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-province="AB"],
+  #mapPage > .hs-im-shellbar [data-hs-im-mode="leh"],
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-mode="leh"],
+  #mapPage > .hs-im-shellbar [data-hs-im-mode="gos"],
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-mode="gos"] {
+    position: relative !important;
+    overflow: hidden !important;
+    color: transparent !important;
+    text-indent: -9999px !important;
+    white-space: nowrap !important;
+  }
+
+  #mapPage > .hs-im-shellbar [data-hs-im-mode="leh"],
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-mode="leh"],
+  #mapPage > .hs-im-shellbar [data-hs-im-mode="gos"],
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-mode="gos"] {
+    width: 52px !important;
+    min-width: 52px !important;
+    max-width: 52px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 !important;
+  }
+
+  #mapPage > .hs-im-shellbar [data-hs-im-province="AB"]::after,
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-province="AB"]::after,
+  #mapPage > .hs-im-shellbar [data-hs-im-mode="leh"]::after,
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-mode="leh"]::after,
+  #mapPage > .hs-im-shellbar [data-hs-im-mode="gos"]::after,
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-mode="gos"]::after {
+    position: absolute !important;
+    inset: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: rgba(236,241,237,.78) !important;
+    text-indent: 0 !important;
+    font-size: 10.5px !important;
+    line-height: 1 !important;
+    font-weight: 700 !important;
+  }
+
+  #mapPage > .hs-im-shellbar [data-hs-im-province="AB"]::after,
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-province="AB"]::after {
+    content: 'AB' !important;
+  }
+
+  #mapPage > .hs-im-shellbar [data-hs-im-mode="leh"]::after,
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-mode="leh"]::after {
+    content: 'LEH' !important;
+  }
+
+  #mapPage > .hs-im-shellbar [data-hs-im-mode="gos"]::after,
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-mode="gos"]::after {
+    content: 'GOS' !important;
+  }
+
+  #mapPage > .hs-im-shellbar [data-hs-im-province="AB"].active::after,
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-province="AB"].active::after,
+  #mapPage > .hs-im-shellbar [data-hs-im-mode="leh"].active::after,
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-mode="leh"].active::after,
+  #mapPage > .hs-im-shellbar [data-hs-im-mode="gos"].active::after,
+  #bcOpenSeasonsPage > .hs-im-shellbar [data-hs-im-mode="gos"].active::after {
+    color: #e9ffec !important;
+  }
+
+  #mapPage > .hs-im-shellbar .hs-im-guide-btn,
+  #bcOpenSeasonsPage > .hs-im-shellbar .hs-im-guide-btn {
+    box-sizing: border-box !important;
+    flex: 0 0 50px !important;
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    padding: 0 !important;
+  }
+}
