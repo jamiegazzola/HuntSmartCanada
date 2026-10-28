@@ -10,10 +10,12 @@ on:
       - world-class-map.js
       - terrain-intelligence.css
       - terrain-intelligence.js
+      - mobile-map-polish.css
       - bc-open-seasons.js
       - maps.js
       - index.html
       - build-preview.sh
+      - netlify.toml
       - .github/workflows/interactive-map-production-qa.yml
 
 permissions:
@@ -103,6 +105,7 @@ jobs:
                   return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height,display:cs.display,position:cs.position};
                 };
                 const controls = [document.getElementById('fullMapControlStack'),document.getElementById('hsBrCluster')].filter(visible).map(rect);
+                const shellButtons = Array.from(document.querySelectorAll('#mapPage > .hs-im-shellbar button')).filter(visible).map(rect);
                 const controlDebug = ['fullMapControlStack','hsBrCluster'].map(id => {
                   const el = document.getElementById(id);
                   if (!el) return {id,exists:false};
@@ -129,9 +132,11 @@ jobs:
                 return {
                   viewport:{width:innerWidth,height:innerHeight},
                   nav:rect(document.querySelector('nav')),
+                  tabbar:rect(document.querySelector('.hs-mobile-tabbar')),
                   page:rect(document.getElementById('mapPage')),
                   map:rect(document.getElementById('fullMapLeaflet')),
                   shell:rect(document.querySelector('#mapPage > .hs-im-shellbar')),
+                  shellButtons,
                   toolbar:rect(document.querySelector('#mapPage .fullmap-topbar')),
                   layers:rect(document.getElementById('hsWorldSettingsBtn')),
                   controls,
@@ -150,6 +155,11 @@ jobs:
                   'LEH species toolbar is not floating: '+JSON.stringify(lehLayout.toolbar));
                 assert(lehLayout.layers && lehLayout.layers.display!=='none',
                   'Desktop Layers control is not visible: '+JSON.stringify(lehLayout.layers));
+              } else {
+                assert(lehLayout.shell.left >= 4 && lehLayout.shell.right <= viewport.width - 4,
+                  'Mobile LEH top controls overflow the viewport: '+JSON.stringify(lehLayout.shell));
+                assert(lehLayout.shellButtons.length>0 && lehLayout.shellButtons.every(button => button.height >= 44),
+                  'Mobile LEH top controls have undersized touch targets: '+JSON.stringify(lehLayout.shellButtons));
               }
               assert(lehLayout.controls.length>0,'No visible LEH + / - / 3D control stack: '+JSON.stringify(lehLayout.controlDebug));
               lehLayout.controls.forEach(control => {
@@ -157,6 +167,10 @@ jobs:
                   'LEH bottom-right controls are clipped: '+JSON.stringify(control));
                 assert(control.right <= viewport.width - 8,
                   'LEH bottom-right controls overflow horizontally: '+JSON.stringify(control));
+                if (viewport.width <= 768 && lehLayout.tabbar && lehLayout.tabbar.display !== 'none') {
+                  assert(control.bottom <= lehLayout.tabbar.top - 6,
+                    'LEH floating controls overlap the mobile tab bar: '+JSON.stringify({control,tabbar:lehLayout.tabbar}));
+                }
               });
 
               await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
@@ -177,6 +191,7 @@ jobs:
                   return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height,display:cs.display,position:cs.position};
                 };
                 const controls = [document.getElementById('osMapControlStack'),document.getElementById('gosBrCluster')].filter(visible).map(rect);
+                const shellButtons = Array.from(document.querySelectorAll('#bcOpenSeasonsPage > .hs-im-shellbar button')).filter(visible).map(rect);
                 const controlDebug = ['osMapControlStack','gosBrCluster'].map(id => {
                   const el = document.getElementById(id);
                   if (!el) return {id,exists:false};
@@ -187,8 +202,10 @@ jobs:
                 return {
                   viewport:{width:innerWidth,height:innerHeight},
                   nav:rect(document.querySelector('nav')),
+                  tabbar:rect(document.querySelector('.hs-mobile-tabbar')),
                   map:rect(document.getElementById('osMap')),
                   shell:rect(document.querySelector('#bcOpenSeasonsPage > .hs-im-shellbar')),
+                  shellButtons,
                   toolbar:rect(document.querySelector('#bcOpenSeasonsPage .os-topbar')),
                   controls,
                   controlDebug
@@ -200,12 +217,22 @@ jobs:
                 'GOS map is still pushed down by permanent map chrome: '+JSON.stringify(gosLayout));
               assert(gosLayout.shell && gosLayout.shell.position==='absolute',
                 'Unified mode selector is not floating over the GOS map: '+JSON.stringify(gosLayout.shell));
+              if (viewport.width <= 768) {
+                assert(gosLayout.shell.left >= 4 && gosLayout.shell.right <= viewport.width - 4,
+                  'Mobile GOS top controls overflow the viewport: '+JSON.stringify(gosLayout.shell));
+                assert(gosLayout.shellButtons.length>0 && gosLayout.shellButtons.every(button => button.height >= 44),
+                  'Mobile GOS top controls have undersized touch targets: '+JSON.stringify(gosLayout.shellButtons));
+              }
               assert(gosLayout.controls.length>0,'No visible GOS + / - / 3D control stack: '+JSON.stringify(gosLayout.controlDebug));
               gosLayout.controls.forEach(control => {
                 assert(control.bottom <= viewport.height - 8 && control.top >= 0,
                   'GOS bottom-right controls are clipped: '+JSON.stringify(control));
                 assert(control.right <= viewport.width - 8,
                   'GOS bottom-right controls overflow horizontally: '+JSON.stringify(control));
+                if (viewport.width <= 768 && gosLayout.tabbar && gosLayout.tabbar.display !== 'none') {
+                  assert(control.bottom <= gosLayout.tabbar.top - 6,
+                    'GOS floating controls overlap the mobile tab bar: '+JSON.stringify({control,tabbar:gosLayout.tabbar}));
+                }
               });
 
               await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.selectGOSRegion('3'));
