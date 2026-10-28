@@ -1,0 +1,228 @@
+name: HuntSmart Mobile App Production QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - mobile-responsive-system.css
+      - mobile-responsive-system.js
+      - mobile-navigation-touch-fix.css
+      - mobile-account-nav.js
+      - gos-species-sync.js
+      - mobile-map-polish.css
+      - mobile-map-topbar-fix.css
+      - mobile-map-shell-finalizer.js
+      - mobile-map-touch-targets.js
+      - style.css
+      - homepage-polish.css
+      - auth-styles.css
+      - stripe-styles.css
+      - index.html
+      - terrain-intelligence.css
+      - terrain-intelligence.js
+      - maps.js
+      - bc-open-seasons.js
+      - bc-detail.js
+      - bc-saved-compare.js
+      - ab-cards.js
+      - ab-filters.js
+      - build-preview.sh
+      - netlify.toml
+      - .github/workflows/mobile-app-production-qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-app-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Validate responsive production journeys
+        env:
+          URL: https://huntsmartcanada.ca/
+          EXPECTED_MOBILE_VERSION: 2026-10-28-mobile-v1
+          EXPECTED_GOS_VERSION: 2026-10-28-gos-species-v1
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const assert = (v,m) => { if (!v) throw new Error(m); };
+          const expected = { mobile: process.env.EXPECTED_MOBILE_VERSION, gos: process.env.EXPECTED_GOS_VERSION };
+          const sizes = [
+            { name:'320', width:320, height:568 },
+            { name:'375', width:375, height:812 },
+            { name:'390', width:390, height:844 },
+            { name:'430', width:430, height:932 },
+            { name:'768', width:768, height:1024 },
+          ];
+
+          async function gotoLive(page, suffix) {
+            await page.goto(`${process.env.URL}?mobile-app-qa=${suffix}-${Date.now()}`, { waitUntil:'domcontentloaded', timeout:30000 });
+            await page.waitForFunction(x =>
+              window.__HUNTSMART_MOBILE_SYSTEM__?.version === x.mobile &&
+              window.__HS_GOS_SPECIES_SYNC_VERSION__ === x.gos,
+              expected, { timeout:30000 });
+          }
+
+          async function waitForDeployment(browser) {
+            let last='';
+            for (let i=0;i<30;i++) {
+              const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true});
+              try {
+                await page.goto(`${process.env.URL}?deploy-gate=${Date.now()}-${i}`, {waitUntil:'domcontentloaded',timeout:30000});
+                const got=await page.evaluate(()=>({
+                  mobile:window.__HUNTSMART_MOBILE_SYSTEM__?.version||'',
+                  gos:window.__HS_GOS_SPECIES_SYNC_VERSION__||''
+                }));
+                last=JSON.stringify(got);
+                if (got.mobile===expected.mobile && got.gos===expected.gos) { await page.close(); return; }
+              } catch(e) { last=e.message; }
+              await page.close();
+              await new Promise(r=>setTimeout(r,5000));
+            }
+            throw new Error(`Production version gate failed: ${last}`);
+          }
+
+          async function visible(page, selector) {
+            return page.$eval(selector, el => !!(el && el.getClientRects().length && getComputedStyle(el).display!=='none' && getComputedStyle(el).visibility!=='hidden'));
+          }
+
+          async function inside(page, selector, label) {
+            const r=await page.$eval(selector, el=>{const x=el.getBoundingClientRect();return{left:x.left,right:x.right,width:x.width,height:x.height,vw:innerWidth};});
+            assert(r.width>0&&r.height>0,`${label} collapsed ${JSON.stringify(r)}`);
+            assert(r.left>=-2&&r.right<=r.vw+2,`${label} outside viewport ${JSON.stringify(r)}`);
+            return r;
+          }
+
+          async function noOverflow(page,label) {
+            const m=await page.evaluate(()=>({vw:innerWidth,doc:document.documentElement.scrollWidth,body:document.body.scrollWidth}));
+            assert(m.doc<=m.vw+2&&m.body<=m.vw+2,`${label} horizontal overflow ${JSON.stringify(m)}`);
+          }
+
+          async function show(page,name,selector) {
+            await page.evaluate(n=>window.showPage?.(n),name);
+            await page.waitForFunction(sel=>{const el=document.querySelector(sel);return !!(el&&el.getClientRects().length&&getComputedStyle(el).display!=='none'&&getComputedStyle(el).visibility!=='hidden');},selector,{timeout:15000});
+            await page.waitForTimeout(220);
+          }
+
+          async function verifyCore(browser,size) {
+            const page=await browser.newPage({viewport:{width:size.width,height:size.height},hasTouch:true});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await gotoLive(page,size.name);
+            await page.waitForSelector('#hsMobileAccountTab',{state:'visible',timeout:10000});
+            await noOverflow(page,`${size.name} home`);
+            await inside(page,'.hero-photo-content',`${size.name} hero`);
+            const tabs=await page.$$eval('#hsMobileTabbar .hs-mobile-tab',els=>els.filter(el=>el.getClientRects().length&&getComputedStyle(el).display!=='none'&&getComputedStyle(el).visibility!=='hidden').map(el=>{const r=el.getBoundingClientRect();return{w:r.width,h:r.height};}));
+            assert(tabs.length>=6,`${size.name} mobile nav missing tabs ${JSON.stringify(tabs)}`);
+            assert(tabs.every(t=>t.w>=40&&t.h>=44),`${size.name} mobile nav target too small ${JSON.stringify(tabs)}`);
+            await page.screenshot({path:`mobile-home-${size.name}.png`,fullPage:true});
+
+            await show(page,'filter','#filterPage');
+            await noOverflow(page,`${size.name} filter`);
+            await inside(page,'#filterPage .fp-card',`${size.name} filter card`);
+            assert((await inside(page,'#filterPage .fp-cta',`${size.name} filter CTA`)).height>=44,`${size.name} filter CTA too short`);
+
+            await show(page,'draws','#drawsPage');
+            await noOverflow(page,`${size.name} draws`);
+            if (await visible(page,'#sidebarToggle')) {
+              await page.click('#sidebarToggle');
+              await page.waitForFunction(()=>document.getElementById('sidebarInner')?.classList.contains('open'),null,{timeout:5000});
+              await inside(page,'#sidebarInner',`${size.name} filter sheet`);
+              assert(await visible(page,'#drawsPage .hs-mobile-filter-backdrop'),`${size.name} filter backdrop missing`);
+              await page.click('#drawsPage .hs-mobile-filter-backdrop');
+            }
+
+            await show(page,'saved','#savedPage');
+            await noOverflow(page,`${size.name} saved`);
+            await inside(page,'.saved-wrap',`${size.name} saved`);
+
+            await show(page,'home','#homePage');
+            await page.click('#hsMobileAccountTab');
+            await page.waitForSelector('.auth-modal-overlay',{state:'visible',timeout:5000});
+            const modal=await inside(page,'.auth-modal',`${size.name} auth modal`);
+            assert(modal.width<=size.width+2,`${size.name} auth modal too wide`);
+            const font=await page.$eval('.auth-input',el=>parseFloat(getComputedStyle(el).fontSize));
+            assert(font>=16,`${size.name} auth input font ${font}px can trigger iOS zoom`);
+            await page.screenshot({path:`mobile-core-${size.name}.png`});
+            assert(!errors.length,`${size.name} page errors: ${errors.join(' | ')}`);
+            await page.close();
+          }
+
+          async function enterLeh(page) {
+            await page.evaluate(()=>document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click());
+            await page.waitForFunction(()=>{const el=document.getElementById('mapPage');return !!(el&&el.getClientRects().length&&getComputedStyle(el).display!=='none');},null,{timeout:15000});
+            await page.waitForFunction(()=>typeof fullMapInstance!=='undefined'&&!!fullMapInstance,null,{timeout:30000});
+            await page.waitForTimeout(650);
+          }
+
+          async function verifyGosSpecies(page) {
+            await page.waitForFunction(()=>{const s=document.getElementById('osSpeciesSel');return !!(s&&s.dataset.hsSpeciesSynced==='1'&&Array.from(s.options).filter(o=>o.value).length>12);},null,{timeout:10000});
+            const state=await page.evaluate(()=>{const s=document.getElementById('osSpeciesSel');return{
+              values:Array.from(s.options).map(o=>o.textContent.trim()),
+              species:Array.from(s.options).filter(o=>o.value).map(o=>o.value),
+              groups:Array.from(s.querySelectorAll('optgroup')).map(g=>({label:g.label,values:Array.from(g.querySelectorAll('option')).map(o=>o.textContent.trim())}))
+            };});
+            assert(state.species.length>12,`GOS species truncated: ${state.species.length}`);
+            assert(state.groups.length>=2,`GOS groups missing: ${JSON.stringify(state.groups)}`);
+            for(const group of state.groups){
+              const sorted=[...group.values].sort((a,b)=>a.localeCompare(b,'en-CA',{sensitivity:'base',numeric:true}));
+              assert(JSON.stringify(group.values)===JSON.stringify(sorted),`GOS ${group.label} not alphabetical: ${JSON.stringify(group.values)}`);
+            }
+            await page.click('#gosSpeciesBtn');
+            await page.waitForFunction(()=>{const d=document.getElementById('gosSpeciesDrop');return !!(d&&d.getClientRects().length&&getComputedStyle(d).display!=='none'&&d.querySelectorAll('.hs-species-row').length>12);},null,{timeout:5000});
+            const mobile=await page.$$eval('#gosSpeciesDrop .hs-species-row',rows=>rows.map(r=>r.textContent.trim()));
+            assert(JSON.stringify(mobile)===JSON.stringify(state.values),`GOS mobile/desktop mismatch\nDesktop=${JSON.stringify(state.values)}\nMobile=${JSON.stringify(mobile)}`);
+            const dm=await page.$eval('#gosSpeciesDrop',el=>({client:el.clientHeight,scroll:el.scrollHeight,overflow:getComputedStyle(el).overflowY}));
+            assert(['auto','scroll'].includes(dm.overflow)&&dm.scroll>=dm.client,`GOS popup not scrollable ${JSON.stringify(dm)}`);
+            await page.screenshot({path:'mobile-gos-species-390.png'});
+          }
+
+          async function verifyMaps(browser) {
+            const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await gotoLive(page,'maps');
+            await page.waitForFunction(()=>!!window.__HUNTSMART_INTERACTIVE_MAP__,null,{timeout:30000});
+            await enterLeh(page);
+            await noOverflow(page,'390 LEH map');
+            const shell=await inside(page,'#mapPage > .hs-im-shellbar','390 LEH shell');
+            assert(shell.left>=4&&shell.right<=386,`390 LEH shell overflow ${JSON.stringify(shell)}`);
+            const heights=await page.$$eval('#mapPage > .hs-im-shellbar button',els=>els.filter(el=>el.getClientRects().length&&getComputedStyle(el).display!=='none'&&getComputedStyle(el).visibility!=='hidden').map(el=>el.getBoundingClientRect().height));
+            assert(heights.length>=6&&heights.every(h=>h>=44),`390 LEH top controls undersized ${heights}`);
+            assert(!(await visible(page,'#fullMapControlStack')),'390 LEH duplicate legacy controls visible');
+            await page.screenshot({path:'mobile-map-integrated-leh-390.png'});
+
+            await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
+            await page.waitForFunction(()=>{const el=document.getElementById('bcOpenSeasonsPage');return !!(el&&el.getClientRects().length&&getComputedStyle(el).display!=='none');},null,{timeout:15000});
+            await page.waitForTimeout(600);
+            await noOverflow(page,'390 GOS map');
+            await inside(page,'#bcOpenSeasonsPage > .hs-im-shellbar','390 GOS shell');
+            await verifyGosSpecies(page);
+            assert(!errors.length,`map page errors: ${errors.join(' | ')}`);
+            await page.close();
+          }
+
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            await waitForDeployment(browser);
+            for(const size of sizes) await verifyCore(browser,size);
+            await verifyMaps(browser);
+            await browser.close();
+            console.log('HuntSmart mobile production QA passed at 320/375/390/430/768, including account access and canonical GOS species.');
+          })().catch(e=>{console.error(e.stack||e);process.exit(1);});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-app-production-qa-${{ github.run_number }}
+          path: mobile-*.png
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,1041 @@
+/* HuntSmart Canada — responsive product system
+   Mobile/tablet adaptation layer. Loaded after existing app + map styles. */
+
+:root {
+  --hs-mobile-gutter: 16px;
+  --hs-mobile-compact-gutter: 12px;
+  --hs-touch-min: 44px;
+  --hs-mobile-sheet-radius: 20px;
+  --hs-mobile-nav-height: 52px;
+}
+
+@media (max-width: 980px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  body.hs-mobile-modal-open,
+  body.hs-mobile-filter-open {
+    overflow: hidden !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  img,
+  svg,
+  canvas,
+  video {
+    max-width: 100%;
+  }
+
+  button,
+  a,
+  select,
+  input,
+  textarea,
+  summary,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  :where(button, a, input, select, textarea, summary, [role="button"]):focus-visible {
+    outline: 2px solid rgba(101, 213, 118, .82);
+    outline-offset: 2px;
+  }
+
+  /* Global navigation */
+  nav {
+    min-height: var(--hs-mobile-nav-height);
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(10px, env(safe-area-inset-right));
+    gap: 8px;
+  }
+
+  .nav-brand {
+    min-width: 0;
+  }
+
+  .nav-brand-top {
+    white-space: nowrap;
+  }
+
+  #authNavBtn,
+  .nav-hamburger {
+    min-width: var(--hs-touch-min);
+    min-height: var(--hs-touch-min);
+  }
+
+  #authNavBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+  }
+
+  .nav-hamburger {
+    align-items: center;
+    margin-left: 0;
+    padding: 10px;
+  }
+
+  .nav-mobile-menu {
+    top: var(--hs-mobile-nav-height);
+    max-height: calc(100dvh - var(--hs-mobile-nav-height) - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+
+  .nav-mobile-menu .nav-link,
+  .nav-mobile-menu .auth-signout-btn {
+    min-height: 48px;
+    padding-left: max(18px, env(safe-area-inset-left));
+    padding-right: max(18px, env(safe-area-inset-right));
+  }
+
+  /* Homepage — preserve desktop hierarchy, reflow density. */
+  #homePage,
+  .hero-photo,
+  .home-section,
+  .home-stats-strip,
+  .home-footer {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .hero-photo-content,
+  .home-section-inner,
+  .home-stats-inner,
+  .home-footer-inner,
+  .home-footer-bottom {
+    width: min(100%, 820px);
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--hs-mobile-gutter) !important;
+    padding-right: var(--hs-mobile-gutter) !important;
+  }
+
+  .hero-title {
+    max-width: 780px;
+    font-size: clamp(34px, 6vw, 48px) !important;
+    line-height: 1.02 !important;
+    text-wrap: balance;
+  }
+
+  .hero-body {
+    max-width: 680px;
+    font-size: clamp(15px, 2.2vw, 17px) !important;
+    line-height: 1.55 !important;
+  }
+
+  .province-cards,
+  .hero-actions {
+    width: 100%;
+    max-width: 720px;
+  }
+
+  .province-card {
+    min-height: 72px;
+  }
+
+  .hiw-grid,
+  .feat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+
+  .hiw-step,
+  .feat-card,
+  .feat-card--wide {
+    min-width: 0;
+    grid-column: auto !important;
+  }
+
+  .pro-features-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 14px !important;
+  }
+
+  .home-footer-inner {
+    gap: 24px;
+  }
+
+  /* Filter/setup pages */
+  #filterPage,
+  #abFilterPage,
+  #abProfilePage,
+  #drawDetailPage,
+  #savedPage,
+  #drawsPage,
+  #abDrawsPage {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .filter-page-wrap {
+    min-height: calc(100dvh - var(--hs-mobile-nav-height));
+    height: auto !important;
+  }
+
+  .filter-page-content {
+    width: 100%;
+    min-width: 0;
+    padding: 28px var(--hs-mobile-gutter) max(28px, env(safe-area-inset-bottom)) !important;
+    overflow-y: visible !important;
+  }
+
+  .fp-header,
+  .fp-card,
+  .fp-match-display,
+  .fp-cta,
+  .fp-skip {
+    width: min(100%, 720px) !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .fp-card {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .fp-section {
+    min-width: 0;
+  }
+
+  .fp-chips,
+  .chips-wrap {
+    min-width: 0;
+    gap: 8px !important;
+  }
+
+  .fp-chip,
+  .chip,
+  .map-chip,
+  .sort-btn,
+  .saved-sort-btn,
+  .saved-prov-btn,
+  .fp-sort-chip,
+  .hiw-btn {
+    min-height: var(--hs-touch-min) !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .fp-cta,
+  .fp-skip,
+  .reset-btn,
+  #fpBcMapBtn,
+  #abFpMapBtn,
+  #bcMapToggleBtn,
+  #abMapToggleBtn {
+    min-height: 48px !important;
+  }
+
+  #fpBcLeafletMap,
+  #abFpLeafletMap,
+  #bcLeafletMap,
+  #abLeafletMap {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .fp-ticks,
+  .odds-ticks {
+    user-select: none;
+  }
+
+  /* Draw lists: mobile is results-first, filters are a sheet. */
+  .draws-layout {
+    display: block !important;
+    width: 100%;
+    min-width: 0;
+  }
+
+  #drawsPage .sidebar,
+  #abDrawsPage .sidebar {
+    position: sticky !important;
+    top: var(--hs-mobile-nav-height) !important;
+    z-index: 120;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    border-right: 0 !important;
+    background: var(--bg, #111);
+  }
+
+  #drawsPage .sidebar-mobile-toggle,
+  #abDrawsPage .sidebar-mobile-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 var(--hs-mobile-gutter);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: rgba(17, 19, 18, .96);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    font-size: 13px;
+    font-weight: 750;
+    cursor: pointer;
+  }
+
+  #drawsPage .sidebar-inner,
+  #abDrawsPage .sidebar-inner {
+    position: fixed !important;
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    top: auto !important;
+    z-index: 10020;
+    display: none !important;
+    width: auto !important;
+    max-width: 620px !important;
+    max-height: min(78dvh, 720px) !important;
+    margin: 0 auto !important;
+    padding: 12px var(--hs-mobile-gutter) max(18px, env(safe-area-inset-bottom)) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    border: 1px solid rgba(255,255,255,.11) !important;
+    border-radius: var(--hs-mobile-sheet-radius) var(--hs-mobile-sheet-radius) 16px 16px !important;
+    background: rgba(18, 21, 19, .985) !important;
+    box-shadow: 0 24px 70px rgba(0,0,0,.58) !important;
+    scrollbar-width: thin;
+  }
+
+  #drawsPage .sidebar-inner.open,
+  #abDrawsPage .sidebar-inner.open {
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  #drawsPage .sidebar-inner::before,
+  #abDrawsPage .sidebar-inner::before {
+    content: '';
+    display: block;
+    width: 42px;
+    height: 4px;
+    flex: 0 0 4px;
+    margin: 0 auto 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.22);
+  }
+
+  .hs-mobile-filter-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10010;
+    display: none;
+    background: rgba(0,0,0,.56);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  .hs-mobile-filter-backdrop.open {
+    display: block;
+  }
+
+  .draws-main {
+    width: 100%;
+    min-width: 0 !important;
+    padding: 0 var(--hs-mobile-gutter) max(64px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .draws-topbar {
+    top: calc(var(--hs-mobile-nav-height) + 48px) !important;
+    width: 100%;
+    min-width: 0;
+    padding-top: 12px !important;
+  }
+
+  .draws-title-block,
+  .sort-controls,
+  .legend,
+  .cards-grid,
+  #cardsGrid,
+  #abCardsGrid,
+  #savedCardsGrid {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .sort-controls,
+  .legend,
+  .saved-sort-bar,
+  .saved-header-actions {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .sort-controls::-webkit-scrollbar,
+  .legend::-webkit-scrollbar,
+  .saved-sort-bar::-webkit-scrollbar,
+  .saved-header-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .legend {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 14px !important;
+    padding-bottom: 4px;
+  }
+
+  .legend-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .cards-grid,
+  #cardsGrid,
+  #abCardsGrid,
+  #savedCardsGrid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .card,
+  [class*="draw-card"],
+  [class*="hunt-card"] {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-wrap: anywhere;
+  }
+
+  .card button,
+  .card summary,
+  .card [role="button"] {
+    min-height: 40px;
+  }
+
+  .hs-green-detail-toggle,
+  button.hs-green-detail-toggle,
+  summary.hs-green-detail-toggle {
+    min-height: 44px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  /* Saved + compare */
+  .saved-wrap {
+    width: min(100%, 900px);
+    max-width: 100%;
+    padding: 22px var(--hs-mobile-gutter) max(64px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .saved-header {
+    gap: 14px;
+  }
+
+  .saved-header-actions {
+    display: flex;
+    flex-wrap: nowrap !important;
+    max-width: 100%;
+    padding-bottom: 2px;
+  }
+
+  .saved-header-actions > button,
+  .compare-btn,
+  .unsave-selected-btn,
+  .clear-saved-btn {
+    flex: 0 0 auto;
+    min-height: 44px;
+  }
+
+  .saved-prov-toggle {
+    max-width: 100%;
+  }
+
+  .saved-filter-row select,
+  .saved-species-select {
+    min-height: 44px;
+  }
+
+  .saved-pin-card {
+    min-width: 0;
+    align-items: flex-start;
+  }
+
+  .saved-pin-del {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px;
+  }
+
+  /* Detail/profile generated screens */
+  #drawDetailPage > *,
+  #abProfilePage > * {
+    max-width: 100% !important;
+  }
+
+  #drawDetailPage :where(table),
+  #abProfilePage :where(table),
+  #savedPage :where(table),
+  .card :where(table) {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  #drawDetailPage :where(button, select),
+  #abProfilePage :where(button, select) {
+    min-height: 44px;
+  }
+
+  /* Auth, checkout, and app-level dialogs */
+  .auth-modal-overlay,
+  #hs-paywall,
+  #hs-loading {
+    padding-left: max(12px, env(safe-area-inset-left)) !important;
+    padding-right: max(12px, env(safe-area-inset-right)) !important;
+  }
+
+  .auth-modal,
+  .hs-paywall-modal {
+    max-width: min(100%, 480px) !important;
+  }
+
+  .auth-close,
+  .hs-paywall-close {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
+  }
+
+  .auth-submit,
+  .auth-google-btn,
+  .auth-tab,
+  .hs-plan-btn,
+  .hs-cta-btn,
+  .hs-skip-toggle {
+    min-height: 48px;
+  }
+
+  .hs-banner {
+    left: max(12px, env(safe-area-inset-left)) !important;
+    right: max(12px, env(safe-area-inset-right)) !important;
+    bottom: max(14px, env(safe-area-inset-bottom)) !important;
+    width: auto;
+    max-width: none;
+    transform: none !important;
+    white-space: normal;
+    text-align: center;
+  }
+
+  /* Map results: map remains the primary surface; details become sheets. */
+  #mapPage .fullmap-results-drawer {
+    position: absolute !important;
+    left: max(8px, env(safe-area-inset-left)) !important;
+    right: max(8px, env(safe-area-inset-right)) !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    top: auto !important;
+    width: auto !important;
+    max-width: 680px !important;
+    max-height: min(50dvh, 520px) !important;
+    margin: 0 auto !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+    border-radius: var(--hs-mobile-sheet-radius) var(--hs-mobile-sheet-radius) 16px 16px !important;
+    box-shadow: 0 22px 70px rgba(0,0,0,.55) !important;
+    overflow: hidden !important;
+    z-index: 9460 !important;
+  }
+
+  #mapPage .fullmap-results-drawer::before,
+  #bcOpenSeasonsPage .os-panel::before {
+    content: '';
+    display: block;
+    width: 42px;
+    height: 4px;
+    margin: 8px auto 0;
+    border-radius: 999px;
+    background: rgba(255,255,255,.22);
+  }
+
+  #mapPage .fullmap-results-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding-top: 6px !important;
+  }
+
+  #mapPage .fullmap-results-title-row {
+    gap: 8px;
+  }
+
+  #mapPage .fullmap-results-title-wrap {
+    min-width: 0;
+  }
+
+  #mapPage .fullmap-results-title,
+  #mapPage .fullmap-results-count {
+    overflow-wrap: anywhere;
+  }
+
+  #mapPage .fullmap-results-grid {
+    grid-template-columns: 1fr !important;
+    max-height: calc(min(50dvh, 520px) - 112px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  #mapPage .fullmap-close-results,
+  #mapPage .fullmap-goto-btn,
+  #mapPage .fullmap-sort-btn {
+    min-height: 44px !important;
+  }
+
+  #bcOpenSeasonsPage .os-panel {
+    position: absolute !important;
+    left: max(8px, env(safe-area-inset-left)) !important;
+    right: max(8px, env(safe-area-inset-right)) !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    top: auto !important;
+    width: auto !important;
+    max-width: 680px !important;
+    max-height: min(52dvh, 540px) !important;
+    margin: 0 auto !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+    border-radius: var(--hs-mobile-sheet-radius) var(--hs-mobile-sheet-radius) 16px 16px !important;
+    box-shadow: 0 22px 70px rgba(0,0,0,.55) !important;
+    overflow: hidden !important;
+    z-index: 9455 !important;
+  }
+
+  #bcOpenSeasonsPage .os-panel-top {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding-top: 6px !important;
+  }
+
+  #bcOpenSeasonsPage .os-results-panel {
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  #bcOpenSeasonsPage .os-panel-actions button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --hs-mobile-gutter: 14px;
+  }
+
+  .nav-brand-sub {
+    font-size: 9px !important;
+  }
+
+  .hero-photo-content {
+    padding-top: 34px !important;
+    padding-bottom: 32px !important;
+  }
+
+  .hero-eyebrow {
+    font-size: 11px !important;
+  }
+
+  .hero-title {
+    font-size: clamp(31px, 9vw, 39px) !important;
+    max-width: 12ch;
+  }
+
+  .hero-body {
+    font-size: 15px !important;
+  }
+
+  .province-cards,
+  .hero-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .province-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 14px !important;
+  }
+
+  .province-card-info {
+    min-width: 0;
+  }
+
+  .province-card-stats {
+    white-space: normal !important;
+  }
+
+  .home-section {
+    padding-top: 44px !important;
+    padding-bottom: 44px !important;
+  }
+
+  .home-section-title {
+    font-size: clamp(25px, 7vw, 31px) !important;
+    line-height: 1.1 !important;
+    text-wrap: balance;
+  }
+
+  .hiw-grid,
+  .feat-grid,
+  .pro-features-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .hiw-step,
+  .feat-card,
+  .feat-card--wide {
+    width: 100%;
+  }
+
+  .home-stats-inner {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .home-stats-inner::-webkit-scrollbar {
+    display: none;
+  }
+
+  .home-stat {
+    flex: 0 0 132px !important;
+    min-width: 132px;
+    scroll-snap-align: start;
+  }
+
+  .home-stat-divider {
+    flex: 0 0 1px;
+  }
+
+  .pro-cta-row,
+  .home-footer-inner,
+  .home-footer-links {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .pro-cta-row > button,
+  .home-footer-link {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .filter-page-content {
+    padding-top: 22px !important;
+  }
+
+  .fp-header {
+    margin-bottom: 12px !important;
+  }
+
+  .fp-title {
+    font-size: clamp(28px, 8vw, 34px) !important;
+  }
+
+  .fp-card {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .fp-section {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  #fpBcLeafletMap,
+  #abFpLeafletMap,
+  #bcLeafletMap,
+  #abLeafletMap {
+    height: 220px !important;
+  }
+
+  .fp-ticks,
+  .odds-ticks {
+    font-size: 9px !important;
+    gap: 0 !important;
+  }
+
+  .draws-main {
+    padding-left: var(--hs-mobile-gutter) !important;
+    padding-right: var(--hs-mobile-gutter) !important;
+  }
+
+  .draws-topbar {
+    gap: 8px !important;
+  }
+
+  .draws-title {
+    font-size: 19px !important;
+  }
+
+  .draws-sub {
+    font-size: 12px !important;
+  }
+
+  .sort-btn,
+  .saved-sort-btn {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .card {
+    border-radius: 14px !important;
+  }
+
+  .saved-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .saved-header-actions {
+    width: 100%;
+  }
+
+  .saved-prov-toggle {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .saved-prov-btn {
+    width: 100%;
+  }
+
+  .saved-filter-row {
+    align-items: stretch !important;
+  }
+
+  .saved-species-select {
+    width: 100% !important;
+  }
+
+  .saved-pin-card {
+    padding: 12px !important;
+    gap: 10px !important;
+  }
+
+  .auth-modal-overlay,
+  #hs-paywall {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .auth-modal,
+  .hs-paywall-modal {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: min(92dvh, 760px) !important;
+    margin: 0 !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+    padding-bottom: max(24px, env(safe-area-inset-bottom)) !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-radius: 22px 22px 0 0 !important;
+    overscroll-behavior: contain;
+  }
+
+  .auth-modal::before,
+  .hs-paywall-modal::before {
+    content: '';
+    display: block;
+    width: 42px;
+    height: 4px;
+    margin: -20px auto 16px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.20);
+  }
+
+  .auth-logo-img {
+    width: min(180px, 58vw) !important;
+  }
+
+  #mapPage .fullmap-results-drawer,
+  #bcOpenSeasonsPage .os-panel {
+    left: max(6px, env(safe-area-inset-left)) !important;
+    right: max(6px, env(safe-area-inset-right)) !important;
+    bottom: max(6px, env(safe-area-inset-bottom)) !important;
+    max-height: 56dvh !important;
+  }
+
+  #mapPage .fullmap-results-title-row,
+  #bcOpenSeasonsPage .os-panel-title-row {
+    align-items: flex-start !important;
+  }
+
+  #mapPage .fullmap-results-title-row > div:last-child {
+    flex: 0 0 auto;
+  }
+
+  #mapPage .fullmap-goto-btn {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    font-size: 11px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  :root {
+    --hs-mobile-gutter: var(--hs-mobile-compact-gutter);
+  }
+
+  nav {
+    padding-left: max(10px, env(safe-area-inset-left));
+    padding-right: max(6px, env(safe-area-inset-right));
+    gap: 5px;
+  }
+
+  .nav-brand-top {
+    font-size: 15px !important;
+  }
+
+  .nav-brand-sub {
+    display: none !important;
+  }
+
+  #authNavBtn {
+    min-width: 42px;
+    padding-left: 9px !important;
+    padding-right: 9px !important;
+    font-size: 11px !important;
+  }
+
+  .hero-title {
+    font-size: clamp(29px, 9.5vw, 36px) !important;
+  }
+
+  .province-card-flag {
+    flex: 0 0 auto;
+  }
+
+  .province-card-cta {
+    padding-left: 6px;
+    white-space: nowrap;
+  }
+
+  .fp-card {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .fp-chip,
+  .chip,
+  .map-chip {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .draws-title {
+    font-size: 18px !important;
+  }
+
+  .legend {
+    gap: 10px !important;
+  }
+
+  .saved-wrap {
+    padding-top: 16px !important;
+  }
+
+  .auth-modal,
+  .hs-paywall-modal {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
+@media (max-width: 980px) and (orientation: landscape) and (max-height: 520px) {
+  .nav-mobile-menu {
+    max-height: calc(100dvh - var(--hs-mobile-nav-height));
+  }
+
+  #drawsPage .sidebar-inner,
+  #abDrawsPage .sidebar-inner,
+  .auth-modal,
+  .hs-paywall-modal {
+    max-height: calc(100dvh - 12px) !important;
+  }
+
+  #mapPage .fullmap-results-drawer,
+  #bcOpenSeasonsPage .os-panel {
+    max-height: 74dvh !important;
+    max-width: min(640px, 72vw) !important;
+    margin-right: 68px !important;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  :where(button, a, summary, [role="button"]) {
+    touch-action: manipulation;
+  }
+
+  :where(button, .province-card, .card, .hiw-btn):hover {
+    transform: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
