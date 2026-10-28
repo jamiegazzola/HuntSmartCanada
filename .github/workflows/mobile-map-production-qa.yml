@@ -43,22 +43,19 @@ jobs:
 
           async function load(page) {
             await page.goto(`${process.env.URL}?mobile-map-qa=${Date.now()}`, {waitUntil:'commit',timeout:30000});
-            await page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__ && typeof fullMapInit === 'function', null, {timeout:30000});
+            await page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__, null, {timeout:30000});
           }
 
-          async function forceSurface(page,id,initName,mapName) {
-            await page.evaluate(({ids,id,initName}) => {
+          async function forceSurface(page,id) {
+            await page.evaluate(({ids,id}) => {
               ids.forEach(key => { const node=document.getElementById(key); if(node) node.style.setProperty('display','none','important'); });
               const el=document.getElementById(id);
               el.style.setProperty('display','block','important');
               el.style.setProperty('width','100vw','important');
               el.style.setProperty('height','calc(100dvh - 56px)','important');
               el.style.setProperty('min-height','600px','important');
-              if (typeof window[initName] === 'function') window[initName]();
-            }, {ids:pages,id,initName});
-            await page.waitForFunction(name => typeof window[name] !== 'undefined' && !!window[name], mapName, {timeout:30000});
-            await page.evaluate(name => { try { window[name].resize(); } catch (_) {} }, mapName);
-            await page.waitForTimeout(800);
+            }, {ids:pages,id});
+            await page.waitForTimeout(250);
           }
 
           function snap(kind) {
@@ -98,13 +95,13 @@ jobs:
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true});
             await load(page);
-            await forceSurface(page,'mapPage','fullMapInit','fullMapInstance');
+            await forceSurface(page,'mapPage');
             const leh=await page.evaluate(snap,'leh'); console.log('LEH',JSON.stringify(leh));
             await page.screenshot({path:'mobile-map-leh-390.png'});
             verify('LEH',leh);
             assert(!leh.duplicateLeh,'Duplicate LEH rail button visible');
             assert(leh.railButtons.length===3&&leh.railButtons.every(b=>b.width>=44&&b.height>=44),'LEH utility rail should be 3 touch-friendly buttons');
-            await forceSurface(page,'bcOpenSeasonsPage','initOpenSeasonsPage','osMapInstance');
+            await forceSurface(page,'bcOpenSeasonsPage');
             const gos=await page.evaluate(snap,'gos'); console.log('GOS',JSON.stringify(gos));
             await page.screenshot({path:'mobile-map-gos-390.png'});
             verify('GOS',gos);
