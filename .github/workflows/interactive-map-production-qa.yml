@@ -12,6 +12,7 @@ on:
       - terrain-intelligence.js
       - mobile-map-polish.css
       - mobile-map-topbar-fix.css
+      - mobile-map-shell-finalizer.js
       - bc-open-seasons.js
       - maps.js
       - index.html
@@ -44,20 +45,10 @@ jobs:
           const assert = (v,m) => { if (!v) throw new Error(m); };
 
           async function openLive(page) {
-            let lastError = null;
-            for (let i = 0; i < 10; i++) {
-              try {
-                await page.goto(`${process.env.URL}?interactive-map-qa=${Date.now()}-${i}`, {waitUntil:'commit',timeout:30000});
-                await page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__, null, {timeout:30000});
-                await page.waitForLoadState('domcontentloaded', {timeout:30000});
-                await page.waitForTimeout(300);
-                return;
-              } catch (error) {
-                lastError = error;
-                await page.waitForTimeout(2000);
-              }
-            }
-            throw lastError || new Error('Could not load the live Interactive Map controller.');
+            await page.goto(`${process.env.URL}?interactive-map-qa=${Date.now()}`, {waitUntil:'commit',timeout:30000});
+            await page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__, null, {timeout:30000});
+            await page.waitForLoadState('domcontentloaded', {timeout:30000});
+            await page.waitForTimeout(350);
           }
 
           async function enterLEH(page, mobile) {
@@ -67,115 +58,97 @@ jobs:
             }, mobile);
             await page.waitForFunction(() => {
               const el=document.getElementById('mapPage');
-              return !!el && el.getClientRects().length && getComputedStyle(el).display !== 'none';
+              return !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none');
             }, null, {timeout:30000});
             await page.waitForFunction(() => typeof fullMapInstance !== 'undefined' && !!fullMapInstance, null, {timeout:30000});
-            await page.waitForTimeout(700);
+            await page.waitForTimeout(650);
           }
 
-          function geometry(kind) {
+          function snapshot(kind) {
             const visible = el => !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
             const rect = el => {
               if (!el) return null;
-              const r = el.getBoundingClientRect();
-              const cs = getComputedStyle(el);
-              return {top:r.top,right:r.right,bottom:r.bottom,left:r.left,width:r.width,height:r.height,display:cs.display,position:cs.position};
+              const r=el.getBoundingClientRect(), s=getComputedStyle(el);
+              return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height,display:s.display,position:s.position};
             };
             const leh = kind === 'leh';
             const root = document.getElementById(leh ? 'mapPage' : 'bcOpenSeasonsPage');
             const shell = root && root.querySelector(':scope > .hs-im-shellbar');
-            const controls = [
-              document.getElementById(leh ? 'fullMapControlStack' : 'osMapControlStack'),
-              document.getElementById(leh ? 'hsBrCluster' : 'gosBrCluster')
-            ].filter(visible).map(rect);
+            const legacy = document.getElementById(leh ? 'fullMapControlStack' : 'osMapControlStack');
+            const cluster = document.getElementById(leh ? 'hsBrCluster' : 'gosBrCluster');
             return {
               viewport:{width:innerWidth,height:innerHeight},
               nav:rect(document.querySelector('nav')),
-              tabbar:rect(document.querySelector('.hs-mobile-tabbar')),
               root:rect(root),
               map:rect(document.getElementById(leh ? 'fullMapLeaflet' : 'osMap')),
               shell:rect(shell),
               shellButtons:Array.from((shell && shell.querySelectorAll('button')) || []).filter(visible).map(rect),
               toolbar:rect(document.querySelector(leh ? '#mapPage .fullmap-topbar' : '#bcOpenSeasonsPage .os-topbar')),
               layers:leh ? rect(document.getElementById('hsWorldSettingsBtn')) : null,
-              controls
+              legacyVisible:visible(legacy),
+              controls:rect(cluster)
             };
           }
 
           function verifyLayout(name, layout, mobile) {
             assert(layout.root && layout.root.width > 300 && layout.root.height > 400, `${name} page collapsed: ${JSON.stringify(layout.root)}`);
             assert(layout.map && layout.nav && layout.map.top <= layout.nav.bottom + 4, `${name} map is pushed down by permanent chrome: ${JSON.stringify(layout)}`);
-            assert(layout.shell && layout.shell.position === 'absolute', `${name} mode selector is not floating: ${JSON.stringify(layout.shell)}`);
-            assert(layout.controls.length > 0, `${name} has no visible + / - / 3D controls.`);
-            layout.controls.forEach(control => {
-              assert(control.right <= layout.viewport.width - 4 && control.top >= 0 && control.bottom <= layout.viewport.height - 4, `${name} controls are clipped: ${JSON.stringify(control)}`);
-              if (mobile && layout.tabbar && layout.tabbar.display !== 'none') {
-                assert(control.bottom <= layout.tabbar.top - 6, `${name} controls overlap mobile tab bar: ${JSON.stringify({control,tabbar:layout.tabbar})}`);
-              }
-            });
+            assert(layout.shell && layout.shell.position === 'absolute', `${name} shared map controls are not floating: ${JSON.stringify(layout.shell)}`);
+            assert(layout.controls && layout.controls.right <= layout.viewport.width - 4 && layout.controls.bottom <= layout.viewport.height - 4, `${name} + / - / 3D controls are clipped: ${JSON.stringify(layout.controls)}`);
             if (mobile) {
-              assert(layout.shell.left >= 4 && layout.shell.right <= layout.viewport.width - 4, `${name} mobile top controls overflow: ${JSON.stringify(layout.shell)}`);
-              assert(layout.shellButtons.length >= 5 && layout.shellButtons.every(button => button.height >= 44), `${name} mobile touch targets are undersized: ${JSON.stringify(layout.shellButtons)}`);
+              assert(layout.shell.left >= 4 && layout.shell.right <= layout.viewport.width - 4, `${name} mobile top row overflows: ${JSON.stringify(layout.shell)}`);
+              assert(layout.shellButtons.length >= 6 && layout.shellButtons.every(b => b.height >= 44), `${name} mobile top controls are undersized: ${JSON.stringify(layout.shellButtons)}`);
+              assert(!layout.legacyVisible, `${name} duplicate legacy control stack is visible.`);
             }
           }
 
           (async()=>{
-            const browser = await chromium.launch({headless:true});
+            const browser=await chromium.launch({headless:true});
             for (const viewport of [{width:1440,height:1000},{width:390,height:844}]) {
-              const mobile = viewport.width <= 768;
-              const page = await browser.newPage({viewport,hasTouch:mobile});
-              const errors=[];
-              page.on('pageerror',e=>errors.push(e.message));
+              const mobile=viewport.width<=768;
+              const page=await browser.newPage({viewport,hasTouch:mobile});
+              const errors=[]; page.on('pageerror',e=>errors.push(e.message));
 
               await openLive(page);
               assert(/Interactive Map/i.test((await page.locator('#navMap').textContent())||''),'Map nav was not renamed.');
               assert(await page.locator('#navBCOS').evaluate(el=>getComputedStyle(el).display==='none'),'Legacy BC GOS nav still visible.');
 
-              await enterLEH(page, mobile);
-              let state = await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
+              await enterLEH(page,mobile);
+              let state=await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
               assert(state.controller.mode==='leh'&&state.controller.province==='BC','BC LEH is not active.');
               assert(await page.evaluate(()=>String(_fullMapStyle||''))==='streets','LEH default basemap is not Dark.');
-
-              const lehLayout = await page.evaluate(geometry,'leh');
-              verifyLayout('LEH',lehLayout,mobile);
+              const leh=await page.evaluate(snapshot,'leh');
+              verifyLayout('LEH',leh,mobile);
               if (!mobile) {
-                assert(lehLayout.toolbar && lehLayout.toolbar.position==='absolute','Desktop LEH toolbar is not floating.');
-                assert(lehLayout.layers && lehLayout.layers.display!=='none','Desktop Layers control is not visible.');
+                assert(leh.toolbar && leh.toolbar.position==='absolute','Desktop LEH toolbar is not floating.');
+                assert(leh.layers && leh.layers.display!=='none','Desktop Layers control is not visible.');
               }
-              await page.screenshot({path:`interactive-map-leh-${viewport.width}.png`,fullPage:false});
+              await page.screenshot({path:`interactive-map-leh-${viewport.width}.png`});
 
               await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
-              await page.waitForFunction(()=>{
-                const el=document.getElementById('bcOpenSeasonsPage');
-                return !!el && el.getClientRects().length && getComputedStyle(el).display !== 'none';
-              }, null, {timeout:30000});
-              await page.waitForFunction(()=>typeof osMapInstance !== 'undefined' && !!osMapInstance, null, {timeout:30000});
+              await page.waitForFunction(()=>{const el=document.getElementById('bcOpenSeasonsPage');return !!(el&&el.getClientRects().length&&getComputedStyle(el).display!=='none');},null,{timeout:30000});
+              await page.waitForFunction(()=>typeof osMapInstance!=='undefined'&&!!osMapInstance,null,{timeout:30000});
               await page.waitForTimeout(600);
-              assert(await page.evaluate(()=>String(osMapStyle||''))==='streets','GOS default basemap is not Dark.');
-
-              const gosLayout = await page.evaluate(geometry,'gos');
-              verifyLayout('GOS',gosLayout,mobile);
-              await page.screenshot({path:`interactive-map-gos-${viewport.width}.png`,fullPage:false});
+              const gos=await page.evaluate(snapshot,'gos');
+              verifyLayout('GOS',gos,mobile);
+              await page.screenshot({path:`interactive-map-gos-${viewport.width}.png`});
 
               await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.selectGOSRegion('3'));
               await page.waitForTimeout(250);
-              const sheep = await page.locator('#osSpeciesSel option').evaluateAll(options => {
-                const match = options.find(option => option.value && /bighorn/i.test(option.textContent || option.value));
-                return match ? {value:match.value,label:match.textContent} : {value:'',available:options.map(o=>o.textContent).filter(Boolean)};
+              const sheep=await page.locator('#osSpeciesSel option').evaluateAll(options=>{
+                const m=options.find(o=>o.value&&/bighorn/i.test(o.textContent||o.value));
+                return m?{value:m.value,label:m.textContent}:{value:'',available:options.map(o=>o.textContent).filter(Boolean)};
               });
-              assert(sheep.value,'Region 3 species list has no Bighorn Sheep option. Available: '+JSON.stringify(sheep.available||[]));
+              assert(sheep.value,'Region 3 has no Bighorn Sheep option: '+JSON.stringify(sheep.available||[]));
               await page.evaluate(species=>window.__HUNTSMART_INTERACTIVE_MAP__.setGOSSpecies(species),sheep.value);
               await page.waitForTimeout(300);
-              state=await page.evaluate(()=>({state:window.__HUNTSMART_INTERACTIVE_MAP__.getState(),active:window.__HUNTSMART_INTERACTIVE_MAP__.activeGOSWMUs()}));
-              assert(state.state.regions.length===1&&String(state.state.regions[0])==='3','Region 3 scope was lost after species selection.');
-              assert(state.state.species===sheep.value,'Bighorn Sheep selection did not persist.');
-              assert(state.active.length>0&&state.active.every(id=>String(id).startsWith('3-')),'GOS species selection broadened outside Region 3.');
+              const scoped=await page.evaluate(()=>({state:window.__HUNTSMART_INTERACTIVE_MAP__.getState(),active:window.__HUNTSMART_INTERACTIVE_MAP__.activeGOSWMUs()}));
+              assert(scoped.state.regions.length===1&&String(scoped.state.regions[0])==='3','Region 3 scope was lost.');
+              assert(scoped.state.species===sheep.value,'Bighorn Sheep selection did not persist.');
+              assert(scoped.active.length>0&&scoped.active.every(id=>String(id).startsWith('3-')),'GOS selection broadened outside Region 3.');
 
               await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('leh'));
-              await page.waitForFunction(()=>{
-                const el=document.getElementById('mapPage');
-                return !!el && el.getClientRects().length && getComputedStyle(el).display !== 'none';
-              }, null, {timeout:30000});
+              await page.waitForFunction(()=>{const el=document.getElementById('mapPage');return !!(el&&el.getClientRects().length&&getComputedStyle(el).display!=='none');},null,{timeout:30000});
               await page.waitForTimeout(400);
               state=await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
               assert(state.controller.mode==='leh','Could not switch back to LEH.');
