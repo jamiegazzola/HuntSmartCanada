@@ -64,11 +64,15 @@ jobs:
               const p = document.getElementById('drawDetailPage');
               const text = (p?.innerText || '').replace(/\s+/g,' ').trim();
               const rect = el => { if (!el) return null; const r = el.getBoundingClientRect(); return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height}; };
+              const info = el => { if (!el) return null; const s=getComputedStyle(el); return {tag:el.tagName,id:el.id||'',cls:el.className||'',text:(el.textContent||'').trim().slice(0,80),rect:rect(el),display:s.display,position:s.position,z:s.zIndex}; };
+              const dots = Array.from(document.querySelectorAll('body *')).filter(el => el.children.length===0 && (el.textContent||'').trim()==='...').slice(0,12).map(info);
+              const atTopLeft = document.elementsFromPoint(25,84).slice(0,10).map(info);
               return {
                 viewport:{width:innerWidth,height:innerHeight},
                 page:rect(p),
                 premium:!!p?.querySelector('.hs-pd'),
                 shell:rect(p?.querySelector('.hs-pd')),
+                topActions:rect(p?.querySelector('.hs-pd-top')),
                 hero:rect(p?.querySelector('.hs-pd-hero')),
                 map:rect(document.getElementById('ddPremiumMap')),
                 title:p?.querySelector('.hs-pd-title')?.textContent?.trim() || '',
@@ -83,7 +87,7 @@ jobs:
                 hasOpportunityScore:/HuntSmart\s+Opportunity\s+Score|HuntSmart\s+Score/i.test(text),
                 overflowX:document.documentElement.scrollWidth > innerWidth + 2,
                 sourceLinks:Array.from(p?.querySelectorAll('.hs-pd-links a') || []).map(a => a.href),
-                textSample:text.slice(0,500)
+                dots,atTopLeft,textSample:text.slice(0,500)
               };
             });
           }
@@ -92,7 +96,7 @@ jobs:
             assert(s.page && s.page.width > 300, `${name}: detail page missing`);
             assert(s.premium, `${name}: premium detail layer did not render; fallback title=${s.fallbackTitle}; sample=${s.textSample}`);
             assert(s.shell && s.shell.left >= -1 && s.shell.right <= s.viewport.width + 1, `${name}: content overflows viewport`);
-            assert(/Tinhorn Sheep/i.test(s.title), `${name}: target species title missing: ${s.title}`);
+            assert(/Thinhorn Sheep/i.test(s.title), `${name}: target species title missing: ${s.title}`);
             assert(/42/.test(s.odds), `${name}: expected current draw odds not shown: ${s.odds}`);
             assert(s.actions.some(x => /Save/i.test(x)) && s.actions.some(x => /Compare/i.test(x)), `${name}: Save / Compare actions missing`);
             assert(s.quick.length === 4, `${name}: summary strip should have four metrics`);
