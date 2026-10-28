@@ -1,11 +1,11 @@
 /* HuntSmart GOS toolbar row finalizer
    Creates one deterministic desktop row: Search | Species | Settings.
-   This deliberately reparents the three visible controls so legacy GOS flex
-   rules cannot wrap or reorder them. */
+   No page-wide MutationObserver: the row is installed with bounded refreshes only. */
 (function () {
   'use strict';
   if (window.__HS_GOS_TOOLBAR_ROW_FINAL__) return;
   window.__HS_GOS_TOOLBAR_ROW_FINAL__ = true;
+  window.__HS_GOS_TOOLBAR_ROW_VERSION__ = '2.0.0';
 
   var STYLE_ID = 'hsGosToolbarRowFinalStyles';
   var ROW_ID = 'hsGosPrimaryRow';
@@ -64,10 +64,6 @@
   }
   #bcOpenSeasonsPage #hsGosPrimaryRow #osSearchWrap{
     position:relative!important;
-    top:auto!important;
-    left:auto!important;
-    right:auto!important;
-    bottom:auto!important;
     inset:auto!important;
     order:1!important;
     flex:0 0 230px!important;
@@ -89,10 +85,6 @@
   }
   #bcOpenSeasonsPage #hsGosPrimaryRow #osSpeciesSel{
     position:relative!important;
-    top:auto!important;
-    left:auto!important;
-    right:auto!important;
-    bottom:auto!important;
     inset:auto!important;
     order:2!important;
     flex:0 0 136px!important;
@@ -105,10 +97,6 @@
   }
   #bcOpenSeasonsPage #hsGosPrimaryRow #osUnifiedSettingsBtn{
     position:relative!important;
-    top:auto!important;
-    left:auto!important;
-    right:auto!important;
-    bottom:auto!important;
     inset:auto!important;
     order:3!important;
     flex:0 0 92px!important;
@@ -189,14 +177,21 @@
     if (++tries < 60) setTimeout(init, 100);
   }
 
+  function refreshSoon() {
+    [0,120,420].forEach(function(delay){ setTimeout(ensureRow,delay); });
+  }
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once:true });
   else init();
 
-  var observer = new MutationObserver(function () {
-    if (desktop()) ensureRow();
-  });
-  document.addEventListener('DOMContentLoaded', function () {
-    var page = document.getElementById('bcOpenSeasonsPage');
-    if (page) observer.observe(page, { childList:true, subtree:true });
-  }, { once:true });
+  [250,700,1500,2600].forEach(function(delay){ setTimeout(ensureRow,delay); });
+  window.addEventListener('pageshow', refreshSoon);
+  window.addEventListener('resize', function(){ if(desktop()) setTimeout(ensureRow,0); }, {passive:true});
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden && desktop()) refreshSoon(); });
+  document.addEventListener('click', function(event){
+    var target = event.target && event.target.closest ? event.target.closest('[data-hs-im-mode="gos"]') : null;
+    if(target) refreshSoon();
+  }, true);
+
+  window.hsEnsureGosPrimaryRow = ensureRow;
 })();

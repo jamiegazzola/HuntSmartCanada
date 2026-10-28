@@ -1,0 +1,296 @@
+name: HuntSmart Map System Regression QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - map-ui-polish.js
+      - gos-premium-toolbar.js
+      - gos-toolbar-row-final.js
+      - map-premium-shell.js
+      - map-zone-selection-fix.js
+      - mobile-map-shell-finalizer.js
+      - mobile-map-touch-targets.js
+      - mobile-map-polish.css
+      - mobile-map-topbar-fix.css
+      - imagery-lab.js
+      - terrain-intelligence.js
+      - terrain-intelligence.css
+      - bc-open-seasons.js
+      - maps.js
+      - index.html
+      - build-preview.sh
+      - netlify.toml
+      - .github/workflows/map-system-regression-qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  map-system-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Audit live map interactions
+        env:
+          URL: https://huntsmartcanada.ca/
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const assert = (v,m) => { if (!v) throw new Error(m); };
+          const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+          async function waitForProduction(browser) {
+            for (let attempt=0; attempt<30; attempt++) {
+              const page = await browser.newPage({viewport:{width:1280,height:900}});
+              try {
+                await page.goto(`${process.env.URL}?map-regression-ready=${Date.now()}`, {waitUntil:'domcontentloaded', timeout:30000});
+                const ok = await page.evaluate(() => window.__HS_MAP_UI_POLISH_VERSION__ === '2.0.0');
+                await page.close();
+                if (ok) return;
+              } catch (_) {
+                await page.close().catch(()=>{});
+              }
+              await sleep(5000);
+            }
+            throw new Error('Production did not publish map polish v2.0.0 in time.');
+          }
+
+          async function openMap(page, mobile=false) {
+            await page.goto(`${process.env.URL}?map-system-qa=${Date.now()}`, {waitUntil:'domcontentloaded', timeout:30000});
+            await page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__, null, {timeout:30000});
+            await page.evaluate((isMobile) => {
+              if (isMobile) document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click();
+              else document.getElementById('navMap')?.click();
+            }, mobile);
+            await page.waitForFunction(() => {
+              const el=document.getElementById('mapPage');
+              return !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none');
+            }, null, {timeout:30000});
+            await page.waitForFunction(() => typeof fullMapInstance !== 'undefined' && !!fullMapInstance, null, {timeout:30000});
+            await page.waitForTimeout(900);
+          }
+
+          async function switchGOS(page) {
+            await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
+            await page.waitForFunction(() => {
+              const el=document.getElementById('bcOpenSeasonsPage');
+              return !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none');
+            }, null, {timeout:30000});
+            await page.waitForFunction(() => typeof osMapInstance !== 'undefined' && !!osMapInstance, null, {timeout:30000});
+            await page.waitForTimeout(900);
+          }
+
+          async function rowMutationCount(page, ms) {
+            await page.evaluate(() => {
+              window.__hsQaMutationCount = 0;
+              if (window.__hsQaMutationObserver) window.__hsQaMutationObserver.disconnect();
+              const row=document.getElementById('hsGosPrimaryRow');
+              if (!row) throw new Error('GOS primary row missing');
+              window.__hsQaMutationObserver = new MutationObserver(records => {
+                window.__hsQaMutationCount += records.length;
+              });
+              window.__hsQaMutationObserver.observe(row,{childList:true,subtree:true,attributes:true});
+            });
+            await page.waitForTimeout(ms);
+            return await page.evaluate(() => {
+              if (window.__hsQaMutationObserver) window.__hsQaMutationObserver.disconnect();
+              return window.__hsQaMutationCount || 0;
+            });
+          }
+
+          async function desktopAudit(browser) {
+            const page = await browser.newPage({viewport:{width:1440,height:1000}});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            await openMap(page,false);
+
+            assert(await page.evaluate(() => window.__HS_MAP_UI_POLISH_VERSION__ === '2.0.0'),'Stable map polish not loaded.');
+            assert(await page.locator('#fullMapSearchInput').getAttribute('placeholder') === 'Search places or WMU…','LEH search label mismatch.');
+            assert((await page.locator('#fullMapSpeciesSelect option').first().textContent()).trim()==='All species','LEH species default label mismatch.');
+
+            const lehSpecies = page.locator('#fullMapSpeciesSelect');
+            const lehOption = await lehSpecies.locator('option').evaluateAll(opts => {
+              const hit=opts.find(o=>o.value);
+              return hit ? hit.value : '';
+            });
+            if (lehOption) {
+              await lehSpecies.selectOption(lehOption);
+              await page.waitForTimeout(250);
+              assert(await lehSpecies.inputValue()===lehOption,'LEH species selection did not persist.');
+              await lehSpecies.selectOption('');
+            }
+
+            await page.locator('#hsWorldSettingsBtn').click({timeout:5000});
+            await page.waitForFunction(() => document.getElementById('hsWorldSettingsPanel')?.classList.contains('open'), null, {timeout:3000});
+            await page.evaluate(() => window.hsWcCloseSettings && window.hsWcCloseSettings());
+
+            await switchGOS(page);
+            await page.waitForTimeout(1800);
+
+            const layout = await page.evaluate(() => {
+              const r = el => { const x=el.getBoundingClientRect(); return {left:x.left,right:x.right,top:x.top,bottom:x.bottom,width:x.width,height:x.height}; };
+              const row=document.getElementById('hsGosPrimaryRow');
+              const search=document.getElementById('osSearchWrap');
+              const species=document.getElementById('osSpeciesSel');
+              const settings=document.getElementById('osUnifiedSettingsBtn');
+              const shell=document.querySelector('#bcOpenSeasonsPage > .hs-im-shellbar');
+              return {row:r(row),search:r(search),species:r(species),settings:r(settings),shell:shell?r(shell):null};
+            });
+            assert(Math.abs(layout.search.top-layout.species.top)<2 && Math.abs(layout.species.top-layout.settings.top)<2,'GOS controls are not on one row: '+JSON.stringify(layout));
+            assert(layout.search.right <= layout.species.left+1 && layout.species.right <= layout.settings.left+1,'GOS primary controls overlap: '+JSON.stringify(layout));
+            if (layout.shell) assert(layout.settings.right < layout.shell.left-4,'GOS left controls collide with mode controls: '+JSON.stringify(layout));
+
+            const idleMutations=await rowMutationCount(page,700);
+            assert(idleMutations < 12,`GOS toolbar is mutating at rest (${idleMutations} mutations).`);
+
+            const gosSpecies=page.locator('#osSpeciesSel');
+            const moose=await gosSpecies.locator('option').evaluateAll(opts => {
+              const hit=opts.find(o=>o.value && /moose/i.test(o.textContent||o.value));
+              return hit ? hit.value : '';
+            });
+            assert(moose,'No Moose option available in GOS species list.');
+
+            await page.evaluate(() => {
+              window.__hsQaMutationCount = 0;
+              const row=document.getElementById('hsGosPrimaryRow');
+              window.__hsQaMutationObserver = new MutationObserver(records => window.__hsQaMutationCount += records.length);
+              window.__hsQaMutationObserver.observe(row,{childList:true,subtree:true,attributes:true});
+            });
+            await gosSpecies.click({timeout:5000});
+            await gosSpecies.selectOption(moose);
+            await page.waitForTimeout(700);
+            const activeMutations=await page.evaluate(() => {
+              window.__hsQaMutationObserver?.disconnect();
+              return window.__hsQaMutationCount || 0;
+            });
+            assert(activeMutations < 24,`GOS species interaction caused a mutation storm (${activeMutations} mutations).`);
+            assert(await gosSpecies.inputValue()===moose,'GOS species selection did not persist.');
+            const stateAfterSpecies=await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
+            assert(stateAfterSpecies.species===moose,'GOS controller species does not match the UI.');
+
+            await page.locator('#osUnifiedSettingsBtn').click({timeout:5000});
+            await page.waitForFunction(() => document.getElementById('osUnifiedSettingsPanel')?.classList.contains('open'), null, {timeout:3000});
+            const settingsUsable=await page.locator('#osUnifiedSettingsPanel').evaluate(el => {
+              const s=getComputedStyle(el), r=el.getBoundingClientRect();
+              return s.display!=='none' && r.width>250 && r.height>100;
+            });
+            assert(settingsUsable,'GOS Settings panel did not remain usable after species selection.');
+
+            const terrainButtons=page.locator('#osUnifiedSettingsPanel .os-2d3d-toggle button');
+            if (await terrainButtons.count() >= 2) {
+              const threeD=terrainButtons.filter({hasText:/^3D$/}).first();
+              const twoD=terrainButtons.filter({hasText:/^2D$/}).first();
+              if (await threeD.count()) { await threeD.click(); await page.waitForTimeout(350); }
+              if (await twoD.count()) { await twoD.click(); await page.waitForTimeout(350); }
+            }
+            await page.locator('#osUnifiedSettingsPanel .hs-gos-settings-close').click();
+
+            await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.selectGOSRegion('3'));
+            await page.waitForTimeout(250);
+            const sheep=await page.locator('#osSpeciesSel option').evaluateAll(opts => {
+              const hit=opts.find(o=>o.value && /bighorn/i.test(o.textContent||o.value));
+              return hit ? hit.value : '';
+            });
+            assert(sheep,'Region 3 has no Bighorn Sheep option.');
+            await page.locator('#osSpeciesSel').selectOption(sheep);
+            await page.waitForTimeout(350);
+            const scoped=await page.evaluate(()=>({
+              state:window.__HUNTSMART_INTERACTIVE_MAP__.getState(),
+              active:window.__HUNTSMART_INTERACTIVE_MAP__.activeGOSWMUs()
+            }));
+            assert(scoped.state.regions.length===1 && String(scoped.state.regions[0])==='3','GOS region scope was lost.');
+            assert(scoped.active.length>0 && scoped.active.every(id=>String(id).startsWith('3-')),'GOS species change broadened outside Region 3.');
+
+            await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('leh'));
+            await page.waitForFunction(()=>document.getElementById('mapPage')?.getClientRects().length,null,{timeout:10000});
+            await page.waitForTimeout(500);
+            let state=await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
+            assert(state.controller.mode==='leh','Could not switch GOS -> LEH.');
+            assert((state.wmus||[]).length>0 && state.wmus.every(id=>String(id).startsWith('3-')),'GOS -> LEH geography transfer failed.');
+
+            await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchProvince('AB'));
+            await page.waitForTimeout(700);
+            state=await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
+            assert(state.controller.province==='AB' && state.controller.mode==='leh','BC -> Alberta switch failed.');
+
+            await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchProvince('BC'));
+            await page.waitForTimeout(700);
+            state=await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState());
+            assert(state.controller.province==='BC' && state.controller.mode==='leh','Alberta -> BC switch failed.');
+
+            assert(!errors.length,'Desktop page errors: '+errors.join(' | '));
+            await page.screenshot({path:'map-system-desktop.png',fullPage:false});
+            await page.close();
+          }
+
+          async function mobileAudit(browser) {
+            const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            await openMap(page,true);
+
+            const lehShell=page.locator('#mapPage > .hs-im-shellbar');
+            assert(await lehShell.isVisible(),'LEH mobile shell missing.');
+            assert(!(await page.locator('#fullMapControlStack').isVisible()),'LEH legacy mobile control stack is visible.');
+
+            await switchGOS(page);
+            assert(!(await page.locator('#hsGosPrimaryRow').isVisible()),'Desktop GOS row leaked onto mobile.');
+            assert(await page.locator('#bcOpenSeasonsPage > .hs-im-shellbar').isVisible(),'GOS mobile shell missing.');
+
+            const speciesBtn=page.locator('#gosSpeciesBtn');
+            if (await speciesBtn.count()) {
+              await speciesBtn.click({timeout:5000});
+              await page.waitForTimeout(200);
+              const drop=page.locator('#gosSpeciesDrop');
+              assert(await drop.isVisible(),'GOS mobile species dropdown did not open.');
+              const moose=drop.locator('.hs-species-row').filter({hasText:/Moose/i}).first();
+              if (await moose.count()) {
+                await moose.click();
+                await page.waitForTimeout(300);
+                assert(/moose/i.test((await speciesBtn.textContent())||''),'GOS mobile species selection did not update.');
+              } else {
+                await speciesBtn.click();
+              }
+            }
+
+            const layers=page.locator('#gosPremiumMobileLayers');
+            assert(await layers.isVisible(),'GOS mobile Layers control missing.');
+            await layers.click({timeout:5000});
+            await page.waitForTimeout(200);
+
+            await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('leh'));
+            await page.waitForFunction(()=>document.getElementById('mapPage')?.getClientRects().length,null,{timeout:10000});
+            await page.waitForTimeout(350);
+            assert(await page.locator('#mapPage > .hs-im-shellbar').isVisible(),'LEH mobile shell failed after GOS -> LEH.');
+
+            assert(!errors.length,'Mobile page errors: '+errors.join(' | '));
+            await page.screenshot({path:'map-system-mobile.png',fullPage:false});
+            await page.close();
+          }
+
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            await waitForProduction(browser);
+            await desktopAudit(browser);
+            await mobileAudit(browser);
+            await browser.close();
+            console.log('HuntSmart map system regression QA passed.');
+          })().catch(e=>{console.error(e.stack||e);process.exit(1);});
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: map-system-regression-${{ github.run_number }}
+          path: map-system-*.png
+          if-no-files-found: warn
+          retention-days: 14
