@@ -489,23 +489,25 @@
       ? String(success.textContent || '').replace(/\s*success\s*/i, '').trim()
       : String(odds && odds.textContent || '').trim();
     const label = successSort ? 'Highest hunter success' : 'Best draw odds';
+    const speciesText = species ? species.textContent.trim() : 'Top opportunity';
+    const valueText = value || '—';
 
     if (!summary && header) {
       summary = document.createElement('div');
       summary.className = 'hs-premium-inspector-summary';
+      summary.innerHTML = '<span class="hs-premium-summary-label"></span>' +
+        '<strong class="hs-premium-summary-species"></strong>' +
+        '<b class="hs-premium-summary-value"></b>';
       if (sortRow) header.insertBefore(summary, sortRow);
       else header.appendChild(summary);
     }
     if (summary) {
-      summary.innerHTML = '<span class="hs-premium-summary-label"></span>' +
-        '<strong class="hs-premium-summary-species"></strong>' +
-        '<b class="hs-premium-summary-value"></b>';
       const labelEl = summary.querySelector('.hs-premium-summary-label');
       const speciesEl = summary.querySelector('.hs-premium-summary-species');
       const valueEl = summary.querySelector('.hs-premium-summary-value');
-      if (labelEl) labelEl.textContent = label;
-      if (speciesEl) speciesEl.textContent = species ? species.textContent.trim() : 'Top opportunity';
-      if (valueEl) valueEl.textContent = value || '—';
+      if (labelEl && labelEl.textContent !== label) labelEl.textContent = label;
+      if (speciesEl && speciesEl.textContent !== speciesText) speciesEl.textContent = speciesText;
+      if (valueEl && valueEl.textContent !== valueText) valueEl.textContent = valueText;
     }
   }
 
