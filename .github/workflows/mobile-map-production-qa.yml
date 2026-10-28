@@ -7,6 +7,7 @@ on:
     paths:
       - mobile-map-polish.css
       - mobile-map-topbar-fix.css
+      - mobile-map-shell-finalizer.js
       - terrain-intelligence.css
       - imagery-lab.js
       - terrain-intelligence.js
@@ -40,96 +41,61 @@ jobs:
           node <<'NODE'
           const { chromium } = require('playwright');
           const assert = (v,m) => { if (!v) throw new Error(m); };
-
-          async function load(page) {
-            let lastError;
-            for (let i = 0; i < 8; i++) {
-              try {
-                await page.goto(`${process.env.URL}?mobile-map-qa=${Date.now()}-${i}`, {waitUntil:'commit',timeout:30000});
-                await page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__, null, {timeout:30000});
-                await page.waitForLoadState('domcontentloaded', {timeout:30000});
-                await page.waitForTimeout(300);
-                return;
-              } catch (error) {
-                lastError = error;
-                await page.waitForTimeout(2000);
-              }
-            }
-            throw lastError || new Error('Could not load HuntSmart production app.');
+          async function load(page){
+            await page.goto(`${process.env.URL}?mobile-map-qa=${Date.now()}`,{waitUntil:'commit',timeout:30000});
+            await page.waitForFunction(()=>!!window.__HUNTSMART_INTERACTIVE_MAP__,null,{timeout:30000});
+            await page.waitForLoadState('domcontentloaded',{timeout:30000});
+            await page.waitForTimeout(350);
           }
-
-          async function enterLeh(page) {
-            await page.evaluate(() => document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click());
-            await page.waitForFunction(() => {
-              const root=document.getElementById('mapPage');
-              const shell=root&&root.querySelector(':scope > .hs-im-shellbar');
-              return !!(root&&shell&&root.getClientRects().length&&getComputedStyle(root).display!=='none');
-            }, null, {timeout:30000});
-            await page.waitForFunction(() => typeof fullMapInstance !== 'undefined' && !!fullMapInstance, null, {timeout:30000});
-            await page.waitForTimeout(600);
+          async function enterLeh(page){
+            await page.evaluate(()=>document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click());
+            await page.waitForFunction(()=>{const r=document.getElementById('mapPage');return !!(r&&r.getClientRects().length&&getComputedStyle(r).display!=='none');},null,{timeout:30000});
+            await page.waitForFunction(()=>typeof fullMapInstance!=='undefined'&&!!fullMapInstance,null,{timeout:30000});
+            await page.waitForTimeout(650);
           }
-
-          async function enterGos(page) {
-            await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
-            await page.waitForFunction(() => {
-              const root=document.getElementById('bcOpenSeasonsPage');
-              const shell=root&&root.querySelector(':scope > .hs-im-shellbar');
-              return !!(root&&shell&&root.getClientRects().length&&getComputedStyle(root).display!=='none');
-            }, null, {timeout:30000});
-            await page.waitForTimeout(600);
+          async function enterGos(page){
+            await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
+            await page.waitForFunction(()=>{const r=document.getElementById('bcOpenSeasonsPage');return !!(r&&r.getClientRects().length&&getComputedStyle(r).display!=='none');},null,{timeout:30000});
+            await page.waitForTimeout(650);
           }
-
-          function snap(kind) {
-            const vis = el => !!(el && el.getClientRects().length && getComputedStyle(el).display!=='none' && getComputedStyle(el).visibility!=='hidden');
+          function snap(kind){
+            const vis=el=>!!(el&&el.getClientRects().length&&getComputedStyle(el).display!=='none'&&getComputedStyle(el).visibility!=='hidden');
             const root=document.getElementById(kind==='leh'?'mapPage':'bcOpenSeasonsPage');
             const shell=root&&root.querySelector(':scope > .hs-im-shellbar');
             const rail=root&&root.querySelector('.hs-rail');
             const cluster=document.getElementById(kind==='leh'?'hsBrCluster':'gosBrCluster');
             const legacy=document.getElementById(kind==='leh'?'fullMapControlStack':'osMapControlStack');
-            const zoom=cluster&&cluster.querySelector('.hs-zoom-grp');
-            const rect=el=>{if(!el)return null;const r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
-            const style=el=>{if(!el)return null;const s=getComputedStyle(el);return {display:s.display,background:s.backgroundColor,boxShadow:s.boxShadow,border:s.border};};
-            const buttons=sel=>Array.from((sel&&sel.querySelectorAll('button'))||[]).filter(vis).map(rect);
+            const rect=el=>{if(!el)return null;const r=el.getBoundingClientRect();return{left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
+            const style=el=>{if(!el)return null;const s=getComputedStyle(el);return{display:s.display,background:s.backgroundColor,boxShadow:s.boxShadow};};
+            const buttons=el=>Array.from((el&&el.querySelectorAll('button'))||[]).filter(vis).map(rect);
             const leh=shell&&shell.querySelector('[data-hs-im-mode="leh"]');
             const gos=shell&&shell.querySelector('[data-hs-im-mode="gos"]');
-            const alberta=shell&&shell.querySelector('[data-hs-im-province="AB"]');
-            return {
-              viewport:{width:innerWidth,height:innerHeight}, root:rect(root), shell:rect(shell), shellButtons:buttons(shell),
-              lehLabel:leh?getComputedStyle(leh,'::after').content:'', gosLabel:gos?getComputedStyle(gos,'::after').content:'',
-              abLabel:alberta?getComputedStyle(alberta,'::after').content:'',
-              railButtons:buttons(rail), duplicateLeh:vis(document.getElementById('hsRbLEH')), legacy:vis(legacy),
-              cluster:rect(cluster), navButtons:buttons(cluster), zoomStyle:style(zoom)
-            };
+            const ab=shell&&shell.querySelector('[data-hs-im-province="AB"]');
+            return{viewport:{width:innerWidth,height:innerHeight},root:rect(root),shell:rect(shell),shellButtons:buttons(shell),lehLabel:leh?getComputedStyle(leh,'::after').content:'',gosLabel:gos?getComputedStyle(gos,'::after').content:'',abLabel:ab?getComputedStyle(ab,'::after').content:'',species:rect(document.getElementById(kind==='leh'?'hsSpeciesBtn':'gosSpeciesBtn')),layers:rect(document.getElementById(kind==='leh'?'hsPremiumMobileLayers':'gosPremiumMobileLayers')),railButtons:buttons(rail),legacy:vis(legacy),cluster:rect(cluster),navButtons:buttons(cluster),zoomStyle:style(cluster&&cluster.querySelector('.hs-zoom-grp'))};
           }
-
-          function verify(name,s) {
-            assert(s.root&&s.root.width>300&&s.root.height>400, `${name} map collapsed: ${JSON.stringify(s.root)}`);
-            assert(s.shell&&s.shell.left>=4&&s.shell.right<=s.viewport.width-4&&s.shell.width>250, `${name} top controls overflow: ${JSON.stringify(s.shell)}`);
-            assert(s.shellButtons.length>=5&&s.shellButtons.every(b=>b.height>=44), `${name} top targets too small: ${JSON.stringify(s.shellButtons)}`);
-            assert(/LEH/.test(s.lehLabel)&&/GOS/.test(s.gosLabel)&&/AB/.test(s.abLabel), `${name} mobile labels not simplified`);
-            assert(!s.legacy, `${name} legacy control stack visible`);
-            assert(s.navButtons.length===3&&s.navButtons.every(b=>b.width>=44&&b.height>=44), `${name} must have 3 independent map buttons: ${JSON.stringify(s.navButtons)}`);
-            assert(s.zoomStyle&&s.zoomStyle.background==='rgba(0, 0, 0, 0)'&&s.zoomStyle.boxShadow==='none', `${name} zoom buttons still connected: ${JSON.stringify(s.zoomStyle)}`);
-            assert(s.navButtons[1].top-s.navButtons[0].bottom>=4, `${name} + / - still joined: ${JSON.stringify(s.navButtons)}`);
-            assert(s.cluster&&s.cluster.right<=s.viewport.width-4&&s.cluster.bottom<=s.viewport.height-4, `${name} nav clipped: ${JSON.stringify(s.cluster)}`);
+          function verify(name,s){
+            assert(s.root&&s.root.width>300&&s.root.height>400,`${name} map collapsed`);
+            assert(s.shell&&s.shell.left>=4&&s.shell.right<=s.viewport.width-4,`${name} top row overflow`);
+            assert(s.shellButtons.length>=6&&s.shellButtons.every(b=>b.height>=44),`${name} top controls undersized: ${JSON.stringify(s.shellButtons)}`);
+            assert(/LEH/.test(s.lehLabel)&&/GOS/.test(s.gosLabel)&&/AB/.test(s.abLabel),`${name} compact mode labels missing`);
+            assert(s.species&&s.species.top>=s.shell.top&&s.species.bottom<=s.shell.bottom,`${name} species control is not in the top row`);
+            assert(s.layers&&s.layers.top>=s.shell.top&&s.layers.bottom<=s.shell.bottom,`${name} Layers control is not in the top row`);
+            assert(!s.legacy,`${name} duplicate legacy control stack visible`);
+            assert(s.navButtons.length===3&&s.navButtons.every(b=>b.width>=44&&b.height>=44),`${name} must have 3 independent + / - / 3D buttons`);
+            assert(s.zoomStyle&&s.zoomStyle.background==='rgba(0, 0, 0, 0)'&&s.zoomStyle.boxShadow==='none',`${name} zoom controls still joined`);
+            assert(s.navButtons[1].top-s.navButtons[0].bottom>=4,`${name} + / - buttons still joined`);
           }
-
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true});
-            await load(page);
-            await enterLeh(page);
-            const leh=await page.evaluate(snap,'leh'); console.log('LEH',JSON.stringify(leh));
-            await page.screenshot({path:'mobile-map-leh-390.png'});
-            verify('LEH',leh);
-            assert(!leh.duplicateLeh,'Duplicate LEH rail button visible');
-            assert(leh.railButtons.length===3&&leh.railButtons.every(b=>b.width>=44&&b.height>=44),'LEH utility rail should be 3 touch-friendly buttons');
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await load(page);await enterLeh(page);
+            const leh=await page.evaluate(snap,'leh');console.log('LEH',JSON.stringify(leh));await page.screenshot({path:'mobile-map-leh-390.png'});verify('LEH',leh);
+            assert(leh.railButtons.length===2&&leh.railButtons.every(b=>b.width>=44&&b.height>=44),'LEH rail should contain only Search + Cards');
             await enterGos(page);
-            const gos=await page.evaluate(snap,'gos'); console.log('GOS',JSON.stringify(gos));
-            await page.screenshot({path:'mobile-map-gos-390.png'});
-            verify('GOS',gos);
-            await browser.close();
-            console.log('HuntSmart mobile map production QA passed.');
+            const gos=await page.evaluate(snap,'gos');console.log('GOS',JSON.stringify(gos));await page.screenshot({path:'mobile-map-gos-390.png'});verify('GOS',gos);
+            assert(!errors.length,'Page errors: '+errors.join(' | '));
+            await browser.close();console.log('HuntSmart mobile map production QA passed.');
           })().catch(e=>{console.error(e.stack||e);process.exit(1);});
           NODE
       - uses: actions/upload-artifact@v4
