@@ -1,0 +1,131 @@
+name: HuntSmart Hunt Detail Production QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - hunt-detail-premium.js
+      - bc-detail.js
+      - bc-saved-compare.js
+      - maps.js
+      - style.css
+      - build-preview.sh
+      - netlify.toml
+      - .github/workflows/hunt-detail-production-qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  detail-page-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Validate live premium BC hunt detail page
+        env:
+          URL: https://huntsmartcanada.ca/
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const assert = (v,m) => { if (!v) throw new Error(m); };
+
+          async function load(page) {
+            await page.goto(`${process.env.URL}?detail-qa=${Date.now()}`, { waitUntil:'domcontentloaded', timeout:30000 });
+            await page.waitForFunction(() => typeof openDrawDetailByKey === 'function', null, { timeout:30000 });
+            await page.waitForFunction(() => typeof DATA !== 'undefined' && Array.isArray(DATA) && DATA.length > 100, null, { timeout:30000 });
+          }
+
+          async function openTarget(page) {
+            const found = await page.evaluate(() => {
+              const r = DATA.find(x => String(x.Code) === '6039' && String(x.MU) === '6-20');
+              if (!r) return false;
+              openDrawDetailByKey(r.Code, r.MU);
+              return true;
+            });
+            assert(found, 'Target BC draw 6039 / MU 6-20 not found');
+            await page.waitForFunction(() => {
+              const p = document.getElementById('drawDetailPage');
+              return !!(p && p.getClientRects().length && p.querySelector('.hs-pd'));
+            }, null, { timeout:15000 });
+            await page.waitForTimeout(900);
+          }
+
+          async function snapshot(page) {
+            return page.evaluate(() => {
+              const p = document.getElementById('drawDetailPage');
+              const text = (p?.innerText || '').replace(/\s+/g,' ').trim();
+              const rect = el => { if (!el) return null; const r = el.getBoundingClientRect(); return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height}; };
+              return {
+                viewport:{width:innerWidth,height:innerHeight},
+                page:rect(p),
+                shell:rect(p?.querySelector('.hs-pd')),
+                hero:rect(p?.querySelector('.hs-pd-hero')),
+                map:rect(document.getElementById('ddPremiumMap')),
+                title:p?.querySelector('.hs-pd-title')?.textContent?.trim() || '',
+                odds:p?.querySelector('.hs-pd-odd b')?.textContent?.trim() || '',
+                actions:Array.from(p?.querySelectorAll('.hs-pd-actions button') || []).map(x => x.textContent.trim()),
+                quick:Array.from(p?.querySelectorAll('.hs-pd-q') || []).map(x => x.textContent.replace(/\s+/g,' ').trim()),
+                hasTrend:!!p?.querySelector('.hs-pd-chart'),
+                hasMap:!!document.getElementById('ddPremiumMap'),
+                hasOpenMap:/Open full map/i.test(text),
+                hasSources:/Official sources/i.test(text),
+                hasOpportunityScore:/HuntSmart\s+Opportunity\s+Score|HuntSmart\s+Score/i.test(text),
+                overflowX:document.documentElement.scrollWidth > innerWidth + 2,
+                sourceLinks:Array.from(p?.querySelectorAll('.hs-pd-links a') || []).map(a => a.href)
+              };
+            });
+          }
+
+          function verify(name,s) {
+            assert(s.page && s.page.width > 300, `${name}: detail page missing`);
+            assert(s.shell && s.shell.left >= -1 && s.shell.right <= s.viewport.width + 1, `${name}: content overflows viewport`);
+            assert(/Tinhorn Sheep/i.test(s.title), `${name}: target species title missing: ${s.title}`);
+            assert(/42/.test(s.odds), `${name}: expected current draw odds not shown: ${s.odds}`);
+            assert(s.actions.some(x => /Save/i.test(x)) && s.actions.some(x => /Compare/i.test(x)), `${name}: Save / Compare actions missing`);
+            assert(s.quick.length === 4, `${name}: summary strip should have four metrics`);
+            assert(s.hasTrend, `${name}: draw trend section missing`);
+            assert(s.hasMap && s.map && s.map.height >= 250, `${name}: interactive hunt map missing/collapsed`);
+            assert(s.hasOpenMap, `${name}: Open full map action missing`);
+            assert(s.hasSources && s.sourceLinks.length >= 3, `${name}: official source section incomplete`);
+            assert(!s.hasOpportunityScore, `${name}: prohibited HuntSmart Opportunity Score is present`);
+            assert(!s.overflowX, `${name}: horizontal page overflow`);
+          }
+
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+
+            const desktop = await browser.newPage({viewport:{width:1440,height:900}});
+            const errors=[]; desktop.on('pageerror',e=>errors.push('desktop: '+e.message));
+            await load(desktop); await openTarget(desktop);
+            const ds = await snapshot(desktop); verify('desktop',ds);
+            console.log('DESKTOP',JSON.stringify(ds));
+            await desktop.screenshot({path:'hunt-detail-desktop.png',fullPage:false});
+
+            const mobile = await browser.newPage({viewport:{width:390,height:844},hasTouch:true});
+            mobile.on('pageerror',e=>errors.push('mobile: '+e.message));
+            await load(mobile); await openTarget(mobile);
+            const ms = await snapshot(mobile); verify('mobile',ms);
+            console.log('MOBILE',JSON.stringify(ms));
+            await mobile.screenshot({path:'hunt-detail-mobile.png',fullPage:false});
+
+            assert(!errors.length, 'Page errors: '+errors.join(' | '));
+            await browser.close();
+            console.log('HuntSmart premium hunt detail production QA passed.');
+          })().catch(e => { console.error(e.stack || e); process.exit(1); });
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hunt-detail-production-qa-${{ github.run_number }}
+          path: hunt-detail-*.png
+          if-no-files-found: warn
+          retention-days: 14
