@@ -253,10 +253,26 @@
   max-height: min(520px, calc(100dvh - 132px)) !important;
 }
 
-/* Basemap and terrain are already exposed elsewhere; do not repeat them in Layers. */
+/* The top toolbar already owns basemap, terrain and overlay visibility. Layers only shows unique display controls. */
 #mapPage #hsWorldSettingsPanel .hs-wc-panel-body > .hs-wc-section:nth-child(1),
-#mapPage #hsWorldSettingsPanel .hs-wc-panel-body > .hs-wc-section:nth-child(2) {
+#mapPage #hsWorldSettingsPanel .hs-wc-panel-body > .hs-wc-section:nth-child(2),
+#mapPage #hsWorldSettingsPanel .hs-wc-panel-body > .hs-wc-section:nth-child(5) {
   display: none !important;
+}
+
+#mapPage #hsWorldSettingsPanel .hs-wc-panel-head .hs-wc-panel-title,
+#mapPage #hsWorldSettingsPanel .hs-wc-panel-head .hs-wc-panel-sub {
+  font-size: 0 !important;
+}
+
+#mapPage #hsWorldSettingsPanel .hs-wc-panel-head .hs-wc-panel-title::after {
+  content: 'Layers';
+  font-size: 13px;
+}
+
+#mapPage #hsWorldSettingsPanel .hs-wc-panel-head .hs-wc-panel-sub::after {
+  content: 'Satellite detail and lighting';
+  font-size: 10px;
 }
 
 /* Bottom-right navigation: three separate floating buttons, no connecting black rail. */
