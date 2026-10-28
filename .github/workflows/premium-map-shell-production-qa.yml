@@ -30,6 +30,7 @@ jobs:
           URL: https://huntsmartcanada.ca/
         run: |
           node <<'NODE'
+          const fs = require('fs');
           const { chromium } = require('playwright');
           const assert = (value, message) => { if (!value) throw new Error(message); };
 
@@ -57,11 +58,12 @@ jobs:
           }
 
           async function enterLEH(page) {
-            await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.open('leh', { province:'BC' }));
+            await page.evaluate(() => document.getElementById('navMap')?.click());
             await page.waitForFunction(() => {
               const root = document.getElementById('mapPage');
               return !!(root && root.getClientRects().length && getComputedStyle(root).display !== 'none');
             }, null, { timeout:30000 });
+            await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.open('leh', { province:'BC' }));
             await page.waitForFunction(() => typeof fullMapInstance !== 'undefined' && !!fullMapInstance, null, { timeout:30000 });
             await page.waitForTimeout(800);
           }
@@ -117,7 +119,7 @@ jobs:
                     left:r.left, right:r.right, top:r.top, bottom:r.bottom,
                     width:r.width, height:r.height,
                     position:s.position, display:s.display,
-                    opacity:Number(s.opacity || 1)
+                    opacity:Number(s.opacity || 1), zIndex:s.zIndex
                   };
                 };
                 const map = rect(document.getElementById('fullMapLeaflet'));
@@ -131,6 +133,9 @@ jobs:
                 const layers = rect(document.getElementById('hsWorldSettingsBtn'));
                 return {
                   map, drawer, shell, search, toolbar, controls, rail, layers,
+                  homeDisplay:getComputedStyle(document.getElementById('homePage')).display,
+                  mapDisplay:getComputedStyle(document.getElementById('mapPage')).display,
+                  surface:window.__HUNTSMART_INTERACTIVE_MAP__.getState().surface,
                   premium:document.getElementById('mapPage').classList.contains('hs-premium-map'),
                   open:document.getElementById('mapPage').classList.contains('hs-premium-results-open'),
                   expanded:document.getElementById('mapPage').classList.contains('hs-premium-results-expanded'),
@@ -142,9 +147,11 @@ jobs:
                 };
               }, { mobile:viewport.mobile });
 
+              fs.writeFileSync(`premium-map-shell-state-${viewport.width}.json`, JSON.stringify({ before, state, errors }, null, 2));
               console.log(`PREMIUM MAP ${viewport.width}`, JSON.stringify({ before, state }));
               await page.screenshot({ path:`premium-map-shell-${viewport.width}.png`, fullPage:false });
 
+              assert(state.mapDisplay !== 'none' && state.homeDisplay === 'none' && state.surface === 'leh', 'Production navigation did not settle on the LEH map.');
               assert(state.premium, 'Premium map shell class is missing.');
               assert(state.open, 'Premium results-open state was not set.');
               assert(state.cards > 0, 'Selected WMU produced no hunt cards.');
@@ -190,6 +197,7 @@ jobs:
                     pageExpanded:document.getElementById('mapPage').classList.contains('hs-premium-results-expanded')
                   };
                 });
+                fs.writeFileSync(`premium-map-shell-expanded-${viewport.width}.json`, JSON.stringify(expanded, null, 2));
                 assert(expanded.drawer.height >= 300, `Expanded mobile sheet is too short: ${expanded.drawer.height}`);
                 assert(expanded.pageExpanded, 'Expanded mobile state class is missing.');
                 if (expanded.controls) assert(expanded.controls.opacity <= 0.05, 'Mobile navigation controls should fade while sheet is expanded.');
@@ -211,6 +219,6 @@ jobs:
         if: always()
         with:
           name: premium-map-shell-production-qa-${{ github.run_number }}
-          path: premium-map-shell-*.png
+          path: premium-map-shell-*
           if-no-files-found: warn
           retention-days: 14
