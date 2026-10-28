@@ -40,7 +40,6 @@ jobs:
           node <<'NODE'
           const { chromium } = require('playwright');
           const assert = (value, message) => { if (!value) throw new Error(message); };
-          const visible = el => !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
 
           async function openLive(page) {
             let lastError;
@@ -74,6 +73,7 @@ jobs:
           }
 
           function mobileSnapshot(surface) {
+            const visible = el => !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
             const root = surface === 'leh' ? document.getElementById('mapPage') : document.getElementById('bcOpenSeasonsPage');
             const shell = root && root.querySelector(':scope > .hs-im-shellbar');
             const cluster = document.getElementById(surface === 'leh' ? 'hsBrCluster' : 'gosBrCluster');
@@ -144,8 +144,8 @@ jobs:
 
             await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
             await page.waitForFunction(() => {
-              const page = document.getElementById('bcOpenSeasonsPage');
-              return !!(page && page.getClientRects().length && getComputedStyle(page).display !== 'none');
+              const target = document.getElementById('bcOpenSeasonsPage');
+              return !!(target && target.getClientRects().length && getComputedStyle(target).display !== 'none');
             }, null, { timeout:30000 });
             await page.waitForFunction(() => typeof osMapInstance !== 'undefined' && !!osMapInstance, null, { timeout:30000 });
             await page.waitForTimeout(700);
