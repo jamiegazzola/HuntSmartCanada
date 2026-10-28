@@ -48,6 +48,8 @@ jobs:
                   null,
                   { timeout: 30000 }
                 );
+                await page.waitForLoadState('domcontentloaded', { timeout:30000 });
+                await page.waitForTimeout(300);
                 return;
               } catch (error) {
                 lastError = error;
@@ -66,9 +68,9 @@ jobs:
               const root = document.getElementById('mapPage');
               return !!(root && root.getClientRects().length && getComputedStyle(root).display !== 'none');
             }, null, { timeout:30000 });
-            await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.open('leh', { province:'BC' }));
             await page.waitForFunction(() => typeof fullMapInstance !== 'undefined' && !!fullMapInstance, null, { timeout:30000 });
-            await page.waitForTimeout(800);
+            await page.waitForFunction(() => window.__HUNTSMART_INTERACTIVE_MAP__.getState().surface === 'leh', null, { timeout:30000 });
+            await page.waitForTimeout(500);
           }
 
           async function selectWMU(page, id) {
