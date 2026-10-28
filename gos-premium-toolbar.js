@@ -21,15 +21,124 @@
     s.id = STYLE_ID;
     s.textContent = `
 @media (min-width:769px){
-  #bcOpenSeasonsPage .os-horizontal-toolbar{gap:10px!important;padding-left:14px!important;padding-right:14px!important}
-  #bcOpenSeasonsPage .os-search-wrap{flex:0 0 230px!important;width:230px!important;max-width:230px!important}
-  #bcOpenSeasonsPage .os-search-input{width:100%!important;max-width:100%!important}
-  #bcOpenSeasonsPage .os-toolbar-actions{display:flex!important;align-items:center!important;gap:10px!important;flex:0 0 auto!important}
-  #bcOpenSeasonsPage #osSpeciesSel{width:136px!important;min-width:136px!important;max-width:136px!important;height:42px!important;border-radius:10px!important;background:rgba(11,15,13,.94)!important;border:1px solid rgba(255,255,255,.12)!important;color:#edf2ee!important;font-weight:700!important}
+  /* Lock GOS to the same simple left-side geometry as LEH. Older GOS CSS has
+     several !important width/min-width/flex rules, so every geometry property
+     is explicitly reset here to prevent controls from sitting on top of search. */
+  #bcOpenSeasonsPage .os-topbar.os-horizontal-toolbar{
+    position:absolute!important;
+    top:14px!important;
+    left:14px!important;
+    right:auto!important;
+    width:auto!important;
+    max-width:calc(100vw - 560px)!important;
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:9px!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    pointer-events:none!important;
+  }
+  #bcOpenSeasonsPage .os-topbar.os-horizontal-toolbar > *{pointer-events:auto!important}
+
+  #bcOpenSeasonsPage .os-topbar.os-horizontal-toolbar .os-search-wrap{
+    position:relative!important;
+    inset:auto!important;
+    flex:0 0 230px!important;
+    width:230px!important;
+    min-width:230px!important;
+    max-width:230px!important;
+    height:42px!important;
+    margin:0!important;
+    transform:none!important;
+    z-index:2!important;
+  }
+  #bcOpenSeasonsPage .os-topbar.os-horizontal-toolbar .os-search-input{
+    position:relative!important;
+    inset:auto!important;
+    display:block!important;
+    width:230px!important;
+    min-width:0!important;
+    max-width:230px!important;
+    height:42px!important;
+    margin:0!important;
+    transform:none!important;
+    border-radius:10px!important;
+  }
+
+  #bcOpenSeasonsPage .os-topbar.os-horizontal-toolbar .os-filters,
+  #bcOpenSeasonsPage .os-topbar.os-horizontal-toolbar .os-toolbar-actions{
+    position:relative!important;
+    inset:auto!important;
+    display:flex!important;
+    flex:0 0 auto!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:9px!important;
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:visible!important;
+    transform:none!important;
+  }
+
+  #bcOpenSeasonsPage #osSpeciesSel{
+    position:relative!important;
+    inset:auto!important;
+    flex:0 0 136px!important;
+    width:136px!important;
+    min-width:136px!important;
+    max-width:136px!important;
+    height:42px!important;
+    margin:0!important;
+    transform:none!important;
+    border-radius:10px!important;
+    background:rgba(11,15,13,.94)!important;
+    border:1px solid rgba(255,255,255,.12)!important;
+    color:#edf2ee!important;
+    font-weight:700!important;
+  }
+
   #bcOpenSeasonsPage #osFilterBtn,#bcOpenSeasonsPage #osLayersBtn{display:none!important}
-  #bcOpenSeasonsPage #osUnifiedSettingsBtn{height:42px!important;min-width:92px!important;padding:0 14px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:10px!important;background:rgba(11,15,13,.94)!important;color:#e8eeea!important;font:750 12px/1 'DM Sans',sans-serif!important;cursor:pointer!important;box-shadow:0 8px 24px rgba(0,0,0,.16)!important;backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important}
+  #bcOpenSeasonsPage #osUnifiedSettingsBtn{
+    position:relative!important;
+    inset:auto!important;
+    flex:0 0 auto!important;
+    width:auto!important;
+    height:42px!important;
+    min-width:92px!important;
+    max-width:none!important;
+    margin:0!important;
+    padding:0 14px!important;
+    transform:none!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:7px!important;
+    border:1px solid rgba(255,255,255,.12)!important;
+    border-radius:10px!important;
+    background:rgba(11,15,13,.94)!important;
+    color:#e8eeea!important;
+    font:750 12px/1 'DM Sans',sans-serif!important;
+    cursor:pointer!important;
+    box-shadow:0 8px 24px rgba(0,0,0,.16)!important;
+    backdrop-filter:blur(14px)!important;
+    -webkit-backdrop-filter:blur(14px)!important;
+  }
   #bcOpenSeasonsPage #osUnifiedSettingsBtn:hover,#bcOpenSeasonsPage #osUnifiedSettingsBtn.active{border-color:rgba(91,208,108,.34)!important;background:rgba(62,145,74,.14)!important;color:#f2fff4!important}
   #bcOpenSeasonsPage #osUnifiedSettingsBtn .hs-gos-settings-icon{font-size:13px;color:#8e9992}
+
   #bcOpenSeasonsPage #osUnifiedSettingsPanel{position:fixed!important;z-index:9475!important;width:min(360px,calc(100vw - 28px))!important;max-height:calc(100dvh - 132px)!important;overflow:auto!important;overscroll-behavior:contain;scrollbar-width:none;display:none;padding:0 14px 14px!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:16px!important;background:rgba(12,16,14,.985)!important;box-shadow:0 22px 58px rgba(0,0,0,.44)!important;backdrop-filter:blur(22px) saturate(120%)!important;-webkit-backdrop-filter:blur(22px) saturate(120%)!important}
   #bcOpenSeasonsPage #osUnifiedSettingsPanel::-webkit-scrollbar{display:none}
   #bcOpenSeasonsPage #osUnifiedSettingsPanel.open{display:block!important}
@@ -54,6 +163,17 @@
   #bcOpenSeasonsPage #osUnifiedSettingsPanel .os-dock-clear{display:flex!important;width:100%!important;min-height:38px!important;align-items:center!important;justify-content:center!important;margin:0!important;border:1px solid rgba(255,255,255,.095)!important;border-radius:9px!important;background:rgba(255,255,255,.03)!important;color:#aeb7b1!important;font-weight:750!important}
   #bcOpenSeasonsPage #osUnifiedSettingsPanel .os-dock-clear:hover{border-color:rgba(235,108,96,.28)!important;background:rgba(235,108,96,.07)!important;color:#f2b1aa!important}
 }
+
+/* On narrower desktop widths, keep the controls in one row but trim search before
+   allowing any collision with the right-side BC / GOS mode controls. */
+@media (min-width:769px) and (max-width:1120px){
+  #bcOpenSeasonsPage .os-topbar.os-horizontal-toolbar{max-width:calc(100vw - 470px)!important;gap:7px!important}
+  #bcOpenSeasonsPage .os-topbar.os-horizontal-toolbar .os-search-wrap,
+  #bcOpenSeasonsPage .os-topbar.os-horizontal-toolbar .os-search-input{flex-basis:190px!important;width:190px!important;min-width:190px!important;max-width:190px!important}
+  #bcOpenSeasonsPage #osSpeciesSel{flex-basis:124px!important;width:124px!important;min-width:124px!important;max-width:124px!important}
+  #bcOpenSeasonsPage #osUnifiedSettingsBtn{min-width:84px!important;padding:0 11px!important}
+}
+
 @media(max-width:768px){#bcOpenSeasonsPage #osUnifiedSettingsPanel,#bcOpenSeasonsPage #osUnifiedSettingsBtn{display:none!important}}
 `;
     document.head.appendChild(s);
