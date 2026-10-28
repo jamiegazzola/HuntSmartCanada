@@ -10,7 +10,6 @@
   const MOBILE_QUERY = '(max-width: 768px)';
   const STYLE_ID = 'hsPremiumMapShellStyles';
   let drawerObserver = null;
-  let installTimer = null;
 
   function isMobile() {
     return !!(window.matchMedia && window.matchMedia(MOBILE_QUERY).matches);
@@ -571,45 +570,29 @@
     const d = drawer();
     if (!d || d.__hsPremiumObserved) return;
     d.__hsPremiumObserved = true;
-    drawerObserver = new MutationObserver(function () {
+    drawerObserver = new MutationObserver(function (mutations) {
+      if (!mutations.some(function (mutation) { return mutation.type === 'attributes'; })) return;
       syncDrawerState();
-      decorateInspector();
     });
     drawerObserver.observe(d, {
       attributes: true,
-      attributeFilter: ['class', 'style'],
-      childList: true,
-      subtree: true
+      attributeFilter: ['class', 'style']
     });
   }
 
-  function install() {
+  function refreshShell() {
     injectStyles();
     updateToolbar();
     installWrappers();
     observeDrawer();
     syncDrawerState();
+  }
 
-    const p = page();
-    if (p && !p.__hsPremiumPageObserved) {
-      p.__hsPremiumPageObserved = true;
-      const observer = new MutationObserver(function () {
-        updateToolbar();
-        installWrappers();
-        observeDrawer();
-        syncDrawerState();
-      });
-      observer.observe(p, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
-    }
-
-    if (!installTimer) {
-      installTimer = setInterval(function () {
-        updateToolbar();
-        installWrappers();
-        observeDrawer();
-        syncDrawerState();
-      }, 900);
-    }
+  function install() {
+    refreshShell();
+    setTimeout(refreshShell, 200);
+    setTimeout(refreshShell, 700);
+    window.addEventListener('resize', function () { setTimeout(syncDrawerState, 0); });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
