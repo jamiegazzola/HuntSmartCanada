@@ -1,0 +1,60 @@
+name: Build BC Big Game Abundance v4
+
+on:
+  push:
+    branches:
+      - work/bc-abundance-v4-build
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: ${{ !contains(github.event.head_commit.message, 'generated current v4') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install GIS build dependencies
+        run: python -m pip install --disable-pip-version-check requests shapely
+      - name: Build self-contained current BC layers
+        run: python scripts/build_bc_abundance_v4.py
+      - name: Validate generated KML
+        run: |
+          python - <<'PY'
+          import glob, os, xml.etree.ElementTree as ET
+          files=sorted(glob.glob('build/current_v4/*.kml'))
+          assert len(files)==12, files
+          total=0
+          for p in files:
+              ET.parse(p)
+              text=open(p,encoding='utf-8').read()
+              assert '<NetworkLink>' not in text, p
+              total += text.count('<Placemark>')
+              print(p, os.path.getsize(p), text.count('<Placemark>'))
+          assert total > 100, total
+          print('TOTAL_PLACEMARKS', total)
+          PY
+      - name: Package build artifact
+        run: |
+          cd build
+          zip -9 -r bc_current_layers_v4_bundle.zip current_v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bc-current-layers-v4
+          path: build/bc_current_layers_v4_bundle.zip
+          retention-days: 3
+      - name: Commit generated current-layer source files to isolated build branch
+        run: |
+          git config user.name 'HuntSmart Data Builder'
+          git config user.email 'actions@users.noreply.github.com'
+          git add build/current_v4
+          if git diff --cached --quiet; then
+            echo 'No generated changes to commit'
+          else
+            git commit -m 'build(v4): generated current v4 [skip ci]'
+            git push origin HEAD:work/bc-abundance-v4-build
+          fi
