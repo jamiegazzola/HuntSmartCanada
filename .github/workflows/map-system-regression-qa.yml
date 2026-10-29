@@ -49,14 +49,22 @@ jobs:
           const assert = (v,m) => { if (!v) throw new Error(m); };
           const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+          async function waitForAppReady(page) {
+            await page.waitForFunction(() =>
+              window.__HS_MAP_UI_POLISH_VERSION__ === '2.0.0' &&
+              !!window.__HUNTSMART_INTERACTIVE_MAP__ &&
+              !!document.getElementById('mapPage'),
+              null, {timeout:30000});
+          }
+
           async function waitForProduction(browser) {
             for (let attempt=0; attempt<30; attempt++) {
               const page=await browser.newPage({viewport:{width:1280,height:900}});
               try {
-                await page.goto(`${process.env.URL}?map-ready=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:30000});
-                const ok=await page.evaluate(()=>window.__HS_MAP_UI_POLISH_VERSION__==='2.0.0');
+                await page.goto(`${process.env.URL}?map-ready=${Date.now()}-${attempt}`,{waitUntil:'commit',timeout:30000});
+                await waitForAppReady(page);
                 await page.close();
-                if(ok) return;
+                return;
               } catch (_) { await page.close().catch(()=>{}); }
               await sleep(4000);
             }
@@ -64,8 +72,8 @@ jobs:
           }
 
           async function openDesktopMap(page) {
-            await page.goto(`${process.env.URL}?map-qa=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:30000});
-            await page.waitForFunction(()=>!!window.__HUNTSMART_INTERACTIVE_MAP__,null,{timeout:30000});
+            await page.goto(`${process.env.URL}?map-qa=${Date.now()}`,{waitUntil:'commit',timeout:30000});
+            await waitForAppReady(page);
             await page.evaluate(()=>document.getElementById('navMap')?.click());
             await page.waitForFunction(()=>{
               const e=document.getElementById('mapPage');
@@ -76,15 +84,19 @@ jobs:
           }
 
           async function openMobileMap(page) {
-            await page.goto(`${process.env.URL}?map-mobile-qa=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:30000});
-            await page.waitForFunction(()=>!!window.__HUNTSMART_INTERACTIVE_MAP__,null,{timeout:30000});
+            await page.goto(`${process.env.URL}?map-mobile-qa=${Date.now()}`,{waitUntil:'commit',timeout:30000});
+            await waitForAppReady(page);
             await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.open('leh',{province:'BC'}));
             await page.waitForFunction(()=>{
               const e=document.getElementById('mapPage');
               return !!(e&&e.getClientRects().length&&getComputedStyle(e).display!=='none');
             },null,{timeout:30000});
             await page.waitForFunction(()=>typeof fullMapInstance!=='undefined'&&!!fullMapInstance,null,{timeout:30000});
-            await page.waitForTimeout(1500);
+            await page.waitForFunction(()=>{
+              const e=document.querySelector('#mapPage > .hs-im-shellbar');
+              return !!(e&&e.getClientRects().length&&getComputedStyle(e).display!=='none');
+            },null,{timeout:30000});
+            await page.waitForTimeout(300);
           }
 
           async function switchGOS(page) {
@@ -201,18 +213,14 @@ jobs:
             const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true});
             const errors=[]; page.on('pageerror',e=>errors.push(e.message));
             await openMobileMap(page);
-            await page.waitForFunction(()=>{
-              const e=document.querySelector('#mapPage .hs-im-shellbar');
-              return !!(e&&e.getClientRects().length&&getComputedStyle(e).display!=='none');
-            },null,{timeout:8000});
             assert(!(await page.locator('#fullMapControlStack').isVisible()),'LEH legacy mobile control stack is visible.');
 
             await switchGOS(page);
             assert(!(await page.locator('#hsGosPrimaryRow').isVisible()),'Desktop GOS row leaked onto mobile.');
             await page.waitForFunction(()=>{
-              const e=document.querySelector('#bcOpenSeasonsPage .hs-im-shellbar');
+              const e=document.querySelector('#bcOpenSeasonsPage > .hs-im-shellbar');
               return !!(e&&e.getClientRects().length&&getComputedStyle(e).display!=='none');
-            },null,{timeout:8000});
+            },null,{timeout:30000});
             const speciesBtn=page.locator('#gosSpeciesBtn');
             assert(await speciesBtn.isVisible(),'GOS mobile species button is missing.');
             await speciesBtn.click({timeout:5000});
@@ -226,7 +234,7 @@ jobs:
             await layers.click({timeout:5000});
             await page.waitForTimeout(200);
             await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('leh'));
-            await page.waitForFunction(()=>document.querySelector('#mapPage .hs-im-shellbar')?.getClientRects().length,null,{timeout:10000});
+            await page.waitForFunction(()=>document.querySelector('#mapPage > .hs-im-shellbar')?.getClientRects().length,null,{timeout:10000});
             assert(!errors.length,'Mobile page errors: '+errors.join(' | '));
             await page.screenshot({path:'map-system-mobile.png',fullPage:false});
             await page.close();
