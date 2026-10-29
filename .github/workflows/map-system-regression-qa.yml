@@ -56,8 +56,8 @@ jobs:
             'function openInteractive',
             'function switchMode',
             'function switchProvince',
-            'function selectGOSRegion',
-            'activeGOSWMUs',
+            'selectGOSRegion: setGOSRegion',
+            'activeGOSWMUs:',
             '__HUNTSMART_INTERACTIVE_MAP__'
           ]) assert(controller.includes(marker), `map controller missing ${marker}`);
 
