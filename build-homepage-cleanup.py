@@ -1,6 +1,7 @@
 from pathlib import Path
 import re
 
+# Homepage middle-section removal revision: 2026-10-29.
 home = Path('site/index.html')
 if not home.exists():
     raise SystemExit('Homepage output missing: site/index.html')
