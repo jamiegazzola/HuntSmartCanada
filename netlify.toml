@@ -1,12 +1,12 @@
 # HuntSmart GitHub-backed production deployment
 [build]
-  # Build the core app, apply the map-performance layer, publish the map-guide controller,
-  # inject analytics/admin intelligence, then add crawlable SEO/AEO and research layers.
-  # The species LEH explorer runs late so generic generators cannot overwrite Elk/Moose pages.
-  # The trust layer runs after content generation; homepage cleanup keeps those research-only
-  # trust links off the consumer homepage; IndexNow runs last.
+  # Build the core app, apply the map-performance layer, generate versioned WMU vector tiles,
+  # publish the map-guide controller, inject analytics/admin intelligence, then add crawlable
+  # SEO/AEO and research layers. The species LEH explorer runs late so generic generators
+  # cannot overwrite Elk/Moose pages. The trust layer runs after content generation;
+  # homepage cleanup keeps research-only trust links off the consumer homepage; IndexNow runs last.
   # Mobile production QA revision: 2026-10-28-r5.
-  command = "bash build-preview.sh && python3 build-map-performance.py && cat hunt-detail-premium.js hunt-detail-chrome-fix.js >> site/bc-detail.js && cat gos-premium-toolbar.js gos-toolbar-row-final.js map-ui-polish.js gos-species-sync.js >> site/bc-open-seasons.js && cat mobile-map-polish.css >> site/terrain-intelligence.css && cat mobile-map-topbar-fix.css >> site/terrain-intelligence.css && cat mobile-responsive-system.css mobile-navigation-touch-fix.css >> site/terrain-intelligence.css && cat map-premium-shell.js map-ui-polish.js >> site/terrain-intelligence.js && cat mobile-map-shell-finalizer.js >> site/terrain-intelligence.js && cat mobile-map-touch-targets.js >> site/terrain-intelligence.js && cat map-zone-selection-fix.js >> site/terrain-intelligence.js && cat mobile-responsive-system.js mobile-account-nav.js >> site/terrain-intelligence.js && cp blog-map-guide-controller.js site/blog-map-guide-controller.js && python3 -c \"from pathlib import Path; ps=[Path('site/how-to-use-huntsmart-map.html'),Path('site/blog/how-to-use-huntsmart-map/index.html')]; [p.write_text(p.read_text(encoding='utf-8').replace('./blog-map-guide-controller.js','/blog-map-guide-controller.js'),encoding='utf-8') for p in ps]\" && bash build-analytics.sh && python3 build-seo-aeo.py && python3 build-search-growth.py && python3 build-interactive-research.py && python3 build-dark-research-cards.py && python3 build-species-leh-research-v2.py && python3 fix-species-leh-chart.py && python3 build-trust-layer.py && python3 build-homepage-cleanup.py && python3 build-indexnow.py"
+  command = "bash build-preview.sh && python3 build-map-performance.py && python3 build-wmu-vector-tiles.py && cat hunt-detail-premium.js hunt-detail-chrome-fix.js >> site/bc-detail.js && cat gos-premium-toolbar.js gos-toolbar-row-final.js map-ui-polish.js gos-species-sync.js >> site/bc-open-seasons.js && cat mobile-map-polish.css >> site/terrain-intelligence.css && cat mobile-map-topbar-fix.css >> site/terrain-intelligence.css && cat mobile-responsive-system.css mobile-navigation-touch-fix.css >> site/terrain-intelligence.css && cat map-premium-shell.js map-ui-polish.js >> site/terrain-intelligence.js && cat mobile-map-shell-finalizer.js >> site/terrain-intelligence.js && cat mobile-map-touch-targets.js >> site/terrain-intelligence.js && cat map-zone-selection-fix.js >> site/terrain-intelligence.js && cat mobile-responsive-system.js mobile-account-nav.js >> site/terrain-intelligence.js && cp blog-map-guide-controller.js site/blog-map-guide-controller.js && python3 -c \"from pathlib import Path; ps=[Path('site/how-to-use-huntsmart-map.html'),Path('site/blog/how-to-use-huntsmart-map/index.html')]; [p.write_text(p.read_text(encoding='utf-8').replace('./blog-map-guide-controller.js','/blog-map-guide-controller.js'),encoding='utf-8') for p in ps]\" && bash build-analytics.sh && python3 build-seo-aeo.py && python3 build-search-growth.py && python3 build-interactive-research.py && python3 build-dark-research-cards.py && python3 build-species-leh-research-v2.py && python3 fix-species-leh-chart.py && python3 build-trust-layer.py && python3 build-homepage-cleanup.py && python3 build-indexnow.py"
   publish = "site"
   # Netlify skips the build when this command exits 0. Ignore CI/docs-only commits;
   # every app, data, build, SEO, or research change still receives a deploy.
@@ -25,8 +25,13 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "geolocation=(self)"
 
-# Large, versioned map datasets may be reused between page loads. Keep the browser
-# cache modest because these filenames are stable; query versions still force updates.
+# Generated vector tiles are content-versioned in the path and never mutate.
+[[headers]]
+  for = "/map-tiles/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Full polygon fallbacks are only used by the legacy embedded Leaflet filter maps.
 [[headers]]
   for = "/bc-wmu-geojson.js"
   [headers.values]
