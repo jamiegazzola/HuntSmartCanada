@@ -3,7 +3,7 @@
   'use strict';
   if (window.__HUNTSMART_PWA_SHELL__) return;
 
-  var VERSION = '2026-10-28-pwa-v1';
+  var VERSION = '2026-10-29-pwa-v2';
   var mobileMq = window.matchMedia('(max-width: 980px)');
   var standaloneMq = window.matchMedia('(display-mode: standalone)');
   var installPrompt = null;
@@ -121,7 +121,7 @@
     sheet.setAttribute('aria-labelledby', 'hsInstallSheetTitle');
 
     var steps = ios
-      ? '<ol><li>Tap the Share button in Safari.</li><li>Choose <strong>Add to Home Screen</strong>.</li><li>Tap <strong>Add</strong>. Open HuntSmart from the new Home Screen icon.</li></ol>'
+      ? '<ol><li>In Safari, open the page menu or Share menu and tap <strong>Share</strong>.</li><li>Choose <strong>Add to Home Screen</strong>.</li><li>Make sure <strong>Open as Web App</strong> is turned on, then tap <strong>Add</strong>.</li><li>Open HuntSmart from the new Home Screen icon — not from the Safari tab.</li></ol>'
       : '<ol><li>Open your browser menu.</li><li>Choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li><li>Open HuntSmart from the installed icon for the full-screen app layout.</li></ol>';
 
     sheet.innerHTML = '<h2 id="hsInstallSheetTitle">Install HuntSmart</h2>' +
