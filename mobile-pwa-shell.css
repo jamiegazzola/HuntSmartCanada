@@ -1,0 +1,149 @@
+/* HuntSmart Canada — installable mobile app shell.
+   Keeps the map pinned to the live visual viewport without changing desktop layout. */
+:root {
+  --hs-live-nav-h: 52px;
+  --hs-map-page-h: calc(var(--hs-visual-vh, 100dvh) - var(--hs-live-nav-h));
+}
+
+@media (max-width: 980px) {
+  html.hs-standalone,
+  html.hs-standalone body {
+    background: #0b0f0d;
+  }
+
+  body.hs-mobile-map-active {
+    height: var(--hs-visual-vh, 100dvh) !important;
+    min-height: 0 !important;
+    max-height: var(--hs-visual-vh, 100dvh) !important;
+    overflow: hidden !important;
+    overscroll-behavior: none;
+  }
+
+  body.hs-mobile-map-active #mapPage,
+  body.hs-mobile-map-active #bcOpenSeasonsPage {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: var(--hs-map-page-h) !important;
+    min-height: 0 !important;
+    max-height: var(--hs-map-page-h) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+  }
+
+  body.hs-mobile-map-active #mapPage > .fullmap-page,
+  body.hs-mobile-map-active #bcOpenSeasonsPage > .os-page {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body.hs-mobile-map-active #mapPage .fullmap-body,
+  body.hs-mobile-map-active #bcOpenSeasonsPage .os-body,
+  body.hs-mobile-map-active #bcOpenSeasonsPage .os-map-wrap,
+  body.hs-mobile-map-active #bcOpenSeasonsPage .os-map-container {
+    min-height: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  body.hs-mobile-map-active #fullMap,
+  body.hs-mobile-map-active #osMap {
+    min-height: 0 !important;
+    height: 100% !important;
+  }
+
+  /* Standalone iOS extends behind the status bar; let the app nav own that safe area. */
+  html.hs-standalone #hsMobileTabbar {
+    box-sizing: border-box !important;
+    min-height: calc(var(--hs-mobile-nav-height, 52px) + env(safe-area-inset-top, 0px)) !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+  }
+
+  html.hs-standalone body.hs-mobile-map-active #mapPage #hsBrCluster,
+  html.hs-standalone body.hs-mobile-map-active #bcOpenSeasonsPage #gosBrCluster {
+    bottom: max(10px, calc(env(safe-area-inset-bottom, 0px) + 8px)) !important;
+  }
+
+  html.hs-standalone body.hs-mobile-map-active .mapboxgl-ctrl-bottom-left,
+  html.hs-standalone body.hs-mobile-map-active .mapboxgl-ctrl-bottom-right {
+    bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+
+  .hs-install-app-btn {
+    width: 100%;
+    border: 0;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .hs-install-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 12050;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0 max(8px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+    background: rgba(0, 0, 0, .58);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  .hs-install-sheet {
+    width: min(100%, 520px);
+    padding: 12px 18px max(18px, env(safe-area-inset-bottom, 0px));
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 20px;
+    background: rgba(16, 20, 18, .985);
+    color: #f1f5f2;
+    box-shadow: 0 24px 70px rgba(0,0,0,.58);
+  }
+
+  .hs-install-sheet::before {
+    content: '';
+    display: block;
+    width: 42px;
+    height: 4px;
+    margin: 0 auto 14px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.22);
+  }
+
+  .hs-install-sheet h2 {
+    margin: 0 0 8px;
+    font-size: 18px;
+  }
+
+  .hs-install-sheet p {
+    margin: 0 0 14px;
+    color: rgba(235,242,237,.72);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .hs-install-sheet ol {
+    margin: 0 0 16px;
+    padding-left: 22px;
+    color: rgba(245,248,246,.9);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .hs-install-sheet-close {
+    width: 100%;
+    min-height: 46px;
+    border: 1px solid rgba(101,213,118,.34);
+    border-radius: 12px;
+    background: rgba(101,213,118,.14);
+    color: #dffff0;
+    font: inherit;
+    font-weight: 750;
+  }
+}

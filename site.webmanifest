@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "HuntSmart Canada",
+  "short_name": "HuntSmart",
+  "description": "BC and Alberta hunting draw odds, seasons, harvest data, and interactive maps.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0f0d",
+  "theme_color": "#0b0f0d",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/images/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,154 @@
+name: HuntSmart PWA Mobile Shell Production QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - site.webmanifest
+      - build-pwa-shell.py
+      - mobile-pwa-shell.css
+      - mobile-pwa-shell.js
+      - hs-offline-lite-sw.js
+      - netlify.toml
+      - .github/workflows/pwa-mobile-shell-production-qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  pwa-mobile-shell-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify production PWA shell and map viewport
+        env:
+          URL: https://huntsmartcanada.ca/
+          EXPECTED_PWA_VERSION: 2026-10-28-pwa-v1
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const assert = (value, message) => { if (!value) throw new Error(message); };
+          const expected = process.env.EXPECTED_PWA_VERSION;
+          const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+          async function waitForProduction(page) {
+            let last = '';
+            for (let i = 0; i < 36; i += 1) {
+              try {
+                await page.goto(`${process.env.URL}?pwa-shell-qa=${Date.now()}-${i}`, {
+                  waitUntil: 'domcontentloaded', timeout: 30000
+                });
+                const state = await page.evaluate(() => ({
+                  meta: document.querySelector('meta[name="huntsmart-pwa-shell"]')?.content || '',
+                  runtime: window.__HUNTSMART_PWA_SHELL__?.version || ''
+                }));
+                last = JSON.stringify(state);
+                if (state.meta === expected && state.runtime === expected) return;
+              } catch (error) {
+                last = error.message;
+              }
+              await sleep(5000);
+            }
+            throw new Error(`Production PWA version gate failed: ${last}`);
+          }
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const context = await browser.newContext({
+              viewport: { width: 390, height: 844 },
+              screen: { width: 390, height: 844 },
+              hasTouch: true,
+              isMobile: true,
+              deviceScaleFactor: 3,
+              userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'
+            });
+            const page = await context.newPage();
+            const pageErrors = [];
+            page.on('pageerror', error => pageErrors.push(error.message));
+
+            await waitForProduction(page);
+
+            const manifest = await page.evaluate(async () => {
+              const response = await fetch('/site.webmanifest', { cache: 'no-store' });
+              return { ok: response.ok, contentType: response.headers.get('content-type') || '', data: await response.json() };
+            });
+            assert(manifest.ok, 'site.webmanifest did not load');
+            assert(manifest.data.display === 'standalone', `manifest display=${manifest.data.display}`);
+            assert(manifest.data.scope === '/', `manifest scope=${manifest.data.scope}`);
+            assert(String(manifest.data.start_url || '').startsWith('/'), `manifest start_url=${manifest.data.start_url}`);
+            assert(Array.isArray(manifest.data.icons) && manifest.data.icons.length > 0, 'manifest icons missing');
+
+            const head = await page.evaluate(() => ({
+              appleCapable: document.querySelector('meta[name="apple-mobile-web-app-capable"]')?.content,
+              appleStatus: document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')?.content,
+              manifestHref: document.querySelector('link[rel="manifest"]')?.getAttribute('href'),
+              touchIcon: document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute('href')
+            }));
+            assert(head.appleCapable === 'yes', `apple standalone meta missing: ${JSON.stringify(head)}`);
+            assert(head.appleStatus === 'black-translucent', `apple status bar meta wrong: ${JSON.stringify(head)}`);
+            assert(head.manifestHref === '/site.webmanifest', `manifest link wrong: ${JSON.stringify(head)}`);
+            assert(head.touchIcon === '/images/logo.png', `touch icon wrong: ${JSON.stringify(head)}`);
+
+            const swText = await page.evaluate(async () => (await fetch('/hs-offline-lite-sw.js', { cache: 'no-store' })).text());
+            assert(swText.includes('huntsmart-offline-lite-v80'), 'service-worker cache version is stale');
+            assert(swText.includes("url.pathname.startsWith('/map-tiles/')"), 'service worker still risks caching vector tiles');
+            assert(swText.includes('networkFirst(request)'), 'service worker is not using network-first app updates');
+
+            await page.waitForSelector('#hsMobileTabbar', { state: 'visible', timeout: 10000 });
+            await page.evaluate(() => document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click());
+            await page.waitForFunction(() => {
+              const el = document.getElementById('mapPage');
+              return !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none');
+            }, null, { timeout: 15000 });
+            await page.waitForFunction(() => document.body.classList.contains('hs-mobile-map-active'), null, { timeout: 5000 });
+            await page.waitForTimeout(700);
+
+            const metrics = await page.evaluate(() => {
+              const mapPage = document.getElementById('mapPage');
+              const nav = document.getElementById('hsMobileTabbar');
+              const mapRect = mapPage.getBoundingClientRect();
+              const navRect = nav.getBoundingClientRect();
+              const visualH = window.visualViewport?.height || innerHeight;
+              return {
+                visualH,
+                map: { top: mapRect.top, bottom: mapRect.bottom, height: mapRect.height },
+                nav: { top: navRect.top, bottom: navRect.bottom, height: navRect.height },
+                scrollHeight: document.documentElement.scrollHeight,
+                innerHeight,
+                mapHeightVar: getComputedStyle(document.documentElement).getPropertyValue('--hs-map-page-h').trim(),
+                installButton: !!document.getElementById('hsInstallAppBtn')
+              };
+            });
+
+            assert(metrics.map.height >= metrics.visualH - metrics.nav.height - 4,
+              `map not filling live viewport: ${JSON.stringify(metrics)}`);
+            assert(metrics.map.bottom <= metrics.visualH + 4,
+              `map extends below live viewport: ${JSON.stringify(metrics)}`);
+            assert(metrics.mapHeightVar.endsWith('px'), `live map height var missing: ${JSON.stringify(metrics)}`);
+            assert(metrics.installButton, 'Install HuntSmart menu action missing in browser mode');
+            assert(pageErrors.length === 0, `page errors: ${pageErrors.join(' | ')}`);
+
+            await page.screenshot({ path: 'pwa-mobile-map-390.png', fullPage: false });
+            await browser.close();
+            console.log('HuntSmart production PWA shell verified: install metadata, safe cache policy, and live-height mobile map.');
+          })().catch(error => {
+            console.error(error.stack || error);
+            process.exit(1);
+          });
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pwa-mobile-shell-production-qa-${{ github.run_number }}
+          path: pwa-mobile-map-390.png
+          if-no-files-found: warn
+          retention-days: 14
