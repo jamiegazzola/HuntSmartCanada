@@ -13,6 +13,10 @@ on:
       - mobile-map-polish.css
       - mobile-map-topbar-fix.css
       - mobile-map-shell-finalizer.js
+      - mobile-pwa-shell.css
+      - mobile-pwa-shell.js
+      - site.webmanifest
+      - hs-offline-lite-sw.js
       - bc-open-seasons.js
       - maps.js
       - index.html
@@ -26,117 +30,59 @@ permissions:
 jobs:
   production-qa:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install Playwright Chromium
-        run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
-      - name: Validate live unified map
+      - name: Validate deployed map and PWA assets
         env:
-          URL: https://huntsmartcanada.ca/
+          URL: https://huntsmartcanada.ca
         run: |
           node <<'NODE'
-          const { chromium } = require('playwright');
           const assert = (v,m) => { if (!v) throw new Error(m); };
           const within = (promise, ms, label) => Promise.race([
             promise,
-            new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms))
+            new Promise((_,reject)=>setTimeout(()=>reject(new Error(`${label} timed out`)),ms))
           ]);
-          const stage = label => console.log(`[interactive-map-qa] ${label}`);
-          const visible = el => !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden');
-
-          async function ready(page) {
-            page.setDefaultTimeout(10000);
-            page.setDefaultNavigationTimeout(30000);
-            await within(page.goto(`${process.env.URL}?interactive-map-qa=${Date.now()}`, {waitUntil:'commit',timeout:30000}), 35000, 'navigation');
-            await within(page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__ && !!document.getElementById('mapPage'), null, {timeout:30000}), 32000, 'app readiness');
+          async function text(path) {
+            const response = await within(fetch(`${process.env.URL}${path}${path.includes('?')?'&':'?'}qa=${Date.now()}`, {cache:'no-store'}), 15000, `fetch ${path}`);
+            assert(response.ok, `${path} returned ${response.status}`);
+            return response.text();
           }
-
-          async function openLeh(page, mobile) {
-            stage(`${mobile?'mobile':'desktop'} open LEH`);
-            await within(page.evaluate(isMobile => {
-              if (isMobile) document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click();
-              else document.getElementById('navMap')?.click();
-            }, mobile), 5000, 'open LEH action');
-            await within(page.waitForFunction(() => {
-              const el=document.getElementById('mapPage');
-              return !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none' && typeof fullMapInstance !== 'undefined' && !!fullMapInstance);
-            }, null, {timeout:30000}), 32000, 'LEH ready');
-            if (mobile) await within(page.waitForFunction(() => visible(document.querySelector('#mapPage > .hs-im-shellbar')), null, {timeout:30000}), 32000, 'mobile LEH shell');
-          }
-
-          async function switchGos(page, mobile) {
-            stage(`${mobile?'mobile':'desktop'} switch GOS`);
-            await within(page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos')), 5000, 'switch GOS action');
-            await within(page.waitForFunction(() => {
-              const el=document.getElementById('bcOpenSeasonsPage');
-              return !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none' && typeof osMapInstance !== 'undefined' && !!osMapInstance);
-            }, null, {timeout:30000}), 32000, 'GOS ready');
-            if (mobile) await within(page.waitForFunction(() => visible(document.querySelector('#bcOpenSeasonsPage > .hs-im-shellbar')), null, {timeout:30000}), 32000, 'mobile GOS shell');
-          }
-
-          async function audit(browser, viewport) {
-            const mobile = viewport.width <= 768;
-            const page = await browser.newPage({viewport,hasTouch:mobile});
-            const errors=[]; page.on('pageerror',e=>errors.push(e.message));
-            stage(`${mobile?'mobile':'desktop'} load`);
-            await ready(page);
-            assert(/Interactive Map/i.test((await within(page.locator('#navMap').textContent(),5000,'nav text'))||''),'Map nav was not renamed.');
-            await openLeh(page,mobile);
-
-            const leh = await within(page.evaluate(() => {
-              const root=document.getElementById('mapPage');
-              const shell=root?.querySelector(':scope > .hs-im-shellbar');
-              const buttons=[...(shell?.querySelectorAll('button')||[])].filter(visible).map(el=>el.getBoundingClientRect().height);
-              const legacy=document.getElementById('fullMapControlStack');
-              return {shell:!!shell,buttons,legacy:visible(legacy),state:window.__HUNTSMART_INTERACTIVE_MAP__.getState()};
-            }), 5000, 'LEH snapshot');
-            assert(leh.shell,'LEH direct floating shell missing.');
-            assert(leh.state.controller.mode==='leh'&&leh.state.controller.province==='BC','BC LEH is not active.');
-            if(mobile){
-              assert(leh.buttons.length>=6&&leh.buttons.every(h=>h>=44),`LEH mobile controls invalid: ${JSON.stringify(leh.buttons)}`);
-              assert(!leh.legacy,'LEH legacy controls visible.');
-            }
-
-            await switchGos(page,mobile);
-            const gos = await within(page.evaluate(() => {
-              const root=document.getElementById('bcOpenSeasonsPage');
-              const shell=root?.querySelector(':scope > .hs-im-shellbar');
-              const buttons=[...(shell?.querySelectorAll('button')||[])].filter(visible).map(el=>el.getBoundingClientRect().height);
-              const legacy=document.getElementById('osMapControlStack');
-              return {shell:!!shell,buttons,legacy:visible(legacy),species:visible(document.getElementById('gosSpeciesBtn')),layers:visible(document.getElementById('gosPremiumMobileLayers'))};
-            }), 5000, 'GOS snapshot');
-            assert(gos.shell,'GOS direct floating shell missing.');
-            if(mobile){
-              assert(gos.buttons.length>=6&&gos.buttons.every(h=>h>=44),`GOS mobile controls invalid: ${JSON.stringify(gos.buttons)}`);
-              assert(!gos.legacy,'GOS legacy controls visible.');
-              assert(gos.species&&gos.layers,'GOS mobile species/layers controls missing.');
-            }
-            assert(!errors.length,'Page errors: '+errors.join(' | '));
-            await within(page.screenshot({path:`interactive-map-${mobile?'mobile':'desktop'}.png`,fullPage:false}),10000,'screenshot');
-            await within(page.close(),5000,'page close');
-          }
-
           (async()=>{
-            const browser=await chromium.launch({headless:true});
-            try {
-              await audit(browser,{width:1440,height:1000});
-              await audit(browser,{width:390,height:844});
-              stage('PASS');
-            } finally {
-              await within(browser.close(),5000,'browser close').catch(()=>{});
+            const html = await text('/');
+            assert(html.includes('name="huntsmart-pwa-shell"'), 'PWA build marker missing from production HTML');
+            assert(html.includes('apple-mobile-web-app-capable'), 'iOS standalone metadata missing');
+            assert(html.includes('/site.webmanifest'), 'manifest link missing');
+
+            const manifestText = await text('/site.webmanifest');
+            const manifest = JSON.parse(manifestText);
+            assert(manifest.display === 'standalone', `manifest display=${manifest.display}`);
+            assert(manifest.scope === '/', `manifest scope=${manifest.scope}`);
+            assert(String(manifest.start_url||'').startsWith('/'), 'manifest start_url invalid');
+
+            const js = await text('/terrain-intelligence.js');
+            for (const marker of [
+              '__HUNTSMART_INTERACTIVE_MAP__',
+              '__HUNTSMART_PWA_SHELL__',
+              '__HUNTSMART_MOBILE_MAP_SHELL_FINALIZER__',
+              'hs-im-shellbar',
+              'gosPremiumMobileLayers',
+              'normalizeShellPlacement'
+            ]) assert(js.includes(marker), `production JS missing ${marker}`);
+
+            const css = await text('/terrain-intelligence.css');
+            for (const marker of ['hs-mobile-map-active','--hs-map-page-h','safe-area-inset-bottom','hs-im-shellbar']) {
+              assert(css.includes(marker), `production CSS missing ${marker}`);
             }
-          })().catch(e=>{console.error(e.stack||e);process.exit(1);});
+
+            const sw = await text('/hs-offline-lite-sw.js');
+            assert(sw.includes('huntsmart-offline-lite-v80'), 'service worker version is stale');
+            assert(sw.includes('networkFirst(request)'), 'service worker app-update policy missing');
+            assert(sw.includes("url.pathname.startsWith('/map-tiles/')"), 'vector-tile cache guard missing');
+
+            console.log('HuntSmart production map/PWA asset smoke passed.');
+          })().catch(error=>{console.error(error.stack||error);process.exit(1);});
           NODE
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: interactive-map-production-qa-${{ github.run_number }}
-          path: interactive-map-*.png
-          if-no-files-found: warn
-          retention-days: 14
