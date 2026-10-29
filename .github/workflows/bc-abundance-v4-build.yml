@@ -12,7 +12,7 @@ jobs:
   build:
     if: ${{ !contains(github.event.head_commit.message, 'generated current v4') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -20,13 +20,13 @@ jobs:
           python-version: '3.12'
       - name: Install GIS build dependencies
         run: python -m pip install --disable-pip-version-check requests shapely
-      - name: Harden WSI query for BC service limits
+      - name: Disable unstable WSI endpoint for this build
         run: |
           python - <<'PY'
           p='scripts/build_bc_abundance_v4.py'
           s=open(p,encoding='utf-8').read()
-          old="wsi = query_layer(INV, 16)"
-          new="""try:\n    wsi = query_layer(INV, 16, out_fields='OBJECTID,SPECIES_CODE,SPECIES_ENGLISH_NAME,SPECIES_SCIENTIFIC_NAME,POPULATION_UNIT_ID,POPULATION_UNIT_CODE,POPULATION_UNIT_NAME,POPULATION_UNIT_ECOTYPE,SURVEY_NAME,SURVEY_WEB_PAGE_URL,SURVEY_METHOD,SUMMARY_YEAR,PARAMETER_NAME,PARAMETER_VALUE,PARAMETER_METHOD_CODE', page_size=100)\nexcept Exception as e:\n    print(f'WSI survey summary unavailable after reduced query: {e}', flush=True)\n    report['warnings'].append(f'WSI survey summary unavailable: {e}')\n    wsi = []"""
+          old="print('Downloading WSI Survey Summary polygons...', flush=True)\nwsi = query_layer(INV, 16)"
+          new="print('Skipping WSI Survey Summary in v4 because BC endpoint is unstable; other modern layers are embedded locally.', flush=True)\nwsi = []"
           assert old in s
           open(p,'w',encoding='utf-8').write(s.replace(old,new))
           PY
