@@ -1,0 +1,168 @@
+name: Build fixed BC big-game KMZ
+
+on:
+  push:
+    branches: [bc-kmz-fix]
+    paths: [.github/workflows/build-bc-kmz-fixed.yml]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests shapely
+      - name: Build offline KMZ
+        shell: bash
+        run: |
+          cat > /tmp/build_kmz.py <<'PY'
+          import json, re, html, zipfile, time
+          from pathlib import Path
+          import requests
+          from shapely.geometry import shape, mapping
+          from shapely.validation import make_valid
+
+          OUT = Path('BC_Big_Game_Abundance_Offline_Fixed_2026_v4.kml')
+          KMZ = Path('BC_Big_Game_Abundance_Offline_Fixed_2026_v4.kmz')
+          REPORT = Path('BC_Big_Game_Abundance_Offline_Fixed_2026_v4_validation.txt')
+          NS = 'http://www.opengis.net/kml/2.2'
+          session = requests.Session()
+          session.headers.update({'User-Agent':'HuntSmart-BC-GIS-Builder/1.0'})
+
+          def esc(v): return html.escape(str(v), quote=True)
+          def color(hexrgb, alpha='55'):
+              h=hexrgb.lstrip('#'); return alpha+h[4:6]+h[2:4]+h[0:2]
+
+          def fetch_wfs(layer, page=5000, max_pages=20):
+              base=f'https://openmaps.gov.bc.ca/geo/pub/{layer}/ows'
+              feats=[]
+              for i in range(max_pages):
+                  params={'service':'WFS','version':'2.0.0','request':'GetFeature','typeNames':'pub:'+layer,
+                          'outputFormat':'application/json','srsName':'EPSG:4326','count':page,'startIndex':i*page}
+                  r=session.get(base, params=params, timeout=120)
+                  r.raise_for_status()
+                  data=r.json(); batch=data.get('features',[])
+                  feats.extend(batch)
+                  if len(batch)<page: break
+                  time.sleep(.25)
+              return {'type':'FeatureCollection','features':feats}
+
+          def load_wmu():
+              txt=Path('bc-wmu-geojson.js').read_text(errors='ignore')
+              a=txt.find('{'); b=txt.rfind('}')
+              if a<0 or b<a: raise RuntimeError('Could not parse bc-wmu-geojson.js')
+              return json.loads(txt[a:b+1])
+
+          def geom_kml(geom, simplify=0.0):
+              try:
+                  g=shape(geom)
+                  if not g.is_valid: g=make_valid(g)
+                  if simplify: g=g.simplify(simplify, preserve_topology=True)
+              except Exception:
+                  return ''
+              def ring(coords):
+                  return ' '.join(f'{x:.6f},{y:.6f},0' for x,y,*_ in coords)
+              def poly(p):
+                  s='<Polygon><tessellate>1</tessellate><outerBoundaryIs><LinearRing><coordinates>'+ring(p.exterior.coords)+'</coordinates></LinearRing></outerBoundaryIs>'
+                  for interior in p.interiors:
+                      s+='<innerBoundaryIs><LinearRing><coordinates>'+ring(interior.coords)+'</coordinates></LinearRing></innerBoundaryIs>'
+                  return s+'</Polygon>'
+              if g.geom_type=='Polygon': return poly(g)
+              if g.geom_type=='MultiPolygon': return '<MultiGeometry>'+''.join(poly(p) for p in g.geoms)+'</MultiGeometry>'
+              if g.geom_type=='LineString': return '<LineString><tessellate>1</tessellate><coordinates>'+ring(g.coords)+'</coordinates></LineString>'
+              if g.geom_type=='MultiLineString': return '<MultiGeometry>'+''.join('<LineString><tessellate>1</tessellate><coordinates>'+ring(x.coords)+'</coordinates></LineString>' for x in g.geoms)+'</MultiGeometry>'
+              if g.geom_type=='GeometryCollection': return '<MultiGeometry>'+''.join(geom_kml(mapping(x),0) for x in g.geoms)+'</MultiGeometry>'
+              return ''
+
+          def pick(props, keys):
+              for k in keys:
+                  if k in props and props[k] not in (None,''): return props[k]
+              return ''
+
+          def folder(name, fc, style_id, label_keys, desc_keys, simplify):
+              out=[f'<Folder><name>{esc(name)}</name><visibility>0</visibility>']
+              kept=0
+              for f in fc.get('features',[]):
+                  geom=f.get('geometry'); props=f.get('properties') or {}
+                  if not geom: continue
+                  gk=geom_kml(geom,simplify)
+                  if not gk: continue
+                  nm=pick(props,label_keys) or f'{name} {kept+1}'
+                  rows=[]
+                  for k in desc_keys:
+                      if k in props and props[k] not in (None,''):
+                          rows.append(f'<tr><td><b>{esc(k)}</b></td><td>{esc(props[k])}</td></tr>')
+                  desc='<table>'+''.join(rows)+'</table>' if rows else ''
+                  out.append(f'<Placemark><name>{esc(nm)}</name><styleUrl>#{style_id}</styleUrl><description><![CDATA[{desc}]]></description>{gk}</Placemark>')
+                  kept+=1
+              out.append('</Folder>')
+              return ''.join(out),kept
+
+          layers={}
+          layers['Wildlife Management Units']=load_wmu()
+          remote={
+            'Approved Ungulate Winter Range':'WHSE_WILDLIFE_MANAGEMENT.WCP_UNGULATE_WINTER_RANGE_SP',
+            'Wild Mountain Sheep Distribution':'WHSE_WILDLIFE_MANAGEMENT.WLD_WILD_MTN_SHEEP_DISTRIB_SP',
+            'Current Caribou Herd Boundaries':'WHSE_WILDLIFE_INVENTORY.GCPB_CARIBOU_POPULATION_SP',
+            'Grizzly Bear Population Units':'WHSE_WILDLIFE_INVENTORY.GCPB_GRIZZLY_BEAR_POP_UNITS_SP',
+          }
+          errors=[]
+          for name,layer in remote.items():
+              try: layers[name]=fetch_wfs(layer)
+              except Exception as e:
+                  errors.append(f'{name}: {type(e).__name__}: {e}')
+                  layers[name]={'type':'FeatureCollection','features':[]}
+
+          styles='''
+          <Style id="wmu"><LineStyle><color>ccffffff</color><width>1.2</width></LineStyle><PolyStyle><color>08000000</color></PolyStyle></Style>
+          <Style id="uwr"><LineStyle><color>aa00a5ff</color><width>1</width></LineStyle><PolyStyle><color>4000a5ff</color></PolyStyle></Style>
+          <Style id="sheep"><LineStyle><color>aa00ffff</color><width>1.2</width></LineStyle><PolyStyle><color>4400ffff</color></PolyStyle></Style>
+          <Style id="caribou"><LineStyle><color>aaff9900</color><width>1.2</width></LineStyle><PolyStyle><color>44ff9900</color></PolyStyle></Style>
+          <Style id="grizzly"><LineStyle><color>aa3333cc</color><width>1.2</width></LineStyle><PolyStyle><color>443333cc</color></PolyStyle></Style>
+          '''
+          parts=[f'<?xml version="1.0" encoding="UTF-8"?><kml xmlns="{NS}"><Document><name>BC Big Game Abundance — Offline Fixed 2026 v4</name><description><![CDATA[Self-contained Google Earth build. No NetworkLinks are used, so BC service outages cannot produce red exclamation marks. Layers are off by default for performance.]]></description>',styles]
+          counts={}
+          specs=[
+            ('Wildlife Management Units','wmu',['WILDLIFE_MGMT_UNIT_ID','WMU','UNIT','NAME'],['WILDLIFE_MGMT_UNIT_ID','REGION','NAME'],0.0015),
+            ('Approved Ungulate Winter Range','uwr',['UWR_NUMBER','UWR_NUM','TAG','SPECIES_1','SPECIES'],['UWR_NUMBER','SPECIES_1','SPECIES','TIMBER_HARVEST_CODE','MANAGEMENT_PLAN'],0.0005),
+            ('Wild Mountain Sheep Distribution','sheep',['HERD_NAME','POPULATION_NAME','SPECIES','SHEEP_SPECIES'],['HERD_NAME','SPECIES','SHEEP_SPECIES','ECOTYPE'],0.0005),
+            ('Current Caribou Herd Boundaries','caribou',['HERD_NAME','POPULATION_NAME','CARIBOU_HERD_NAME'],['HERD_NAME','POPULATION_NAME','ECOTYPE','STATUS'],0.0008),
+            ('Grizzly Bear Population Units','grizzly',['GBPU_NAME','POPULATION_UNIT_NAME','NAME'],['GBPU_NAME','YEAR','CONSERVATION_CONCERN_RANK','CONSERVATION_CONCERN_DESC','STATUS'],0.0008),
+          ]
+          for n,st,labels,desc,simp in specs:
+              xml,c=folder(n,layers[n],st,labels,desc,simp); parts.append(xml); counts[n]=c
+          parts.append('</Document></kml>')
+          OUT.write_text(''.join(parts),encoding='utf-8')
+          with zipfile.ZipFile(KMZ,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z: z.write(OUT,'doc.kml')
+
+          # Validation: parse XML, ensure no NetworkLink/http href, confirm archive integrity and layer counts.
+          import xml.etree.ElementTree as ET
+          ET.parse(OUT)
+          text=OUT.read_text(encoding='utf-8')
+          if '<NetworkLink' in text: raise RuntimeError('NetworkLink found in fixed build')
+          if '<href>http' in text.lower(): raise RuntimeError('Remote href found in fixed build')
+          with zipfile.ZipFile(KMZ) as z:
+              bad=z.testzip()
+              if bad: raise RuntimeError('Corrupt KMZ entry: '+bad)
+              assert 'doc.kml' in z.namelist()
+          report=['BC Big Game Offline Fixed 2026 v4','',f'KML bytes: {OUT.stat().st_size}',f'KMZ bytes: {KMZ.stat().st_size}','NetworkLinks: 0','Remote hrefs: 0','XML parse: PASS','ZIP integrity: PASS','']
+          report += [f'{k}: {v} placemarks' for k,v in counts.items()]
+          if errors:
+              report += ['', 'SOURCE ERRORS:'] + errors
+          REPORT.write_text('\n'.join(report),encoding='utf-8')
+          print(REPORT.read_text())
+          if errors: raise RuntimeError('One or more official source downloads failed; see validation report')
+          PY
+          python /tmp/build_kmz.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BC-Big-Game-Offline-Fixed-2026-v4
+          path: |
+            BC_Big_Game_Abundance_Offline_Fixed_2026_v4.kmz
+            BC_Big_Game_Abundance_Offline_Fixed_2026_v4.kml
+            BC_Big_Game_Abundance_Offline_Fixed_2026_v4_validation.txt
+          if-no-files-found: error
+          retention-days: 7
