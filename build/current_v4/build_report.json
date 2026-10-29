@@ -1,0 +1,135 @@
+{
+  "built_utc": "2026-10-29T16:54:49.879786+00:00",
+  "sources": {
+    "sheep_distribution": {
+      "layer": 3,
+      "features": 2,
+      "url": "https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_wildlife_management/MapServer/3"
+    },
+    "caribou_herds": {
+      "layer": 10,
+      "features": 55,
+      "url": "https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_wildlife_inventory/MapServer/10"
+    },
+    "grizzly_population_units": {
+      "layer": 8,
+      "features": 455,
+      "url": "https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_wildlife_inventory/MapServer/8"
+    },
+    "approved_uwr": {
+      "layer": 59,
+      "features": 10000,
+      "url": "https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_wildlife_management/MapServer/59"
+    },
+    "wsi_survey_summary": {
+      "layer": 16,
+      "features": 0,
+      "url": "https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_wildlife_inventory/MapServer/16"
+    },
+    "wmu_boundaries": {
+      "features": 225,
+      "source": "HuntSmart local bc-wmu-geojson.js (simplified BC WMU geometry)"
+    },
+    "harvest": {
+      "url": "https://catalogue.data.gov.bc.ca/dataset/f2303645-5952-4766-bd5c-3b9b50dda1ca/resource/ea1505f6-77ab-4838-b4a9-309ec55a3c20/download/big-game-harvest-statistics-1976-to-2024-wmu.csv",
+      "years": "2020-2024",
+      "rows_aggregated": 2042
+    }
+  },
+  "counts": {
+    "Caribou": {
+      "distribution": 55,
+      "survey": 0,
+      "uwr": 0,
+      "harvest": 0
+    },
+    "Elk": {
+      "distribution": 0,
+      "survey": 0,
+      "uwr": 0,
+      "harvest": 125
+    },
+    "Moose": {
+      "distribution": 0,
+      "survey": 0,
+      "uwr": 0,
+      "harvest": 0
+    },
+    "Mule / Black-tailed Deer": {
+      "distribution": 0,
+      "survey": 0,
+      "uwr": 0,
+      "harvest": 0
+    },
+    "White-tailed Deer": {
+      "distribution": 0,
+      "survey": 0,
+      "uwr": 0,
+      "harvest": 0
+    },
+    "Mountain Goat": {
+      "distribution": 0,
+      "survey": 0,
+      "uwr": 0,
+      "harvest": 98
+    },
+    "Mountain Sheep": {
+      "distribution": 2,
+      "survey": 0,
+      "uwr": 0,
+      "harvest": 0
+    },
+    "Bison": {
+      "distribution": 0,
+      "survey": 0,
+      "uwr": 0,
+      "harvest": 0
+    },
+    "Grizzly Bear": {
+      "distribution": 455,
+      "survey": 0,
+      "uwr": 0,
+      "harvest": 0
+    },
+    "Black Bear": {
+      "distribution": 0,
+      "survey": 0,
+      "uwr": 0,
+      "harvest": 0
+    },
+    "Cougar": {
+      "distribution": 0,
+      "survey": 0,
+      "uwr": 0,
+      "harvest": 0
+    },
+    "Wolf": {
+      "distribution": 0,
+      "survey": 0,
+      "uwr": 0,
+      "harvest": 122
+    }
+  },
+  "warnings": [],
+  "harvest_headers": [
+    "HUNT YEAR",
+    "SPECIES",
+    "CI",
+    "WMU",
+    "REGION",
+    "RESIDENT HUNTERS",
+    "RESIDENT DAYS",
+    "RESIDENT KILLS",
+    "RESIDENT MALE RATIO",
+    "RESIDENT FEMALE RATIO",
+    "RESIDENT JUVENILE RATIO",
+    "RESIDENT UNKNOWN RATIO",
+    "NON-RESIDENT HUNTERS",
+    "NON-RESIDENT DAYS",
+    "NON-RESIDENT KILLS",
+    "NON-RESIDENT MALE RATIO",
+    "NON-RESIDENT FEMALE RATIO",
+    "NON-RESIDENT JUVENILE RATIO",
+    "NON-RESIDENT UNKNOWN RATIO"
+  ]
+}

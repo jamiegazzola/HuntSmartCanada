@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document>
+<name>Cougar — Current / Recent BC Evidence</name>
+<Style id="current_dist"><LabelStyle><scale>0</scale></LabelStyle><LineStyle><color>ff00d9ff</color><width>2.1</width></LineStyle><PolyStyle><color>5200d9ff</color><fill>1</fill><outline>1</outline></PolyStyle></Style><Style id="survey_new"><LabelStyle><scale>0</scale></LabelStyle><LineStyle><color>ffffe070</color><width>2.0</width></LineStyle><PolyStyle><color>44ffe070</color><fill>1</fill><outline>1</outline></PolyStyle></Style><Style id="survey_mid"><LabelStyle><scale>0</scale></LabelStyle><LineStyle><color>ccffe070</color><width>1.5</width></LineStyle><PolyStyle><color>28ffe070</color><fill>1</fill><outline>1</outline></PolyStyle></Style><Style id="survey_old"><LabelStyle><scale>0</scale></LabelStyle><LineStyle><color>88999999</color><width>1.0</width></LineStyle><PolyStyle><color>15999999</color><fill>1</fill><outline>1</outline></PolyStyle></Style><Style id="uwr"><LabelStyle><scale>0</scale></LabelStyle><LineStyle><color>ff00a5ff</color><width>1.4</width></LineStyle><PolyStyle><color>3500a5ff</color><fill>1</fill><outline>1</outline></PolyStyle></Style><Style id="grizzly_unit"><LabelStyle><scale>0</scale></LabelStyle><LineStyle><color>ffcc66ff</color><width>1.8</width></LineStyle><PolyStyle><color>32cc66ff</color><fill>1</fill><outline>1</outline></PolyStyle></Style><Style id="harvest_q1"><LabelStyle><scale>0</scale></LabelStyle><LineStyle><color>ff4ecb71</color><width>0.9</width></LineStyle><PolyStyle><color>244ecb71</color><fill>1</fill><outline>1</outline></PolyStyle></Style><Style id="harvest_q2"><LabelStyle><scale>0</scale></LabelStyle><LineStyle><color>ff74c365</color><width>0.9</width></LineStyle><PolyStyle><color>2a74c365</color><fill>1</fill><outline>1</outline></PolyStyle></Style><Style id="harvest_q3"><LabelStyle><scale>0</scale></LabelStyle><LineStyle><color>ffdfc54a</color><width>0.9</width></LineStyle><PolyStyle><color>31dfc54a</color><fill>1</fill><outline>1</outline></PolyStyle></Style><Style id="harvest_q4"><LabelStyle><scale>0</scale></LabelStyle><LineStyle><color>ffff8c2e</color><width>0.9</width></LineStyle><PolyStyle><color>38ff8c2e</color><fill>1</fill><outline>1</outline></PolyStyle></Style><Style id="harvest_q5"><LabelStyle><scale>0</scale></LabelStyle><LineStyle><color>ff3b3bff</color><width>1.1</width></LineStyle><PolyStyle><color>443b3bff</color><fill>1</fill><outline>1</outline></PolyStyle></Style>
+<description>Built from official BC ArcGIS feature services and BC Big Game Harvest Statistics through 2024. All geometry below is embedded locally; no NetworkLinks are used.</description>
+<Folder><name>01 — CURRENT DISTRIBUTION / POPULATION UNITS</name><visibility>0</visibility>
+<description>No embedded features available for this species in this source tier.</description>
+</Folder>
+<Folder><name>02 — MEASURED WSI SURVEY EVIDENCE</name><visibility>0</visibility>
+<description>No embedded features available for this species in this source tier.</description>
+</Folder>
+<Folder><name>03 — APPROVED WINTER RANGE</name><visibility>0</visibility>
+<description>No embedded features available for this species in this source tier.</description>
+</Folder>
+<Folder><name>04 — 2020–2024 HARVEST INTENSITY</name><visibility>0</visibility>
+<description>No embedded features available for this species in this source tier.</description>
+</Folder>
+</Document></kml>
