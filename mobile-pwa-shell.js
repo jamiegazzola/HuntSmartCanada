@@ -8,6 +8,7 @@
   var standaloneMq = window.matchMedia('(display-mode: standalone)');
   var installPrompt = null;
   var scheduled = 0;
+  var lastMapSurface = '';
 
   function isVisible(el) {
     if (!el || !el.isConnected) return false;
@@ -44,6 +45,14 @@
     });
   }
 
+  function refinalizeMapShell() {
+    [0, 150, 450, 900, 1600].forEach(function (delay) {
+      setTimeout(function () {
+        try { window.dispatchEvent(new Event('resize')); } catch (_) {}
+      }, delay);
+    });
+  }
+
   function syncShell() {
     scheduled = 0;
     var root = document.documentElement;
@@ -62,6 +71,7 @@
 
     var mapPage = mobileMq.matches ? activeMapPage() : null;
     var mapActive = !!mapPage;
+    var mapSurface = mapPage ? mapPage.id : '';
     body.classList.toggle('hs-mobile-map-active', mapActive);
 
     var nav = mobileMq.matches ? visibleNav() : null;
@@ -73,6 +83,9 @@
       requestAnimationFrame(resizeMapInstances);
       setTimeout(resizeMapInstances, 120);
     }
+
+    if (mapSurface && mapSurface !== lastMapSurface) refinalizeMapShell();
+    lastMapSurface = mapSurface;
 
     syncInstallButton();
   }
