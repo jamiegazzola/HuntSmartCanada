@@ -32,7 +32,7 @@ jobs:
       - name: Verify production PWA shell and map viewport
         env:
           URL: https://huntsmartcanada.ca/
-          EXPECTED_PWA_VERSION: 2026-10-28-pwa-v1
+          EXPECTED_PWA_VERSION: 2026-10-29-pwa-v2
         run: |
           node <<'NODE'
           const { chromium } = require('playwright');
@@ -94,7 +94,7 @@ jobs:
               touchIcon: document.querySelector('link[rel="apple-touch-icon"]')?.getAttribute('href')
             }));
             assert(head.appleCapable === 'yes', `apple standalone meta missing: ${JSON.stringify(head)}`);
-            assert(head.appleStatus === 'black-translucent', `apple status bar meta wrong: ${JSON.stringify(head)}`);
+            assert(!head.appleStatus, `deprecated apple status-bar mode still present: ${JSON.stringify(head)}`);
             assert(head.manifestHref === '/site.webmanifest', `manifest link wrong: ${JSON.stringify(head)}`);
             assert(head.touchIcon === '/images/logo.png', `touch icon wrong: ${JSON.stringify(head)}`);
 
@@ -139,7 +139,7 @@ jobs:
 
             await page.screenshot({ path: 'pwa-mobile-map-390.png', fullPage: false });
             await browser.close();
-            console.log('HuntSmart production PWA shell verified: install metadata, safe cache policy, and live-height mobile map.');
+            console.log('HuntSmart production PWA shell verified: current install metadata, safe cache policy, and live-height mobile map.');
           })().catch(error => {
             console.error(error.stack || error);
             process.exit(1);
