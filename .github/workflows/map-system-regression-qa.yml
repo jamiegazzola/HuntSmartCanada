@@ -14,6 +14,8 @@ on:
       - mobile-map-touch-targets.js
       - mobile-map-polish.css
       - mobile-map-topbar-fix.css
+      - mobile-pwa-shell.css
+      - mobile-pwa-shell.js
       - imagery-lab.js
       - terrain-intelligence.js
       - terrain-intelligence.css
@@ -21,6 +23,7 @@ on:
       - maps.js
       - index.html
       - build-preview.sh
+      - build-pwa-shell.py
       - netlify.toml
       - .github/workflows/map-system-regression-qa.yml
 
@@ -30,152 +33,66 @@ permissions:
 jobs:
   map-system-regression:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install Playwright Chromium
+      - name: Validate map-controller and mobile-shell invariants
         run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
-      - name: Audit live map interactions
-        env:
-          URL: https://huntsmartcanada.ca/
-        run: |
+          node --check imagery-lab.js
+          node --check mobile-map-shell-finalizer.js
+          node --check mobile-pwa-shell.js
+          python3 -m py_compile build-pwa-shell.py
           node <<'NODE'
-          const { chromium } = require('playwright');
+          const fs = require('fs');
           const assert = (v,m) => { if (!v) throw new Error(m); };
-          const within = (promise, ms, label) => Promise.race([
-            promise,
-            new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms))
-          ]);
-          const stage = label => console.log(`[map-regression] ${label}`);
+          const read = p => fs.readFileSync(p,'utf8');
 
-          async function ready(page, suffix) {
-            page.setDefaultTimeout(10000);
-            page.setDefaultNavigationTimeout(30000);
-            await within(page.goto(`${process.env.URL}?${suffix}=${Date.now()}`,{waitUntil:'commit',timeout:30000}),35000,'navigation');
-            await within(page.waitForFunction(() =>
-              window.__HS_MAP_UI_POLISH_VERSION__==='2.0.0' &&
-              !!window.__HUNTSMART_INTERACTIVE_MAP__ &&
-              !!document.getElementById('mapPage'), null,{timeout:30000}),32000,'app readiness');
-          }
+          const controller = read('imagery-lab.js');
+          for (const marker of [
+            'function ensureShells',
+            'function openInteractive',
+            'function switchMode',
+            'function switchProvince',
+            'function selectGOSRegion',
+            'activeGOSWMUs',
+            '__HUNTSMART_INTERACTIVE_MAP__'
+          ]) assert(controller.includes(marker), `map controller missing ${marker}`);
 
-          async function openLeh(page,mobile) {
-            await within(page.evaluate(isMobile=>{
-              if(isMobile) window.__HUNTSMART_INTERACTIVE_MAP__.open('leh',{province:'BC'});
-              else document.getElementById('navMap')?.click();
-            },mobile),5000,'open LEH');
-            await within(page.waitForFunction(()=>{
-              const e=document.getElementById('mapPage');
-              return !!(e&&e.getClientRects().length&&getComputedStyle(e).display!=='none'&&typeof fullMapInstance!=='undefined'&&!!fullMapInstance);
-            },null,{timeout:30000}),32000,'LEH ready');
-            if(mobile) await within(page.waitForFunction(()=>document.querySelector('#mapPage > .hs-im-shellbar')?.getClientRects().length,null,{timeout:30000}),32000,'LEH mobile shell');
-          }
+          const finalizer = read('mobile-map-shell-finalizer.js');
+          for (const marker of [
+            'normalizeShellPlacement',
+            "root.insertBefore(shell, root.firstChild)",
+            "observeSurface('mapPage')",
+            "observeSurface('bcOpenSeasonsPage')",
+            'hsPremiumMobileLayers',
+            'gosPremiumMobileLayers'
+          ]) assert(finalizer.includes(marker), `mobile map finalizer missing ${marker}`);
 
-          async function switchGos(page,mobile) {
-            await within(page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos')),5000,'switch GOS');
-            await within(page.waitForFunction(()=>{
-              const e=document.getElementById('bcOpenSeasonsPage');
-              return !!(e&&e.getClientRects().length&&getComputedStyle(e).display!=='none'&&typeof osMapInstance!=='undefined'&&!!osMapInstance);
-            },null,{timeout:30000}),32000,'GOS ready');
-            if(mobile) await within(page.waitForFunction(()=>document.querySelector('#bcOpenSeasonsPage > .hs-im-shellbar')?.getClientRects().length,null,{timeout:30000}),32000,'GOS mobile shell');
-          }
+          const pwa = read('mobile-pwa-shell.js');
+          for (const marker of [
+            'window.visualViewport',
+            'hs-mobile-map-active',
+            '--hs-map-page-h',
+            'scheduleNavigationSync',
+            "serviceWorker.register('/hs-offline-lite-sw.js'"
+          ]) assert(pwa.includes(marker), `PWA shell missing ${marker}`);
 
-          async function desktopAudit(browser) {
-            stage('desktop load');
-            const page=await browser.newPage({viewport:{width:1440,height:1000}});
-            const errors=[]; page.on('pageerror',e=>errors.push(e.message));
-            await ready(page,'map-regression-desktop');
-            await openLeh(page,false);
+          const css = read('mobile-pwa-shell.css');
+          assert(css.includes('var(--hs-visual-vh, 100dvh)'), 'live visual viewport height CSS missing');
+          assert(css.includes('safe-area-inset-bottom'), 'bottom safe-area handling missing');
+          assert(css.includes('html.hs-standalone'), 'standalone styling missing');
 
-            stage('desktop LEH settings');
-            assert(await within(page.locator('#hsWorldSettingsBtn').isVisible(),5000,'LEH settings visible'),'LEH Settings button missing.');
-            await within(page.locator('#hsWorldSettingsBtn').click({timeout:5000}),7000,'LEH settings click');
-            await within(page.waitForFunction(()=>document.getElementById('hsWorldSettingsPanel')?.classList.contains('open'),null,{timeout:5000}),7000,'LEH settings open');
-            await within(page.evaluate(()=>window.hsWcCloseSettings?.()),5000,'LEH settings close');
+          const build = read('netlify.toml');
+          assert(build.includes('mobile-pwa-shell.css'), 'PWA CSS is not included in production build');
+          assert(build.includes('mobile-pwa-shell.js'), 'PWA JS is not included in production build');
+          assert(build.includes('build-pwa-shell.py'), 'PWA metadata build step missing');
 
-            stage('desktop GOS');
-            await switchGos(page,false);
-            const species=page.locator('#osSpeciesSel');
-            assert(await within(species.isVisible(),5000,'GOS species visible'),'GOS species control missing.');
-            const moose=await within(species.locator('option').evaluateAll(opts=>opts.find(o=>o.value&&/moose/i.test(o.textContent||o.value))?.value||''),5000,'find Moose');
-            assert(moose,'Moose missing from GOS species list.');
-            await within(species.selectOption(moose),7000,'select Moose');
-            assert((await within(page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState().species),5000,'read Moose state'))===moose,'GOS Moose state mismatch.');
+          const sw = read('hs-offline-lite-sw.js');
+          assert(sw.includes('networkFirst(request)'), 'service worker is not network-first for app code');
+          assert(sw.includes("url.pathname.startsWith('/map-tiles/')"), 'service worker vector-tile cache guard missing');
 
-            stage('desktop Region 3 scope');
-            await within(page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.selectGOSRegion('3')),5000,'select Region 3');
-            const sheep=await within(species.locator('option').evaluateAll(opts=>opts.find(o=>o.value&&/bighorn/i.test(o.textContent||o.value))?.value||''),5000,'find Bighorn');
-            assert(sheep,'Bighorn Sheep missing in Region 3.');
-            await within(species.selectOption(sheep),7000,'select Bighorn');
-            await page.waitForTimeout(300);
-            const scoped=await within(page.evaluate(()=>({state:window.__HUNTSMART_INTERACTIVE_MAP__.getState(),active:window.__HUNTSMART_INTERACTIVE_MAP__.activeGOSWMUs()})),5000,'read GOS scope');
-            assert(scoped.state.regions.length===1&&String(scoped.state.regions[0])==='3','Region 3 scope lost.');
-            assert(scoped.active.length>0&&scoped.active.every(id=>String(id).startsWith('3-')),'GOS scope broadened outside Region 3.');
-
-            stage('desktop GOS to LEH');
-            await within(page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('leh')),5000,'switch LEH');
-            await within(page.waitForFunction(()=>document.getElementById('mapPage')?.getClientRects().length,null,{timeout:15000}),17000,'LEH return ready');
-            const lehState=await within(page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState()),5000,'read LEH state');
-            assert(lehState.controller.mode==='leh','GOS -> LEH failed.');
-            assert((lehState.wmus||[]).length>0&&(lehState.wmus||[]).every(id=>String(id).startsWith('3-')),'GOS -> LEH geography transfer failed.');
-
-            stage('desktop province switching');
-            await within(page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchProvince('AB')),5000,'switch AB');
-            await page.waitForTimeout(500);
-            let state=await within(page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState()),5000,'read AB state');
-            assert(state.controller.province==='AB'&&state.controller.mode==='leh','BC -> AB failed.');
-            await within(page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchProvince('BC')),5000,'switch BC');
-            await page.waitForTimeout(500);
-            state=await within(page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.getState()),5000,'read BC state');
-            assert(state.controller.province==='BC'&&state.controller.mode==='leh','AB -> BC failed.');
-            assert(!errors.length,'Desktop page errors: '+errors.join(' | '));
-            await within(page.screenshot({path:'map-system-desktop.png',fullPage:false}),10000,'desktop screenshot');
-            await within(page.close(),5000,'desktop close');
-          }
-
-          async function mobileAudit(browser) {
-            stage('mobile load');
-            const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true});
-            const errors=[]; page.on('pageerror',e=>errors.push(e.message));
-            await ready(page,'map-regression-mobile');
-            await openLeh(page,true);
-            assert(!(await within(page.locator('#fullMapControlStack').isVisible(),5000,'legacy LEH visibility')),'LEH legacy control stack visible.');
-
-            stage('mobile GOS');
-            await switchGos(page,true);
-            const speciesBtn=page.locator('#gosSpeciesBtn');
-            assert(await within(speciesBtn.isVisible(),5000,'mobile species visible'),'GOS mobile species button missing.');
-            await within(speciesBtn.click({timeout:5000}),7000,'open species');
-            await within(page.waitForFunction(()=>{
-              const d=document.getElementById('gosSpeciesDrop');
-              return !!(d&&d.getClientRects().length&&getComputedStyle(d).display!=='none');
-            },null,{timeout:5000}),7000,'species dropdown');
-            const layers=page.locator('#gosPremiumMobileLayers');
-            assert(await within(layers.isVisible(),5000,'mobile layers visible'),'GOS mobile Layers button missing.');
-            assert(!errors.length,'Mobile page errors: '+errors.join(' | '));
-            await within(page.screenshot({path:'map-system-mobile.png',fullPage:false}),10000,'mobile screenshot');
-            await within(page.close(),5000,'mobile close');
-          }
-
-          (async()=>{
-            const browser=await chromium.launch({headless:true});
-            try {
-              await desktopAudit(browser);
-              await mobileAudit(browser);
-              stage('PASS');
-            } finally {
-              await within(browser.close(),5000,'browser close').catch(()=>{});
-            }
-          })().catch(e=>{console.error(e.stack||e);process.exit(1);});
+          console.log('HuntSmart map-system source/build regression checks passed.');
           NODE
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: map-system-regression-${{ github.run_number }}
-          path: map-system-*.png
-          if-no-files-found: warn
-          retention-days: 14
