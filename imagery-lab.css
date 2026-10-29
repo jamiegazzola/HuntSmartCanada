@@ -1,5 +1,11 @@
 /* HuntSmart Unified Interactive Map — legacy imagery-lab filename retained by build pipeline. */
 
+/* The in-map walkthrough is intentionally disabled. It obscured live map controls,
+   especially on mobile, so the product now keeps the map surface fully interactive. */
+.hs-im-guide-btn,
+#hsInteractiveGuide,
+.hs-im-guide { display:none !important; }
+
 /* Experimental/R&D controls are not part of the consumer map. */
 #hsImageryLabBtn,
 #hsImageryPanel,
@@ -72,7 +78,7 @@
 /* The old standalone BC GOS nav is hidden by JS; enforce it if markup changes. */
 #navBCOS,#mNavBCOS { display:none !important; }
 
-/* Guided walkthrough. */
+/* Guided walkthrough styles retained only for backwards compatibility with cached JS. */
 .hs-im-guide {
   position:fixed;
   right:18px;
