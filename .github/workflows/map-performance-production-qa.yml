@@ -89,8 +89,12 @@ jobs:
             const bcStarted = Date.now();
             await page.evaluate(() => document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click());
             await page.waitForFunction(() => {
-              const source = (typeof fullMapInstance !== 'undefined' && fullMapInstance) ? fullMapInstance.getStyle()?.sources?.['wmu-src'] : null;
-              return !!fullMapInstance && source?.type === 'vector' && window.__HS_WMU_VECTOR_TILES__?.snapshot().manifestLoaded;
+              try {
+                if (typeof fullMapInstance === 'undefined' || !fullMapInstance) return false;
+                if (typeof fullMapInstance.isStyleLoaded === 'function' && !fullMapInstance.isStyleLoaded()) return false;
+                const source = fullMapInstance.getStyle()?.sources?.['wmu-src'];
+                return source?.type === 'vector' && window.__HS_WMU_VECTOR_TILES__?.snapshot().manifestLoaded;
+              } catch (_) { return false; }
             }, null, { timeout:30000 });
             const bcInteractiveMs = Date.now() - bcStarted;
             await page.waitForTimeout(1200);
@@ -110,8 +114,13 @@ jobs:
             const abStarted = Date.now();
             await page.evaluate(() => fullMapSetProvince('AB'));
             await page.waitForFunction(() => {
-              const source = (typeof fullMapInstance !== 'undefined' && fullMapInstance) ? fullMapInstance.getStyle()?.sources?.['wmu-src'] : null;
-              return typeof fullMapProvince !== 'undefined' && fullMapProvince === 'AB' && !!fullMapInstance && source?.type === 'vector';
+              try {
+                if (typeof fullMapProvince === 'undefined' || fullMapProvince !== 'AB') return false;
+                if (typeof fullMapInstance === 'undefined' || !fullMapInstance) return false;
+                if (typeof fullMapInstance.isStyleLoaded === 'function' && !fullMapInstance.isStyleLoaded()) return false;
+                const source = fullMapInstance.getStyle()?.sources?.['wmu-src'];
+                return source?.type === 'vector';
+              } catch (_) { return false; }
             }, null, { timeout:30000 });
             const abInteractiveMs = Date.now() - abStarted;
             await page.waitForTimeout(1200);
@@ -125,8 +134,12 @@ jobs:
 
             await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.open('gos', { province:'BC' }));
             await page.waitForFunction(() => {
-              const source = (typeof osMapInstance !== 'undefined' && osMapInstance) ? osMapInstance.getStyle()?.sources?.['os-wmu-src'] : null;
-              return !!osMapInstance && source?.type === 'vector';
+              try {
+                if (typeof osMapInstance === 'undefined' || !osMapInstance) return false;
+                if (typeof osMapInstance.isStyleLoaded === 'function' && !osMapInstance.isStyleLoaded()) return false;
+                const source = osMapInstance.getStyle()?.sources?.['os-wmu-src'];
+                return source?.type === 'vector';
+              } catch (_) { return false; }
             }, null, { timeout:30000 });
             await page.waitForTimeout(500);
             assert(requests.filter(isFullGeometry).length === 0, `GOS loaded full WMU geometry: ${JSON.stringify(requests.filter(isFullGeometry))}`);
