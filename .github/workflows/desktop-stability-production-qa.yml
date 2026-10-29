@@ -59,24 +59,22 @@ jobs:
           }
 
           async function measureEventLoop(page, durationMs) {
-            return page.evaluate(async (duration) => {
-              return new Promise(resolve => {
-                let ticks = 0;
-                let maxGap = 0;
-                let last = performance.now();
-                const started = last;
-                const timer = setInterval(() => {
-                  const now = performance.now();
-                  maxGap = Math.max(maxGap, now - last);
-                  last = now;
-                  ticks += 1;
-                  if (now - started >= duration) {
-                    clearInterval(timer);
-                    resolve({ ticks, maxGap, elapsed: now - started });
-                  }
-                }, 50);
-              });
-            }, durationMs);
+            return page.evaluate(async (duration) => new Promise(resolve => {
+              let ticks = 0;
+              let maxGap = 0;
+              let last = performance.now();
+              const started = last;
+              const timer = setInterval(() => {
+                const now = performance.now();
+                maxGap = Math.max(maxGap, now - last);
+                last = now;
+                ticks += 1;
+                if (now - started >= duration) {
+                  clearInterval(timer);
+                  resolve({ ticks, maxGap, elapsed: now - started });
+                }
+              }, 50);
+            }), durationMs);
           }
 
           (async () => {
@@ -103,13 +101,13 @@ jobs:
               return !!(root && root.getClientRects().length && getComputedStyle(root).display !== 'none');
             }, null, { timeout: 30000 });
             await page.waitForFunction(() => typeof fullMapInstance !== 'undefined' && !!fullMapInstance, null, { timeout: 30000 });
+            await page.waitForFunction(() => window.__HUNTSMART_INTERACTIVE_MAP__?.getState?.().surface === 'leh', null, { timeout: 30000 });
             await page.waitForTimeout(1000);
 
             const baseline = await measureEventLoop(page, 3000);
 
             await page.evaluate(() => {
               const map = fullMapInstance;
-              if (!map) return;
               for (let i = 0; i < 30; i += 1) {
                 try { map.panBy([i % 2 ? 12 : -12, i % 3 ? 6 : -6], { duration: 0 }); } catch (_) {}
                 try { map.resize(); } catch (_) {}
@@ -117,30 +115,29 @@ jobs:
             });
 
             const stressed = await measureEventLoop(page, 5000);
-            const mapState = await page.evaluate(() => {
-              const map = document.getElementById('fullMapLeaflet');
-              const rect = map && map.getBoundingClientRect();
-              return {
-                mapVisible: !!(rect && rect.width > 500 && rect.height > 400),
-                mapWidth: rect ? rect.width : 0,
-                mapHeight: rect ? rect.height : 0,
-                viewport: document.documentElement.dataset.hsViewport || '',
-                finalizerExecuted: !!window.__HUNTSMART_MOBILE_MAP_SHELL_FINALIZER__
-              };
-            });
+            const liveState = await page.evaluate(() => ({
+              viewport: document.documentElement.dataset.hsViewport || '',
+              finalizerExecuted: !!window.__HUNTSMART_MOBILE_MAP_SHELL_FINALIZER__,
+              mapPageVisible: (() => {
+                const root = document.getElementById('mapPage');
+                return !!(root && root.getClientRects().length && getComputedStyle(root).display !== 'none');
+              })(),
+              mapInstanceReady: typeof fullMapInstance !== 'undefined' && !!fullMapInstance,
+              surface: window.__HUNTSMART_INTERACTIVE_MAP__?.getState?.().surface || ''
+            }));
 
             console.log('BOOT', JSON.stringify(bootState));
             console.log('BASELINE', JSON.stringify(baseline));
             console.log('STRESSED', JSON.stringify(stressed));
-            console.log('MAP', JSON.stringify(mapState));
+            console.log('LIVE', JSON.stringify(liveState));
 
             assert(baseline.ticks >= 45, `Desktop event loop stalled at baseline: ${JSON.stringify(baseline)}`);
             assert(baseline.maxGap < 1000, `Desktop baseline long task too large: ${JSON.stringify(baseline)}`);
             assert(stressed.ticks >= 75, `Desktop event loop stalled under map activity: ${JSON.stringify(stressed)}`);
             assert(stressed.maxGap < 1000, `Desktop map activity produced a >1s stall: ${JSON.stringify(stressed)}`);
-            assert(mapState.mapVisible, `Desktop map collapsed: ${JSON.stringify(mapState)}`);
-            assert(mapState.viewport === 'desktop', `Desktop mode changed unexpectedly: ${JSON.stringify(mapState)}`);
-            assert(!mapState.finalizerExecuted, `Mobile finalizer became active on desktop: ${JSON.stringify(mapState)}`);
+            assert(liveState.mapPageVisible && liveState.mapInstanceReady && liveState.surface === 'leh', `Desktop LEH map did not remain active: ${JSON.stringify(liveState)}`);
+            assert(liveState.viewport === 'desktop', `Desktop mode changed unexpectedly: ${JSON.stringify(liveState)}`);
+            assert(!liveState.finalizerExecuted, `Mobile finalizer became active on desktop: ${JSON.stringify(liveState)}`);
             assert(pageErrors.length === 0, `Page errors: ${pageErrors.join(' | ')}`);
 
             await page.screenshot({ path: 'desktop-stability-1440.png', fullPage: false });
