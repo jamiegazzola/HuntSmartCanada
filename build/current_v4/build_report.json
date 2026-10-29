@@ -1,5 +1,5 @@
 {
-  "built_utc": "2026-10-29T16:54:49.879786+00:00",
+  "built_utc": "2026-10-29T16:59:35.138155+00:00",
   "sources": {
     "sheep_distribution": {
       "layer": 3,
@@ -33,7 +33,7 @@
     "harvest": {
       "url": "https://catalogue.data.gov.bc.ca/dataset/f2303645-5952-4766-bd5c-3b9b50dda1ca/resource/ea1505f6-77ab-4838-b4a9-309ec55a3c20/download/big-game-harvest-statistics-1976-to-2024-wmu.csv",
       "years": "2020-2024",
-      "rows_aggregated": 2042
+      "rows_aggregated": 6690
     }
   },
   "counts": {
@@ -41,43 +41,43 @@
       "distribution": 55,
       "survey": 0,
       "uwr": 0,
-      "harvest": 0
+      "harvest": 16
     },
     "Elk": {
       "distribution": 0,
       "survey": 0,
-      "uwr": 0,
+      "uwr": 62,
       "harvest": 125
     },
     "Moose": {
       "distribution": 0,
       "survey": 0,
       "uwr": 0,
-      "harvest": 0
+      "harvest": 175
     },
     "Mule / Black-tailed Deer": {
       "distribution": 0,
       "survey": 0,
-      "uwr": 0,
-      "harvest": 0
+      "uwr": 302,
+      "harvest": 174
     },
     "White-tailed Deer": {
       "distribution": 0,
       "survey": 0,
       "uwr": 0,
-      "harvest": 0
+      "harvest": 145
     },
     "Mountain Goat": {
       "distribution": 0,
       "survey": 0,
-      "uwr": 0,
+      "uwr": 247,
       "harvest": 98
     },
     "Mountain Sheep": {
       "distribution": 2,
       "survey": 0,
       "uwr": 0,
-      "harvest": 0
+      "harvest": 41
     },
     "Bison": {
       "distribution": 0,
@@ -95,13 +95,13 @@
       "distribution": 0,
       "survey": 0,
       "uwr": 0,
-      "harvest": 0
+      "harvest": 211
     },
     "Cougar": {
       "distribution": 0,
       "survey": 0,
       "uwr": 0,
-      "harvest": 0
+      "harvest": 117
     },
     "Wolf": {
       "distribution": 0,
