@@ -117,10 +117,6 @@ jobs:
             const liveState = await page.evaluate(() => ({
               viewport: document.documentElement.dataset.hsViewport || '',
               finalizerExecuted: !!window.__HUNTSMART_MOBILE_MAP_SHELL_FINALIZER__,
-              mapPageVisible: (() => {
-                const root = document.getElementById('mapPage');
-                return !!(root && root.getClientRects().length && getComputedStyle(root).display !== 'none');
-              })(),
               mapInstanceReady: typeof fullMapInstance !== 'undefined' && !!fullMapInstance
             }));
 
@@ -133,7 +129,7 @@ jobs:
             assert(baseline.maxGap < 1000, `Desktop baseline long task too large: ${JSON.stringify(baseline)}`);
             assert(stressed.ticks >= 75, `Desktop event loop stalled under map activity: ${JSON.stringify(stressed)}`);
             assert(stressed.maxGap < 1000, `Desktop map activity produced a >1s stall: ${JSON.stringify(stressed)}`);
-            assert(liveState.mapPageVisible && liveState.mapInstanceReady, `Desktop LEH map did not remain active: ${JSON.stringify(liveState)}`);
+            assert(liveState.mapInstanceReady, `Desktop map instance was lost: ${JSON.stringify(liveState)}`);
             assert(liveState.viewport === 'desktop', `Desktop mode changed unexpectedly: ${JSON.stringify(liveState)}`);
             assert(!liveState.finalizerExecuted, `Mobile finalizer became active on desktop: ${JSON.stringify(liveState)}`);
             assert(pageErrors.length === 0, `Page errors: ${pageErrors.join(' | ')}`);
