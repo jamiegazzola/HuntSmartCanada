@@ -54,7 +54,7 @@ jobs:
       - name: Validate responsive production journeys
         env:
           URL: https://huntsmartcanada.ca/
-          EXPECTED_MOBILE_VERSION: 2026-10-28-mobile-v1
+          EXPECTED_MOBILE_VERSION: 2026-10-29-mobile-v2
           EXPECTED_GOS_VERSION: 2026-10-28-gos-species-v1
         run: |
           node <<'NODE'
