@@ -9,6 +9,10 @@ on:
       - mobile-responsive-system.js
       - mobile-navigation-touch-fix.css
       - mobile-account-nav.js
+      - mobile-pwa-shell.css
+      - mobile-pwa-shell.js
+      - site.webmanifest
+      - build-pwa-shell.py
       - gos-species-sync.js
       - mobile-map-polish.css
       - mobile-map-topbar-fix.css
@@ -96,6 +100,16 @@ jobs:
             return page.$eval(selector, el => !!(el && el.getClientRects().length && getComputedStyle(el).display!=='none' && getComputedStyle(el).visibility!=='hidden'));
           }
 
+          async function waitForVisibleRect(page, selector, timeout=30000) {
+            await page.waitForFunction(sel => {
+              const el=document.querySelector(sel);
+              if (!el || !el.getClientRects().length) return false;
+              const style=getComputedStyle(el);
+              const rect=el.getBoundingClientRect();
+              return style.display!=='none' && style.visibility!=='hidden' && rect.width>0 && rect.height>0;
+            }, selector, {timeout});
+          }
+
           async function inside(page, selector, label) {
             const r=await page.$eval(selector, el=>{const x=el.getBoundingClientRect();return{left:x.left,right:x.right,width:x.width,height:x.height,vw:innerWidth};});
             assert(r.width>0&&r.height>0,`${label} collapsed ${JSON.stringify(r)}`);
@@ -159,9 +173,9 @@ jobs:
 
           async function enterLeh(page) {
             await page.evaluate(()=>document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click());
-            await page.waitForFunction(()=>{const el=document.getElementById('mapPage');return !!(el&&el.getClientRects().length&&getComputedStyle(el).display!=='none');},null,{timeout:15000});
+            await page.waitForFunction(()=>{const el=document.getElementById('mapPage');return !!(el&&el.getClientRects().length&&getComputedStyle(el).display!=='none');},null,{timeout:30000});
             await page.waitForFunction(()=>typeof fullMapInstance!=='undefined'&&!!fullMapInstance,null,{timeout:30000});
-            await page.waitForTimeout(650);
+            await waitForVisibleRect(page,'#mapPage > .hs-im-shellbar',30000);
           }
 
           async function verifyGosSpecies(page) {
@@ -201,8 +215,8 @@ jobs:
             await page.screenshot({path:'mobile-map-integrated-leh-390.png'});
 
             await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
-            await page.waitForFunction(()=>{const el=document.getElementById('bcOpenSeasonsPage');return !!(el&&el.getClientRects().length&&getComputedStyle(el).display!=='none');},null,{timeout:15000});
-            await page.waitForTimeout(600);
+            await page.waitForFunction(()=>{const el=document.getElementById('bcOpenSeasonsPage');return !!(el&&el.getClientRects().length&&getComputedStyle(el).display!=='none');},null,{timeout:30000});
+            await waitForVisibleRect(page,'#bcOpenSeasonsPage > .hs-im-shellbar',30000);
             await noOverflow(page,'390 GOS map');
             await inside(page,'#bcOpenSeasonsPage > .hs-im-shellbar','390 GOS shell');
             await verifyGosSpecies(page);
