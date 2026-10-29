@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 import shutil
 
-VERSION = "2026-10-28-pwa-v1"
+VERSION = "2026-10-29-pwa-v2"
 SITE = Path("site")
 INDEX = SITE / "index.html"
 MANIFEST_SOURCE = Path("site.webmanifest")
@@ -27,7 +27,6 @@ block = f'''{start}
 <meta name="application-name" content="HuntSmart Canada">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HuntSmart">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="apple-touch-icon" href="/images/logo.png">
