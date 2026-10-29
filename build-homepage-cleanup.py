@@ -1,7 +1,7 @@
 from pathlib import Path
 import re
 
-# Homepage middle-section removal revision: 2026-10-29.
+# Homepage middle-section removal revision: 2026-10-29; rebuild retry after Netlify credits restored.
 home = Path('site/index.html')
 if not home.exists():
     raise SystemExit('Homepage output missing: site/index.html')
