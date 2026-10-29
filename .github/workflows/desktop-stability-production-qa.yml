@@ -1,0 +1,160 @@
+name: HuntSmart Desktop Stability Production QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - mobile-responsive-system.js
+      - mobile-map-shell-finalizer.js
+      - netlify.toml
+      - .github/workflows/desktop-stability-production-qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  desktop-stability-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify live desktop responsiveness
+        env:
+          URL: https://huntsmartcanada.ca/
+          EXPECTED_MOBILE_VERSION: 2026-10-29-mobile-v2
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const assert = (value, message) => { if (!value) throw new Error(message); };
+          const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+          async function loadCurrentProduction(page) {
+            let last = '';
+            for (let i = 0; i < 24; i += 1) {
+              try {
+                await page.goto(`${process.env.URL}?desktop-stability-qa=${Date.now()}-${i}`, {
+                  waitUntil: 'domcontentloaded',
+                  timeout: 30000
+                });
+                const state = await page.evaluate(() => ({
+                  version: window.__HUNTSMART_MOBILE_SYSTEM__?.version || '',
+                  viewport: document.documentElement.dataset.hsViewport || ''
+                }));
+                last = JSON.stringify(state);
+                if (state.version === process.env.EXPECTED_MOBILE_VERSION && state.viewport === 'desktop') return;
+              } catch (error) {
+                last = error.message;
+              }
+              await sleep(5000);
+            }
+            throw new Error(`Production desktop gate failed: ${last}`);
+          }
+
+          async function measureEventLoop(page, durationMs) {
+            return page.evaluate(async (duration) => {
+              return new Promise(resolve => {
+                let ticks = 0;
+                let maxGap = 0;
+                let last = performance.now();
+                const started = last;
+                const timer = setInterval(() => {
+                  const now = performance.now();
+                  maxGap = Math.max(maxGap, now - last);
+                  last = now;
+                  ticks += 1;
+                  if (now - started >= duration) {
+                    clearInterval(timer);
+                    resolve({ ticks, maxGap, elapsed: now - started });
+                  }
+                }, 50);
+              });
+            }, durationMs);
+          }
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+            const pageErrors = [];
+            page.on('pageerror', error => pageErrors.push(error.message));
+
+            await loadCurrentProduction(page);
+
+            const bootState = await page.evaluate(() => ({
+              mobileVersion: window.__HUNTSMART_MOBILE_SYSTEM__?.version || '',
+              viewport: document.documentElement.dataset.hsViewport || '',
+              mobileFinalizerExecuted: !!window.__HUNTSMART_MOBILE_MAP_SHELL_FINALIZER__
+            }));
+            assert(bootState.mobileVersion === process.env.EXPECTED_MOBILE_VERSION, `Wrong mobile runtime: ${JSON.stringify(bootState)}`);
+            assert(bootState.viewport === 'desktop', `Desktop classified incorrectly: ${JSON.stringify(bootState)}`);
+            assert(!bootState.mobileFinalizerExecuted, `Mobile map finalizer executed on desktop: ${JSON.stringify(bootState)}`);
+
+            await page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__, null, { timeout: 30000 });
+            await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.open('leh', { province: 'BC' }));
+            await page.waitForFunction(() => {
+              const root = document.getElementById('mapPage');
+              return !!(root && root.getClientRects().length && getComputedStyle(root).display !== 'none');
+            }, null, { timeout: 30000 });
+            await page.waitForFunction(() => typeof fullMapInstance !== 'undefined' && !!fullMapInstance, null, { timeout: 30000 });
+            await page.waitForTimeout(1000);
+
+            const baseline = await measureEventLoop(page, 3000);
+
+            await page.evaluate(() => {
+              const map = fullMapInstance;
+              if (!map) return;
+              for (let i = 0; i < 30; i += 1) {
+                try { map.panBy([i % 2 ? 12 : -12, i % 3 ? 6 : -6], { duration: 0 }); } catch (_) {}
+                try { map.resize(); } catch (_) {}
+              }
+            });
+
+            const stressed = await measureEventLoop(page, 5000);
+            const mapState = await page.evaluate(() => {
+              const map = document.getElementById('fullMapLeaflet');
+              const rect = map && map.getBoundingClientRect();
+              return {
+                mapVisible: !!(rect && rect.width > 500 && rect.height > 400),
+                mapWidth: rect ? rect.width : 0,
+                mapHeight: rect ? rect.height : 0,
+                viewport: document.documentElement.dataset.hsViewport || '',
+                finalizerExecuted: !!window.__HUNTSMART_MOBILE_MAP_SHELL_FINALIZER__
+              };
+            });
+
+            console.log('BOOT', JSON.stringify(bootState));
+            console.log('BASELINE', JSON.stringify(baseline));
+            console.log('STRESSED', JSON.stringify(stressed));
+            console.log('MAP', JSON.stringify(mapState));
+
+            assert(baseline.ticks >= 45, `Desktop event loop stalled at baseline: ${JSON.stringify(baseline)}`);
+            assert(baseline.maxGap < 1000, `Desktop baseline long task too large: ${JSON.stringify(baseline)}`);
+            assert(stressed.ticks >= 75, `Desktop event loop stalled under map activity: ${JSON.stringify(stressed)}`);
+            assert(stressed.maxGap < 1000, `Desktop map activity produced a >1s stall: ${JSON.stringify(stressed)}`);
+            assert(mapState.mapVisible, `Desktop map collapsed: ${JSON.stringify(mapState)}`);
+            assert(mapState.viewport === 'desktop', `Desktop mode changed unexpectedly: ${JSON.stringify(mapState)}`);
+            assert(!mapState.finalizerExecuted, `Mobile finalizer became active on desktop: ${JSON.stringify(mapState)}`);
+            assert(pageErrors.length === 0, `Page errors: ${pageErrors.join(' | ')}`);
+
+            await page.screenshot({ path: 'desktop-stability-1440.png', fullPage: false });
+            await browser.close();
+            console.log('HuntSmart live desktop stability QA passed.');
+          })().catch(error => {
+            console.error(error.stack || error);
+            process.exit(1);
+          });
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-stability-production-qa-${{ github.run_number }}
+          path: desktop-stability-1440.png
+          if-no-files-found: warn
+          retention-days: 14
