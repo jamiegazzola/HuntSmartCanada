@@ -282,9 +282,18 @@
     );
   }
 
+  function scheduleFinalization() {
+    [0, 150, 450, 900, 1600].forEach(function (delay) { setTimeout(finalizeMobileShell, delay); });
+  }
+
   function boot() {
-    finalizeMobileShell();
-    [150, 450, 900, 1600].forEach(function (delay) { setTimeout(finalizeMobileShell, delay); });
+    scheduleFinalization();
+    document.addEventListener('click', function (event) {
+      const target = event.target && event.target.closest
+        ? event.target.closest('#hsMobileTabbar [data-tab="map"], [data-hs-im-mode]')
+        : null;
+      if (target) scheduleFinalization();
+    }, true);
     window.addEventListener('resize', function () { setTimeout(finalizeMobileShell, 0); });
   }
 
