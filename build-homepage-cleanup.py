@@ -16,6 +16,16 @@ text, eyebrow_removed = re.subn(
     flags=re.I | re.S,
 )
 
+# Keep the public homepage focused: remove the entire explanatory/product-marketing
+# block between the hero and the data stats strip (How it works + feature cards).
+text, middle_removed = re.subn(
+    r'<!--\s*──\s*HOW IT WORKS\s*──\s*-->.*?(?=<!--\s*──\s*DATA STATS STRIP\s*──\s*-->)',
+    '',
+    text,
+    count=1,
+    flags=re.I | re.S,
+)
+
 # Remove the older footer-style research nav when present.
 text, nav_removed = re.subn(
     r'<nav\s+aria-label="HuntSmart research links"[^>]*>.*?</nav>',
@@ -56,40 +66,19 @@ text = re.sub(
 
 home.write_text(text, encoding='utf-8')
 
-# Append the homepage product-story source after all base/UX polish. Keeping the
-# source in dedicated files makes the redesign isolated and reviewable while the
-# production bundle still ships the existing single homepage CSS/JS assets.
-product_story_assets = [
-    (Path('homepage-product-story.css'), Path('site/homepage-polish.css'), 'HOMEPAGE PRODUCT STORY CSS'),
-    (Path('homepage-product-story.js'), Path('site/homepage-polish.js'), 'HOMEPAGE PRODUCT STORY JS'),
-]
-for source, output, marker in product_story_assets:
-    if not source.exists():
-        raise SystemExit(f'Homepage product-story source missing: {source}')
-    if not output.exists():
-        raise SystemExit(f'Homepage product-story bundle target missing: {output}')
-    payload = source.read_text(encoding='utf-8').strip() + '\n'
-    bundled = output.read_text(encoding='utf-8')
-    banner = f'/* === {marker} === */'
-    if banner not in bundled:
-        output.write_text(bundled.rstrip() + f'\n\n{banner}\n' + payload, encoding='utf-8')
-
 final = home.read_text(encoding='utf-8')
 if re.search(r'class=["\']hero-eyebrow["\']', final, flags=re.I):
     raise SystemExit('Homepage cleanup failed: hero eyebrow still present.')
+if re.search(r'class=["\'][^"\']*\bhiw-section\b', final, flags=re.I):
+    raise SystemExit('Homepage cleanup failed: How it works section still present.')
+if re.search(r'class=["\'][^"\']*\bfeat-section\b', final, flags=re.I):
+    raise SystemExit('Homepage cleanup failed: feature section still present.')
 for href in research_hrefs:
     if re.search(rf'<a\b[^>]*href=["\']{re.escape(href)}["\']', final, flags=re.I):
         raise SystemExit(f'Homepage cleanup failed: research link still present: {href}')
 
-for output, marker in [
-    (Path('site/homepage-polish.css'), 'HOMEPAGE PRODUCT STORY CSS'),
-    (Path('site/homepage-polish.js'), 'HOMEPAGE PRODUCT STORY JS'),
-]:
-    if f'/* === {marker} === */' not in output.read_text(encoding='utf-8'):
-        raise SystemExit(f'Homepage product-story bundling failed: {output}')
-
 print(
     f'Homepage cleanup complete: removed {eyebrow_removed} hero eyebrow(s), '
-    f'{nav_removed} research nav block(s), {anchor_removed} deep-research homepage link(s); '
-    'bundled homepage product story.'
+    f'{middle_removed} middle marketing block(s), {nav_removed} research nav block(s), '
+    f'and {anchor_removed} deep-research homepage link(s).'
 )
