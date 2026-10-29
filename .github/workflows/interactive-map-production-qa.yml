@@ -47,7 +47,7 @@ jobs:
           async function openLive(page) {
             await page.goto(`${process.env.URL}?interactive-map-qa=${Date.now()}`, {waitUntil:'commit',timeout:30000});
             await page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__, null, {timeout:30000});
-            await page.waitForLoadState('domcontentloaded', {timeout:30000});
+            await page.waitForFunction(() => !!document.getElementById('navMap') && !!document.getElementById('mapPage'), null, {timeout:30000});
             await page.waitForTimeout(350);
           }
 
@@ -61,7 +61,14 @@ jobs:
               return !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none');
             }, null, {timeout:30000});
             await page.waitForFunction(() => typeof fullMapInstance !== 'undefined' && !!fullMapInstance, null, {timeout:30000});
-            await page.waitForTimeout(650);
+            if (mobile) {
+              await page.waitForFunction(() => {
+                const root=document.getElementById('mapPage');
+                const shell=root && root.querySelector(':scope > .hs-im-shellbar');
+                return !!(shell && shell.getClientRects().length && getComputedStyle(shell).display !== 'none');
+              }, null, {timeout:30000});
+            }
+            await page.waitForTimeout(250);
           }
 
           function snapshot(kind) {
@@ -128,7 +135,14 @@ jobs:
               await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.switchMode('gos'));
               await page.waitForFunction(()=>{const el=document.getElementById('bcOpenSeasonsPage');return !!(el&&el.getClientRects().length&&getComputedStyle(el).display!=='none');},null,{timeout:30000});
               await page.waitForFunction(()=>typeof osMapInstance!=='undefined'&&!!osMapInstance,null,{timeout:30000});
-              await page.waitForTimeout(600);
+              if (mobile) {
+                await page.waitForFunction(()=>{
+                  const root=document.getElementById('bcOpenSeasonsPage');
+                  const shell=root && root.querySelector(':scope > .hs-im-shellbar');
+                  return !!(shell && shell.getClientRects().length && getComputedStyle(shell).display!=='none');
+                },null,{timeout:30000});
+              }
+              await page.waitForTimeout(250);
               const gos=await page.evaluate(snapshot,'gos');
               verifyLayout('GOS',gos,mobile);
               await page.screenshot({path:`interactive-map-gos-${viewport.width}.png`});
