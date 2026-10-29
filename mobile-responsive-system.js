@@ -4,11 +4,12 @@
   'use strict';
   if (window.__HUNTSMART_MOBILE_SYSTEM__) return;
 
-  var VERSION = '2026-10-28-mobile-v1';
+  var VERSION = '2026-10-29-mobile-v2';
   var mobileMq = window.matchMedia('(max-width: 980px)');
   var compactMq = window.matchMedia('(max-width: 420px)');
   var coarseMq = window.matchMedia('(pointer: coarse)');
   var raf = 0;
+  var uiObserver = null;
 
   window.__HUNTSMART_MOBILE_SYSTEM__ = {
     version: VERSION,
@@ -224,12 +225,18 @@
   }
 
   function observeUiState() {
-    var observer = new MutationObserver(function () {
+    if (uiObserver) {
+      uiObserver.disconnect();
+      uiObserver = null;
+    }
+    if (!mobileMq.matches) return;
+
+    uiObserver = new MutationObserver(function () {
       syncMobileNavA11y();
       syncOverlayLock();
       tuneMapPanels();
     });
-    observer.observe(document.documentElement, {
+    uiObserver.observe(document.documentElement, {
       childList: true,
       subtree: true,
       attributes: true,
@@ -254,11 +261,13 @@
     if (mq.addEventListener) mq.addEventListener('change', function () {
       syncModeClasses();
       syncOverlayLock();
+      observeUiState();
       scheduleResizeMaps();
     });
     else if (mq.addListener) mq.addListener(function () {
       syncModeClasses();
       syncOverlayLock();
+      observeUiState();
       scheduleResizeMaps();
     });
   });
