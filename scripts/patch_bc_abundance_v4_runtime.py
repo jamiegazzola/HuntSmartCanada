@@ -3,6 +3,26 @@ from pathlib import Path
 p = Path('scripts/build_bc_abundance_v4.py')
 s = p.read_text(encoding='utf-8')
 
+# BC's UWR and harvest datasets use compact species codes rather than full names.
+old_map = "def map_species(text):\n    s = norm_text(text).lower().replace('_',' ').replace('–','-')"
+new_map = """def map_species(text):
+    raw = norm_text(text).upper()
+    code_map = {
+        'M-RATA':'Caribou', 'M-ALAL':'Moose', 'M-CEEL':'Elk',
+        'M-ODHE':'Mule / Black-tailed Deer', 'M-ODHC':'Mule / Black-tailed Deer',
+        'M-ODVI':'White-tailed Deer', 'M-ORAM':'Mountain Goat',
+        'M-OVCA':'Mountain Sheep', 'M-OVDA':'Mountain Sheep', 'M-BIBI':'Bison',
+        'BEAB':'Black Bear', 'BEAG':'Grizzly Bear', 'CARI':'Caribou',
+        'COUG':'Cougar', 'DEMU':'Mule / Black-tailed Deer', 'DEWT':'White-tailed Deer',
+        'ELK':'Elk', 'GOAT':'Mountain Goat', 'MOOS':'Moose',
+        'SHEE':'Mountain Sheep', 'WOLF':'Wolf'
+    }
+    if raw in code_map: return code_map[raw]
+    s = norm_text(text).lower().replace('_',' ').replace('–','-')"""
+if old_map not in s:
+    raise RuntimeError('species mapping patch target not found')
+s = s.replace(old_map, new_map)
+
 old = "print('Downloading WSI Survey Summary polygons...', flush=True)\nwsi = query_layer(INV, 16)"
 new = "print('Skipping WSI Survey Summary in v4 because BC endpoint is unstable; other modern layers are embedded locally.', flush=True)\nwsi = []"
 if old not in s:
