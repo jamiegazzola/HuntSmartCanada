@@ -1,13 +1,17 @@
 /* HuntSmart static WMU vector-tile runtime.
- * Keeps the existing Mapbox interaction model while replacing full-province
- * GeoJSON sources with viewport-driven MVT requests.
+ * Main Map/GOS paths stream viewport MVT tiles; legacy embedded filter maps
+ * retain lazy full-GeoJSON fallbacks only when those mini-maps are opened.
  */
 (function () {
   'use strict';
 
-  const VERSION = '2026-10-28-vector-v1';
-  const TILE_VERSION = '20261028-v2';
+  const VERSION = '2026-10-28-vector-v2';
+  const TILE_VERSION = '20261028-v3';
   const BASE = `/map-tiles/${TILE_VERSION}`;
+  const BOUNDS = {
+    BC: [-139.3, 48.1, -113.8, 60.2],
+    AB: [-120.2, 48.8, -109.6, 60.2]
+  };
   const state = {
     manifestPromise: null,
     manifest: null,
@@ -15,7 +19,7 @@
     mapboxPatched: false,
     fullBCPromise: null,
     fullABPromise: null,
-    metrics: { manifestMs: null, firstVectorTileAtMs: null, lastVectorTileAtMs: null }
+    metrics: { manifestMs: null }
   };
 
   const now = () => (window.performance && typeof performance.now === 'function' ? performance.now() : Date.now());
@@ -32,8 +36,8 @@
       let settled = false;
       const done = () => { if (settled) return; settled = true; script.dataset.hsVectorLoaded = '1'; resolve(); };
       const fail = () => { if (settled) return; settled = true; reject(new Error(`Failed to load ${src}`)); };
-      script.addEventListener('load', done, { once: true });
-      script.addEventListener('error', fail, { once: true });
+      script.addEventListener('load', done, { once:true });
+      script.addEventListener('error', fail, { once:true });
       if (!existing) {
         script.src = src;
         script.async = false;
@@ -47,7 +51,7 @@
     if (state.manifest) return Promise.resolve(state.manifest);
     if (state.manifestPromise) return state.manifestPromise;
     const started = now();
-    state.manifestPromise = fetch(`${BASE}/manifest.json?v=${VERSION}`, { cache: 'force-cache' })
+    state.manifestPromise = fetch(`${BASE}/manifest.json?v=${VERSION}`, { cache:'force-cache' })
       .then(response => {
         if (!response.ok) throw new Error(`WMU vector manifest returned ${response.status}`);
         return response.json();
@@ -117,10 +121,12 @@
         this.__hsVectorWmuSources.set(sourceId, province);
         const manifest = state.manifest;
         return originalAddSource.call(this, sourceId, {
-          type: 'vector',
-          tiles: [`${BASE}/${province.toLowerCase()}/{z}/{x}/{y}.pbf?v=${VERSION}`],
-          minzoom: manifest?.minzoom || 3,
-          maxzoom: manifest?.maxzoom || 9
+          type:'vector',
+          tiles:[`${location.origin}${BASE}/${province.toLowerCase()}/{z}/{x}/{y}.pbf?v=${VERSION}`],
+          minzoom:manifest?.minzoom || 3,
+          maxzoom:manifest?.maxzoom || 9,
+          bounds:BOUNDS[province],
+          scheme:'xyz'
         });
       }
       return originalAddSource.call(this, sourceId, spec);
@@ -128,14 +134,14 @@
 
     proto.addLayer = function (layer, beforeId) {
       if (layer && this.__hsVectorWmuSources?.has(layer.source) && !layer['source-layer']) {
-        layer = Object.assign({}, layer, { 'source-layer': state.manifest?.sourceLayer || 'wmus' });
+        layer = Object.assign({}, layer, { 'source-layer':state.manifest?.sourceLayer || 'wmus' });
       }
       return originalAddLayer.call(this, layer, beforeId);
     };
 
     const withSourceLayer = (map, target) => {
       if (target && map.__hsVectorWmuSources?.has(target.source) && !target.sourceLayer) {
-        return Object.assign({}, target, { sourceLayer: state.manifest?.sourceLayer || 'wmus' });
+        return Object.assign({}, target, { sourceLayer:state.manifest?.sourceLayer || 'wmus' });
       }
       return target;
     };
@@ -259,20 +265,6 @@
     }
   }
 
-  function instrumentVectorRequests() {
-    if (!window.PerformanceObserver) return;
-    try {
-      new PerformanceObserver(list => {
-        for (const entry of list.getEntries()) {
-          if (entry.name.includes(`/map-tiles/${TILE_VERSION}/`) && entry.name.includes('.pbf')) {
-            if (state.metrics.firstVectorTileAtMs == null) state.metrics.firstVectorTileAtMs = round(entry.responseEnd);
-            state.metrics.lastVectorTileAtMs = round(entry.responseEnd);
-          }
-        }
-      }).observe({ type: 'resource', buffered: true });
-    } catch (_) {}
-  }
-
   function install() {
     if (state.installed) return;
     state.installed = true;
@@ -281,29 +273,30 @@
     wrapLeaflet('bcInitLeafletMap', ensureBCFullGeometry);
     wrapLeaflet('abInitLeafletMap', ensureABFullGeometry);
     hookFullMapInitializers();
-    instrumentVectorRequests();
 
     window.__HS_WMU_VECTOR_TILES__ = {
-      version: VERSION,
-      tileVersion: TILE_VERSION,
+      version:VERSION,
+      tileVersion:TILE_VERSION,
       loadManifest,
       ensureBCFullGeometry,
       ensureABFullGeometry,
       snapshot() {
         return {
-          version: VERSION,
-          tileVersion: TILE_VERSION,
-          manifestLoaded: !!state.manifest,
-          bcFullGeometry: !!window.__HS_FULL_BC_WMU_GEOMETRY__,
-          abFullGeometry: !!window.__HS_FULL_AB_WMU_GEOMETRY__,
-          bcFeatureCount: state.manifest?.bc?.featureCount || 0,
-          abFeatureCount: state.manifest?.ab?.featureCount || 0,
-          metrics: Object.assign({}, state.metrics)
+          version:VERSION,
+          tileVersion:TILE_VERSION,
+          manifestLoaded:!!state.manifest,
+          bcFullGeometry:!!window.__HS_FULL_BC_WMU_GEOMETRY__,
+          abFullGeometry:!!window.__HS_FULL_AB_WMU_GEOMETRY__,
+          bcFeatureCount:state.manifest?.bc?.featureCount || 0,
+          abFeatureCount:state.manifest?.ab?.featureCount || 0,
+          bcTileCount:state.manifest?.bc?.tileCount || 0,
+          abTileCount:state.manifest?.ab?.tileCount || 0,
+          metrics:Object.assign({}, state.metrics)
         };
       }
     };
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once:true });
   else install();
 })();

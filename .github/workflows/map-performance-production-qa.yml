@@ -8,7 +8,8 @@ on:
       - map-performance-runtime.js
       - map-vector-runtime.js
       - build-map-performance.py
-      - build-wmu-vector-tiles.py
+      - build-wmu-vector-tiles.mjs
+      - package.json
       - hs-offline-lite-sw.js
       - netlify.toml
       - .github/workflows/map-performance-production-qa.yml
@@ -32,8 +33,8 @@ jobs:
       - name: Validate vector-tile progressive map on production
         env:
           URL: https://huntsmartcanada.ca/
-          EXPECTED_VECTOR_VERSION: 2026-10-28-vector-v1
-          EXPECTED_TILE_VERSION: 20261028-v2
+          EXPECTED_VECTOR_VERSION: 2026-10-28-vector-v2
+          EXPECTED_TILE_VERSION: 20261028-v3
         run: |
           node <<'NODE'
           const { chromium } = require('playwright');
@@ -105,9 +106,10 @@ jobs:
             await page.waitForTimeout(500);
 
             const bcTiles = requests.filter(url => isVectorTile(url) && url.includes(`/${expectedTiles}/bc/`));
+            assert(bcTiles.length > 0, `BC vector tile requests were not observed: ${JSON.stringify(requests.filter(isVectorTile))}`);
             assert(requests.filter(isFullGeometry).length === 0, `BC Map fell back to full geometry: ${JSON.stringify(requests.filter(isFullGeometry))}`);
             let vectorState = await page.evaluate(() => window.__HS_WMU_VECTOR_TILES__.snapshot());
-            assert(vectorState.bcFeatureCount > 100, `BC vector index is incomplete: ${JSON.stringify(vectorState)}`);
+            assert(vectorState.bcFeatureCount > 100 && vectorState.bcTileCount > 0, `BC vector manifest is incomplete: ${JSON.stringify(vectorState)}`);
             assert(!vectorState.bcFullGeometry, 'BC full geometry should stay unloaded on the main map');
 
             await page.evaluate(() => fullMapSelectWMU('3-17', false));
@@ -135,9 +137,10 @@ jobs:
             await page.waitForTimeout(500);
 
             const abTiles = requests.filter(url => isVectorTile(url) && url.includes(`/${expectedTiles}/ab/`));
+            assert(abTiles.length > 0, `Alberta vector tile requests were not observed: ${JSON.stringify(requests.filter(isVectorTile))}`);
             assert(requests.filter(isFullGeometry).length === 0, `Alberta Map fell back to full geometry: ${JSON.stringify(requests.filter(isFullGeometry))}`);
             vectorState = await page.evaluate(() => window.__HS_WMU_VECTOR_TILES__.snapshot());
-            assert(vectorState.abFeatureCount > 100, `Alberta vector index is incomplete: ${JSON.stringify(vectorState)}`);
+            assert(vectorState.abFeatureCount > 100 && vectorState.abTileCount > 0, `Alberta vector manifest is incomplete: ${JSON.stringify(vectorState)}`);
             assert(!vectorState.abFullGeometry, 'Alberta full geometry should stay unloaded on the main map');
 
             await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.open('gos', { province:'BC' }));
