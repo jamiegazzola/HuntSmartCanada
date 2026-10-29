@@ -95,6 +95,12 @@
     scheduled = requestAnimationFrame(syncShell);
   }
 
+  function scheduleNavigationSync() {
+    [0, 60, 180, 450, 900].forEach(function (delay) {
+      setTimeout(scheduleSync, delay);
+    });
+  }
+
   function closeInstallSheet() {
     var existing = document.getElementById('hsInstallSheetBackdrop');
     if (existing) existing.remove();
@@ -182,6 +188,13 @@
       var el = document.getElementById(id);
       if (el) observer.observe(el, { attributes: true, attributeFilter: ['class', 'style'], childList: true, subtree: id === 'navMobileMenu' });
     });
+
+    document.addEventListener('click', function (event) {
+      var target = event.target && event.target.closest
+        ? event.target.closest('#hsMobileTabbar [data-tab="map"], [data-hs-im-mode]')
+        : null;
+      if (target) scheduleNavigationSync();
+    }, true);
 
     window.addEventListener('resize', scheduleSync, { passive: true });
     window.addEventListener('orientationchange', function () { setTimeout(scheduleSync, 80); });
