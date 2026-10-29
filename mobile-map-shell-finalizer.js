@@ -230,11 +230,20 @@
     document.head.appendChild(style);
   }
 
+  function normalizeShellPlacement(surface) {
+    const root = document.getElementById(surface);
+    if (!root) return null;
+    const shell = root.querySelector('.hs-im-shellbar');
+    if (!shell) return null;
+    if (shell.parentElement !== root) root.insertBefore(shell, root.firstChild);
+    return shell;
+  }
+
   function moveControlIntoShell(surface, speciesId, legacyTopbarId, layersId, openLayers) {
     const root = document.getElementById(surface);
-    const shell = root && root.querySelector(':scope > .hs-im-shellbar');
+    const shell = normalizeShellPlacement(surface);
     const controls = shell && shell.querySelector('.hs-im-controls');
-    if (!controls) return;
+    if (!root || !controls) return;
 
     const species = document.getElementById(speciesId);
     if (species) {
@@ -265,6 +274,9 @@
     injectStyles();
     if (!isMobile()) return;
 
+    normalizeShellPlacement('mapPage');
+    normalizeShellPlacement('bcOpenSeasonsPage');
+
     moveControlIntoShell(
       'mapPage',
       'hsSpeciesBtn',
@@ -286,8 +298,17 @@
     [0, 150, 450, 900, 1600].forEach(function (delay) { setTimeout(finalizeMobileShell, delay); });
   }
 
+  function observeSurface(surface) {
+    const root = document.getElementById(surface);
+    if (!root || typeof MutationObserver === 'undefined') return;
+    const observer = new MutationObserver(function () { scheduleFinalization(); });
+    observer.observe(root, { childList: true, subtree: true });
+  }
+
   function boot() {
     scheduleFinalization();
+    observeSurface('mapPage');
+    observeSurface('bcOpenSeasonsPage');
     document.addEventListener('click', function (event) {
       const target = event.target && event.target.closest
         ? event.target.closest('#hsMobileTabbar [data-tab="map"], [data-hs-im-mode]')
