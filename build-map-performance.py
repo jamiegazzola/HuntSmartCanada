@@ -7,11 +7,15 @@ SITE = ROOT / "site"
 INDEX = SITE / "index.html"
 RUNTIME = ROOT / "map-performance-runtime.js"
 TARGET_RUNTIME = SITE / RUNTIME.name
+PREWARM_RUNTIME = ROOT / "map-prewarm-runtime.js"
+TARGET_PREWARM_RUNTIME = SITE / PREWARM_RUNTIME.name
 
 if not INDEX.exists():
     raise SystemExit("map performance build: site/index.html is missing")
 if not RUNTIME.exists():
     raise SystemExit("map performance build: map-performance-runtime.js is missing")
+if not PREWARM_RUNTIME.exists():
+    raise SystemExit("map performance build: map-prewarm-runtime.js is missing")
 
 text = INDEX.read_text(encoding="utf-8")
 
@@ -33,7 +37,7 @@ for filename in geometry_files:
     if count == 0:
         raise SystemExit(f"map performance build: expected eager script tag for {filename}")
 
-meta = '<meta name="huntsmart-map-performance" content="2026-10-28-v1">'
+meta = '<meta name="huntsmart-map-performance" content="2026-10-30-v2">'
 if 'name="huntsmart-map-performance"' not in text:
     text = text.replace("</head>", f"{meta}\n</head>", 1)
 
@@ -53,6 +57,16 @@ if "map-performance-runtime.js" not in text:
         if count == 0:
             raise SystemExit("map performance build: could not find runtime injection anchor")
 
+prewarm_tag = '<script defer src="./map-prewarm-runtime.js?v=20261030-prewarm1"></script>'
+if "map-prewarm-runtime.js" not in text:
+    perf_re = re.compile(
+        r'(<script\b[^>]*\bsrc=["\'][^"\']*map-performance-runtime\.js(?:\?[^"\']*)?["\'][^>]*>\s*</script>)',
+        flags=re.IGNORECASE,
+    )
+    text, count = perf_re.subn(r"\1\n" + prewarm_tag, text, count=1)
+    if count == 0:
+        raise SystemExit("map performance build: could not find prewarm runtime injection anchor")
+
 for filename in geometry_files:
     eager = re.search(
         r'<script\b[^>]*\bsrc=["\'][^"\']*' + re.escape(filename) + r'(?:\?[^"\']*)?["\']',
@@ -62,10 +76,11 @@ for filename in geometry_files:
     if eager:
         raise SystemExit(f"map performance build: eager geometry tag still present for {filename}")
 
-if "map-performance-runtime.js" not in text or 'name="huntsmart-map-performance"' not in text:
+if "map-performance-runtime.js" not in text or "map-prewarm-runtime.js" not in text or 'name="huntsmart-map-performance"' not in text:
     raise SystemExit("map performance build: runtime marker injection failed")
 
 INDEX.write_text(text, encoding="utf-8")
 shutil.copy2(RUNTIME, TARGET_RUNTIME)
+shutil.copy2(PREWARM_RUNTIME, TARGET_PREWARM_RUNTIME)
 
-print("Map performance layer applied: production geometry is lazy-loaded and runtime diagnostics are enabled.")
+print("Map performance layer applied: production geometry is lazy-loaded, map resources are prewarmed, and runtime diagnostics are enabled.")
