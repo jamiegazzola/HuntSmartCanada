@@ -7,7 +7,7 @@ const WSI='https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_wh
 const WSI_UNG='https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_wildlife_inventory/MapServer/12';
 const SHEEP='https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_wildlife_management/MapServer/3';
 const TAXA=[
- {group:'Deer',key:'mule_deer',label:'Mule Deer',kind:'bei',base:'mule_deer',prefix:'M_ODHE'},
+ {group:'Deer',key:'mule_deer',label:'Mule Deer',kind:'bei',base:'mule_deer',prefix:'M_ODHE_HE'},
  {group:'Deer',key:'columbian_blacktail',label:'Columbian Black-tailed Deer',kind:'bei',base:'mule_deer',prefix:'M_ODHE_CO'},
  {group:'Deer',key:'sitka_blacktail',label:'Sitka Black-tailed Deer',kind:'bei',base:'mule_deer',prefix:'M_ODHE_SI'},
  {group:'Deer',key:'dakota_whitetail',label:'Dakota White-tailed Deer',kind:'bei',base:'white_tailed_deer',prefix:'M_ODVI_DA'},
@@ -17,9 +17,10 @@ const TAXA=[
  {group:'Moose',key:'northwestern_moose',label:'Northwestern Moose',kind:'bei',base:'moose',prefix:'M_ALAL_AN'},
  {group:'Moose',key:'alaskan_moose',label:'Alaskan Moose',kind:'bei',base:'moose',prefix:'M_ALAL_GI'},
  {group:'Moose',key:'shiras_moose',label:"Shiras' Moose",kind:'bei',base:'moose',prefix:'M_ALAL_SH'},
- {group:'Sheep',key:'bighorn_sheep',label:'Bighorn Sheep',kind:'sheepFamily',base:'wild_sheep',family:'bighorn'},
- {group:'Sheep',key:'thinhorn_sheep',label:'Thinhorn Sheep',kind:'sheepFamily',base:'wild_sheep',family:'thinhorn'},
+ {group:'Sheep',key:'california_bighorn',label:'California Bighorn Sheep',kind:'bei',base:'wild_sheep',prefix:'M_OVCA_CA'},
+ {group:'Sheep',key:'rocky_mountain_bighorn',label:'Rocky Mountain Bighorn Sheep',kind:'bei',base:'wild_sheep',prefix:'M_OVCA_CN'},
  {group:'Sheep',key:'stone_sheep',label:"Stone's Sheep",kind:'bei',base:'wild_sheep',prefix:'M_OVDA_ST'},
+ {group:'Sheep',key:'dall_sheep',label:"Dall's Sheep",kind:'bei',base:'wild_sheep',prefix:'M_OVDA_DA'},
  {group:'Caribou',key:'northern_mountain_caribou',label:'Northern Mountain Caribou',kind:'caribou',base:'caribou',ecotype:'Northern',historicPrefix:'M_RATA_NO'},
  {group:'Caribou',key:'southern_mountain_caribou',label:'Southern Mountain Caribou',kind:'caribou',base:'caribou',ecotype:'Mountain',historicPrefix:'M_RATA_MO'},
  {group:'Caribou',key:'boreal_caribou',label:'Boreal Caribou',kind:'caribou',base:'caribou',ecotype:'Boreal',historicPrefix:'M_RATA_BO'},
