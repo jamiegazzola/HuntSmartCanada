@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const APP_BUILD = 'species-map-rebuild-v1';
+  const APP_BUILD = 'species-map-rebuild-v2';
   window.__HUNTSMART_SPECIES_MAP_BUILD__ = APP_BUILD;
   const BOUNDS = { north: 60.1, south: 48.1, east: -113.8, west: -139.2 };
   const PALETTE = [
@@ -11,8 +11,9 @@
     [244, 139, 39, 210],
     [215, 48, 39, 220],
   ];
-  const RASTER_W = 650;
-  const RASTER_H = 307;
+  const RASTER_W = 260;
+  const RASTER_H = 123;
+  const ASSET_REV = 'rebuild-20261031-2';
 
   const SPECIES = [
     { key: 'mule_deer', label: 'Mule Deer', type: 'raster', asset: 'data/mule_deer.js', source: 'mule_deer' },
@@ -90,22 +91,38 @@
 
   function decodeRle(rle) {
     if (!rle) throw new Error('Distribution data is missing.');
+
+    const total = RASTER_W * RASTER_H;
+    const runs = [];
+    let encodedPixels = 0;
+
+    for (const token of rle.split(',')) {
+      if (!token) continue;
+      const level = Number(token[0]);
+      const count = parseInt(token.slice(1), 36);
+      if (!Number.isInteger(level) || level < 0 || level >= PALETTE.length || !Number.isFinite(count) || count <= 0) {
+        throw new Error('Distribution data failed validation.');
+      }
+      runs.push([level, count]);
+      encodedPixels += count;
+    }
+
+    if (encodedPixels !== total) {
+      console.error(`Species raster pixel count mismatch: got ${encodedPixels}, expected ${total}.`);
+      throw new Error('Distribution data failed validation.');
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = RASTER_W;
     canvas.height = RASTER_H;
     const ctx = canvas.getContext('2d', { alpha: true });
     const image = ctx.createImageData(RASTER_W, RASTER_H);
     const pixels = image.data;
-    const total = RASTER_W * RASTER_H;
     let p = 0;
 
-    for (const token of rle.split(',')) {
-      if (!token) continue;
-      const level = Number(token[0]);
-      const count = parseInt(token.slice(1), 36);
-      const color = PALETTE[level] || PALETTE[0];
-      if (!Number.isFinite(count) || count < 0) throw new Error('Distribution data is invalid.');
-      for (let i = 0; i < count && p < total; i += 1, p += 1) {
+    for (const [level, count] of runs) {
+      const color = PALETTE[level];
+      for (let i = 0; i < count; i += 1, p += 1) {
         const offset = p * 4;
         pixels[offset] = color[0];
         pixels[offset + 1] = color[1];
@@ -114,14 +131,13 @@
       }
     }
 
-    if (p !== total) throw new Error('Distribution data is incomplete.');
     ctx.putImageData(image, 0, 0);
     return canvas.toDataURL('image/png');
   }
 
   async function rasterUrl(item) {
     if (rasterCache.has(item.key)) return rasterCache.get(item.key);
-    await loadScript(`${item.asset}?v=rebuild-20261031-1`);
+    await loadScript(`${item.asset}?v=${ASSET_REV}`);
     const rle = window.SPECIES_DATA?.[item.source];
     const url = decodeRle(rle);
     rasterCache.set(item.key, url);
@@ -258,7 +274,7 @@
 
   function loadGoogleMaps() {
     const config = document.createElement('script');
-    config.src = '/.netlify/functions/google-maps-config?rev=species-rebuild-1';
+    config.src = '/.netlify/functions/google-maps-config?rev=species-rebuild-2';
     config.async = true;
     config.onload = () => {
       if (!window.GOOGLE_MAPS_API_KEY) {
