@@ -3,8 +3,7 @@ const SOURCES = {
   grizzly2012: 'https://catalogue.data.gov.bc.ca/dataset/2bf91935-9158-4f77-9c2c-4310480e6c29/resource/4eca8c5c-ed25-46c1-835c-3d9f84b807e1/download/grizzlypopulationestimate2012.csv',
 }
 
-const ROOSEVELT_ITEM = '2774803ccefc42579458b269ad190bf8'
-const ROOSEVELT_ITEM_BASE = `https://governmentofbc.maps.arcgis.com/sharing/rest/content/items/${ROOSEVELT_ITEM}`
+const ROOSEVELT_EPU = 'https://services6.arcgis.com/ubm4tcTYICKBpist/arcgis/rest/services/EPU_Density_Trends_and_Risk/FeatureServer/0'
 
 async function fetchJson(url, label) {
   const response = await fetch(url, { headers: { 'user-agent': 'HuntSmartCanada/1.0' } })
@@ -14,34 +13,20 @@ async function fetchJson(url, label) {
   return payload
 }
 
-function densityField(features) {
-  const keys = [...new Set((features || []).flatMap(feature => Object.keys(feature.properties || {})))]
-  return keys.find(key => /^Indiv_per_sqkm_2023$/i.test(key)) ||
-    keys.find(key => /2023/i.test(key) && /(indiv|density)/i.test(key)) ||
-    keys.find(key => /(indiv.*sqkm|density)/i.test(key))
+function addDerivedDensity(feature) {
+  const properties = feature?.properties || {}
+  const population = Number(properties.POP_Est_2012)
+  const areaKm2 = Number(properties.EPU_LAND_km2)
+  const density = Number.isFinite(population) && Number.isFinite(areaKm2) && areaKm2 > 0
+    ? population / areaKm2
+    : null
+  return { ...feature, properties: { ...properties, __density: density } }
 }
 
 async function fetchRooseveltEpu() {
-  const meta = await fetchJson(`${ROOSEVELT_ITEM_BASE}?f=json`, 'Roosevelt elk dataset')
-  let service = meta.url
-  if (!service) {
-    const itemData = await fetchJson(`${ROOSEVELT_ITEM_BASE}/data?f=json`, 'Roosevelt elk item data')
-    service = itemData?.operationalLayers?.find(layer => layer.url)?.url || itemData?.tables?.find(table => table.url)?.url
-  }
-  if (!service) throw new Error('Roosevelt elk service URL is unavailable')
-
-  service = service.replace(/\/$/, '')
-  let layerUrl = service
-  if (!/\/(?:FeatureServer|MapServer)\/\d+$/i.test(service)) {
-    const info = await fetchJson(`${service}?f=json`, 'Roosevelt elk service')
-    const layerId = info.layers?.[0]?.id
-    if (layerId == null) throw new Error('Roosevelt elk layer is unavailable')
-    layerUrl = `${service}/${layerId}`
-  }
-
   const params = new URLSearchParams({
     where: '1=1',
-    outFields: '*',
+    outFields: 'OBJECTID,EPU_Unit_Name,EPU_LAND_km2,POP_Est_2012,POP_DEN_CL,POP_DEN_CL_2012,REGION_NAME',
     returnGeometry: 'true',
     returnZ: 'false',
     returnM: 'false',
@@ -50,11 +35,10 @@ async function fetchRooseveltEpu() {
     geometryPrecision: '4',
     maxAllowableOffset: '0.002',
   })
-  const collection = await fetchJson(`${layerUrl}/query?${params}`, 'Roosevelt elk population units')
-  const features = Array.isArray(collection.features) ? collection.features : []
-  const field = densityField(features)
-  if (!features.length || !field) throw new Error('Roosevelt elk density data is incomplete')
-  return { type: 'FeatureCollection', features, densityField: field }
+  const collection = await fetchJson(`${ROOSEVELT_EPU}/query?${params}`, 'Roosevelt elk population units')
+  const features = Array.isArray(collection.features) ? collection.features.map(addDerivedDensity) : []
+  if (!features.length) throw new Error('Roosevelt elk population-unit data is empty')
+  return { type: 'FeatureCollection', features, densityField: '__density' }
 }
 
 export default async (req) => {

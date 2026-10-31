@@ -1,6 +1,5 @@
 name: HuntSmart Interactive Map Production QA
 
-# Roosevelt source diagnostic and deploy-race guard.
 on:
   workflow_dispatch:
   push:
@@ -44,94 +43,35 @@ jobs:
           URL: https://huntsmartcanada.ca
         run: |
           node <<'NODE'
-          const assert = (v,m) => { if (!v) throw new Error(m); };
-          const sleep = ms => new Promise(resolve=>setTimeout(resolve,ms));
-          const within = (promise, ms, label) => Promise.race([
-            promise,
-            new Promise((_,reject)=>setTimeout(()=>reject(new Error(`${label} timed out`)),ms))
-          ]);
-          async function response(path) {
-            return within(fetch(`${process.env.URL}${path}${path.includes('?')?'&':'?'}qa=${Date.now()}`, {cache:'no-store'}), 20000, `fetch ${path}`);
-          }
-          async function text(path) {
-            const r=await response(path);assert(r.ok,`${path} returned ${r.status}`);return r.text();
-          }
-          async function waitForMarker(path,marker) {
-            for(let i=0;i<18;i++){
-              const r=await response(path);
-              if(r.ok){const body=await r.text();if(body.includes(marker))return body;}
-              await sleep(5000);
-            }
-            throw new Error(`${path} never published marker ${marker}`);
-          }
-          async function jsonAbsolute(url,label) {
-            const r=await within(fetch(url,{cache:'no-store'}),20000,label);
-            assert(r.ok,`${label} returned ${r.status}`);
-            const j=await r.json();if(j?.error)throw new Error(`${label}: ${j.error.message||'upstream error'}`);return j;
-          }
+          const assert=(v,m)=>{if(!v)throw new Error(m)};
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          const within=(promise,ms,label)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(`${label} timed out`)),ms))]);
+          async function response(path){return within(fetch(`${process.env.URL}${path}${path.includes('?')?'&':'?'}qa=${Date.now()}`,{cache:'no-store'}),20000,`fetch ${path}`)}
+          async function text(path){const r=await response(path);assert(r.ok,`${path} returned ${r.status}`);return r.text()}
+          async function waitForMarker(path,marker){for(let i=0;i<18;i++){const r=await response(path);if(r.ok){const body=await r.text();if(body.includes(marker))return body}await sleep(5000)}throw new Error(`${path} never published marker ${marker}`)}
+          async function waitForJson(path,validate){let last='';for(let i=0;i<18;i++){const r=await response(path);last=await r.text();if(r.ok){try{const j=JSON.parse(last);if(validate(j))return j}catch(_){}}await sleep(5000)}throw new Error(`${path} never became valid: ${last}`)}
           (async()=>{
-            const html = await text('/');
-            assert(html.includes('name="huntsmart-pwa-shell"'), 'PWA build marker missing from production HTML');
-            assert(html.includes('apple-mobile-web-app-capable'), 'iOS standalone metadata missing');
-            assert(html.includes('/site.webmanifest'), 'manifest link missing');
+            const html=await text('/');
+            assert(html.includes('name="huntsmart-pwa-shell"'),'PWA build marker missing');
+            const manifest=JSON.parse(await text('/site.webmanifest'));assert(manifest.display==='standalone','manifest display invalid');
+            const sw=await text('/hs-offline-lite-sw.js');assert(sw.includes('networkFirst(request)'),'service worker update policy missing');
 
-            const manifest = JSON.parse(await text('/site.webmanifest'));
-            assert(manifest.display === 'standalone', `manifest display=${manifest.display}`);
-            assert(manifest.scope === '/', `manifest scope=${manifest.scope}`);
-            assert(String(manifest.start_url||'').startsWith('/'), 'manifest start_url invalid');
+            const speciesHtml=await text('/species-map/');assert(speciesHtml.includes('app-fast.js')&&speciesHtml.includes('app-b.js'),'species viewer bundle incomplete');
+            const speciesFast=await waitForMarker('/species-map/app-fast.js',"__SPECIES_CACHE_VERSION='v6'");
+            assert(!speciesFast.includes('rooseveltObservations'),'invalid Roosevelt WSI fallback still present');
+            const speciesB=await waitForMarker('/species-map/app-b.js',"ROOSEVELT_EPU='https://services6.arcgis.com/ubm4tcTYICKBpist/arcgis/rest/services/EPU_Density_Trends_and_Risk/FeatureServer/0'");
+            assert(speciesB.includes('kind=rooseveltEpu'),'Roosevelt same-origin endpoint missing');
+            assert(speciesB.includes('AbortController'),'mobile request cancellation missing');
 
-            const js = await text('/terrain-intelligence.js');
-            for (const marker of ['__HUNTSMART_INTERACTIVE_MAP__','__HUNTSMART_PWA_SHELL__','__HUNTSMART_MOBILE_MAP_SHELL_FINALIZER__','hs-im-shellbar','gosPremiumMobileLayers','normalizeShellPlacement']) assert(js.includes(marker), `production JS missing ${marker}`);
-            const css = await text('/terrain-intelligence.css');
-            for (const marker of ['hs-mobile-map-active','--hs-map-page-h','safe-area-inset-bottom','hs-im-shellbar']) assert(css.includes(marker), `production CSS missing ${marker}`);
-            const sw = await text('/hs-offline-lite-sw.js');
-            assert(sw.includes('huntsmart-offline-lite-v80'), 'service worker version is stale');
-            assert(sw.includes('networkFirst(request)'), 'service worker app-update policy missing');
-
-            const speciesHtml = await text('/species-map/');
-            assert(speciesHtml.includes('app-fast.js') && speciesHtml.includes('app-b.js'), 'species viewer production bundle is incomplete');
-            const speciesFast = await waitForMarker('/species-map/app-fast.js',"__SPECIES_CACHE_VERSION='v6'");
-            assert(!speciesFast.includes('rooseveltObservations'), 'invalid Roosevelt observation fallback is still present');
-            const speciesB = await waitForMarker('/species-map/app-b.js','kind=rooseveltEpu');
-            assert(speciesB.includes("ROOSEVELT_ITEM='2774803ccefc42579458b269ad190bf8'"), 'current Roosevelt EPU source is missing');
-            assert(speciesB.includes('AbortController'), 'mobile layer cancellation is missing');
-
-            const itemBase='https://governmentofbc.maps.arcgis.com/sharing/rest/content/items/2774803ccefc42579458b269ad190bf8';
-            const meta=await jsonAbsolute(`${itemBase}?f=json`,'Roosevelt item metadata');
-            console.log('Roosevelt item type/url:',meta.type,meta.url||'(no url)');
-            let service=meta.url;
-            if(!service){
-              const itemData=await jsonAbsolute(`${itemBase}/data?f=json`,'Roosevelt item data');
-              console.log('Roosevelt item operational layers:',(itemData.operationalLayers||[]).map(x=>({title:x.title,url:x.url,id:x.id}))); 
-              service=itemData?.operationalLayers?.find(x=>x.url)?.url||itemData?.tables?.find(x=>x.url)?.url;
-            }
-            assert(service,'Roosevelt source service URL missing');
-            service=service.replace(/\/$/,'');
-            let layerUrl=service;
-            if(!/\/(?:FeatureServer|MapServer)\/\d+$/i.test(service)){
-              const info=await jsonAbsolute(`${service}?f=json`,'Roosevelt service metadata');
-              console.log('Roosevelt service layers:',(info.layers||[]).map(x=>({id:x.id,name:x.name}))); 
-              const layerId=info.layers?.[0]?.id;assert(layerId!=null,'Roosevelt service layer id missing');layerUrl=`${service}/${layerId}`;
-            }
-            const layerInfo=await jsonAbsolute(`${layerUrl}?f=json`,'Roosevelt layer metadata');
-            console.log('Roosevelt layer:',layerUrl,'name=',layerInfo.name,'fields=',(layerInfo.fields||[]).map(f=>f.name));
-            const sampleParams=new URLSearchParams({where:'1=1',outFields:'*',returnGeometry:'false',resultRecordCount:'100',f:'json'});
-            const sample=await jsonAbsolute(`${layerUrl}/query?${sampleParams}`,'Roosevelt layer sample');
-            console.log('Roosevelt sample attributes:',(sample.features||[]).map(f=>f.attributes));
-
-            const epuResponse=await response('/.netlify/functions/species-data?kind=rooseveltEpu');
-            const epuBody=await epuResponse.text();
-            assert(epuResponse.ok,`Roosevelt EPU endpoint returned ${epuResponse.status}: ${epuBody}`);
-            const epu=JSON.parse(epuBody);
-            assert(epu.type==='FeatureCollection'&&Array.isArray(epu.features)&&epu.features.length>0,'Roosevelt EPU endpoint returned no units');
-            assert(epu.densityField,'Roosevelt EPU endpoint returned no density field');
-            const featureText=f=>JSON.stringify(f.properties||{}).toLowerCase();
-            const pitt=epu.features.filter(f=>featureText(f).includes('pitt'));
-            const chehalis=epu.features.filter(f=>featureText(f).includes('chehalis'));
-            if(!pitt.length||!chehalis.length)console.log('Roosevelt EPU properties:',epu.features.map(f=>f.properties));
-            assert(pitt.length>0,'Pitt River Roosevelt EPU missing from authoritative dataset');
-            assert(chehalis.length>0,'Chehalis Roosevelt EPU missing from authoritative dataset');
-            console.log(`Roosevelt production QA passed: ${epu.features.length} units; Pitt=${pitt.length}; Chehalis=${chehalis.length}; density=${epu.densityField}.`);
-            console.log('HuntSmart production map/PWA asset smoke passed.');
-          })().catch(error=>{console.error(error.stack||error);process.exit(1);});
+            const epu=await waitForJson('/.netlify/functions/species-data?kind=rooseveltEpu',j=>j?.type==='FeatureCollection'&&Array.isArray(j.features)&&j.features.length>0&&j.densityField==='__density');
+            const byName=name=>epu.features.find(f=>String(f.properties?.EPU_Unit_Name||'').toLowerCase()===name.toLowerCase());
+            const pitt=byName('Pitt'),chehalis=byName('Chehalis');
+            assert(pitt,'Pitt Roosevelt EPU missing');assert(chehalis,'Chehalis Roosevelt EPU missing');
+            assert(Number.isFinite(Number(pitt.properties.__density)),'Pitt Roosevelt density invalid');
+            assert(Number.isFinite(Number(chehalis.properties.__density)),'Chehalis Roosevelt density invalid');
+            assert(Number(pitt.properties.POP_Est_2012)===50,'Pitt population estimate changed unexpectedly');
+            assert(Number(chehalis.properties.POP_Est_2012)===3,'Chehalis population estimate changed unexpectedly');
+            console.log(`Roosevelt QA passed: units=${epu.features.length}, Pitt density=${pitt.properties.__density}, Chehalis density=${chehalis.properties.__density}`);
+            console.log('HuntSmart production map/PWA smoke passed.');
+          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
           NODE

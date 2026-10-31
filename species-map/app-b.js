@@ -20,44 +20,24 @@ arcGeo=async function(layer,where='1=1',outFields='*',maxOffset='0.02'){
   return{type:'FeatureCollection',features};
 };
 
-const ROOSEVELT_ITEM='2774803ccefc42579458b269ad190bf8';
-async function __json(url,label){
-  const r=await fetch(url,{mode:'cors',signal:__layerAbort?.signal});
-  if(!r.ok)throw new Error(`${label} (${r.status})`);
-  const j=await r.json();if(j?.error)throw new Error(j.error.message||label);return j;
-}
-function __densityField(features){
-  const keys=[...new Set((features||[]).flatMap(f=>Object.keys(f.properties||{})))];
-  return keys.find(k=>/^Indiv_per_sqkm_2023$/i.test(k))||
-    keys.find(k=>/2023/i.test(k)&&/(indiv|density)/i.test(k))||
-    keys.find(k=>/(indiv.*sqkm|density)/i.test(k));
+const ROOSEVELT_EPU='https://services6.arcgis.com/ubm4tcTYICKBpist/arcgis/rest/services/EPU_Density_Trends_and_Risk/FeatureServer/0';
+function __withRooseveltDensity(feature){
+  const p=feature?.properties||{},population=Number(p.POP_Est_2012),area=Number(p.EPU_LAND_km2);
+  const density=Number.isFinite(population)&&Number.isFinite(area)&&area>0?population/area:null;
+  return{...feature,properties:{...p,__density:density}};
 }
 async function __directRooseveltData(){
-  const itemBase=`https://governmentofbc.maps.arcgis.com/sharing/rest/content/items/${ROOSEVELT_ITEM}`;
-  const meta=await __json(`${itemBase}?f=json`,'Roosevelt elk dataset unavailable');
-  let service=meta.url;
-  if(!service){
-    const itemData=await __json(`${itemBase}/data?f=json`,'Roosevelt elk dataset unavailable');
-    service=itemData?.operationalLayers?.find(x=>x.url)?.url||itemData?.tables?.find(x=>x.url)?.url;
-  }
-  if(!service)throw new Error('Roosevelt elk service is unavailable');
-  service=service.replace(/\/$/,'');
-  let layerUrl=service;
-  if(!/\/(?:FeatureServer|MapServer)\/\d+$/i.test(service)){
-    const info=await __json(`${service}?f=json`,'Roosevelt elk service unavailable');
-    const layerId=info.layers?.[0]?.id;
-    if(layerId==null)throw new Error('Roosevelt elk layer is unavailable');
-    layerUrl=`${service}/${layerId}`;
-  }
-  const q=new URLSearchParams({where:'1=1',outFields:'*',returnGeometry:'true',returnZ:'false',returnM:'false',outSR:'4326',f:'geojson',geometryPrecision:'4',maxAllowableOffset:'0.002'});
-  const fc=await __json(`${layerUrl}/query?${q}`,'Roosevelt elk population units unavailable');
-  const features=fc.features||[],densityField=__densityField(features);
-  if(!features.length||!densityField)throw new Error('Roosevelt elk density data is incomplete');
-  return{type:'FeatureCollection',features,densityField};
+  const q=new URLSearchParams({where:'1=1',outFields:'OBJECTID,EPU_Unit_Name,EPU_LAND_km2,POP_Est_2012,POP_DEN_CL,POP_DEN_CL_2012,REGION_NAME',returnGeometry:'true',returnZ:'false',returnM:'false',outSR:'4326',f:'geojson',geometryPrecision:'4',maxAllowableOffset:'0.002'});
+  const r=await fetch(`${ROOSEVELT_EPU}/query?${q}`,{mode:'cors',signal:__layerAbort?.signal});
+  if(!r.ok)throw new Error(`Roosevelt elk population units (${r.status})`);
+  const fc=await r.json();if(fc?.error)throw new Error(fc.error.message||'Roosevelt elk population units unavailable');
+  const features=(fc.features||[]).map(__withRooseveltDensity);
+  if(!features.length)throw new Error('Roosevelt elk population-unit data is empty');
+  return{type:'FeatureCollection',features,densityField:'__density'};
 }
 async function rooseveltData(){
   const k='roosevelt:epu:current';if(cache.has(k))return cache.get(k);
-  const dbKey='roosevelt:epu:current:v2';
+  const dbKey='roosevelt:epu:current:v3';
   if(typeof __dbGet==='function'){
     const saved=await __dbGet(dbKey);
     if(saved?.features?.length&&saved?.densityField){cache.set(k,saved);return saved}
@@ -67,17 +47,17 @@ async function rooseveltData(){
     const r=await fetch('/.netlify/functions/species-data?kind=rooseveltEpu',{signal:__layerAbort?.signal});
     if(!r.ok)throw new Error(`Roosevelt elk population units (${r.status})`);
     out=await r.json();
-    if(!out?.features?.length||!out?.densityField)throw new Error('Roosevelt elk population units are incomplete');
+    if(!out?.features?.length||out?.densityField!=='__density')throw new Error('Roosevelt elk population units are incomplete');
   }catch(e){
     if(e?.name==='AbortError')throw e;
-    console.warn('Roosevelt EPU proxy unavailable; trying BC source directly:',e);
+    console.warn('Roosevelt EPU proxy unavailable; trying verified BC source directly:',e);
     out=await __directRooseveltData();
   }
   cache.set(k,out);if(typeof __dbPut==='function')__dbPut(dbKey,out);return out;
 }
 function __rooseveltStyle(d){return f=>{
   const v=Number(f.getProperty(d.densityField));
-  const level=!Number.isFinite(v)||v<=0?1:v<=0.05?1:v<=0.10?2:v<=0.25?3:4,c=PALETTE[level];
+  const level=!Number.isFinite(v)||v<=0.05?1:v<=0.10?2:v<=0.25?3:4,c=PALETTE[level];
   return{fillColor:`rgb(${c[0]},${c[1]},${c[2]})`,fillOpacity:opacity*.82,strokeColor:'rgba(255,255,255,.35)',strokeOpacity:.35,strokeWeight:.6};
 }}
 function showRoosevelt(d){const data=new google.maps.Data({map});data.addGeoJson({type:'FeatureCollection',features:d.features});data.setStyle(__rooseveltStyle(d));activeData=data}
