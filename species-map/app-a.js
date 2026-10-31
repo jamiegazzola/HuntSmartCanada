@@ -7,7 +7,7 @@ const WSI='https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_wh
 const WSI_UNG='https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_wildlife_inventory/MapServer/12';
 const SHEEP='https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_wildlife_management/MapServer/3';
 const TAXA=[
- {group:'Deer',key:'mule_deer',label:'Mule Deer',kind:'mule',base:'mule_deer'},
+ {group:'Deer',key:'mule_deer',label:'Mule Deer',kind:'bei',base:'mule_deer',prefix:'M_ODHE'},
  {group:'Deer',key:'columbian_blacktail',label:'Columbian Black-tailed Deer',kind:'bei',base:'mule_deer',prefix:'M_ODHE_CO'},
  {group:'Deer',key:'sitka_blacktail',label:'Sitka Black-tailed Deer',kind:'bei',base:'mule_deer',prefix:'M_ODHE_SI'},
  {group:'Deer',key:'dakota_whitetail',label:'Dakota White-tailed Deer',kind:'bei',base:'white_tailed_deer',prefix:'M_ODVI_DA'},
@@ -18,11 +18,8 @@ const TAXA=[
  {group:'Moose',key:'alaskan_moose',label:'Alaskan Moose',kind:'bei',base:'moose',prefix:'M_ALAL_GI'},
  {group:'Moose',key:'shiras_moose',label:"Shiras' Moose",kind:'bei',base:'moose',prefix:'M_ALAL_SH'},
  {group:'Sheep',key:'bighorn_sheep',label:'Bighorn Sheep',kind:'sheepFamily',base:'wild_sheep',family:'bighorn'},
- {group:'Sheep',key:'california_bighorn',label:'California Bighorn Sheep',kind:'sheepSub',base:'wild_sheep',family:'bighorn',sub:'california_bighorn'},
- {group:'Sheep',key:'rocky_mountain_bighorn',label:'Rocky Mountain Bighorn Sheep',kind:'sheepSub',base:'wild_sheep',family:'bighorn',sub:'rocky_mountain_bighorn'},
  {group:'Sheep',key:'thinhorn_sheep',label:'Thinhorn Sheep',kind:'sheepFamily',base:'wild_sheep',family:'thinhorn'},
- {group:'Sheep',key:'stone_sheep',label:'Stone Sheep',kind:'sheepSub',base:'wild_sheep',family:'thinhorn',sub:'stone_sheep'},
- {group:'Sheep',key:'dall_sheep',label:'Dall Sheep',kind:'sheepSub',base:'wild_sheep',family:'thinhorn',sub:'dall_sheep'},
+ {group:'Sheep',key:'stone_sheep',label:"Stone's Sheep",kind:'bei',base:'wild_sheep',prefix:'M_OVDA_ST'},
  {group:'Caribou',key:'northern_mountain_caribou',label:'Northern Mountain Caribou',kind:'caribou',base:'caribou',ecotype:'Northern',historicPrefix:'M_RATA_NO'},
  {group:'Caribou',key:'southern_mountain_caribou',label:'Southern Mountain Caribou',kind:'caribou',base:'caribou',ecotype:'Mountain',historicPrefix:'M_RATA_MO'},
  {group:'Caribou',key:'boreal_caribou',label:'Boreal Caribou',kind:'caribou',base:'caribou',ecotype:'Boreal',historicPrefix:'M_RATA_BO'},
@@ -47,9 +44,5 @@ function drawGeometry(ctx,geom,w,h){if(!geom)return;const polys=geom.type==='Pol
 async function arcGeo(layer,where='1=1',outFields='*',maxOffset='0.02'){const features=[];let offset=0;for(let page=0;page<50;page++){const q=new URLSearchParams({where,outFields,returnGeometry:'true',outSR:'4326',f:'geojson',resultOffset:String(offset),resultRecordCount:'1000',orderByFields:'OBJECTID',geometryPrecision:'5',maxAllowableOffset:maxOffset});const r=await fetch(`${layer}/query?${q}`);if(!r.ok)throw new Error(`BC GIS request failed (${r.status})`);const j=await r.json();if(j.error)throw new Error(j.error.message||'BC GIS request failed');const b=j.features||[];features.push(...b);if(b.length<1000&&!j.exceededTransferLimit)break;if(!b.length)break;offset+=b.length}return{type:'FeatureCollection',features}}
 function maskCanvas(fc,w,h,filter=()=>true){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';for(const f of fc.features||[])if(filter(f))drawGeometry(x,f.geometry,w,h);return c}
 async function beiMask(prefix,period,w,h){const suffix=period==='modern'?'WTSUI':'WTCAP',s=`${prefix}_SLI6${suffix}`,q=`${prefix}_WLI6${suffix}`,where=`((${s} IS NOT NULL) AND (${s} <> '6')) OR ((${q} IS NOT NULL) AND (${q} <> '6'))`,k=`bei:${prefix}:${period}:${w}`;if(cache.has(k))return cache.get(k);const fc=await arcGeo(BEI,where,'OBJECTID','0.012'),m=maskCanvas(fc,w,h);cache.set(k,m);return m}
-async function muleMask(period,w,h){const k=`mule:${period}:${w}`;if(cache.has(k))return cache.get(k);const [all,co,si]=await Promise.all([beiMask('M_ODHE',period,w,h),beiMask('M_ODHE_CO',period,w,h),beiMask('M_ODHE_SI',period,w,h)]);const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(all,0,0);x.globalCompositeOperation='destination-out';x.drawImage(co,0,0);x.drawImage(si,0,0);x.globalCompositeOperation='source-over';cache.set(k,c);return c}
 async function sheepFamilyMask(family,w,h){const k=`sheep:${family}:${w}`;if(cache.has(k))return cache.get(k);const fc=await arcGeo(SHEEP,'1=1','*','0.006'),needle=family.toLowerCase(),m=maskCanvas(fc,w,h,f=>Object.values(f.properties||{}).join(' ').toLowerCase().includes(needle));cache.set(k,m);return m}
-function staticSheepMask(sub,w,h){const k=`sheepsub:${sub}:${w}`;if(cache.has(k))return cache.get(k);const fc=window.SHEEP_SUBSPECIES?.[sub];if(!fc)throw new Error('Historic sheep subtype range is missing');const m=maskCanvas(fc,w,h);cache.set(k,m);return m}
-function mergeMasks(list,w,h){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');for(const m of list)x.drawImage(m,0,0);return c}
-function intersectMasks(a,b){const c=document.createElement('canvas');c.width=a.width;c.height=a.height;const x=c.getContext('2d');x.drawImage(a,0,0);x.globalCompositeOperation='destination-in';x.drawImage(b,0,0);x.globalCompositeOperation='source-over';return c}
-async function sheepMask(t,period,w,h){if(t.kind==='sheepSub'){const sub=staticSheepMask(t.sub,w,h);if(period==='historic')return sub;return intersectMasks(await sheepFamilyMask(t.family,w,h),sub)}const subs=t.family==='bighorn'?['california_bighorn','rocky_mountain_bighorn']:['stone_sheep','dall_sheep'];if(period==='historic')return mergeMasks(subs.map(s=>staticSheepMask(s,w,h)),w,h);return sheepFamilyMask(t.family,w,h)}
+async function sheepMask(t,period,w,h){return sheepFamilyMask(t.family,w,h)}
