@@ -32,13 +32,7 @@ function __densityField(features){
     keys.find(k=>/2023/i.test(k)&&/(indiv|density)/i.test(k))||
     keys.find(k=>/(indiv.*sqkm|density)/i.test(k));
 }
-async function rooseveltData(){
-  const k='roosevelt:epu:current';if(cache.has(k))return cache.get(k);
-  const dbKey='roosevelt:epu:current:v1';
-  if(typeof __dbGet==='function'){
-    const saved=await __dbGet(dbKey);
-    if(saved?.features?.length&&saved?.densityField){cache.set(k,saved);return saved}
-  }
+async function __directRooseveltData(){
   const itemBase=`https://governmentofbc.maps.arcgis.com/sharing/rest/content/items/${ROOSEVELT_ITEM}`;
   const meta=await __json(`${itemBase}?f=json`,'Roosevelt elk dataset unavailable');
   let service=meta.url;
@@ -55,16 +49,35 @@ async function rooseveltData(){
     if(layerId==null)throw new Error('Roosevelt elk layer is unavailable');
     layerUrl=`${service}/${layerId}`;
   }
-  const q=new URLSearchParams({where:'1=1',outFields:'*',returnGeometry:'true',outSR:'4326',f:'geojson'});
+  const q=new URLSearchParams({where:'1=1',outFields:'*',returnGeometry:'true',returnZ:'false',returnM:'false',outSR:'4326',f:'geojson',geometryPrecision:'4',maxAllowableOffset:'0.002'});
   const fc=await __json(`${layerUrl}/query?${q}`,'Roosevelt elk population units unavailable');
-  const features=fc.features||[];const densityField=__densityField(features);
+  const features=fc.features||[],densityField=__densityField(features);
   if(!features.length||!densityField)throw new Error('Roosevelt elk density data is incomplete');
-  const out={type:'FeatureCollection',features,densityField};cache.set(k,out);if(typeof __dbPut==='function')__dbPut(dbKey,out);return out;
+  return{type:'FeatureCollection',features,densityField};
+}
+async function rooseveltData(){
+  const k='roosevelt:epu:current';if(cache.has(k))return cache.get(k);
+  const dbKey='roosevelt:epu:current:v2';
+  if(typeof __dbGet==='function'){
+    const saved=await __dbGet(dbKey);
+    if(saved?.features?.length&&saved?.densityField){cache.set(k,saved);return saved}
+  }
+  let out=null;
+  try{
+    const r=await fetch('/.netlify/functions/species-data?kind=rooseveltEpu',{signal:__layerAbort?.signal});
+    if(!r.ok)throw new Error(`Roosevelt elk population units (${r.status})`);
+    out=await r.json();
+    if(!out?.features?.length||!out?.densityField)throw new Error('Roosevelt elk population units are incomplete');
+  }catch(e){
+    if(e?.name==='AbortError')throw e;
+    console.warn('Roosevelt EPU proxy unavailable; trying BC source directly:',e);
+    out=await __directRooseveltData();
+  }
+  cache.set(k,out);if(typeof __dbPut==='function')__dbPut(dbKey,out);return out;
 }
 function __rooseveltStyle(d){return f=>{
   const v=Number(f.getProperty(d.densityField));
-  if(!Number.isFinite(v)||v<=0)return{visible:false};
-  const level=v<=0.05?1:v<=0.10?2:v<=0.25?3:4,c=PALETTE[level];
+  const level=!Number.isFinite(v)||v<=0?1:v<=0.05?1:v<=0.10?2:v<=0.25?3:4,c=PALETTE[level];
   return{fillColor:`rgb(${c[0]},${c[1]},${c[2]})`,fillOpacity:opacity*.82,strokeColor:'rgba(255,255,255,.35)',strokeOpacity:.35,strokeWeight:.6};
 }}
 function showRoosevelt(d){const data=new google.maps.Data({map});data.addGeoJson({type:'FeatureCollection',features:d.features});data.setStyle(__rooseveltStyle(d));activeData=data}
@@ -78,14 +91,7 @@ async function render(){
   showLoading(true);clearActive();
   try{
     if(currentKey==='roosevelt_elk'&&currentPeriod==='modern'){
-      try{const d=await rooseveltData();if(token!==renderToken)return;showRoosevelt(d)}
-      catch(e){
-        if(e?.name==='AbortError')throw e;
-        console.warn('Roosevelt EPU data unavailable, using BC observation fallback:',e);
-        const pair=await pointPair(t);if(token!==renderToken)return;
-        activeRaster=new google.maps.GroundOverlay(pair[currentPeriod],BOUNDS,{map,opacity,clickable:false});
-        showToast('Using BC Roosevelt observations',1800)
-      }
+      const d=await rooseveltData();if(token!==renderToken)return;showRoosevelt(d);
     }else if(t.kind==='grizzly')await showGrizzly(currentPeriod);
     else{const pair=t.kind==='points'?await pointPair(t):await rasterPair(t);if(token!==renderToken)return;activeRaster=new google.maps.GroundOverlay(pair[currentPeriod],BOUNDS,{map,opacity,clickable:false})}
   }catch(e){if(e?.name!=='AbortError'){console.error(e);showToast(e.message||'Layer unavailable',2600)}}finally{if(token===renderToken)showLoading(false)}

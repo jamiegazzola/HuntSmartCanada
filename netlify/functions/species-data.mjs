@@ -3,59 +3,75 @@ const SOURCES = {
   grizzly2012: 'https://catalogue.data.gov.bc.ca/dataset/2bf91935-9158-4f77-9c2c-4310480e6c29/resource/4eca8c5c-ed25-46c1-835c-3d9f84b807e1/download/grizzlypopulationestimate2012.csv',
 }
 
-const ROOSEVELT_WSI = 'https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_wildlife_inventory/MapServer/12'
+const ROOSEVELT_ITEM = '2774803ccefc42579458b269ad190bf8'
+const ROOSEVELT_ITEM_BASE = `https://governmentofbc.maps.arcgis.com/sharing/rest/content/items/${ROOSEVELT_ITEM}`
 
-async function fetchRooseveltObservations(period) {
-  const cutoff = 2000
-  const yearClause = period === 'historic' ? `OBSERVATION_YEAR < ${cutoff}` : `OBSERVATION_YEAR >= ${cutoff}`
-  const where = `SPECIES_ENGLISH_NAME = 'Roosevelt Elk' AND ${yearClause}`
-  const features = []
-  let offset = 0
+async function fetchJson(url, label) {
+  const response = await fetch(url, { headers: { 'user-agent': 'HuntSmartCanada/1.0' } })
+  if (!response.ok) throw new Error(`${label} returned ${response.status}`)
+  const payload = await response.json()
+  if (payload?.error) throw new Error(payload.error.message || label)
+  return payload
+}
 
-  for (let page = 0; page < 25; page += 1) {
-    const params = new URLSearchParams({
-      where,
-      outFields: 'OBJECTID,OBSERVATION_YEAR,OBSERVED_NUMBER',
-      returnGeometry: 'true',
-      outSR: '4326',
-      f: 'geojson',
-      resultOffset: String(offset),
-      resultRecordCount: '1000',
-      orderByFields: 'OBJECTID',
-      geometryPrecision: '5',
-    })
-    const upstream = await fetch(`${ROOSEVELT_WSI}/query?${params}`, {
-      headers: { 'user-agent': 'HuntSmartCanada/1.0' },
-    })
-    if (!upstream.ok) throw new Error(`BC Wildlife Species Inventory returned ${upstream.status}`)
-    const payload = await upstream.json()
-    if (payload.error) throw new Error(payload.error.message || 'BC Wildlife Species Inventory query failed')
-    const batch = Array.isArray(payload.features) ? payload.features : []
-    features.push(...batch)
-    if (!payload.exceededTransferLimit && batch.length < 1000) break
-    if (!batch.length) break
-    offset += batch.length
+function densityField(features) {
+  const keys = [...new Set((features || []).flatMap(feature => Object.keys(feature.properties || {})))]
+  return keys.find(key => /^Indiv_per_sqkm_2023$/i.test(key)) ||
+    keys.find(key => /2023/i.test(key) && /(indiv|density)/i.test(key)) ||
+    keys.find(key => /(indiv.*sqkm|density)/i.test(key))
+}
+
+async function fetchRooseveltEpu() {
+  const meta = await fetchJson(`${ROOSEVELT_ITEM_BASE}?f=json`, 'Roosevelt elk dataset')
+  let service = meta.url
+  if (!service) {
+    const itemData = await fetchJson(`${ROOSEVELT_ITEM_BASE}/data?f=json`, 'Roosevelt elk item data')
+    service = itemData?.operationalLayers?.find(layer => layer.url)?.url || itemData?.tables?.find(table => table.url)?.url
+  }
+  if (!service) throw new Error('Roosevelt elk service URL is unavailable')
+
+  service = service.replace(/\/$/, '')
+  let layerUrl = service
+  if (!/\/(?:FeatureServer|MapServer)\/\d+$/i.test(service)) {
+    const info = await fetchJson(`${service}?f=json`, 'Roosevelt elk service')
+    const layerId = info.layers?.[0]?.id
+    if (layerId == null) throw new Error('Roosevelt elk layer is unavailable')
+    layerUrl = `${service}/${layerId}`
   }
 
-  return { type: 'FeatureCollection', features }
+  const params = new URLSearchParams({
+    where: '1=1',
+    outFields: '*',
+    returnGeometry: 'true',
+    returnZ: 'false',
+    returnM: 'false',
+    outSR: '4326',
+    f: 'geojson',
+    geometryPrecision: '4',
+    maxAllowableOffset: '0.002',
+  })
+  const collection = await fetchJson(`${layerUrl}/query?${params}`, 'Roosevelt elk population units')
+  const features = Array.isArray(collection.features) ? collection.features : []
+  const field = densityField(features)
+  if (!features.length || !field) throw new Error('Roosevelt elk density data is incomplete')
+  return { type: 'FeatureCollection', features, densityField: field }
 }
 
 export default async (req) => {
   const url = new URL(req.url)
   const kind = url.searchParams.get('kind')
 
-  if (kind === 'rooseveltObservations') {
+  if (kind === 'rooseveltEpu') {
     try {
-      const period = url.searchParams.get('period') === 'historic' ? 'historic' : 'modern'
-      const data = await fetchRooseveltObservations(period)
+      const data = await fetchRooseveltEpu()
       return Response.json(data, {
         headers: {
           'cache-control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
         },
       })
     } catch (error) {
-      console.error('Roosevelt observation fetch failed:', error)
-      return new Response('Roosevelt observation source unavailable', { status: 502 })
+      console.error('Roosevelt EPU fetch failed:', error)
+      return new Response('Roosevelt elk population-unit source unavailable', { status: 502 })
     }
   }
 

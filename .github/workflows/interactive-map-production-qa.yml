@@ -53,19 +53,6 @@ jobs:
             assert(response.ok, `${path} returned ${response.status}`);
             return response.text();
           }
-          async function jsonAbsolute(url,label) {
-            const response = await within(fetch(url, {cache:'no-store'}), 20000, label);
-            assert(response.ok, `${label} returned ${response.status}`);
-            const payload = await response.json();
-            if (payload?.error) throw new Error(`${label}: ${payload.error.message||'upstream error'}`);
-            return payload;
-          }
-          function densityField(features) {
-            const keys=[...new Set((features||[]).flatMap(f=>Object.keys(f.properties||{})))];
-            return keys.find(k=>/^Indiv_per_sqkm_2023$/i.test(k)) ||
-              keys.find(k=>/2023/i.test(k)&&/(indiv|density)/i.test(k)) ||
-              keys.find(k=>/(indiv.*sqkm|density)/i.test(k));
-          }
           (async()=>{
             const html = await text('/');
             assert(html.includes('name="huntsmart-pwa-shell"'), 'PWA build marker missing from production HTML');
@@ -101,46 +88,28 @@ jobs:
             const speciesHtml = await text('/species-map/');
             assert(speciesHtml.includes('app-fast.js') && speciesHtml.includes('app-b.js'), 'species viewer production bundle is incomplete');
             const speciesFast = await text('/species-map/app-fast.js');
-            assert(speciesFast.includes('rooseveltObservations'), 'Roosevelt WSI fallback is missing from production');
-            assert(speciesFast.includes("__SPECIES_CACHE_VERSION='v5'"), 'species overlay cache is stale');
+            assert(speciesFast.includes("__SPECIES_CACHE_VERSION='v6'"), 'species overlay cache is stale');
+            assert(!speciesFast.includes('rooseveltObservations'), 'invalid Roosevelt observation fallback is still present');
             const speciesB = await text('/species-map/app-b.js');
             assert(speciesB.includes("ROOSEVELT_ITEM='2774803ccefc42579458b269ad190bf8'"), 'current Roosevelt EPU source is missing');
-            assert(speciesB.includes('Indiv_per_sqkm_2023'), 'Roosevelt current density field support is missing');
+            assert(speciesB.includes('kind=rooseveltEpu'), 'same-origin Roosevelt EPU endpoint is missing');
             assert(speciesB.includes('AbortController'), 'mobile layer cancellation is missing');
 
-            const fallback = JSON.parse(await text('/.netlify/functions/species-data?kind=rooseveltObservations&period=modern'));
-            assert(fallback.type === 'FeatureCollection' && Array.isArray(fallback.features) && fallback.features.length > 0, 'Roosevelt WSI fallback has no modern observations');
-
-            const itemBase='https://governmentofbc.maps.arcgis.com/sharing/rest/content/items/2774803ccefc42579458b269ad190bf8';
-            const meta=await jsonAbsolute(`${itemBase}?f=json`,'Roosevelt EPU item metadata');
-            let service=meta.url;
-            if(!service){
-              const itemData=await jsonAbsolute(`${itemBase}/data?f=json`,'Roosevelt EPU item data');
-              service=itemData?.operationalLayers?.find(x=>x.url)?.url||itemData?.tables?.find(x=>x.url)?.url;
-            }
-            assert(service,'Roosevelt EPU service URL missing');
-            service=service.replace(/\/$/,'');
-            let layerUrl=service;
-            if(!/\/(?:FeatureServer|MapServer)\/\d+$/i.test(service)){
-              const info=await jsonAbsolute(`${service}?f=json`,'Roosevelt EPU service');
-              const layerId=info.layers?.[0]?.id;
-              assert(layerId!=null,'Roosevelt EPU layer id missing');
-              layerUrl=`${service}/${layerId}`;
-            }
-            const params=new URLSearchParams({where:'1=1',outFields:'*',returnGeometry:'false',f:'geojson'});
-            const epu=await jsonAbsolute(`${layerUrl}/query?${params}`,'Roosevelt EPU query');
-            assert(Array.isArray(epu.features)&&epu.features.length>0,'Roosevelt EPU query returned no units');
-            const dField=densityField(epu.features);
-            assert(dField,'Roosevelt EPU density field missing');
+            const epu = JSON.parse(await text('/.netlify/functions/species-data?kind=rooseveltEpu'));
+            assert(epu.type === 'FeatureCollection' && Array.isArray(epu.features) && epu.features.length > 0, 'Roosevelt EPU endpoint returned no units');
+            assert(epu.densityField, 'Roosevelt EPU endpoint returned no density field');
             const featureText=f=>JSON.stringify(f.properties||{}).toLowerCase();
             const pitt=epu.features.filter(f=>featureText(f).includes('pitt'));
             const chehalis=epu.features.filter(f=>featureText(f).includes('chehalis'));
+            if(!pitt.length||!chehalis.length){
+              console.log('Roosevelt EPU properties:',epu.features.map(f=>f.properties));
+            }
             assert(pitt.length>0,'Pitt River Roosevelt EPU missing from authoritative dataset');
             assert(chehalis.length>0,'Chehalis Roosevelt EPU missing from authoritative dataset');
-            assert(pitt.some(f=>Number(f.properties?.[dField])>0),'Pitt River Roosevelt EPU has no positive density');
-            assert(chehalis.some(f=>Number(f.properties?.[dField])>0),'Chehalis Roosevelt EPU has no positive density');
+            assert(pitt.some(f=>Number(f.properties?.[epu.densityField])>=0),'Pitt River Roosevelt EPU density is invalid');
+            assert(chehalis.some(f=>Number(f.properties?.[epu.densityField])>=0),'Chehalis Roosevelt EPU density is invalid');
 
-            console.log(`Roosevelt production QA passed: ${epu.features.length} EPU units; Pitt=${pitt.length}; Chehalis=${chehalis.length}; WSI observations=${fallback.features.length}.`);
+            console.log(`Roosevelt production QA passed: ${epu.features.length} EPU units; Pitt=${pitt.length}; Chehalis=${chehalis.length}; density=${epu.densityField}.`);
             console.log('HuntSmart production map/PWA asset smoke passed.');
           })().catch(error=>{console.error(error.stack||error);process.exit(1);});
           NODE

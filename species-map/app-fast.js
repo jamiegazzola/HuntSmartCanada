@@ -16,22 +16,12 @@ async function __ensureLayerSource(base,period){if(period==='historic'){
 
 // Keep the live taxonomy aligned with the fields actually exposed by BC's current datasets.
 Object.assign(byKey.mule_deer,{kind:'bei',prefix:'M_ODHE'});
-Object.assign(byKey.roosevelt_elk,{kind:'points',pointLayer:WSI_UNG,pointSpecies:'Roosevelt Elk',proxyKind:'rooseveltObservations'});
+// Modern Roosevelt is handled by the current EPU dataset in app-b; historic keeps the established habitat layer.
+Object.assign(byKey.roosevelt_elk,{kind:'bei',base:'elk',prefix:'M_CEEL_RO'});
 Object.assign(byKey.california_bighorn,{kind:'sheepSub',family:'bighorn',sub:'california_bighorn'});
 Object.assign(byKey.rocky_mountain_bighorn,{kind:'sheepSub',family:'bighorn',sub:'rocky_mountain_bighorn'});
 Object.assign(byKey.stone_sheep,{kind:'sheepSub',family:'thinhorn',sub:'stone_sheep'});
 Object.assign(byKey.dall_sheep,{kind:'sheepSub',family:'thinhorn',sub:'dall_sheep'});
-
-// Roosevelt Elk uses the dedicated WSI proxy so the browser does not download/rasterize BEI polygons.
-const __pointGeoOriginal=pointGeo;
-pointGeo=async function(t,period){
- if(!t.proxyKind)return __pointGeoOriginal(t,period);
- const r=await fetch(`/.netlify/functions/species-data?kind=${encodeURIComponent(t.proxyKind)}&period=${encodeURIComponent(period)}`);
- if(!r.ok)throw new Error(`${t.label} observations are unavailable`);
- const j=await r.json();
- if(!Array.isArray(j?.features))throw new Error(`${t.label} observation data is invalid`);
- return j;
-};
 
 // Subspecies refinement stays local, while the family mask uses the proven BC GIS query path.
 async function __ensureSheepSubspecies(){if(window.SHEEP_SUBSPECIES)return;await __loadLayerScript('data/sheep-subspecies.js')}
@@ -42,8 +32,8 @@ sheepMask=async function(t,period,w,h){await __ensureSheepSubspecies();const sub
 // Load only the selected raster source, then use the original client-side BC GIS masks.
 baseCanvas=async function(base,period){const k=`base:${base}:${period}`;if(cache.has(k))return cache.get(k);await __ensureLayerSource(base,period);const s=sourceFor(base,period);if(!s.src)throw new Error(`${period==='historic'?'Historic':'Modern'} layer source missing`);const rle=s.gz?await gunzip(s.src):s.src,c=document.createElement('canvas');c.width=s.w;c.height=s.h;const x=c.getContext('2d'),im=x.createImageData(s.w,s.h),a=im.data;let p=0;for(const token of rle.split(',')){if(!token)continue;const level=Number(token[0]),n=parseInt(token.slice(1),36),col=PALETTE[level]||PALETTE[0];for(let j=0;j<n&&p<s.w*s.h;j++,p++){const z=p*4;a[z]=col[0];a[z+1]=col[1];a[z+2]=col[2];a[z+3]=col[3]}}if(p!==s.w*s.h)throw new Error('Distribution layer is incomplete');x.putImageData(im,0,0);cache.set(k,c);return c};
 
-// Persist final overlays after a successful render. First view uses live data; repeats are effectively instant.
-const __SPECIES_CACHE_VERSION='v5';
+// Persist successful overlays. Cache version bump discards the invalid Roosevelt observation cache.
+const __SPECIES_CACHE_VERSION='v6';
 const __IDB_NAME=`huntsmart-species-overlays-${__SPECIES_CACHE_VERSION}`;
 let __dbPromise=null;
 function __openSpeciesDb(){if(!('indexedDB'in window))return Promise.resolve(null);if(__dbPromise)return __dbPromise;__dbPromise=new Promise(resolve=>{const req=indexedDB.open(__IDB_NAME,1);req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('layers'))db.createObjectStore('layers')};req.onsuccess=()=>resolve(req.result);req.onerror=()=>resolve(null)});return __dbPromise}
