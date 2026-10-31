@@ -1,7 +1,91 @@
+let __layerAbort=null;
+
+// The displayed rasters are only 650px wide for most species, so five-decimal GIS geometry
+// was far more detailed than the screen could render. Keep point observations precise, but
+// simplify polygon responses to roughly screen resolution on touch devices.
+arcGeo=async function(layer,where='1=1',outFields='*',maxOffset='0.02'){
+  const features=[];let offset=0;
+  const isPointQuery=maxOffset==='0';
+  const requested=Number(maxOffset);
+  const effectiveOffset=isPointQuery?'0':String(Math.max(Number.isFinite(requested)?requested:0.02,coarse()?0.025:0.015));
+  const precision=isPointQuery?'5':coarse()?'3':'4';
+  for(let page=0;page<50;page++){
+    const q=new URLSearchParams({where,outFields,returnGeometry:'true',returnZ:'false',returnM:'false',outSR:'4326',f:'geojson',resultOffset:String(offset),resultRecordCount:'1000',orderByFields:'OBJECTID',geometryPrecision:precision,maxAllowableOffset:effectiveOffset});
+    const r=await fetch(`${layer}/query?${q}`,{signal:__layerAbort?.signal});
+    if(!r.ok)throw new Error(`BC GIS request failed (${r.status})`);
+    const j=await r.json();if(j.error)throw new Error(j.error.message||'BC GIS request failed');
+    const b=j.features||[];features.push(...b);
+    if(b.length<1000&&!j.exceededTransferLimit)break;if(!b.length)break;offset+=b.length;
+  }
+  return{type:'FeatureCollection',features};
+};
+
+const ROOSEVELT_ITEM='2774803ccefc42579458b269ad190bf8';
+async function __json(url,label){
+  const r=await fetch(url,{mode:'cors',signal:__layerAbort?.signal});
+  if(!r.ok)throw new Error(`${label} (${r.status})`);
+  const j=await r.json();if(j?.error)throw new Error(j.error.message||label);return j;
+}
+function __densityField(features){
+  const keys=[...new Set((features||[]).flatMap(f=>Object.keys(f.properties||{})))];
+  return keys.find(k=>/^Indiv_per_sqkm_2023$/i.test(k))||
+    keys.find(k=>/2023/i.test(k)&&/(indiv|density)/i.test(k))||
+    keys.find(k=>/(indiv.*sqkm|density)/i.test(k));
+}
+async function rooseveltData(){
+  const k='roosevelt:epu:current';if(cache.has(k))return cache.get(k);
+  const itemBase=`https://governmentofbc.maps.arcgis.com/sharing/rest/content/items/${ROOSEVELT_ITEM}`;
+  const meta=await __json(`${itemBase}?f=json`,'Roosevelt elk dataset unavailable');
+  let service=meta.url;
+  if(!service){
+    const itemData=await __json(`${itemBase}/data?f=json`,'Roosevelt elk dataset unavailable');
+    service=itemData?.operationalLayers?.find(x=>x.url)?.url||itemData?.tables?.find(x=>x.url)?.url;
+  }
+  if(!service)throw new Error('Roosevelt elk service is unavailable');
+  service=service.replace(/\/$/,'');
+  let layerUrl=service;
+  if(!/\/(?:FeatureServer|MapServer)\/\d+$/i.test(service)){
+    const info=await __json(`${service}?f=json`,'Roosevelt elk service unavailable');
+    const layerId=info.layers?.[0]?.id;
+    if(layerId==null)throw new Error('Roosevelt elk layer is unavailable');
+    layerUrl=`${service}/${layerId}`;
+  }
+  const q=new URLSearchParams({where:'1=1',outFields:'*',returnGeometry:'true',outSR:'4326',f:'geojson'});
+  const fc=await __json(`${layerUrl}/query?${q}`,'Roosevelt elk population units unavailable');
+  const features=fc.features||[];const densityField=__densityField(features);
+  if(!features.length||!densityField)throw new Error('Roosevelt elk density data is incomplete');
+  const out={type:'FeatureCollection',features,densityField};cache.set(k,out);return out;
+}
+function __rooseveltStyle(d){return f=>{
+  const v=Number(f.getProperty(d.densityField));
+  if(!Number.isFinite(v)||v<=0)return{visible:false};
+  const level=v<=0.05?1:v<=0.10?2:v<=0.25?3:4,c=PALETTE[level];
+  return{fillColor:`rgb(${c[0]},${c[1]},${c[2]})`,fillOpacity:opacity*.82,strokeColor:'rgba(255,255,255,.35)',strokeOpacity:.35,strokeWeight:.6};
+}}
+function showRoosevelt(d){const data=new google.maps.Data({map});data.addGeoJson({type:'FeatureCollection',features:d.features});data.setStyle(__rooseveltStyle(d));activeData=data}
+async function __rooseveltHabitatFallback(){
+  const k='roosevelt:habitat-fallback';if(cache.has(k))return cache.get(k);
+  const w=650,h=307,m=await beiMask('M_CEEL_RO','modern',w,h),c=document.createElement('canvas');c.width=w;c.height=h;
+  const x=c.getContext('2d');x.drawImage(m,0,0);const im=x.getImageData(0,0,w,h),a=im.data,col=PALETTE[2];
+  for(let i=0;i<a.length;i+=4){if(a[i+3]){a[i]=col[0];a[i+1]=col[1];a[i+2]=col[2];a[i+3]=col[3]}}
+  x.putImageData(im,0,0);const url=c.toDataURL('image/png');cache.set(k,url);return url;
+}
+
 async function showGrizzly(period){const g=await grizzlyData(),data=new google.maps.Data({map});data.addGeoJson({type:'FeatureCollection',features:g.features});data.setStyle(f=>{const v=Number(f.getProperty(period==='modern'?'__modern':'__historic'));if(!Number.isFinite(v))return{visible:false};const level=v<=g.cuts[0]?1:v<=g.cuts[1]?2:v<=g.cuts[2]?3:4,c=PALETTE[level];return{fillColor:`rgb(${c[0]},${c[1]},${c[2]})`,fillOpacity:opacity*.78,strokeWeight:0}});activeData=data}
 function clearActive(){if(activeRaster){activeRaster.setMap(null);activeRaster=null}if(activeData){activeData.setMap(null);activeData=null}}
-function updateOpacity(){if(activeRaster)activeRaster.setOpacity(opacity);if(activeData&&currentKey==='grizzly_bear'){const g=cache.get('grizzly:data');activeData.setStyle(f=>{const v=Number(f.getProperty(currentPeriod==='modern'?'__modern':'__historic'));if(!Number.isFinite(v))return{visible:false};const level=v<=g.cuts[0]?1:v<=g.cuts[1]?2:v<=g.cuts[2]?3:4,c=PALETTE[level];return{fillColor:`rgb(${c[0]},${c[1]},${c[2]})`,fillOpacity:opacity*.78,strokeWeight:0}})}}
-async function render(){const token=++renderToken,t=byKey[currentKey];showLoading(true);clearActive();try{if(t.kind==='grizzly')await showGrizzly(currentPeriod);else{const pair=t.kind==='points'?await pointPair(t):await rasterPair(t);if(token!==renderToken)return;activeRaster=new google.maps.GroundOverlay(pair[currentPeriod],BOUNDS,{map,opacity,clickable:false})}}catch(e){console.error(e);showToast(e.message||'Layer unavailable',2600)}finally{if(token===renderToken)showLoading(false)}}
+function updateOpacity(){if(activeRaster)activeRaster.setOpacity(opacity);if(activeData&&currentKey==='grizzly_bear'){const g=cache.get('grizzly:data');activeData.setStyle(f=>{const v=Number(f.getProperty(currentPeriod==='modern'?'__modern':'__historic'));if(!Number.isFinite(v))return{visible:false};const level=v<=g.cuts[0]?1:v<=g.cuts[1]?2:v<=g.cuts[2]?3:4,c=PALETTE[level];return{fillColor:`rgb(${c[0]},${c[1]},${c[2]})`,fillOpacity:opacity*.78,strokeWeight:0}})}else if(activeData&&currentKey==='roosevelt_elk'&&currentPeriod==='modern'){const d=cache.get('roosevelt:epu:current');if(d)activeData.setStyle(__rooseveltStyle(d))}}
+async function render(){
+  const token=++renderToken,t=byKey[currentKey];
+  if(__layerAbort)__layerAbort.abort();__layerAbort=new AbortController();
+  showLoading(true);clearActive();
+  try{
+    if(currentKey==='roosevelt_elk'&&currentPeriod==='modern'){
+      try{const d=await rooseveltData();if(token!==renderToken)return;showRoosevelt(d)}
+      catch(e){if(e?.name==='AbortError')throw e;console.warn('Roosevelt EPU data unavailable, using habitat fallback:',e);const url=await __rooseveltHabitatFallback();if(token!==renderToken)return;activeRaster=new google.maps.GroundOverlay(url,BOUNDS,{map,opacity,clickable:false});showToast('Using BC Roosevelt habitat fallback',1800)}
+    }else if(t.kind==='grizzly')await showGrizzly(currentPeriod);
+    else{const pair=t.kind==='points'?await pointPair(t):await rasterPair(t);if(token!==renderToken)return;activeRaster=new google.maps.GroundOverlay(pair[currentPeriod],BOUNDS,{map,opacity,clickable:false})}
+  }catch(e){if(e?.name!=='AbortError'){console.error(e);showToast(e.message||'Layer unavailable',2600)}}finally{if(token===renderToken)showLoading(false)}
+}
 function setPeriod(p){currentPeriod=p;localStorage.setItem('bc-species-period',p);$('modern').classList.toggle('active',p==='modern');$('historic').classList.toggle('active',p==='historic');render()}
 speciesEl.addEventListener('change',e=>{currentKey=e.target.value;localStorage.setItem('bc-species-key',currentKey);render()});$('modern').addEventListener('click',()=>setPeriod('modern'));$('historic').addEventListener('click',()=>setPeriod('historic'));$('opacity').addEventListener('input',e=>{opacity=Number(e.target.value)/100;updateOpacity()});
 function coordText(p){return`${p.lat().toFixed(6)}, ${p.lng().toFixed(6)}`}async function copyText(v){try{await navigator.clipboard.writeText(v);return true}catch(_){const t=document.createElement('textarea');t.value=v;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();const ok=document.execCommand('copy');t.remove();return ok}}
