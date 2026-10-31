@@ -34,6 +34,11 @@ function __densityField(features){
 }
 async function rooseveltData(){
   const k='roosevelt:epu:current';if(cache.has(k))return cache.get(k);
+  const dbKey='roosevelt:epu:current:v1';
+  if(typeof __dbGet==='function'){
+    const saved=await __dbGet(dbKey);
+    if(saved?.features?.length&&saved?.densityField){cache.set(k,saved);return saved}
+  }
   const itemBase=`https://governmentofbc.maps.arcgis.com/sharing/rest/content/items/${ROOSEVELT_ITEM}`;
   const meta=await __json(`${itemBase}?f=json`,'Roosevelt elk dataset unavailable');
   let service=meta.url;
@@ -54,7 +59,7 @@ async function rooseveltData(){
   const fc=await __json(`${layerUrl}/query?${q}`,'Roosevelt elk population units unavailable');
   const features=fc.features||[];const densityField=__densityField(features);
   if(!features.length||!densityField)throw new Error('Roosevelt elk density data is incomplete');
-  const out={type:'FeatureCollection',features,densityField};cache.set(k,out);return out;
+  const out={type:'FeatureCollection',features,densityField};cache.set(k,out);if(typeof __dbPut==='function')__dbPut(dbKey,out);return out;
 }
 function __rooseveltStyle(d){return f=>{
   const v=Number(f.getProperty(d.densityField));
@@ -63,13 +68,6 @@ function __rooseveltStyle(d){return f=>{
   return{fillColor:`rgb(${c[0]},${c[1]},${c[2]})`,fillOpacity:opacity*.82,strokeColor:'rgba(255,255,255,.35)',strokeOpacity:.35,strokeWeight:.6};
 }}
 function showRoosevelt(d){const data=new google.maps.Data({map});data.addGeoJson({type:'FeatureCollection',features:d.features});data.setStyle(__rooseveltStyle(d));activeData=data}
-async function __rooseveltHabitatFallback(){
-  const k='roosevelt:habitat-fallback';if(cache.has(k))return cache.get(k);
-  const w=650,h=307,m=await beiMask('M_CEEL_RO','modern',w,h),c=document.createElement('canvas');c.width=w;c.height=h;
-  const x=c.getContext('2d');x.drawImage(m,0,0);const im=x.getImageData(0,0,w,h),a=im.data,col=PALETTE[2];
-  for(let i=0;i<a.length;i+=4){if(a[i+3]){a[i]=col[0];a[i+1]=col[1];a[i+2]=col[2];a[i+3]=col[3]}}
-  x.putImageData(im,0,0);const url=c.toDataURL('image/png');cache.set(k,url);return url;
-}
 
 async function showGrizzly(period){const g=await grizzlyData(),data=new google.maps.Data({map});data.addGeoJson({type:'FeatureCollection',features:g.features});data.setStyle(f=>{const v=Number(f.getProperty(period==='modern'?'__modern':'__historic'));if(!Number.isFinite(v))return{visible:false};const level=v<=g.cuts[0]?1:v<=g.cuts[1]?2:v<=g.cuts[2]?3:4,c=PALETTE[level];return{fillColor:`rgb(${c[0]},${c[1]},${c[2]})`,fillOpacity:opacity*.78,strokeWeight:0}});activeData=data}
 function clearActive(){if(activeRaster){activeRaster.setMap(null);activeRaster=null}if(activeData){activeData.setMap(null);activeData=null}}
@@ -81,7 +79,13 @@ async function render(){
   try{
     if(currentKey==='roosevelt_elk'&&currentPeriod==='modern'){
       try{const d=await rooseveltData();if(token!==renderToken)return;showRoosevelt(d)}
-      catch(e){if(e?.name==='AbortError')throw e;console.warn('Roosevelt EPU data unavailable, using habitat fallback:',e);const url=await __rooseveltHabitatFallback();if(token!==renderToken)return;activeRaster=new google.maps.GroundOverlay(url,BOUNDS,{map,opacity,clickable:false});showToast('Using BC Roosevelt habitat fallback',1800)}
+      catch(e){
+        if(e?.name==='AbortError')throw e;
+        console.warn('Roosevelt EPU data unavailable, using BC observation fallback:',e);
+        const pair=await pointPair(t);if(token!==renderToken)return;
+        activeRaster=new google.maps.GroundOverlay(pair[currentPeriod],BOUNDS,{map,opacity,clickable:false});
+        showToast('Using BC Roosevelt observations',1800)
+      }
     }else if(t.kind==='grizzly')await showGrizzly(currentPeriod);
     else{const pair=t.kind==='points'?await pointPair(t):await rasterPair(t);if(token!==renderToken)return;activeRaster=new google.maps.GroundOverlay(pair[currentPeriod],BOUNDS,{map,opacity,clickable:false})}
   }catch(e){if(e?.name!=='AbortError'){console.error(e);showToast(e.message||'Layer unavailable',2600)}}finally{if(token===renderToken)showLoading(false)}
