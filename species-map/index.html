@@ -78,7 +78,7 @@
 </script>
 <script src="/.netlify/functions/google-maps-config"></script>
 <script>
-(() => {const key=window.GOOGLE_MAPS_API_KEY;if(!key){document.getElementById('error-text').textContent='Google Maps configuration is unavailable.';document.getElementById('error').classList.add('show');return}const s=document.createElement('script');s.async=true;s.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=initSpeciesMap&v=weekly&loading=async`;s.onerror=()=>{document.getElementById('error-text').textContent='Google Maps failed to load.';document.getElementById('error').classList.add('show')};document.head.appendChild(s)})();
+(() => {const key=window.GOOGLE_MAPS_API_KEY;if(!key){document.getElementById('error-text').textContent='Google Maps configuration is unavailable.';document.getElementById('error').classList.add('show');return}const s=document.createElement('script');s.async=true;s.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=initSpeciesMap&v=weekly&loading=async&auth_referrer_policy=origin`;s.onerror=()=>{document.getElementById('error-text').textContent='Google Maps failed to load.';document.getElementById('error').classList.add('show')};document.head.appendChild(s)})();
 </script>
 </body>
 </html>
