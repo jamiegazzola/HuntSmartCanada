@@ -46,7 +46,7 @@
   const SPECIES=[['elk','Elk'],['moose','Moose'],['mule_deer','Mule Deer'],['white_tailed_deer','White-tailed Deer'],['mountain_goat','Mountain Goat'],['wild_sheep','Wild Sheep'],['caribou','Caribou']];
   const PALETTE=[[0,0,0,0],[63,150,70,155],[244,208,63,170],[244,139,39,183],[215,48,39,198]];
   const BOUNDS={north:60.1,south:48.1,east:-113.8,west:-139.2};
-  const SIZE={elk:[650,307],moose:[650,307],white_tailed_deer:[650,307],mountain_goat:[650,307],caribou:[650,307],wild_sheep:[260,123],mule_deer:[2600,1228]};
+  const SIZE={elk:[650,307],moose:[650,307],white_tailed_deer:[650,307],mountain_goat:[650,307],caribou:[650,307],wild_sheep:[650,307],mule_deer:[2600,1228]};
   const cache=new Map();
   let map,overlay,pin,pinTimer,projectionHelper,renderToken=0,opacity=.58,holdTimer=null,startX=0,startY=0,activePointer=null;
   const $=id=>document.getElementById(id);const mobile=$('species-mobile'),desktop=$('species-desktop'),pinCard=$('pin-card'),coord=$('coord'),toast=$('toast'),loading=$('loading');
