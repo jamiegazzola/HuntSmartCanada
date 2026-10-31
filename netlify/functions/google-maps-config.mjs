@@ -1,3 +1,4 @@
+// Runtime-injected Google Maps browser key. Keep the key in Netlify Functions env, never in Git.
 export default async () => {
   const key = Netlify.env.get("GOOGLE_MAPS_API_KEY")
   if (!key) {
