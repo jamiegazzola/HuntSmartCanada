@@ -22,6 +22,8 @@ on:
       - index.html
       - build-preview.sh
       - netlify.toml
+      - species-map/**
+      - netlify/functions/species-data.mjs
       - .github/workflows/interactive-map-production-qa.yml
 
 permissions:
@@ -36,7 +38,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate deployed map and PWA assets
+      - name: Validate deployed map, species data, and PWA assets
         env:
           URL: https://huntsmartcanada.ca
         run: |
@@ -47,9 +49,22 @@ jobs:
             new Promise((_,reject)=>setTimeout(()=>reject(new Error(`${label} timed out`)),ms))
           ]);
           async function text(path) {
-            const response = await within(fetch(`${process.env.URL}${path}${path.includes('?')?'&':'?'}qa=${Date.now()}`, {cache:'no-store'}), 15000, `fetch ${path}`);
+            const response = await within(fetch(`${process.env.URL}${path}${path.includes('?')?'&':'?'}qa=${Date.now()}`, {cache:'no-store'}), 20000, `fetch ${path}`);
             assert(response.ok, `${path} returned ${response.status}`);
             return response.text();
+          }
+          async function jsonAbsolute(url,label) {
+            const response = await within(fetch(url, {cache:'no-store'}), 20000, label);
+            assert(response.ok, `${label} returned ${response.status}`);
+            const payload = await response.json();
+            if (payload?.error) throw new Error(`${label}: ${payload.error.message||'upstream error'}`);
+            return payload;
+          }
+          function densityField(features) {
+            const keys=[...new Set((features||[]).flatMap(f=>Object.keys(f.properties||{})))];
+            return keys.find(k=>/^Indiv_per_sqkm_2023$/i.test(k)) ||
+              keys.find(k=>/2023/i.test(k)&&/(indiv|density)/i.test(k)) ||
+              keys.find(k=>/(indiv.*sqkm|density)/i.test(k));
           }
           (async()=>{
             const html = await text('/');
@@ -83,6 +98,49 @@ jobs:
             assert(sw.includes('networkFirst(request)'), 'service worker app-update policy missing');
             assert(sw.includes("url.pathname.startsWith('/map-tiles/')"), 'vector-tile cache guard missing');
 
+            const speciesHtml = await text('/species-map/');
+            assert(speciesHtml.includes('app-fast.js') && speciesHtml.includes('app-b.js'), 'species viewer production bundle is incomplete');
+            const speciesFast = await text('/species-map/app-fast.js');
+            assert(speciesFast.includes('rooseveltObservations'), 'Roosevelt WSI fallback is missing from production');
+            assert(speciesFast.includes("__SPECIES_CACHE_VERSION='v5'"), 'species overlay cache is stale');
+            const speciesB = await text('/species-map/app-b.js');
+            assert(speciesB.includes("ROOSEVELT_ITEM='2774803ccefc42579458b269ad190bf8'"), 'current Roosevelt EPU source is missing');
+            assert(speciesB.includes('Indiv_per_sqkm_2023'), 'Roosevelt current density field support is missing');
+            assert(speciesB.includes('AbortController'), 'mobile layer cancellation is missing');
+
+            const fallback = JSON.parse(await text('/.netlify/functions/species-data?kind=rooseveltObservations&period=modern'));
+            assert(fallback.type === 'FeatureCollection' && Array.isArray(fallback.features) && fallback.features.length > 0, 'Roosevelt WSI fallback has no modern observations');
+
+            const itemBase='https://governmentofbc.maps.arcgis.com/sharing/rest/content/items/2774803ccefc42579458b269ad190bf8';
+            const meta=await jsonAbsolute(`${itemBase}?f=json`,'Roosevelt EPU item metadata');
+            let service=meta.url;
+            if(!service){
+              const itemData=await jsonAbsolute(`${itemBase}/data?f=json`,'Roosevelt EPU item data');
+              service=itemData?.operationalLayers?.find(x=>x.url)?.url||itemData?.tables?.find(x=>x.url)?.url;
+            }
+            assert(service,'Roosevelt EPU service URL missing');
+            service=service.replace(/\/$/,'');
+            let layerUrl=service;
+            if(!/\/(?:FeatureServer|MapServer)\/\d+$/i.test(service)){
+              const info=await jsonAbsolute(`${service}?f=json`,'Roosevelt EPU service');
+              const layerId=info.layers?.[0]?.id;
+              assert(layerId!=null,'Roosevelt EPU layer id missing');
+              layerUrl=`${service}/${layerId}`;
+            }
+            const params=new URLSearchParams({where:'1=1',outFields:'*',returnGeometry:'false',f:'geojson'});
+            const epu=await jsonAbsolute(`${layerUrl}/query?${params}`,'Roosevelt EPU query');
+            assert(Array.isArray(epu.features)&&epu.features.length>0,'Roosevelt EPU query returned no units');
+            const dField=densityField(epu.features);
+            assert(dField,'Roosevelt EPU density field missing');
+            const featureText=f=>JSON.stringify(f.properties||{}).toLowerCase();
+            const pitt=epu.features.filter(f=>featureText(f).includes('pitt'));
+            const chehalis=epu.features.filter(f=>featureText(f).includes('chehalis'));
+            assert(pitt.length>0,'Pitt River Roosevelt EPU missing from authoritative dataset');
+            assert(chehalis.length>0,'Chehalis Roosevelt EPU missing from authoritative dataset');
+            assert(pitt.some(f=>Number(f.properties?.[dField])>0),'Pitt River Roosevelt EPU has no positive density');
+            assert(chehalis.some(f=>Number(f.properties?.[dField])>0),'Chehalis Roosevelt EPU has no positive density');
+
+            console.log(`Roosevelt production QA passed: ${epu.features.length} EPU units; Pitt=${pitt.length}; Chehalis=${chehalis.length}; WSI observations=${fallback.features.length}.`);
             console.log('HuntSmart production map/PWA asset smoke passed.');
           })().catch(error=>{console.error(error.stack||error);process.exit(1);});
           NODE
