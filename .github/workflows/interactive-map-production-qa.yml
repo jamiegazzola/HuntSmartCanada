@@ -1,5 +1,6 @@
 name: HuntSmart Interactive Map Production QA
 
+# Roosevelt source diagnostic and deploy-race guard.
 on:
   workflow_dispatch:
   push:
