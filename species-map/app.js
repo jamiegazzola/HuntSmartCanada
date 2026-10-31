@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const APP_BUILD = 'species-map-rebuild-v2';
+  const APP_BUILD = 'species-map-rebuild-v3';
   window.__HUNTSMART_SPECIES_MAP_BUILD__ = APP_BUILD;
   const BOUNDS = { north: 60.1, south: 48.1, east: -113.8, west: -139.2 };
   const PALETTE = [
@@ -11,9 +11,9 @@
     [244, 139, 39, 210],
     [215, 48, 39, 220],
   ];
-  const RASTER_W = 260;
-  const RASTER_H = 123;
-  const ASSET_REV = 'rebuild-20261031-2';
+  const DEFAULT_RASTER_W = 260;
+  const DEFAULT_RASTER_H = 123;
+  const ASSET_REV = 'rebuild-20261031-3';
 
   const SPECIES = [
     { key: 'mule_deer', label: 'Mule Deer', type: 'raster', asset: 'data/mule_deer.js', source: 'mule_deer' },
@@ -23,7 +23,7 @@
     { key: 'moose', label: 'Moose', type: 'raster', asset: 'data/moose.js', source: 'moose' },
     { key: 'mountain_goat', label: 'Mountain Goat', type: 'raster', asset: 'data/mountain_goat.js', source: 'mountain_goat' },
     { key: 'wild_sheep', label: 'Wild Sheep', type: 'raster', asset: 'data/wild_sheep.js', source: 'wild_sheep' },
-    { key: 'caribou', label: 'Caribou', type: 'raster', asset: 'data/caribou.js', source: 'caribou' },
+    { key: 'caribou', label: 'Caribou', type: 'raster', asset: 'data/caribou.js', source: 'caribou', width: 650, height: 307 },
   ];
 
   const speciesByKey = Object.fromEntries(SPECIES.map((item) => [item.key, item]));
@@ -89,10 +89,10 @@
     return promise;
   }
 
-  function decodeRle(rle) {
+  function decodeRle(rle, width = DEFAULT_RASTER_W, height = DEFAULT_RASTER_H) {
     if (!rle) throw new Error('Distribution data is missing.');
 
-    const total = RASTER_W * RASTER_H;
+    const total = width * height;
     const runs = [];
     let encodedPixels = 0;
 
@@ -113,10 +113,10 @@
     }
 
     const canvas = document.createElement('canvas');
-    canvas.width = RASTER_W;
-    canvas.height = RASTER_H;
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d', { alpha: true });
-    const image = ctx.createImageData(RASTER_W, RASTER_H);
+    const image = ctx.createImageData(width, height);
     const pixels = image.data;
     let p = 0;
 
@@ -139,7 +139,7 @@
     if (rasterCache.has(item.key)) return rasterCache.get(item.key);
     await loadScript(`${item.asset}?v=${ASSET_REV}`);
     const rle = window.SPECIES_DATA?.[item.source];
-    const url = decodeRle(rle);
+    const url = decodeRle(rle, item.width || DEFAULT_RASTER_W, item.height || DEFAULT_RASTER_H);
     rasterCache.set(item.key, url);
     return url;
   }
@@ -274,7 +274,7 @@
 
   function loadGoogleMaps() {
     const config = document.createElement('script');
-    config.src = '/.netlify/functions/google-maps-config?rev=species-rebuild-2';
+    config.src = '/.netlify/functions/google-maps-config?rev=species-rebuild-3';
     config.async = true;
     config.onload = () => {
       if (!window.GOOGLE_MAPS_API_KEY) {
