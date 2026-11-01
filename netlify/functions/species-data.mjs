@@ -1,3 +1,5 @@
+import { authorizeSpeciesMap, speciesMapUnauthorized } from '../lib/species-private.mjs'
+
 const SOURCES = {
   grizzly2018: 'https://catalogue.data.gov.bc.ca/dataset/2bf91935-9158-4f77-9c2c-4310480e6c29/resource/6406840f-9525-4544-9c36-e725fb2e399a/download/bc_grizzly_population_estimates_2015_and_2018_by_gbpu_population_units.csv',
   grizzly2012: 'https://catalogue.data.gov.bc.ca/dataset/2bf91935-9158-4f77-9c2c-4310480e6c29/resource/4eca8c5c-ed25-46c1-835c-3d9f84b807e1/download/grizzlypopulationestimate2012.csv',
@@ -15,9 +17,10 @@ async function fetchJson(url, label) {
 
 function addDerivedDensity(feature) {
   const properties = feature?.properties || {}
-  const population = Number(properties.POP_Est_2012)
-  const areaKm2 = Number(properties.EPU_LAND_km2)
-  const density = Number.isFinite(population) && Number.isFinite(areaKm2) && areaKm2 > 0
+  const numeric = value => value == null || (typeof value === 'string' && !value.trim()) ? NaN : Number(value)
+  const population = numeric(properties.POP_Est_2012)
+  const areaKm2 = numeric(properties.EPU_LAND_km2)
+  const density = Number.isFinite(population) && population >= 0 && Number.isFinite(areaKm2) && areaKm2 > 0
     ? population / areaKm2
     : null
   return { ...feature, properties: { ...properties, __density: density } }
@@ -41,7 +44,12 @@ async function fetchRooseveltEpu() {
   return { type: 'FeatureCollection', features, densityField: '__density' }
 }
 
+export const config = { path: '/species-map/api/species-data' }
+
 export default async (req) => {
+  const hash = Netlify.env.get('SPECIES_MAP_PASSWORD_HASH')
+  if (!hash) return new Response('The private map is not configured.', { status: 503, headers: { 'cache-control': 'no-store' } })
+  if (!(await authorizeSpeciesMap(req, hash))) return speciesMapUnauthorized()
   const url = new URL(req.url)
   const kind = url.searchParams.get('kind')
 
@@ -50,7 +58,7 @@ export default async (req) => {
       const data = await fetchRooseveltEpu()
       return Response.json(data, {
         headers: {
-          'cache-control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
+          'cache-control': 'private, no-store',
         },
       })
     } catch (error) {
@@ -66,7 +74,7 @@ export default async (req) => {
   return new Response(await upstream.text(), {
     headers: {
       'content-type': 'text/csv; charset=utf-8',
-      'cache-control': 'public, max-age=86400',
+      'cache-control': 'private, no-store',
     },
   })
 }

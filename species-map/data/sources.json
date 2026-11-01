@@ -1,0 +1,671 @@
+{
+  "grizzly-2018.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/2bf91935-9158-4f77-9c2c-4310480e6c29/resource/9408c126-7c2b-4db8-b0f2-05f9af8b980c/download/bc_grizzly_population_estimates_2015_and_2018_by_gbpu_population_sub_units_spatial.gdb.zip"
+    ],
+    "source_sha256": [
+      "e251c40ee2f700465e97f9d7b17acdcd50be537ba4f202ad58f26d1542a652e2"
+    ],
+    "output_sha256": "dd93c0aa84fae15cc392954c88513da0f05bec5a3f839b019b2a47c97dc21595"
+  },
+  "caribou-herds.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_wildlife_inventory/MapServer/10",
+      "https://www2.gov.bc.ca/assets/gov/environment/plants-animals-and-ecosystems/wildlife-wildlife-habitat/caribou/bc_caribou_herds_population_estimates.pdf"
+    ],
+    "source_sha256": [
+      "554ebbd92f17b9ddd7c246074ab302200765aa72b25fb5e59ee2719bbcccfa56",
+      "9523a3a11e29f5be6f0b836593ca4134b9840d3881473e46faa7ac56363b5e62"
+    ],
+    "output_sha256": "102412860e759d04a87eaefe2d3eb928af2747ccd8766f534096d8b382aac6a8",
+    "status_checked": "2026-11-01",
+    "note": "Excludes George Mountain, Columbia South and Monashee resident herds reported extirpated by BC in 2023, in addition to source-layer extirpated statuses. Does not prove animals are absent from these areas."
+  },
+  "sheep-ranges.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_wildlife_management/MapServer/3"
+    ],
+    "source_sha256": [
+      "0744dfd1a669f5142700661cace43714b49531ba233afbe786a34a58659e99c0"
+    ],
+    "output_sha256": "63fe85992a024ea3768271c84a19f7976c7f6fc559191992a0759c3ae03df209"
+  },
+  "roosevelt-island-winter-range.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_wildlife_management/MapServer/59",
+      "https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/laws-policies-standards-guidance/legislation-regulation/forest-range-practices-act/regulations-supporting-frpa/government-actions-regulation/approved-ungulate-winter-ranges-uwrs"
+    ],
+    "source_sha256": [
+      "128aaa5bdfe96f7020742babfb7ebb6313f994492ecc334c85968d1762d031e4"
+    ],
+    "output_sha256": "5f61057658c1f25cdd39abf81f1aafd61d67eadf4a84022a57bad608789e467e",
+    "quality_note": "Excluded u-1-010 because the BC approved-order index lists only black-tailed deer despite an elk species tag in the spatial dataset; species tags may not cover every elk order."
+  },
+  "black-bear-broad-range.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://a100.gov.bc.ca/pub/eswp/esr.do?id=14550",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units",
+      "https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-land/"
+    ],
+    "source_sha256": [
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2",
+      "e547d749445eaa0964aba76738090ec88f5e63c4585122170f98c67a7ea922dc"
+    ],
+    "output_sha256": "8bb54423e89536fae844e8b169dcd2542dfb66303c73175cee6765054b85a1c6"
+  },
+  "wood-bison-herds.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://www.apps.geomatics.gov.nt.ca/arcgis/rest/services/GNWT_Operational/SHV_SAR/MapServer/45",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units"
+    ],
+    "source_sha256": [
+      "6ab91f008d107f562621656b6b4bb0dd5ec9e16b2d0bad24cc6609c7ae9ba4e2",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "ca3081009ee4e97b611f6d839de2ba8fb402f5c0eef20e78f7fda64dbd0c3e8e"
+  },
+  "_legacy_audit": {
+    "status": "incomplete",
+    "description": "Representative points from positive historical BC source polygons checked against legacy raster in its original latitude-longitude grid. This is a historical plausibility check, not confirmation of current occupancy.",
+    "results": {
+      "mule_deer": {
+        "matched": 66,
+        "total": 68,
+        "source_year": 1988
+      },
+      "white_tailed_deer": {
+        "matched": 39,
+        "total": 40,
+        "source_year": 1990
+      },
+      "rocky_mountain_elk": {
+        "matched": 45,
+        "total": 49,
+        "source_year": 1990
+      },
+      "moose": {
+        "matched": 299,
+        "total": 300,
+        "source_year": 1990
+      },
+      "mountain_goat": {
+        "matched": 251,
+        "total": 286,
+        "source_year": 1990
+      }
+    },
+    "reference": "https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=40140",
+    "method": "Each source polygon marked H, M or L and larger than 10 km\u00b2 was sampled at a representative point; no temporal inference is implied."
+  },
+  "winter-mule_deer.png": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved",
+      "https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/laws-policies-standards-guidance/legislation-regulation/forest-range-practices-act/regulations-supporting-frpa/government-actions-regulation/approved-ungulate-winter-ranges-uwrs"
+    ],
+    "source_sha256": [
+      "d06857692c79a9160f45c0a813b88338b180f459352da851bbadc58c3f8e31e4",
+      "bb2dd6aedbf853383a09e3bd028783121d6dfb44124387611b4f50fde9a23378"
+    ],
+    "output_sha256": "457827d60573a655d449eee644571fdbe050c126fd80699a613bfc3b2210f9cf",
+    "note": "Approved order and matching species tag; excludes specified-area disease buffers. Seasonal habitat, incomplete and not density.",
+    "candidate_approved_orders": [
+      "U-1-001",
+      "U-1-002",
+      "U-1-003",
+      "U-1-004",
+      "U-1-005",
+      "U-1-006",
+      "U-1-008",
+      "U-1-009",
+      "U-1-010",
+      "U-1-011",
+      "U-1-012",
+      "U-1-013",
+      "U-1-014",
+      "U-1-017",
+      "U-2-005",
+      "U-2-006",
+      "U-2-008",
+      "U-2-011",
+      "U-3-003",
+      "U-4-001",
+      "U-4-006",
+      "U-4-008",
+      "U-5-001",
+      "U-5-002",
+      "U-5-003",
+      "U-5-005",
+      "U-7-002",
+      "U-7-010",
+      "U-7-011",
+      "U-7-013",
+      "U-8-001",
+      "U-8-008",
+      "U-9-001"
+    ]
+  },
+  "winter-white_tailed_deer.png": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved",
+      "https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/laws-policies-standards-guidance/legislation-regulation/forest-range-practices-act/regulations-supporting-frpa/government-actions-regulation/approved-ungulate-winter-ranges-uwrs"
+    ],
+    "source_sha256": [
+      "e0d2e21d168e7a45327ac8331dd1219f5ddeb2085692f2e91a40e5fd74b89266",
+      "bb2dd6aedbf853383a09e3bd028783121d6dfb44124387611b4f50fde9a23378"
+    ],
+    "output_sha256": "e740cdc11ca981306033285f74346ef60dbe40b2f0f1234b2e427c1a4e53e8cc",
+    "note": "Approved order and matching species tag; excludes specified-area disease buffers. Seasonal habitat, incomplete and not density.",
+    "candidate_approved_orders": [
+      "U-4-001",
+      "U-4-006",
+      "U-4-008"
+    ]
+  },
+  "winter-elk.png": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved",
+      "https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/laws-policies-standards-guidance/legislation-regulation/forest-range-practices-act/regulations-supporting-frpa/government-actions-regulation/approved-ungulate-winter-ranges-uwrs"
+    ],
+    "source_sha256": [
+      "f8f885af5277fd499284ff367d0b5e90a55732d84a3c9722f2d86215e304619a",
+      "bb2dd6aedbf853383a09e3bd028783121d6dfb44124387611b4f50fde9a23378"
+    ],
+    "output_sha256": "d5b50b2c07fdfb98b13dabd10f65bb912d502061140595376a60ff453a1f2821",
+    "note": "Approved order and matching species tag; excludes specified-area disease buffers. Seasonal habitat, incomplete and not density.",
+    "candidate_approved_orders": [
+      "U-1-001",
+      "U-1-002",
+      "U-1-004",
+      "U-1-005",
+      "U-1-006",
+      "U-1-009",
+      "U-1-011",
+      "U-1-012",
+      "U-1-013",
+      "U-1-014",
+      "U-1-017",
+      "U-4-001",
+      "U-4-006",
+      "U-4-008",
+      "U-7-005",
+      "U-7-008",
+      "U-7-017",
+      "U-9-001"
+    ]
+  },
+  "winter-moose.png": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved",
+      "https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/laws-policies-standards-guidance/legislation-regulation/forest-range-practices-act/regulations-supporting-frpa/government-actions-regulation/approved-ungulate-winter-ranges-uwrs"
+    ],
+    "source_sha256": [
+      "7a40593041efad99f907fe58b75b88250374ebf10115960b5af2d20545f88d0b",
+      "bb2dd6aedbf853383a09e3bd028783121d6dfb44124387611b4f50fde9a23378"
+    ],
+    "output_sha256": "b0a938077a78595fda7c960fda33f70b84b3049d52f58777d1af799f00bb0ca4",
+    "note": "Approved order and matching species tag; excludes specified-area disease buffers. Seasonal habitat, incomplete and not density.",
+    "candidate_approved_orders": [
+      "U-1-011",
+      "U-2-005",
+      "U-2-010",
+      "U-4-001",
+      "U-4-006",
+      "U-4-008",
+      "U-6-009",
+      "U-6-014",
+      "U-6-018",
+      "U-6-040",
+      "U-7-017",
+      "U-7-018",
+      "U-7-020",
+      "U-7-022",
+      "U-7-024",
+      "U-7-027",
+      "U-8-006",
+      "U-8-007",
+      "U-9-001"
+    ]
+  },
+  "winter-mountain_goat.png": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved",
+      "https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/laws-policies-standards-guidance/legislation-regulation/forest-range-practices-act/regulations-supporting-frpa/government-actions-regulation/approved-ungulate-winter-ranges-uwrs"
+    ],
+    "source_sha256": [
+      "06844b9c955d5f8f2fde4b4c088229e37dea123585800501736937484a4ae8b7",
+      "bb2dd6aedbf853383a09e3bd028783121d6dfb44124387611b4f50fde9a23378"
+    ],
+    "output_sha256": "c25970437fe7a6e782d807acd00773197a1baeb3fe46cbea3a5e6e359bdec3ea",
+    "note": "Approved order and matching species tag; excludes specified-area disease buffers. Seasonal habitat, incomplete and not density.",
+    "candidate_approved_orders": [
+      "U-1-003",
+      "U-1-005",
+      "U-1-008",
+      "U-1-011",
+      "U-2-001",
+      "U-2-002",
+      "U-2-003",
+      "U-2-004",
+      "U-2-007",
+      "U-2-013",
+      "U-2-015",
+      "U-3-006",
+      "U-4-002",
+      "U-4-006",
+      "U-4-008",
+      "U-5-004",
+      "U-6-001",
+      "U-6-002",
+      "U-6-003",
+      "U-6-006",
+      "U-6-007",
+      "U-6-010",
+      "U-6-017",
+      "U-7-004",
+      "U-7-017",
+      "U-7-019",
+      "U-7-029",
+      "U-7-030",
+      "U-8-005",
+      "U-8-009",
+      "U-9-002"
+    ]
+  },
+  "harvest-gap-mule_deer.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units"
+    ],
+    "source_sha256": [
+      "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "c0a5c9f04e35e354e37d39d60006a33cc299a7e3ed3ebf7a9f40816158217acd",
+    "note": "Only WMUs with reported or estimated harvest 2020\u20132024 and no nonzero raster-grid cell centre; zero does not prove absence, harvest is not density. Moose 1-1 excluded pending validation due to atypical island records."
+  },
+  "harvest-gap-white_tailed_deer.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units"
+    ],
+    "source_sha256": [
+      "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "4d2c61658149cbcb89f6955ee99339f05a32c658c696ab664e073bab1f094285",
+    "note": "Only WMUs with reported or estimated harvest 2020\u20132024 and no nonzero raster-grid cell centre; zero does not prove absence, harvest is not density. Moose 1-1 excluded pending validation due to atypical island records.",
+    "coordinate_compaction": {
+      "input_sha256": "67d9852c7a02dd0a18fc7be4fda0cb1f764841ce8211ad9b3f09194aff092d1a",
+      "decimal_places": 6,
+      "vertices_removed": 0,
+      "input_bytes": 545264,
+      "output_bytes": 326307
+    }
+  },
+  "harvest-gap-elk.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units"
+    ],
+    "source_sha256": [
+      "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "f783d9cd575bd979872482b71c06180bd36103ddcc3879e422c0511072af5a00",
+    "note": "Only WMUs with reported or estimated harvest 2020\u20132024 and no nonzero raster-grid cell centre; zero does not prove absence, harvest is not density. Moose 1-1 excluded pending validation due to atypical island records."
+  },
+  "harvest-gap-moose.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units"
+    ],
+    "source_sha256": [
+      "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "c0a5c9f04e35e354e37d39d60006a33cc299a7e3ed3ebf7a9f40816158217acd",
+    "note": "Only WMUs with reported or estimated harvest 2020\u20132024 and no nonzero raster-grid cell centre; zero does not prove absence, harvest is not density. Moose 1-1 excluded pending validation due to atypical island records."
+  },
+  "harvest-gap-mountain_goat.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units"
+    ],
+    "source_sha256": [
+      "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "c8262dcd4514b420890870e683a67e800e67091dce91d4488719cceab7d383e3",
+    "note": "Only WMUs with reported or estimated harvest 2020\u20132024 and no nonzero raster-grid cell centre; zero does not prove absence, harvest is not density. Moose 1-1 excluded pending validation due to atypical island records."
+  },
+  "roosevelt-elk-harvest-context.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units"
+    ],
+    "source_sha256": [
+      "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "ae9b32989c3a323b36781aa1593dc31c1b2b0f1a47787ad2f6e8198914400618",
+    "note": "Licensed elk harvest in Region 2 is not subspecies-specific, local density, or evidence of uniform occurrence; areas without harvest are not necessarily empty."
+  },
+  "stone-sheep-winter-range.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved",
+      "https://www.env.gov.bc.ca/wld/documents/uwr/u-7-028_Summary.pdf"
+    ],
+    "source_sha256": [
+      "f27cf2f0511d275500d00175bdc0de70f6cbd210790f46dd84d3da6a27f5a141",
+      "dd341ffc0beba4be5fe8b5640215a82a4604db62bd933ae75517bb66fa884c50",
+      "30d31f1a920a90f24705abf346bd7677dc3e22811e2c76425439e8f268ac47fe",
+      "3e69d6061ffb7d6050a0dd825044ef32097a92d54eb10cd4cb343ef4faee9828"
+    ],
+    "output_sha256": "44bee1bac8bf0b25c9b3f14fa24c7f8caa9a7ee5e77b0bd08d7a73bef7fda0d2",
+    "note": "52 winter units: 10 in U-7-006, 11 in U-7-028, 21 in U-9-004 and 10 in U-9-005. Excludes U-7-028 disease-risk buffer areas. Seasonal habitat is incomplete and is not density.",
+    "coordinate_compaction": {
+      "input_sha256": "d80ab5b2ad6cb69d53f65ca3c249f9bd7307c41621934dd7b82ce1c31b6930d4",
+      "decimal_places": 6,
+      "vertices_removed": 0,
+      "input_bytes": 759406,
+      "output_bytes": 504601
+    }
+  },
+  "winter-columbian-blacktail-island.png": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved",
+      "https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/laws-policies-standards-guidance/legislation-regulation/forest-range-practices-act/regulations-supporting-frpa/government-actions-regulation/approved-ungulate-winter-ranges-uwrs",
+      "https://a100.gov.bc.ca/pub/eswp/esr.do?id=15272"
+    ],
+    "source_sha256": [
+      "55c27b2ea3f45ce008e29749e6069a105bec0ae5d720e54543d2f0fcc7654acc",
+      "72a94c0ac3a6e9988e2d3d4c3a4a850a24c023444a6695c7f502a4e0ab5af664",
+      "8bb54423e89536fae844e8b169dcd2542dfb66303c73175cee6765054b85a1c6"
+    ],
+    "output_sha256": "77d12f4537bab9366226f9592e0ebf414db758dfe363abfce996073a8e31f1d7",
+    "note": "Island-clipped approved black-tailed deer winter habitat. Partial seasonal context, not the full Columbian range or density. Land mask uses BC WMUs and Natural Earth; see black-bear-broad-range metadata.",
+    "candidate_approved_orders": [
+      "U-1-001",
+      "U-1-002",
+      "U-1-003",
+      "U-1-004",
+      "U-1-005",
+      "U-1-006",
+      "U-1-008",
+      "U-1-009",
+      "U-1-010",
+      "U-1-011",
+      "U-1-012",
+      "U-1-013",
+      "U-1-014",
+      "U-1-017"
+    ]
+  },
+  "winter-sitka-blacktail.png": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved",
+      "https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/laws-policies-standards-guidance/legislation-regulation/forest-range-practices-act/regulations-supporting-frpa/government-actions-regulation/approved-ungulate-winter-ranges-uwrs",
+      "https://a100.gov.bc.ca/pub/eswp/esr.do?id=15272"
+    ],
+    "source_sha256": [
+      "e10121b0ccee865e137d05ba2e0ba212188661201c4220b42e17fa289b72b9a8",
+      "f97208501b4f5a27b9242410865e368c542fbe4114c3cc20397028bd9b165158"
+    ],
+    "output_sha256": "0bdd3ec4b52c5532429775e54bbbb1bcedf42f44b1d1d1aeda251444f87b264b",
+    "note": "One black-tailed deer winter order, conservatively clipped north of 52\u00b0N. Incomplete seasonal habitat, not density.",
+    "candidate_approved_orders": [
+      "U-5-005"
+    ]
+  },
+  "sitka-blacktail-haida.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://a100.gov.bc.ca/pub/eswp/esr.do?id=15272",
+      "https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-land/"
+    ],
+    "source_sha256": [
+      "8bb54423e89536fae844e8b169dcd2542dfb66303c73175cee6765054b85a1c6"
+    ],
+    "output_sha256": "6ed7e9705e6d16612744c5b872262331beefc4b5846f2a14fa44fddc0b3f53bc",
+    "note": "Broad Haida Gwaii range context from the BC account; land mask derived from BC WMUs and Natural Earth. Not fine-scale occurrence or density."
+  },
+  "winter-rocky-elk-kootenay.png": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved",
+      "https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/laws-policies-standards-guidance/legislation-regulation/forest-range-practices-act/regulations-supporting-frpa/government-actions-regulation/approved-ungulate-winter-ranges-uwrs",
+      "https://a100.gov.bc.ca/pub/acat/documents/r1538/whr_4154_mceen_1096655795849_b21dacd4faed4d9b98b5dc6d62b0d762.pdf"
+    ],
+    "source_sha256": [
+      "b74aa82fa872a262825422441a7c5ff2a8c215e01f66f0988cb1b1837274d1a5",
+      "f97208501b4f5a27b9242410865e368c542fbe4114c3cc20397028bd9b165158"
+    ],
+    "output_sha256": "ec4e16d408044421402be7d3cd02a6b1186f69ab31a56a61d4a022e1d54a5d7b",
+    "note": "Kootenay approved elk winter areas only. Rocky Mountain elk occur more broadly. Partial seasonal habitat, not density.",
+    "candidate_approved_orders": [
+      "U-4-001",
+      "U-4-006",
+      "U-4-008"
+    ]
+  },
+  "winter-northwestern-moose-ne.png": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved",
+      "https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/laws-policies-standards-guidance/legislation-regulation/forest-range-practices-act/regulations-supporting-frpa/government-actions-regulation/approved-ungulate-winter-ranges-uwrs",
+      "https://www2.gov.bc.ca/assets/gov/environment/natural-resource-stewardship/cumulative-effects/northeast-region/ne_rsea_moose_methods_report_ne_3dec2020.pdf",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units"
+    ],
+    "source_sha256": [
+      "4cf3b0bb353af1b0a42b4ae91aa81a02b7a7789ee28a7a5d58d3bb412bb871e9",
+      "72a94c0ac3a6e9988e2d3d4c3a4a850a24c023444a6695c7f502a4e0ab5af664",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "642593aa99cee3a51e797c2c2c157dcf725eb2e08afa68f14c2c7cac1963896b",
+    "note": "U-9-001 moose habitat clipped to full Northeast project WMUs listed in the 2020 report. Excludes the partial project coverage in 7-56. Partial seasonal habitat, not complete subspecies range or density.",
+    "candidate_approved_orders": [
+      "U-9-001"
+    ]
+  },
+  "winter-nw-whitetail-kootenay.png": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved",
+      "https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/laws-policies-standards-guidance/legislation-regulation/forest-range-practices-act/regulations-supporting-frpa/government-actions-regulation/approved-ungulate-winter-ranges-uwrs",
+      "https://a100.gov.bc.ca/pub/acat/documents/r40140/Wildlife_Map_Nov15_1385585787452_5583657250.pdf"
+    ],
+    "source_sha256": [
+      "e0d2e21d168e7a45327ac8331dd1219f5ddeb2085692f2e91a40e5fd74b89266",
+      "aeeb3f5f247908875ec3ba19ac26dc34f7832909f38c5e31c7eda522f46bea10"
+    ],
+    "output_sha256": "e740cdc11ca981306033285f74346ef60dbe40b2f0f1234b2e427c1a4e53e8cc",
+    "note": "Kootenay white-tailed deer winter habitat; northwestern subspecies assignment is approximate and not genetically verified. Partial seasonal habitat, not complete range or density.",
+    "candidate_approved_orders": [
+      "U-4-001",
+      "U-4-006",
+      "U-4-008"
+    ]
+  },
+  "dakota-whitetail-peace-context.geojson": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units",
+      "https://www.env.gov.bc.ca/wld/documents/whttail.pdf"
+    ],
+    "source_sha256": [
+      "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "42c3c83ad2a49809dfcef879dbd7e72550b1026fabf3afad8215b28934851c78",
+    "note": "2020\u20132024 positive species-level harvest in Peace WMUs. BC says Peace white-tails may be Dakota; harvest is not subspecies-specific, precise location, or density.",
+    "coordinate_compaction": {
+      "input_sha256": "08a8aca00c9663cbb3c63dc6a3d4b9b0f9c7e62880d784f6227963c1be6a9590",
+      "decimal_places": 6,
+      "vertices_removed": 0,
+      "input_bytes": 284642,
+      "output_bytes": 170090
+    }
+  },
+  "winter-rocky_bighorn_kootenay.png": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved",
+      "https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/laws-policies-standards-guidance/legislation-regulation/forest-range-practices-act/regulations-supporting-frpa/government-actions-regulation/approved-ungulate-winter-ranges-uwrs",
+      "https://nrs.objectstore.gov.bc.ca/lteczn/662032e3f460520022ad3579/Appendix%202-Q_Ungulate%20Status%20in%20the%20Record%20Ridge%20Study%20Area%20%28Keefer%20Ecological%20Dece%202017%29.pdf"
+    ],
+    "source_sha256": [
+      "07b374257f5517dcbf1261d6aa073e903e5f1c80e54626c176944f919573e3da",
+      "aadeb6dec7f732da559e6e5ecda2c137972b0300623e99e8c9ead5332aae9971"
+    ],
+    "output_sha256": "d5d7d7d393e3b83c174b2bf91d63e3862c85f04b72bb0b5afcce2707f8090259",
+    "note": "Regional bighorn winter habitat, with approximate subspecies assignment from regional accounts. Incomplete seasonal habitat, not a verified subspecies boundary or density.",
+    "candidate_approved_orders": [
+      "U-4-006",
+      "U-4-008"
+    ]
+  },
+  "winter-california_bighorn_boundary.png": {
+    "retrieved": "2026-10-31",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved",
+      "https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/laws-policies-standards-guidance/legislation-regulation/forest-range-practices-act/regulations-supporting-frpa/government-actions-regulation/approved-ungulate-winter-ranges-uwrs",
+      "https://nrs.objectstore.gov.bc.ca/lteczn/662032e3f460520022ad3579/Appendix%202-Q_Ungulate%20Status%20in%20the%20Record%20Ridge%20Study%20Area%20%28Keefer%20Ecological%20Dece%202017%29.pdf"
+    ],
+    "source_sha256": [
+      "d3c3672db0b6e67328301492e3f53ef4e5b58d2baddd4d1454c9f447550c31d4",
+      "aadeb6dec7f732da559e6e5ecda2c137972b0300623e99e8c9ead5332aae9971"
+    ],
+    "output_sha256": "f4b71c673bb6c779b525b4f66cf6ddb927202edbe5f34de755cfdc422e771a22",
+    "note": "Regional bighorn winter habitat, with approximate subspecies assignment from regional accounts. Incomplete seasonal habitat, not a verified subspecies boundary or density.",
+    "candidate_approved_orders": [
+      "U-8-010"
+    ]
+  },
+  "dall-tatshenshini-context.geojson": {
+    "retrieved": "2026-11-01",
+    "source_urls": [
+      "https://bcparks.ca/tatshenshini-alsek-park/",
+      "https://catalogue.data.gov.bc.ca/dataset/bc-wild-mountain-sheep-registry-distribution",
+      "https://catalogue.data.gov.bc.ca/dataset/bc-parks-ecological-reserves-and-protected-areas"
+    ],
+    "source_sha256": [
+      "57ed624b62662007aa6f0bbcc0f29ee867f4bac7e0d83f24f5315a13ba684ffd",
+      "63fe85992a024ea3768271c84a19f7976c7f6fc559191992a0759c3ae03df209"
+    ],
+    "output_sha256": "3b2050f574d8efdd3483d21310ec358e25a43471942df934754954688202e257",
+    "note": "BC thinhorn registry range intersected with Tatshenshini-Alsek Park. BC Parks reports Dall\u2019s sheep in two park ranges. The intersection is broad context, not a Dall-specific boundary, complete range, or density."
+  },
+  "alaskan_moose_nw-harvest-context.geojson": {
+    "retrieved": "2026-11-01",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units",
+      "https://linnet.geog.ubc.ca/efauna/Atlas/Atlas.aspx?sciname=Alces+alces"
+    ],
+    "source_sha256": [
+      "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "4d71da49c22d61bcab6c749f72fc728c93217cbf4dd9ba14211b307ef457e742",
+    "note": "Positive species-level licensed harvest in selected WMUs during 2020\u20132024. Subspecies inferred only as coarse regional context; data do not identify subspecies, exact locations or density."
+  },
+  "shiras_moose_flathead-harvest-context.geojson": {
+    "retrieved": "2026-11-01",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units",
+      "https://linnet.geog.ubc.ca/efauna/Atlas/Atlas.aspx?sciname=Alces+alces"
+    ],
+    "source_sha256": [
+      "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "b9d0b62a1c74d0779095fefbc47f8f4d203cd750a09b02ac91c85aa67e83bade",
+    "note": "Positive species-level licensed harvest in selected WMUs during 2020\u20132024. Subspecies inferred only as coarse regional context; data do not identify subspecies, exact locations or density."
+  },
+  "hay-river-bison-context.geojson": {
+    "retrieved": "2026-11-01",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/freshwater-atlas-stream-network",
+      "https://www2.gov.bc.ca/assets/gov/environment/plants-animals-and-ecosystems/wildlife-wildlife-habitat/regional-wildlife/northeast-region/bcbisonmanagementplan2000.pdf"
+    ],
+    "source_sha256": [
+      "234d6e1744a2b3da63aef8b19d03fe6dc37b52bb7ddde5c7f096a2d37f0097d1"
+    ],
+    "output_sha256": "fb3eaa135597d1cbcee821cef17238148b0a8f6113d6000dda61f81ce8e76870",
+    "note": "Hay River line is a reference for the drainage mentioned in the 2000 BC plan, not mapped bison locations, herd range, or density."
+  },
+  "burnt-pine-context.geojson": {
+    "retrieved": "2026-11-01",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/caribou-herd-locations-for-bc",
+      "https://www2.gov.bc.ca/assets/gov/environment/plants-animals-and-ecosystems/wildlife-wildlife-habitat/caribou/bc_caribou_herds_population_estimates.pdf",
+      "https://mlibwildlife.ca/wp-content/uploads/2025/06/Kennedy-Siding-Feeding-2024-25.pdf"
+    ],
+    "source_sha256": [
+      "cd621ae4847dc2876f7e36da8fe38ce2a73f0b3115a849586f67904d2f4ea349"
+    ],
+    "output_sha256": "9be3eb692d74d69cc2ac57b2af782a3d34ec08ed85307e5616a37885c0111da7",
+    "note": "Former Burnt Pine management boundary only. Resident herd extirpated; Kennedy Siding animals observed in part of former range in 2024. Not a current occupancy polygon or density."
+  },
+  "moose-724-survey-context.geojson": {
+    "retrieved": "2026-11-01",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units",
+      "https://scwa.bc.ca/wp-content/uploads/2024/06/Anderson-et-al.-2024-Moose-SRB-report-for-WMU-724-2023-24.pdf"
+    ],
+    "source_sha256": [
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "482baf23c9c269acb88b1c0f8c2685978c6f573877299e76f4e0ab16d2ef6c6a",
+    "note": "WMU boundary is approximate context for the 2023\u201324 survey area, not its exact footprint. BC survey estimate 0.55 moose/km\u00b2 \u00b1 0.07 SE applies to the 4,865 km\u00b2 survey area, not every point."
+  },
+  "stone-sheep-winter-range-overview.geojson": {
+    "source_asset": "stone-sheep-winter-range.geojson",
+    "source_sha256": [
+      "44bee1bac8bf0b25c9b3f14fa24c7f8caa9a7ee5e77b0bd08d7a73bef7fda0d2"
+    ],
+    "output_sha256": "75ea5d15abd2859d3f1fcf67cba763e686f4eb857b9260475b5a7849d468870b",
+    "feature_count": 52,
+    "vertices_before": 20966,
+    "vertices_after": 9087,
+    "max_simplification_metres": 100,
+    "measured_max_displacement_metres_before_coordinate_rounding": 99.76,
+    "maximum_relative_area_change": 0.009670854109082241,
+    "full_geometry_fallback_count": 33,
+    "note": "Overview only, at map zoom 8 and below. Full original geometry is loaded at zoom 9 and above. All features, polygon components and holes are retained; features with over 1% area change use the full geometry."
+  },
+  "moose-revelstoke-2025-context.geojson": {
+    "retrieved": "2026-11-01",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units",
+      "https://a100.gov.bc.ca/pub/siwe/details.do?projectId=2531"
+    ],
+    "source_sha256": [
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "31fdc6df75bf3f77f330d44ea053be382c8ae3e10ec543c0835ecae15577daae",
+    "note": "Approximate management-unit context only, not exact survey boundary or uniform density. BC 2025 estimate 550 scales the 2023 estimate using trends from eight consistently sampled survey units."
+  }
+}

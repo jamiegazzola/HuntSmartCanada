@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#101512">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,7 +11,7 @@
   <title>BC Species Map</title>
   <link rel="preconnect" href="https://maps.googleapis.com">
   <link rel="preconnect" href="https://maps.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="app.css?v=rebuild-20261031-1">
+  <link rel="stylesheet" href="app.css?v=rebuild-20261101-polish-1">
 </head>
 <body>
   <main id="map" aria-label="British Columbia big game species distribution map"></main>
@@ -21,7 +21,12 @@
     <span class="chevron" aria-hidden="true">⌄</span>
     <span id="busy" class="busy" aria-hidden="true"></span>
   </div>
+  <div class="era-control" role="group" aria-label="Map time period">
+    <button id="era-modern" type="button" aria-pressed="true">Modern</button>
+    <button id="era-historical" type="button" aria-pressed="false">Historical</button>
+  </div>
+  <div id="layer-note" class="layer-note" hidden><span id="layer-note-text"></span> <a id="layer-source" href="https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved" target="_blank" rel="noopener">BC data</a><span id="layer-attribution"> · Contains information licensed under the <a id="layer-license" href="https://www2.gov.bc.ca/gov/content/data/open-data/open-government-licence-bc" target="_blank" rel="noopener">Open Government Licence – BC</a>.</span><span id="epu-link" hidden> · <a href="https://catalogue.data.gov.bc.ca/dataset/roosevelt-elk-epu-density-trends-and-risk-data-south-coast-sbot" target="_blank" rel="noopener">South Coast source (access only)</a></span><span id="mule-source" hidden> · <a href="https://a100.gov.bc.ca/pub/eswp/esr.do?id=15272" target="_blank" rel="noopener">BC black-tailed deer account</a></span><span id="gap-link" hidden> · <a href="https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024" target="_blank" rel="noopener">BC harvest data</a></span><span id="revelstoke-survey-link" hidden> · <a href="https://a100.gov.bc.ca/pub/siwe/details.do?projectId=2531" target="_blank" rel="noopener">2025 Lake Revelstoke survey</a></span><span id="moose-survey-link" hidden> · <a href="https://scwa.bc.ca/wp-content/uploads/2024/06/Anderson-et-al.-2024-Moose-SRB-report-for-WMU-724-2023-24.pdf" target="_blank" rel="noopener">2023–24 moose survey</a></span><span id="layer-additional" hidden> Boundary data contains information licensed under the <a href="https://www2.gov.bc.ca/gov/content/data/open-data/open-government-licence-bc" target="_blank" rel="noopener">Open Government Licence – BC</a>.</span></div>
   <div id="error" class="error" role="status" aria-live="polite"></div>
-  <script src="app.js?v=rebuild-20261031-3"></script>
+  <script src="app.js?v=rebuild-20261101-polish-1"></script>
 </body>
 </html>
