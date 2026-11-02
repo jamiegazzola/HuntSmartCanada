@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { authorizeSpeciesMap } from '../netlify/lib/species-private.mjs';
-import handler, { config as functionConfig, filterHistoricalRoosevelt, matchRecentRoosevelt } from '../netlify/functions/species-data.mjs';
+import handler, { config as functionConfig, filterHistoricalRoosevelt, matchRecentRoosevelt, filterSeasonalCaribou } from '../netlify/functions/species-data.mjs';
 
 const password = 'test-only-private-map-secret';
 const hash = createHash('sha256').update(password).digest('hex');
@@ -19,13 +19,20 @@ let response = await handler(request(null));
 assert.equal(response.status, 401);
 assert.match(response.headers.get('www-authenticate'), /^Basic/);
 assert.match(response.headers.get('cache-control'), /no-store/);
-for (const kind of ['rooseveltHistorical1990','rooseveltModern']) {
+for (const kind of ['rooseveltHistorical1990','rooseveltModern','caribouSummer','caribouWinter','caribouHistorical1990','rockyElkHistorical1990']) {
   const unauthenticated = new Request(`https://example.test/species-map/api/species-data?kind=${kind}`);
   const denied = await handler(unauthenticated);
   assert.equal(denied.status, 401, `${kind} must require authentication`);
   assert.match(denied.headers.get('cache-control'), /no-store/);
 }
 const geometry = { type:'Polygon', coordinates:[] };
+const seasonal = filterSeasonalCaribou({ type:'FeatureCollection', features:[
+  {type:'Feature', geometry:{type:'Polygon',coordinates:[[[0,0],[1,0],[1,1],[0,0]]]}, properties:{Herd:'Graham',Quality:'High'}},
+  {type:'Feature', geometry, properties:{Herd:'Narraway',Quality:'Migration Route'}},
+] }, 'summer');
+assert.equal(seasonal.features.length, 1);
+assert.equal(seasonal.features[0].properties.herd, 'Graham');
+assert.equal(seasonal.source_year, 2017);
 const historical = filterHistoricalRoosevelt({ type:'FeatureCollection', features:[
   { type:'Feature', geometry, properties:{ HSV:'M', Density_Co:'1 ELK PER 2.5-10 SQ KM' } },
   { type:'Feature', geometry, properties:{ HSV:'M', Density_Co:'NOT PRESENT' } },

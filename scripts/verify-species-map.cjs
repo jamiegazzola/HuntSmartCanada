@@ -73,6 +73,9 @@ function setup({ failMainland = false, syntheticRaster = false, failOnce = '', d
     if (url.includes('rooseveltHistorical1990')) {
       return { ok:true, json:async () => ({ type:'FeatureCollection', year:1990, features:[{type:'Feature',properties:{historical_class:'M'},geometry:null}] }) };
     }
+    if (url.includes('caribouSummer') || url.includes('caribouWinter')) {
+      return { ok:true, json:async () => ({ type:'FeatureCollection', features:[{type:'Feature',properties:{herd:'Graham',quality:'High'},geometry:null}] }) };
+    }
     if (url.includes('caribouHistorical1990')) {
       return { ok:true, json:async () => ({ type:'FeatureCollection', year:1990, features:[{type:'Feature',properties:{historical_class:'M'},geometry:null}] }) };
     }
@@ -164,10 +167,10 @@ async function run() {
     const previousOverlays = env.overlays.length;
     await select(env, key);
     if (raster.includes(key)) {
-      assert(env.overlays.length > previousOverlays && env.overlays.at(-1).map, `${key} did not render`);
+      assert(env.layers.length > previousLayers && env.layers.slice(previousLayers).some(d => d.collection.features.length), `${key} did not render modern evidence`);
+      assert.equal(env.overlays.filter(o => o.map).length, 0, `${key} must not show winter habitat in Modern`);
       if (key === 'mule_deer') {
         assert(env.layers.at(-1).collection.features.some(f => f.properties.description === 'Haida Gwaii broad range context'));
-        assert(env.overlays.some(o => o.map && o.url.includes('winter-mule_deer.png')));
         assert(env.element('layer-note-text').textContent.includes('not local density'));
         assert.equal(env.element('mule-source').hidden, false);
       }
@@ -222,38 +225,32 @@ async function run() {
   await pending;
   assert.equal(race.element('species').value, 'caribou_northern');
   assert(race.layers.at(-1).collection.features.every(f => f.properties.ECOTYPE === 'Northern'), 'A stale download must not replace the selected layer');
-  const partialStone = setup({ delayedAsset: 'stone-sheep-winter-range-overview.geojson' });
-  const stonePending = select(partialStone, 'stone_sheep');
-  await new Promise(resolve => setImmediate(resolve));
-  assert(partialStone.layers.some(layer => layer.collection?.features.some(f => f.properties?.SPECIES_CODE === 'M-OVDA')), 'Thinhorn context should appear while winter data loads');
-  partialStone.releaseDelayed();
-  await stonePending;
-  assert(partialStone.layers.some(layer => layer.collection?.features.length === 52 && layer.style.zIndex === 2), 'Stone winter habitat should appear above context');
-  assert.equal(partialStone.fetchCounts.get('data/stone-sheep-winter-range-overview.geojson?v=1'), 1);
+  const partialStone = setup();
+  await select(partialStone, 'stone_sheep');
+  assert(partialStone.layers.some(layer => layer.collection?.features.some(f => f.properties?.SPECIES_CODE === 'M-OVDA')));
+  await partialStone.element('era-winter').click();
+  assert(partialStone.layers.some(layer => layer.map !== null && layer.collection?.features.length === 52), 'Winter Stone habitat must render');
   partialStone.getMap().zoom = 9;
   partialStone.getMap().listeners.idle();
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(partialStone.fetchCounts.get('data/stone-sheep-winter-range.geojson?v=2'), 1, 'Close zoom must load the full-detail habitat');
+  assert.equal(partialStone.fetchCounts.get('data/stone-sheep-winter-range.geojson?v=2'), 1);
+  await partialStone.element('era-historical').click();
+  const layersInHistory = partialStone.layers.length;
   partialStone.getMap().zoom = 8;
   partialStone.getMap().listeners.idle();
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(partialStone.fetchCounts.get('data/stone-sheep-winter-range-overview.geojson?v=1'), 1, 'Returning to overview should reuse it');
-  await partialStone.element('era-historical').click();
-  const layersInHistory = partialStone.layers.length;
-  partialStone.getMap().zoom = 9;
-  partialStone.getMap().listeners.idle();
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(partialStone.layers.length, layersInHistory, 'Zooming in historical mode must not reload the modern Stone layer');
+  assert.equal(partialStone.layers.length, layersInHistory);
   const overviewFail = setup({ failOnce: 'stone-sheep-winter-range-overview.geojson' });
   await select(overviewFail, 'stone_sheep');
-  assert.equal(overviewFail.fetchCounts.get('data/stone-sheep-winter-range.geojson?v=2'), 1, 'Full detail must be the fallback if the overview fails');
-  assert(overviewFail.layers.some(layer => layer.collection?.features.length === 52 && layer.style.zIndex === 2));
+  await overviewFail.element('era-winter').click();
+  assert.equal(overviewFail.fetchCounts.get('data/stone-sheep-winter-range.geojson?v=2'), 1);
   await select(env, 'dall_tatshenshini');
   assert(env.element('layer-note-text').textContent.includes('not a Dall-specific boundary'));
   const beforeStone = env.layers.length;
   await select(env, 'stone_sheep');
-  assert.equal(env.layers.length, beforeStone + 2, 'Stone’s sheep context and winter habitat must render');
-  assert(env.layers.at(-2).collection.features.every(f => f.properties.SPECIES_CODE === 'M-OVDA'));
+  assert.equal(env.layers.length, beforeStone + 1, 'Modern Stone context must render');
+  assert(env.layers.at(-1).collection.features.every(f => f.properties.SPECIES_CODE === 'M-OVDA'));
+  await env.element('era-winter').click();
   const stoneWinter = env.layers.at(-1).collection.features;
   assert.equal(stoneWinter.length, 52);
   assert.equal(stoneWinter.filter(f => f.properties.order === 'u-7-028').length, 11);
@@ -270,6 +267,7 @@ async function run() {
   await select(env, 'nw_whitetail_kootenay');
   assert(env.overlays.at(-1).url.includes('winter-nw-whitetail-kootenay.png'));
   assert(env.element('layer-note-text').textContent.includes('approximate'));
+  await env.element('era-modern').click();
   const beforeDakota = env.layers.length;
   await select(env, 'dakota_whitetail_peace');
   assert.equal(env.layers.length, beforeDakota + 1);
@@ -283,11 +281,13 @@ async function run() {
     assert(env.layers.at(-1).collection.features.length > 0);
     assert(env.element('layer-note-text').textContent.includes('do not identify subspecies'));
   }
+  await env.element('era-winter').click();
   for (const key of ['rocky_bighorn_kootenay','california_bighorn_boundary']) {
     await select(env, key);
     assert(env.overlays.at(-1).url.includes(`winter-${key}.png`));
     assert(env.element('layer-note-text').textContent.includes('approximate'));
   }
+  await env.element('era-modern').click();
   await select(env, 'white_tailed_deer');
   let layer = env.layers.at(-1);
   assert(layer.collection.features.some(f => f.properties.wmu === '3-30'));
@@ -295,14 +295,12 @@ async function run() {
   assert.equal(layer.map, null, 'previous harvest layer must clear');
   assert(env.layers.at(-1).collection.features.some(f => f.properties.wmu === '2-8'));
   await select(env, 'roosevelt_elk');
-  assert(env.layers.some(d => d.collection.features.length === 49));
   assert(env.layers.some(d => d.collection.features.some(f => f.properties.wmu === '2-8')));
   assert(env.layers.some(d => d.collection.features.some(f => f.properties.label === 'Vancouver Island broad range context')));
   assert(env.layers.some(d => d.collection.features.some(f => f.properties.unit === 'Pitt' && f.properties.survey_year === 2023)));
   assert(env.element('layer-note-text').textContent.includes('not confirmed presence everywhere'));
   const fallback = setup({ failMainland: true });
   await select(fallback, 'roosevelt_elk');
-  assert(fallback.layers.some(d => d.collection.features.length === 49));
   assert(fallback.layers.some(d => d.collection.features.some(f => f.properties.wmu === '2-8')));
   assert.equal(fallback.fetchCounts.get('/species-map/api/species-data?kind=rooseveltEpu'), undefined, 'Modern mode must not load 2012 EPU data');
   await fallback.element('era-historical').click();
@@ -340,6 +338,32 @@ async function run() {
   await projection.element('era-modern').click();
   assert.equal(projection.element('era-modern').attributes['aria-pressed'], 'true');
   assert(projection.layers.at(-1).collection.features.length);
+  const seasons = setup();
+  for (const key of raster) {
+    await select(seasons, key);
+    await seasons.element('era-winter').click();
+    assert(seasons.overlays.some(o => o.map && o.url.includes(`winter-${key}.png`)), `${key} winter missing`);
+    await seasons.element('era-modern').click();
+    assert(!seasons.overlays.some(o => o.map && o.url.includes(`winter-${key}.png`)), `${key} winter leaked into modern`);
+  }
+  await select(seasons, 'caribou');
+  await seasons.element('era-summer').click();
+  assert(seasons.layers.at(-1).collection.features[0].properties.herd === 'Graham');
+  assert(seasons.element('layer-note-text').textContent.includes('2017'));
+  await seasons.element('era-winter').click();
+  assert(seasons.element('layer-note-text').textContent.startsWith('Winter:'));
+  await select(seasons, 'black_bear');
+  assert(seasons.element('layer-note-text').textContent.includes('no verified winter'));
+  await seasons.element('era-summer').click();
+  assert(seasons.element('layer-note-text').textContent.includes('no verified summer'));
+  for (const mode of ['winter','summer']) {
+    await seasons.element(`era-${mode}`).click();
+    for (const key of optionKeys) {
+      await select(seasons, key);
+      assert.equal(seasons.element('layer-note').hidden, false, `${key} ${mode} must explain its data`);
+      assert(seasons.element('layer-note-text').textContent.startsWith(mode === 'winter' ? 'Winter:' : 'Summer:'), `${key} ${mode} must be labelled`);
+    }
+  }
   const historical = setup();
   await historical.element('era-historical').click();
   for (const key of optionKeys) {

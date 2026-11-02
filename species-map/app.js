@@ -60,6 +60,7 @@
   let map = null;
   let activeOverlay = null;
   let winterOverlay = null;
+  let seasonalOverlays = [];
   let activeData = null;
   let islandData = null;
   let contextData = null;
@@ -69,11 +70,16 @@
   let renderAbort = null;
   let errorTimer = null;
   let stoneDetail = null;
-  let viewMode = localStorage.getItem('bc-species-map-era') === 'historical' ? 'historical' : 'modern';
+  const storedMode = localStorage.getItem('bc-species-map-era');
+  let viewMode = ['modern', 'winter', 'summer', 'historical'].includes(storedMode) ? storedMode : 'modern';
   const eraModern = document.getElementById('era-modern');
+  const eraWinter = document.getElementById('era-winter');
+  const eraSummer = document.getElementById('era-summer');
   const eraHistorical = document.getElementById('era-historical');
   function setEraButtons() {
     eraModern.setAttribute('aria-pressed', viewMode === 'modern' ? 'true' : 'false');
+    eraWinter.setAttribute('aria-pressed', viewMode === 'winter' ? 'true' : 'false');
+    eraSummer.setAttribute('aria-pressed', viewMode === 'summer' ? 'true' : 'false');
     eraHistorical.setAttribute('aria-pressed', viewMode === 'historical' ? 'true' : 'false');
   }
   function changeEra(mode) {
@@ -84,6 +90,8 @@
     return renderSelected();
   }
   eraModern.addEventListener('click', () => changeEra('modern'));
+  eraWinter.addEventListener('click', () => changeEra('winter'));
+  eraSummer.addEventListener('click', () => changeEra('summer'));
   eraHistorical.addEventListener('click', () => changeEra('historical'));
   setEraButtons();
 
@@ -131,6 +139,8 @@
       winterOverlay.setMap(null);
       winterOverlay = null;
     }
+    seasonalOverlays.forEach(overlay => overlay.setMap(null));
+    seasonalOverlays = [];
     if (contextData) {
       contextData.setMap(null);
       contextData = null;
@@ -422,7 +432,61 @@
     localStorage.setItem('bc-species-map-v2', item.key);
 
     try {
-      if (viewMode === 'historical') {
+      if ((viewMode === 'winter' || viewMode === 'summer') && ['caribou', 'caribou_mountain'].includes(item.key)) {
+        const season = viewMode;
+        const note = document.getElementById('layer-note');
+        note.hidden = false;
+        document.getElementById('layer-source').href = 'https://www2.gov.bc.ca/gov/content/environment/plants-animals-ecosystems/wildlife/regional-wildlife/northeast';
+        document.getElementById('layer-attribution').hidden = true;
+        document.getElementById('layer-note-text').textContent = `${season === 'summer' ? 'Summer' : 'Winter'}: loading BC seasonal habitat…`;
+        const response = await fetch(`/species-map/api/species-data?kind=${season === 'summer' ? 'caribouSummer' : 'caribouWinter'}`, { signal:renderAbort.signal });
+        if (!response.ok) throw new Error('Seasonal caribou habitat could not load.');
+        const payload = await response.json();
+        if (payload?.type !== 'FeatureCollection' || !Array.isArray(payload.features) || !payload.features.length) throw new Error('Seasonal caribou habitat is invalid.');
+        if (version !== renderVersion) return;
+        activeData = new google.maps.Data({ map });
+        activeData.addGeoJson(payload);
+        activeData.setStyle(f => ({ fillColor:f.getProperty('quality') === 'Very High' ? '#dca63a' : '#72b69e', fillOpacity:0.5, strokeOpacity:0, clickable:false }));
+        document.getElementById('layer-note-text').textContent = `${season === 'summer' ? 'Summer' : 'Winter'}: BC high-elevation seasonal caribou habitat mapped in 2017 for South Peace herds and Graham. Green: high; gold: very high. Partial regional habitat, not current density or confirmed occupancy. Burnt Pine's resident herd was later extirpated.`;
+      } else if (viewMode === 'winter') {
+        const note = document.getElementById('layer-note');
+        const text = document.getElementById('layer-note-text');
+        note.hidden = false;
+        document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved';
+        if (item.type === 'raster' || item.type === 'partial_winter') {
+          const asset = item.type === 'raster' ? `data/winter-${item.key}.png` : item.asset;
+          winterOverlay = new google.maps.GroundOverlay(`${asset}?v=1`, BOUNDS, { map, opacity:0.9, clickable:false });
+          text.textContent = `Winter: blue is approved BC winter habitat. ${item.type === 'partial_winter' ? item.note : 'Incomplete seasonal habitat; not the full range or animal density.'}`;
+        } else if (['wild_sheep', 'bighorn_sheep', 'thinhorn_sheep'].includes(item.key)) {
+          if (item.key !== 'thinhorn_sheep') {
+            for (const asset of ['data/winter-rocky_bighorn_kootenay.png', 'data/winter-california_bighorn_boundary.png']) {
+              seasonalOverlays.push(new google.maps.GroundOverlay(`${asset}?v=1`, BOUNDS, { map, opacity:0.9, clickable:false }));
+            }
+          }
+          if (item.key !== 'bighorn_sheep') {
+            const payload = await stoneWinterRange('data/stone-sheep-winter-range-overview.geojson', renderAbort.signal);
+            if (version !== renderVersion) return;
+            renderIslandWinterRange(payload);
+          }
+          text.textContent = 'Winter: blue shows available regional bighorn and/or Stone’s sheep winter habitat, depending on selection. Partial BC coverage; not the full species range or animal density.';
+        } else if (item.type === 'roosevelt' || item.type === 'stone') {
+          const asset = item.type === 'stone' && map.getZoom() <= 8 ? 'data/stone-sheep-winter-range-overview.geojson' : 'data/stone-sheep-winter-range.geojson';
+          if (item.type === 'stone') stoneDetail = map.getZoom() <= 8 ? 'overview' : 'full';
+          const payload = item.type === 'roosevelt' ? await islandWinterRange(renderAbort.signal) : await stoneWinterRange(asset, renderAbort.signal);
+          if (version !== renderVersion) return;
+          renderIslandWinterRange(payload);
+          text.textContent = item.type === 'roosevelt' ? 'Winter: blue is approved Roosevelt elk winter habitat on Vancouver Island. Coverage is incomplete and seasonal; not the full range or density.' : 'Winter: blue is mapped Stone’s sheep winter habitat from four BC orders. Coverage is incomplete and seasonal; not the full range or density.';
+        } else {
+          document.getElementById('layer-source').hidden = true;
+          document.getElementById('layer-attribution').hidden = true;
+          text.textContent = 'Winter: no verified winter-specific layer is available for this selection.';
+        }
+      } else if (viewMode === 'summer') {
+        document.getElementById('layer-note').hidden = false;
+        document.getElementById('layer-source').hidden = true;
+        document.getElementById('layer-attribution').hidden = true;
+        document.getElementById('layer-note-text').textContent = 'Summer: no verified summer-specific layer is available for this selection.';
+      } else if (viewMode === 'historical') {
         const note = document.getElementById('layer-note');
         note.hidden = false;
         document.getElementById('layer-note-text').textContent = 'Historical: loading data…';
@@ -496,9 +560,9 @@
         document.getElementById('layer-note-text').textContent = item.note;
         document.getElementById('layer-note').hidden = false;
       } else if (item.type === 'partial_winter') {
-        winterOverlay = new google.maps.GroundOverlay(`${item.asset}?v=1`, BOUNDS, { map, opacity: 0.9, clickable: false });
-        document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved';
-        document.getElementById('layer-note-text').textContent = item.note;
+        document.getElementById('layer-source').hidden = true;
+        document.getElementById('layer-attribution').hidden = true;
+        document.getElementById('layer-note-text').textContent = 'Modern: a separate modern distribution layer is not available for this selection. Choose Winter for the available seasonal habitat.';
         document.getElementById('layer-note').hidden = false;
       } else if (item.type === 'raster') {
         // Begin supplemental downloads immediately while the base raster decodes.
@@ -507,11 +571,10 @@
           ...(item.key === 'moose' ? [staticRange({ asset: 'data/moose-724-survey-context.geojson' }, renderAbort.signal), staticRange({ asset: 'data/moose-revelstoke-2025-context.geojson' }, renderAbort.signal)] : []),
           ...(item.key === 'mule_deer' ? [staticRange({ asset: 'data/sitka-blacktail-haida.geojson' }, renderAbort.signal)] : []),
         ]);
-        winterOverlay = new google.maps.GroundOverlay(`data/winter-${item.key}.png?v=1`, BOUNDS, { map, opacity: 0.9, clickable: false });
         const note = document.getElementById('layer-note');
-        document.getElementById('layer-note-text').textContent = 'Modern: blue is approved BC winter habitat, incomplete and not density. Recent survey and harvest information is shown where available; dates vary.';
+        document.getElementById('layer-note-text').textContent = 'Modern: recent survey and harvest information is shown where available; dates vary. Coverage is incomplete. Choose Winter for mapped winter habitat.';
         if (item.key === 'mule_deer') document.getElementById('layer-note-text').textContent += ' Mule deer includes Columbian and Sitka black-tailed deer.';
-        document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved';
+        document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024';
         note.hidden = false;
         const extras = await extra;
         if (version !== renderVersion) return;
@@ -555,16 +618,13 @@
           ? 'data/stone-sheep-winter-range-overview.geojson'
           : 'data/stone-sheep-winter-range.geojson';
         document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved';
-        document.getElementById('layer-note-text').textContent = 'Blue: Stone’s sheep winter habitat from four BC orders; incomplete and not density. Green: all thinhorn sheep range, including Dall’s and mixed areas; not a Stone’s sheep boundary.';
+        document.getElementById('layer-note-text').textContent = 'Green: all thinhorn sheep range, including Dall’s and mixed areas; not a Stone’s sheep boundary. Choose Winter for available Stone’s sheep winter habitat.';
         document.getElementById('layer-note').hidden = false;
         // Paint each independent layer as soon as it arrives; a slow or failed
         // winter-habitat request must not hide the broad thinhorn range.
         const results = await Promise.allSettled([
           staticRange(item, renderAbort.signal).then(payload => {
             if (version === renderVersion) renderStaticRange(payload, item);
-          }),
-          stoneWinterRange(winterAsset, renderAbort.signal).then(winter => {
-            if (version === renderVersion) renderIslandWinterRange(winter);
           }),
         ]);
         if (version !== renderVersion) return;
@@ -599,7 +659,7 @@
         }
       } else if (item.type === 'roosevelt') {
         document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved';
-        document.getElementById('layer-note-text').textContent = 'Green: broad Vancouver Island Roosevelt elk range context, not confirmed presence everywhere or local density. Blue: mapped approved Island winter habitat, incomplete and seasonal. Mainland historical range is in Historical.';
+        document.getElementById('layer-note-text').textContent = 'Green: broad Vancouver Island Roosevelt elk range context, not confirmed presence everywhere or local density. Choose Winter for mapped Island winter habitat.';
         document.getElementById('layer-note').hidden = false;
         const results = await Promise.allSettled([
           staticRange({ asset:'data/roosevelt-island-range-context.geojson' }, renderAbort.signal).then(payload => {
@@ -614,9 +674,6 @@
             rooseveltMainlandData.setStyle({ fillOpacity:0, strokeColor:'#f5c76b', strokeOpacity:0.95, strokeWeight:1.6, zIndex:1, clickable:false });
             document.getElementById('roosevelt-recent-link').hidden = false;
             document.getElementById('layer-note-text').textContent += ' Gold: mainland management units with nonzero estimates from 2013–2023, depending on unit. Outlines are not exact current occupancy or density.';
-          }),
-          islandWinterRange(renderAbort.signal).then((payload) => {
-            if (version === renderVersion) renderIslandWinterRange(payload);
           }),
           staticRange({ asset: 'data/roosevelt-elk-harvest-context.geojson' }, renderAbort.signal).then((payload) => {
             if (version !== renderVersion) return;
@@ -635,8 +692,9 @@
     } catch (error) {
       if (version === renderVersion && error?.name !== 'AbortError') {
         console.error(error);
-        if (viewMode === 'historical') {
-          document.getElementById('layer-note-text').textContent = 'Historical: this layer could not be loaded. Try again.';
+        if (viewMode !== 'modern') {
+          const label = viewMode === 'historical' ? 'Historical' : viewMode === 'winter' ? 'Winter' : 'Summer';
+          document.getElementById('layer-note-text').textContent = `${label}: this layer could not be loaded. Try again.`;
           document.getElementById('layer-note').hidden = false;
           document.getElementById('layer-source').hidden = true;
           document.getElementById('layer-attribution').hidden = true;
@@ -693,7 +751,7 @@
       }
 
       map.addListener('idle', () => {
-        if (viewMode === 'modern' && select.value === 'stone_sheep' && stoneDetail !== null &&
+        if (viewMode === 'winter' && select.value === 'stone_sheep' && stoneDetail !== null &&
             stoneDetail !== (map.getZoom() <= 8 ? 'overview' : 'full')) {
           renderSelected();
         }

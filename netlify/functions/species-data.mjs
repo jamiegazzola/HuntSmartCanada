@@ -1,5 +1,6 @@
 import { authorizeSpeciesMap, speciesMapUnauthorized } from '../lib/species-private.mjs'
 import shp from 'shpjs'
+import { createHash } from 'node:crypto'
 
 const SOURCES = {
   grizzly2018: 'https://catalogue.data.gov.bc.ca/dataset/2bf91935-9158-4f77-9c2c-4310480e6c29/resource/6406840f-9525-4544-9c36-e725fb2e399a/download/bc_grizzly_population_estimates_2015_and_2018_by_gbpu_population_units.csv',
@@ -10,6 +11,17 @@ const ROOSEVELT_EPU = 'https://services6.arcgis.com/ubm4tcTYICKBpist/arcgis/rest
 const ROOSEVELT_1990 = 'https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6347_M_CECA_RO_POLY_1990_1391733020039_1732534014.zip'
 const CARIBOU_1990 = 'https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6360_M_RATA_POLY_1990_1391796701810_1796329109.zip'
 const ROCKY_ELK_1990 = 'https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6346_M_CECA_NE_POLY_1990_1391732986878_1732534014.zip'
+const CARIBOU_SEASONAL = {
+  summer: 'https://www2.gov.bc.ca/assets/gov/environment/plants-animals-and-ecosystems/wildlife-wildlife-habitat/regional-wildlife/northeast-region/caribou/high_elevation_summer_range.zip',
+  winter: 'https://www2.gov.bc.ca/assets/gov/environment/plants-animals-and-ecosystems/wildlife-wildlife-habitat/regional-wildlife/northeast-region/caribou/high_elevation_winter_range.zip',
+}
+const SEASONAL_ARCHIVE_SHA256 = { summer:'dab23fc8f5096ba7e08db227ca7a0e303fd2d8e721862a93f9e482f195b5d3fb', winter:'740ee8800f747aea7977867486c479e9de6e7a45eaf70eb02016d875f74a34ac' }
+// Verified against the exact archives above: retain source geometry where display
+// simplification would turn an otherwise-valid polygon invalid.
+const KEEP_SOURCE_GEOMETRY = {
+  summer:new Set([262,279,1351,1392,2084,2251,2382,3075,3219,3291,3610,3615,4371,4378,4393,4397,4411,4443,4668,4859]),
+  winter:new Set([711,3866,3877,3881,3890,3892,4968,5749,5814,6223,6234]),
+}
 const ROOSEVELT_ABUNDANCE = 'https://services6.arcgis.com/ubm4tcTYICKBpist/arcgis/rest/services/SBOT_Roosevelt_Elk_Population_Abundance_2013_to_2023/FeatureServer/4'
 
 // The archive includes contradictory rows (for example HSV=M with NOT PRESENT).
@@ -42,6 +54,49 @@ async function fetchHistoricalCaribou() {
   const buffer = await response.arrayBuffer()
   if (buffer.byteLength > 8_000_000) throw new Error('Historical archive unexpectedly large')
   return filterHistoricalCaribou(await shp(buffer))
+}
+
+// Simplification is for display only. The source remains authoritative.
+function simplifySeasonalRing(ring) {
+  if (ring.length <= 5) return ring.map(p => [Number(p[0].toFixed(5)), Number(p[1].toFixed(5))])
+  const points = ring.slice(0, -1), keep = new Uint8Array(points.length), stack = [[0, points.length - 1]]
+  keep[0] = keep[points.length - 1] = 1
+  const tolerance2 = 0.0006 ** 2
+  while (stack.length) {
+    const [first, last] = stack.pop(), a = points[first], b = points[last]
+    const dx = b[0] - a[0], dy = b[1] - a[1], length2 = dx * dx + dy * dy
+    let furthest = -1, max = tolerance2
+    for (let i = first + 1; i < last; i++) {
+      const p = points[i], t = length2 ? Math.max(0, Math.min(1, ((p[0]-a[0])*dx + (p[1]-a[1])*dy) / length2)) : 0
+      const x = p[0]-a[0]-t*dx, y = p[1]-a[1]-t*dy, distance = x*x+y*y
+      if (distance > max) { max = distance; furthest = i }
+    }
+    if (furthest >= 0) { keep[furthest] = 1; stack.push([first, furthest], [furthest, last]) }
+  }
+  const reduced = points.filter((_, i) => keep[i])
+  const result = (reduced.length >= 3 ? reduced : points).map(p => [Number(p[0].toFixed(5)), Number(p[1].toFixed(5))])
+  result.push(result[0])
+  return result
+}
+export function filterSeasonalCaribou(collection, season) {
+  if (collection?.type !== 'FeatureCollection' || !Array.isArray(collection.features)) throw new Error('Invalid seasonal caribou archive')
+  if (!KEEP_SOURCE_GEOMETRY[season]) throw new Error('Invalid season')
+  const features = collection.features.flatMap((f, index) => {
+    if (!['High', 'Very High'].includes(f.properties?.Quality) || !['Polygon', 'MultiPolygon'].includes(f.geometry?.type)) return []
+    const coordinates = KEEP_SOURCE_GEOMETRY[season].has(index) ? f.geometry.coordinates : f.geometry.type === 'Polygon' ? f.geometry.coordinates.map(simplifySeasonalRing) : f.geometry.coordinates.map(poly => poly.map(simplifySeasonalRing))
+    return [{ type:'Feature', properties:{ herd:f.properties.Herd, quality:f.properties.Quality }, geometry:{ type:f.geometry.type, coordinates } }]
+  })
+  if (!features.length) throw new Error('Seasonal archive contains no mapped high-value habitat')
+  return { type:'FeatureCollection', features, source_year:2017 }
+}
+
+async function fetchSeasonalCaribou(season) {
+  const response = await fetch(CARIBOU_SEASONAL[season], { headers:{ 'user-agent':'HuntSmartCanada/1.0' }, signal:AbortSignal.timeout(25000) })
+  if (!response.ok) throw new Error(`Seasonal caribou archive returned ${response.status}`)
+  const buffer = await response.arrayBuffer()
+  if (buffer.byteLength > 12_000_000) throw new Error('Seasonal archive unexpectedly large')
+  if (createHash('sha256').update(Buffer.from(buffer)).digest('hex') !== SEASONAL_ARCHIVE_SHA256[season]) throw new Error('Seasonal archive changed; source requires revalidation')
+  return filterSeasonalCaribou(await shp(buffer), season)
 }
 
 async function fetchHistoricalElk(source = ROOSEVELT_1990) {
@@ -133,6 +188,15 @@ export default async (req) => {
   if (!(await authorizeSpeciesMap(req, hash))) return speciesMapUnauthorized()
   const url = new URL(req.url)
   const kind = url.searchParams.get('kind')
+
+  if (kind === 'caribouSummer' || kind === 'caribouWinter') {
+    try {
+      return Response.json(await fetchSeasonalCaribou(kind === 'caribouSummer' ? 'summer' : 'winter'), { headers:{ 'cache-control':'private, no-store' } })
+    } catch (error) {
+      console.error('Seasonal caribou archive fetch failed:', error)
+      return new Response('Seasonal caribou data unavailable', { status:502, headers:{ 'cache-control':'private, no-store' } })
+    }
+  }
 
   if (kind === 'caribouHistorical1990') {
     try {
