@@ -43,7 +43,7 @@ const appReplacements = [
   ],
   [
     "const APP_BUILD = 'species-map-rebuild-v12';",
-    "const APP_BUILD = 'species-map-roosevelt-single-v2';",
+    "const APP_BUILD = 'species-map-sheep-vector-v1';",
   ],
   [
 `    const item = speciesByKey[select.value];
@@ -72,7 +72,7 @@ const appReplacements = [
           return { fillColor:color, fillOpacity:0.42, strokeColor:color, strokeOpacity:0.9, strokeWeight:1.2, zIndex:2, clickable:false };
         });
         document.getElementById('roosevelt-recent-link').hidden = false;
-      } else if (!showEvidence && KMZ_HEATMAPS.has(item.key) && (viewMode === 'modern' || viewMode === 'historical')) {`,
+      } else if (!showEvidence && KMZ_HEATMAPS.has(item.key) && !(item.key === 'wild_sheep' && viewMode === 'historical') && (viewMode === 'modern' || viewMode === 'historical')) {`,
   ],
   [
     "document.getElementById('layer-note-text').textContent = 'Green: broad Vancouver Island Roosevelt elk range context, not confirmed presence everywhere or local density. Choose Winter for mapped Island winter habitat.';",
