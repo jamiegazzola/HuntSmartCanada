@@ -21,6 +21,8 @@ const HISTORICAL_ARCHIVES = {
   goat: ['https://a100.gov.bc.ca/pub/acat/documents/r40140/Bapid_6380_M_ORAM_POLY_1990_1391797364512_1796329109.zip', 'goat'],
   whitetail: ['https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6355_M_ODVI_POLY_1990_1391733353873_1732534014.zip', 'whitetail'],
   moose: ['https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6345_M_ALAM_POLY_1990_1391732955419_1732534014.zip', 'moose'],
+  mule: ['https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6352_M_ODHE_HE_POLY_1988_1391733247116_1732534014.zip', 'mule'],
+  blacktail: ['https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6351_M_ODHE_SI_POLY_1988_1391733203021_1732534014.zip', 'mule'],
 }
 const CARIBOU_SEASONAL = {
   summer: 'https://www2.gov.bc.ca/assets/gov/environment/plants-animals-and-ecosystems/wildlife-wildlife-habitat/regional-wildlife/northeast-region/caribou/high_elevation_summer_range.zip',
@@ -71,6 +73,8 @@ export function filterHistoricalSpecies(collection, taxon) {
     L:['1 DEER PER 5-518 SQ. KILOMETRES'], M:['1 DEER PER 0.5-5 SQ. KILOMETRES'], H:['OVER 1 DEER PER 0.5 SQ. KILOMETRES'],
   } : taxon === 'moose' ? {
     L:['1 MOOSE PER 10-260 SQ KM'], M:['1 MOOSE PER 1.3-10 SQ KM'], H:['OVER 1 MOOSE PER 1.3 SQ KM'],
+  } : taxon === 'mule' ? {
+    L:['1 DEER PER 2-200 SQ KM'], M:['1 DEER PER 0.2-2 SQ KM'], H:['OVER 1 DEER PER 0.2 SQ KM'],
   } : null
   if (!expected) throw new Error('Unknown historical taxon')
   const features = collection.features.filter(f => expected[f.properties?.HSV]?.includes(String(f.properties?.Density_Co || '').trim().toUpperCase()) && ['Polygon','MultiPolygon'].includes(f.geometry?.type)).map(f => ({ type:'Feature', geometry:f.geometry, properties:{ historical_class:f.properties.HSV } }))

@@ -198,13 +198,23 @@ async function run() {
         assert.equal(env.element('moose-survey-link').hidden, true);
       }
     } else {
-      assert.equal(env.layers.length, previousLayers + (['wood_bison','caribou','caribou_mountain'].includes(key) ? 2 : 1), `${key} did not create its layers`);
+      assert.equal(env.layers.length, previousLayers + (['wood_bison','caribou','caribou_northern'].includes(key) ? 2 : 1), `${key} did not create its layers`);
       assert(env.layers[previousLayers].collection.features.length, `${key} has no features`);
+      if (key === 'caribou_northern') {
+        const names = env.layers[previousLayers].collection.features.map(f => f.properties.HERD_NAME);
+        for (const name of ['Graham','Chase','Narraway','Redrock-Prairie Creek']) assert(names.includes(name), `${name} must be included in Northern ecotype`);
+        assert(!names.includes('Columbia North'));
+      }
+      if (key === 'caribou_mountain') {
+        const names = env.layers[previousLayers].collection.features.map(f => f.properties.HERD_NAME);
+        assert(names.includes('Columbia North'));
+        assert(!names.includes('Graham') && !names.includes('Narraway'));
+      }
       if (key === 'wood_bison') {
         assert(env.layers.at(-1).collection.features[0].geometry.type.includes('LineString'));
         assert(env.element('layer-note-text').textContent.includes('not a bison range'));
       }
-      if (key === 'caribou' || key === 'caribou_mountain') {
+      if (key === 'caribou' || key === 'caribou_northern') {
         assert.equal(env.layers.at(-1).collection.features[0].properties.herd, 'Burnt Pine');
         assert(env.element('layer-note-text').textContent.includes('not a current occupancy boundary'));
         const style = env.layers[previousLayers].style({ getProperty: name => name === 'HERD_NAME' ? 'Narrow Lake' : undefined });
@@ -232,7 +242,8 @@ async function run() {
   race.releaseDelayed();
   await pending;
   assert.equal(race.element('species').value, 'caribou_northern');
-  assert(race.layers.at(-1).collection.features.every(f => f.properties.ECOTYPE === 'Northern'), 'A stale download must not replace the selected layer');
+  assert(race.layers.some(layer => layer.collection?.features.some(f => f.properties?.HERD_NAME === 'Graham')), 'Northern ecotype includes Graham despite the legacy source category');
+  assert(!race.layers.some(layer => layer.map && layer.collection?.features.some(f => f.properties?.density_2018 !== undefined)), 'A stale download must not replace the selected layer');
   const partialStone = setup();
   await select(partialStone, 'stone_sheep');
   assert(partialStone.layers.some(layer => layer.collection?.features.some(f => f.properties?.SPECIES_CODE === 'M-OVDA')));
@@ -326,26 +337,11 @@ async function run() {
   await select(partialSurvey, 'elk');
   assert.equal(partialSurvey.element('error').textContent, '');
   assert(!partialSurvey.element('layer-note-text').textContent.includes('Some moose survey data could not load'));
-  const projection = setup({ syntheticRaster: true });
-  await select(projection, 'mule_deer');
-  assert(!projection.overlays.some(o => o.map && o.url.startsWith('data:image/')), 'Modern mode must not show the legacy raster as current');
-  await projection.element('era-historical').click();
-  assert.equal(projection.element('era-historical').attributes['aria-pressed'], 'true');
-  assert(projection.overlays.some(o => o.map && o.url.startsWith('data:image/')), 'Historical mode must show the legacy raster');
-  assert(projection.element('layer-note-text').textContent.includes('not fully verified'));
-  const y = 57, width = 260, n = 60.1, s = 48.1;
-  const mercator = d => Math.log(Math.tan(Math.PI / 4 + d * Math.PI / 360));
-  const m = mercator(n) - (y + .5) / 123 * (mercator(n) - mercator(s));
-  const latitude = (2 * Math.atan(Math.exp(m)) - Math.PI / 2) * 180 / Math.PI;
-  const sourceRow = Math.floor((n - latitude) / (n - s) * 123);
-  const palette = [[0,0,0,0],[63,150,70,190],[244,208,63,200],[244,139,39,210],[215,48,39,220]];
-  assert.notEqual(sourceRow, y);
-  assert.deepEqual(Array.from(projection.getLastImage().data.slice(y * width * 4, y * width * 4 + 4)), palette[sourceRow % 5]);
-  await select(projection, 'black_bear');
-  assert(projection.element('layer-note-text').textContent.includes('1988 distribution'));
-  await projection.element('era-modern').click();
-  assert.equal(projection.element('era-modern').attributes['aria-pressed'], 'true');
-  assert(projection.layers.at(-1).collection.features.length);
+  const combinedDeer = setup();
+  await select(combinedDeer, 'mule_deer');
+  await combinedDeer.element('era-historical').click();
+  assert(combinedDeer.element('layer-note-text').textContent.includes('not shown as separate subspecies'));
+  assert.equal(combinedDeer.layers.at(-1).collection.features.length, 2, 'Combined historical deer needs both source archives');
   const seasons = setup();
   for (const key of raster) {
     await select(seasons, key);
@@ -358,6 +354,8 @@ async function run() {
   await seasons.element('era-summer').click();
   assert(seasons.layers.at(-1).collection.features[0].properties.herd === 'Graham');
   assert(seasons.element('layer-note-text').textContent.includes('2017'));
+  await select(seasons, 'caribou_northern');
+  assert(seasons.layers.at(-1).collection.features[0].properties.herd === 'Graham', 'Northern ecotype should expose South Peace summer data');
   await seasons.element('era-winter').click();
   assert(seasons.element('layer-note-text').textContent.startsWith('Winter:'));
   await select(seasons, 'black_bear');
@@ -390,6 +388,6 @@ async function run() {
   await select(historical, 'elk');
   assert(historical.element('layer-note-text').textContent.includes('1990 Roosevelt and Rocky Mountain'));
   assert.equal(historical.layers.at(-1).collection.features.length, 2, 'Both 1990 elk sources must be rendered');
-  console.log('Species selections, harvest gaps, elk fallback and raster reprojection passed.');
+  console.log('Species selections, seasons and historical source fallbacks passed.');
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });

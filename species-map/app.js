@@ -18,6 +18,12 @@
   const SPECIES = window.HUNTSMART_SPECIES;
   if (!Array.isArray(SPECIES) || !SPECIES.length) throw new Error('Species catalogue is unavailable.');
 
+  // The source's legacy ECOTYPE field groups Southern Mountain DU7/DU8 as
+  // "Mountain", but BC identifies these named herds as Northern ecotype.
+  // Keep the source properties intact and classify the displayed ecotype by
+  // BC's current Northern and Central Group herd lists.
+  const NORTHERN_ECOTYPE_HERDS = new Set(['Graham','Chase','Wolverine','Takla','Telkwa','Tweedsmuir','Rainbows','Itcha-Ilgachuz','Charlotte Alplands','Kennedy Siding','Moberly','Scott','Narraway','Quintette','Redrock-Prairie Creek']);
+
   const speciesByKey = Object.fromEntries(SPECIES.map((item) => [item.key, item]));
   const rasterCache = new Map();
   const dynamicCache = new Map();
@@ -141,6 +147,7 @@
     document.getElementById('moose-survey-link').hidden = true;
     document.getElementById('revelstoke-survey-link').hidden = true;
     document.getElementById('mule-source').hidden = true;
+    document.getElementById('caribou-ecotype-link').hidden = true;
     document.getElementById('epu-link').hidden = true;
     document.getElementById('roosevelt-history-link').hidden = true;
     document.getElementById('roosevelt-range-link').hidden = true;
@@ -280,7 +287,14 @@
       rangeCache.set(item.asset, payload);
     }
     if (!allowEmpty && !payload.features.length) throw new Error('Species range data is invalid.');
-    return { ...payload, features: item.filter ? payload.features.filter((f) => f.properties?.[item.filterField || 'SPECIES_CODE'] === item.filter) : payload.features };
+    const features = item.asset === 'data/caribou-herds.geojson' && ['caribou_northern','caribou_mountain'].includes(item.key)
+      ? payload.features.filter(f => {
+        const p = f.properties || {};
+        const northern = p.ECOTYPE === 'Northern' || NORTHERN_ECOTYPE_HERDS.has(p.HERD_NAME);
+        return item.key === 'caribou_northern' ? northern : p.ECOTYPE === 'Mountain' && !northern;
+      })
+      : item.filter ? payload.features.filter((f) => f.properties?.[item.filterField || 'SPECIES_CODE'] === item.filter) : payload.features;
+    return { ...payload, features };
   }
 
   async function historicRoosevelt(signal) {
@@ -406,7 +420,7 @@
     localStorage.setItem('bc-species-map-v2', item.key);
 
     try {
-      if ((viewMode === 'winter' || viewMode === 'summer') && ['caribou', 'caribou_mountain'].includes(item.key)) {
+      if ((viewMode === 'winter' || viewMode === 'summer') && ['caribou', 'caribou_northern'].includes(item.key)) {
         const season = viewMode;
         const note = document.getElementById('layer-note');
         note.hidden = false;
@@ -481,17 +495,17 @@
           document.getElementById('layer-attribution').hidden = true;
           document.getElementById('layer-note-text').textContent = 'Historical: BC 1990 Roosevelt and Rocky Mountain elk distribution. Green, yellow and red show historical low, medium and high classes, not current density or confirmed present-day range.';
           if (results.some(result => result.status === 'rejected')) markIncomplete('Some historical elk source layers could not load.');
-        } else if (item.type === 'raster' && !['mountain_goat','white_tailed_deer','moose'].includes(item.key)) {
+        } else if (item.type === 'raster' && !['mountain_goat','white_tailed_deer','moose','mule_deer'].includes(item.key)) {
           const url = await rasterUrl(item);
           if (version !== renderVersion) return;
           activeOverlay = new google.maps.GroundOverlay(url, BOUNDS, { map, opacity: 0.72, clickable: false });
           document.getElementById('layer-source').href = 'https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=40140';
           document.getElementById('layer-attribution').hidden = true;
           document.getElementById('layer-note-text').textContent = 'Historical: approximate legacy distribution. Its exact dates and source composition are not fully verified; it has been checked against some 1988–1990 BC reference polygons. Not current animal density.';
-        } else if (['wild_sheep','bighorn_sheep','thinhorn_sheep','stone_sheep','dall_tatshenshini','rocky_bighorn_kootenay','california_bighorn_boundary','black_bear','mountain_goat','white_tailed_deer','moose'].includes(item.key)) {
+        } else if (['wild_sheep','bighorn_sheep','thinhorn_sheep','stone_sheep','dall_tatshenshini','rocky_bighorn_kootenay','california_bighorn_boundary','black_bear','mountain_goat','white_tailed_deer','moose','mule_deer'].includes(item.key)) {
           const archives = {
             wild_sheep:['stone','dall','rocky','california'], bighorn_sheep:['rocky','california'], thinhorn_sheep:['stone','dall'],
-            stone_sheep:['stone'], dall_tatshenshini:['dall'], rocky_bighorn_kootenay:['rocky'], california_bighorn_boundary:['california'], black_bear:['blackbear'], mountain_goat:['goat'], white_tailed_deer:['whitetail'], moose:['moose'],
+            stone_sheep:['stone'], dall_tatshenshini:['dall'], rocky_bighorn_kootenay:['rocky'], california_bighorn_boundary:['california'], black_bear:['blackbear'], mountain_goat:['goat'], white_tailed_deer:['whitetail'], moose:['moose'], mule_deer:['mule','blacktail'],
           }[item.key];
           const results = await Promise.allSettled(archives.map(async taxon => {
             const response = await fetch(`/species-map/api/species-data?kind=historicalSpecies&taxon=${taxon}`, { signal:renderAbort.signal });
@@ -508,6 +522,7 @@
           document.getElementById('layer-attribution').hidden = true;
           const year = ['mountain_goat','white_tailed_deer','moose'].includes(item.key) ? 1990 : 1988;
           document.getElementById('layer-note-text').textContent = `Historical: BC ${year} distribution. Green, yellow and red show historical low, medium and high classes, not current density or confirmed present-day range. Subspecies boundaries reflect the historical classifications.`;
+          if (item.key === 'mule_deer') document.getElementById('layer-note-text').textContent += ' Combines mule and black-tailed deer; the two BC black-tail archives contain identical geometry, so they are not shown as separate subspecies.';
           if (results.some(result => result.status === 'rejected')) markIncomplete('Some historical source layers could not load.');
         } else if (item.key === 'caribou' || item.key === 'rocky_elk_kootenay') {
           const isCaribou = item.key === 'caribou';
@@ -654,6 +669,10 @@
           document.getElementById('layer-license').textContent = 'Open Government Licence – Northwest Territories';
         }
         document.getElementById('layer-note-text').textContent = item.note || (item.type === 'grizzly' ? 'Grizzly: estimated bears per 1,000 km² by population subunit, 2018. Green ≤5, yellow 5–15, orange 15–30, red >30. Not precise locations.' : (item.asset === 'data/caribou-herds.geojson' ? `Caribou: BC herd ranges by ecotype; survey dates vary. ${item.key === 'caribou' || item.key === 'caribou_mountain' ? 'Gold outlines include very small herds identified in 2023. ' : ''}Locally extinct resident herds are omitted; absence does not prove no animals. Range is not density.` : item.key === 'black_bear' ? 'Black Bear: broad BC range, not local distribution or density. Bears are found throughout BC, including Vancouver Island and Haida Gwaii.' : item.key === 'wood_bison' ? 'Wood Bison: three mapped transboundary herd ranges; dates vary. Incomplete: Hay-Zama bison occasionally enter BC outside these mapped ranges. Not population density.' : 'BC wild sheep registry ranges. Range is not animal density.'));
+        if (['caribou_northern','caribou_mountain'].includes(item.key)) {
+          document.getElementById('layer-note-text').textContent += ' Ecotype grouping uses BC’s Northern and Central Group herd descriptions; boundaries and status dates vary.';
+          document.getElementById('caribou-ecotype-link').hidden = false;
+        }
         note.hidden = false;
         if (item.key === 'wood_bison') {
           const river = await staticRange({ asset: 'data/hay-river-bison-context.geojson' }, renderAbort.signal);
@@ -662,7 +681,7 @@
           contextData.addGeoJson(river);
           contextData.setStyle({ strokeColor: '#f5c76b', strokeOpacity: 0.95, strokeWeight: 2.5, clickable: false });
           document.getElementById('layer-note-text').textContent += ' Gold: Hay River reference. A 2000 BC plan mentions occasional Hay-Zama crossings in this drainage; the line is not a bison range or sighting.';
-        } else if (item.key === 'caribou' || item.key === 'caribou_mountain') {
+        } else if (item.key === 'caribou' || item.key === 'caribou_northern') {
           const former = await staticRange({ asset: 'data/burnt-pine-context.geojson' }, renderAbort.signal);
           if (version !== renderVersion) return;
           contextData = new google.maps.Data({ map });
