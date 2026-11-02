@@ -4,6 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { execFileSync } = require('node:child_process');
 const source = path.join('private-species-map', 'species-map', 'data');
 const dest = path.join('site', 'species-map', 'data');
 const manifest = JSON.parse(fs.readFileSync(path.join(source, 'sources.json'), 'utf8'));
@@ -15,6 +16,10 @@ const staged = files.map(name => {
   if (!manifest[name]?.output_sha256 || hash !== manifest[name].output_sha256) throw new Error(`Private map asset failed integrity check: ${name}`);
   return [name, bytes];
 });
+
+// Keep the protected API/auth regression checks tied to the same build step that
+// installs the private map so previews validate backend changes before main.
+execFileSync(process.execPath, ['scripts/verify-private-species.mjs'], { stdio:'inherit' });
 
 // Production viewer is intentionally limited to the exact species groups and
 // two eras contained in the supplied KMZ. Do not expose legacy seasonal or
