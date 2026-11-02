@@ -15,23 +15,11 @@ const staged = files.map(name => {
   if (!manifest[name]?.output_sha256 || hash !== manifest[name].output_sha256) throw new Error(`Private map asset failed integrity check: ${name}`);
   return [name, bytes];
 });
-if (process.env.CONTEXT !== 'production') {
-  console.log(`Verified access to ${staged.length} private map assets. Installation is limited to production.`);
-  process.exit(0);
-}
-fs.mkdirSync(dest, { recursive: true });
-for (const [name, bytes] of staged) fs.writeFileSync(path.join(dest, name), bytes);
-fs.copyFileSync(path.join(source, 'sources.json'), path.join(dest, 'sources.json'));
-for (const file of ['app.js', 'index.html', 'app.css', 'species-catalog.js']) {
-  fs.copyFileSync(path.join(source, '..', file), path.join(dest, '..', file));
-}
 
 // Production viewer is intentionally limited to the exact species groups and
 // two eras contained in the supplied KMZ. Do not expose legacy seasonal or
 // subspecies-specific layers here: those are separate evidence products and
 // visually mixing them with the KMZ makes the map misleading.
-const appPath = path.join(dest, '..', 'app.js');
-let app = fs.readFileSync(appPath, 'utf8');
 const appReplacements = [
   [
     "const DISPLAYED_SPECIES = new Set([...KMZ_HEATMAPS, 'roosevelt_elk', 'rocky_elk_kootenay']);",
@@ -75,11 +63,33 @@ const appReplacements = [
           }),`,
   ],
 ];
-for (const [before, after] of appReplacements) {
-  if (!app.includes(before)) throw new Error(`Private species viewer patch target missing: ${before}`);
-  app = app.replace(before, after);
+
+function patchProductionApp(input) {
+  let app = input;
+  for (const [before, after] of appReplacements) {
+    if (!app.includes(before)) throw new Error(`Private species viewer patch target missing: ${before}`);
+    app = app.replace(before, after);
+  }
+  // Parse the exact production output during every build, including deploy previews,
+  // so a malformed build-time replacement cannot reach main unnoticed.
+  new Function(app);
+  return app;
 }
-fs.writeFileSync(appPath, app);
+
+const sourceAppPath = path.join(source, '..', 'app.js');
+const patchedApp = patchProductionApp(fs.readFileSync(sourceAppPath, 'utf8'));
+if (process.env.CONTEXT !== 'production') {
+  console.log(`Verified ${staged.length} private map assets and the production viewer patch. Installation is limited to production.`);
+  process.exit(0);
+}
+
+fs.mkdirSync(dest, { recursive: true });
+for (const [name, bytes] of staged) fs.writeFileSync(path.join(dest, name), bytes);
+fs.copyFileSync(path.join(source, 'sources.json'), path.join(dest, 'sources.json'));
+for (const file of ['app.js', 'index.html', 'app.css', 'species-catalog.js']) {
+  fs.copyFileSync(path.join(source, '..', file), path.join(dest, '..', file));
+}
+fs.writeFileSync(path.join(dest, '..', 'app.js'), patchedApp);
 
 const catalogPath = path.join(dest, '..', 'species-catalog.js');
 let catalog = fs.readFileSync(catalogPath, 'utf8');
