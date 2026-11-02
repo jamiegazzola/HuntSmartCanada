@@ -44,18 +44,31 @@ const historical = filterHistoricalRoosevelt({ type:'FeatureCollection', feature
 ] });
 assert.equal(historical.features.length, 1, 'Contradictory and unknown historical classes must be omitted');
 const recent = matchRecentRoosevelt({ features:[
-  { type:'Feature', geometry, properties:{ EPU_Unit_Name:'Pitt' } },
-  { type:'Feature', geometry, properties:{ EPU_Unit_Name:'Not matched' } },
+  { type:'Feature', geometry, properties:{ EPU_Unit_Name:'Pitt', EPU_LAND_km2:100 } },
+  { type:'Feature', geometry, properties:{ EPU_Unit_Name:'Coast', EPU_LAND_km2:100 } },
+  { type:'Feature', geometry, properties:{ EPU_Unit_Name:'Valley', EPU_LAND_km2:100 } },
+  { type:'Feature', geometry, properties:{ EPU_Unit_Name:'Range', EPU_LAND_km2:100 } },
+  { type:'Feature', geometry, properties:{ EPU_Unit_Name:'Not matched', EPU_LAND_km2:100 } },
 ] }, { features:[
-  { attributes:{ EPU:'Pitt', Year:'2019', standard_estimate:50 } },
-  { attributes:{ EPU:'Pitt', Year:'2023', model_estimate:60 } },
+  { attributes:{ EPU:'Pitt', Year:'2019', standard_estimate:5 } },
+  { attributes:{ EPU:'Pitt', Year:'2023', model_estimate:10 } },
   { attributes:{ EPU:'Pitt', Year:'2024', model_estimate:70 } },
+  { attributes:{ EPU:'Coast', Year:'2023', standard_estimate:20 } },
+  { attributes:{ EPU:'Valley', Year:'2023', standard_estimate:30 } },
+  { attributes:{ EPU:'Range', Year:'2023', standard_estimate:40 } },
   { attributes:{ EPU:'Not matched', Year:'2023', standard_estimate:0 } },
 ] });
-assert.equal(recent.features.length, 1);
-assert.equal(recent.features[0].properties.survey_year, 2023);
+assert.equal(recent.features.length, 4);
+assert.equal(recent.density_scale, 'relative_quartile');
+assert.deepEqual(recent.density_cuts, [0.1, 0.2, 0.3]);
+const pitt = recent.features.find(feature => feature.properties.unit === 'Pitt');
+assert.equal(pitt.properties.survey_year, 2023);
+assert.equal(pitt.properties.estimate, 10);
+assert.equal(pitt.properties.estimate_source, 'model');
+assert.equal(pitt.properties.density_per_km2, 0.1);
+assert.deepEqual(recent.features.map(feature => feature.properties.heat_class), [1, 2, 3, 4]);
 assert.throws(() => matchRecentRoosevelt({ features:[] }, { features:[], exceededTransferLimit:true }));
-assert.throws(() => matchRecentRoosevelt({ features:[{ geometry, properties:{ EPU_Unit_Name:'Pitt' } }] }, { features:[
+assert.throws(() => matchRecentRoosevelt({ features:[{ geometry, properties:{ EPU_Unit_Name:'Pitt', EPU_LAND_km2:100 } }] }, { features:[
   { attributes:{ EPU:'Pitt', Year:'2023', standard_estimate:10 } },
   { attributes:{ EPU:'P-i-t-t', Year:'2023', standard_estimate:10 } },
 ] }), 'Ambiguous normalized names must not be joined');

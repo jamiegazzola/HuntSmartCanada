@@ -190,6 +190,7 @@ async function fetchRooseveltEpu() {
 export function matchRecentRoosevelt(epu, rows) {
   if (!Array.isArray(epu?.features) || !Array.isArray(rows?.features) || rows.exceededTransferLimit) throw new Error('Invalid or incomplete population records')
   const normalize = value => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const numeric = value => value == null || (typeof value === 'string' && !value.trim()) ? NaN : Number(value)
   const nameCounts = new Map()
   for (const feature of epu.features) {
     const key = normalize(feature.properties?.EPU_Unit_Name)
@@ -205,16 +206,42 @@ export function matchRecentRoosevelt(epu, rows) {
       names.add(String(p.EPU).trim().toLowerCase())
       rowNames.set(key, names)
     }
-    const positive = [p.standard_estimate, p.model_estimate].some(x => x != null && String(x).trim() !== '' && Number.isFinite(Number(x)) && Number(x) > 0)
-    if (!key || !Number.isInteger(year) || year < 2013 || year > 2023 || !positive) continue
-    if (!latest.has(key) || year > latest.get(key)) latest.set(key, year)
+    const standard = numeric(p.standard_estimate)
+    const model = numeric(p.model_estimate)
+    const estimate = standard > 0 ? standard : model > 0 ? model : null
+    if (!key || !Number.isInteger(year) || year < 2013 || year > 2023 || estimate == null) continue
+    const previous = latest.get(key)
+    if (!previous || year > previous.year) latest.set(key, { year, estimate, source:standard > 0 ? 'standard' : 'model' })
   }
-  const features = epu.features.filter(feature => {
+  const features = epu.features.flatMap(feature => {
     const key = normalize(feature.properties?.EPU_Unit_Name)
-    return key && nameCounts.get(key) === 1 && rowNames.get(key)?.size === 1 && latest.has(key) && feature.geometry
-  }).map(feature => ({ type:'Feature', geometry:feature.geometry, properties:{ unit:feature.properties.EPU_Unit_Name, survey_year:latest.get(normalize(feature.properties.EPU_Unit_Name)) } }))
+    const record = latest.get(key)
+    const areaKm2 = numeric(feature.properties?.EPU_LAND_km2)
+    if (!key || nameCounts.get(key) !== 1 || rowNames.get(key)?.size !== 1 || !record || !feature.geometry || !Number.isFinite(areaKm2) || areaKm2 <= 0) return []
+    const density = record.estimate / areaKm2
+    if (!Number.isFinite(density) || density <= 0) return []
+    return [{
+      type:'Feature',
+      geometry:feature.geometry,
+      properties:{
+        unit:feature.properties.EPU_Unit_Name,
+        survey_year:record.year,
+        estimate:record.estimate,
+        estimate_source:record.source,
+        area_km2:areaKm2,
+        density_per_km2:Number(density.toFixed(6)),
+      },
+    }]
+  })
   if (!features.length) throw new Error('No unambiguous recent population-unit matches')
-  return { type:'FeatureCollection', features }
+  const densities = features.map(feature => feature.properties.density_per_km2).sort((a, b) => a - b)
+  const q = p => densities[Math.min(densities.length - 1, Math.floor((densities.length - 1) * p))]
+  const cuts = [q(0.25), q(0.5), q(0.75)]
+  for (const feature of features) {
+    const density = feature.properties.density_per_km2
+    feature.properties.heat_class = density > cuts[2] ? 4 : density > cuts[1] ? 3 : density > cuts[0] ? 2 : 1
+  }
+  return { type:'FeatureCollection', features, density_field:'density_per_km2', density_scale:'relative_quartile', density_cuts:cuts }
 }
 
 async function fetchRecentRoosevelt() {
