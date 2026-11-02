@@ -102,6 +102,13 @@ function setup({ failMainland = false, syntheticRaster = false, failOnce = '', d
 async function select(env, key) { env.element('species').value = key; await env.element('species').change(); }
 async function run() {
   const manifest = JSON.parse(fs.readFileSync('species-map/data/sources.json', 'utf8'));
+  const summerModels = ['mule_deer','white_tailed_deer','nw_whitetail_kootenay','dakota_whitetail_peace','elk','roosevelt_elk','rocky_elk_kootenay','moose','northwestern_moose_ne','alaskan_moose_nw','shiras_moose_flathead','stone_sheep','caribou_mountain'];
+  for (const key of summerModels) {
+    const filename = `summer-habitat-${key}.png`;
+    const bytes = fs.readFileSync(path.join('species-map/data', filename));
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), manifest[filename].output_sha256, `${filename} must match its source manifest`);
+    assert(manifest[filename].source_pixels > 100, `${filename} must contain mapped habitat`);
+  }
   const grizzly2012 = JSON.parse(fs.readFileSync('species-map/data/grizzly-2012.geojson', 'utf8'));
   assert.equal(createHash('sha256').update(fs.readFileSync('species-map/data/grizzly-2012.geojson')).digest('hex'), manifest['grizzly-2012.geojson'].output_sha256);
   assert.equal(grizzly2012.features.length, 219);
@@ -362,6 +369,11 @@ async function run() {
   assert(seasons.element('layer-note-text').textContent.includes('no verified winter'));
   await seasons.element('era-summer').click();
   assert(seasons.element('layer-note-text').textContent.includes('no verified summer'));
+  for (const key of summerModels) {
+    await select(seasons, key);
+    assert(seasons.overlays.some(o => o.map && o.url.includes(`summer-habitat-${key}.png`)), `${key} summer habitat missing`);
+    assert(seasons.element('layer-note-text').textContent.includes('not observations or animal density'));
+  }
   for (const mode of ['winter','summer']) {
     await seasons.element(`era-${mode}`).click();
     for (const key of optionKeys) {

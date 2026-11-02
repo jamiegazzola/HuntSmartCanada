@@ -23,7 +23,13 @@ for (const item of items) {
   if (missing.length) throw Error(`${item.key}: missing ${missing.join(', ')}`);
   const historical = item.type === 'raster' || item.type === 'grizzly' || item.type === 'roosevelt' || ['caribou','rocky_elk_kootenay','wild_sheep','bighorn_sheep','thinhorn_sheep','stone_sheep','dall_tatshenshini','rocky_bighorn_kootenay','california_bighorn_boundary','black_bear'].includes(item.key);
   const winter = ['raster','partial_winter','roosevelt','stone'].includes(item.type) || ['wild_sheep','bighorn_sheep','thinhorn_sheep','caribou','caribou_northern'].includes(item.key);
-  const summer = ['caribou','caribou_northern'].includes(item.key);
+  const summerModel = ['mule_deer','white_tailed_deer','nw_whitetail_kootenay','dakota_whitetail_peace','elk','roosevelt_elk','rocky_elk_kootenay','moose','northwestern_moose_ne','alaskan_moose_nw','shiras_moose_flathead','stone_sheep','caribou_mountain'];
+  if (summerModel.includes(item.key)) {
+    const file = `data/summer-habitat-${item.key}.png`;
+    if (!fs.existsSync(path.join(root,file))) throw Error(`${item.key}: missing ${file}`);
+    referenced.add(file);
+  }
+  const summer = ['caribou','caribou_northern'].includes(item.key) || summerModel.includes(item.key);
   reports.push({ key:item.key, label:item.label, modern:item.type !== 'partial_winter', winter, summer, historical, referenced_files:[...referenced], limitations:'Availability means a layer exists, not complete coverage or verified density.' });
 }
 console.log(JSON.stringify({ species:reports.length, seasons:['modern','winter','summer','historical'], summary:Object.fromEntries(['modern','winter','summer','historical'].map(mode => [mode,reports.filter(r=>r[mode]).length])), entries:reports }, null, 2));

@@ -755,5 +755,205 @@
     ],
     "output_sha256": "ce560ce3c60bfe8a2a5fb63ae9ded63bb83cb7e8bf27787d16562be93e9d1276",
     "note": "BC 2012 density estimates joined by population unit and wildlife management unit to 2018 boundaries. 2018 geometry is an approximation for 2012. Ambiguous or missing joins omitted; not precise animal locations."
+  },
+  "summer-habitat-mule_deer.png": {
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals",
+      "https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=1434"
+    ],
+    "source_sha256": [
+      "c493f7eee276668401f90156aa618ae0bd4b265ffc01fea9b08eabf1e9a7ca44"
+    ],
+    "output_sha256": "7024b94089cf0d82557a496851c13051bd1233b5b74cf9ff2249fd57907c3fc9",
+    "fields": [
+      "M_ODHE_SLI6WTSUI",
+      "M_ODHE_CO_SLI6WTSUI",
+      "M_ODHE_SI_SLI6WTSUI"
+    ],
+    "note": "Broad ecosystem habitat suitability model (1:250,000; 2003-era methodology). Classes 1\u20133 only, not observed animal distribution, confirmed occupancy or density. Coverage and input dates vary.",
+    "source_pixels": 173499
+  },
+  "summer-habitat-white_tailed_deer.png": {
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals",
+      "https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=1434"
+    ],
+    "source_sha256": [
+      "6450bed70123933a85211a63306d71de2e08f44fc4106210df4e36a21d013b1d"
+    ],
+    "output_sha256": "9b9d919007eb50147e8e0edec0d2dbf0b8770cb43ec0e99faf45c3f472b4b9f6",
+    "fields": [
+      "M_ODVI_SLI6WTSUI"
+    ],
+    "note": "Broad ecosystem habitat suitability model (1:250,000; 2003-era methodology). Classes 1\u20133 only, not observed animal distribution, confirmed occupancy or density. Coverage and input dates vary.",
+    "source_pixels": 40230
+  },
+  "summer-habitat-nw_whitetail_kootenay.png": {
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals",
+      "https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=1434"
+    ],
+    "source_sha256": [
+      "213cf26657dab0989e21817265dfb4a64467e09e9e9ce15a18c59b34244121c2"
+    ],
+    "output_sha256": "687f827decea696834b008c35999cf1e879c009e858ac940732fd236f5c43bf1",
+    "fields": [
+      "M_ODVI_OC_SLI6WTSUI"
+    ],
+    "note": "Broad ecosystem habitat suitability model (1:250,000; 2003-era methodology). Classes 1\u20133 only, not observed animal distribution, confirmed occupancy or density. Coverage and input dates vary.",
+    "source_pixels": 26177
+  },
+  "summer-habitat-dakota_whitetail_peace.png": {
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals",
+      "https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=1434"
+    ],
+    "source_sha256": [
+      "97b87574a038f147cc9bc81fc5fd2dcf601374ffc145b1552ddc83448679b6a2"
+    ],
+    "output_sha256": "825d913f19647296c8bc24bf0ffab57ebda5673d97ab94569ab29a8663bc5ed1",
+    "fields": [
+      "M_ODVI_DA_SLI6WTSUI"
+    ],
+    "note": "Broad ecosystem habitat suitability model (1:250,000; 2003-era methodology). Classes 1\u20133 only, not observed animal distribution, confirmed occupancy or density. Coverage and input dates vary.",
+    "source_pixels": 14053
+  },
+  "summer-habitat-elk.png": {
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals",
+      "https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=1434"
+    ],
+    "source_sha256": [
+      "de7bd4f0c86288c4201c8c43d88a3a75401e68edd4021e1f367221d83d905d26"
+    ],
+    "output_sha256": "e9a43ceab8e8458b14e23fa0d46cc1c54390ede109e6fb8229103bbe3e4775ae",
+    "fields": [
+      "M_CEEL_NE_SLI6WTSUI",
+      "M_CEEL_RO_SLI6WTSUI"
+    ],
+    "note": "Broad ecosystem habitat suitability model (1:250,000; 2003-era methodology). Classes 1\u20133 only, not observed animal distribution, confirmed occupancy or density. Coverage and input dates vary.",
+    "source_pixels": 75779
+  },
+  "summer-habitat-roosevelt_elk.png": {
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals",
+      "https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=1434"
+    ],
+    "source_sha256": [
+      "28159d10d4fa3dd7df827538da53d6020ce3affd037bb1fa6dcddd7a0b0aa2e8"
+    ],
+    "output_sha256": "d8e8d0d4a038def865a3cbbfe4d60b407d36dd72bb85ae599fb23b108bf93e97",
+    "fields": [
+      "M_CEEL_RO_SLI6WTSUI"
+    ],
+    "note": "Broad ecosystem habitat suitability model (1:250,000; 2003-era methodology). Classes 1\u20133 only, not observed animal distribution, confirmed occupancy or density. Coverage and input dates vary.",
+    "source_pixels": 18400
+  },
+  "summer-habitat-rocky_elk_kootenay.png": {
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals",
+      "https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=1434"
+    ],
+    "source_sha256": [
+      "0c09084c713ff938a79cc3caa70ba2cbd7b63fa83dc45cb08f5c814ac49c7755"
+    ],
+    "output_sha256": "fd5b260a9766a5961d04199bb59d93caa0be3f3cd3d0430fd57bbcb7760d4f5c",
+    "fields": [
+      "M_CEEL_NE_SLI6WTSUI"
+    ],
+    "note": "Broad ecosystem habitat suitability model (1:250,000; 2003-era methodology). Classes 1\u20133 only, not observed animal distribution, confirmed occupancy or density. Coverage and input dates vary.",
+    "source_pixels": 57379
+  },
+  "summer-habitat-moose.png": {
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals",
+      "https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=1434"
+    ],
+    "source_sha256": [
+      "0c99db3b3bd455e60483a39db54c8c861c2599e0c48bafcd721019e938f37f00"
+    ],
+    "output_sha256": "54569f662552f1764881c12a6fd4caeb7b0351e7b56ff33783e8d6cce9c72e9a",
+    "fields": [
+      "M_ALAL_AN_SLI6WTSUI",
+      "M_ALAL_GI_SLI6WTSUI",
+      "M_ALAL_SH_SLI6WTSUI"
+    ],
+    "note": "Broad ecosystem habitat suitability model (1:250,000; 2003-era methodology). Classes 1\u20133 only, not observed animal distribution, confirmed occupancy or density. Coverage and input dates vary.",
+    "source_pixels": 204066
+  },
+  "summer-habitat-northwestern_moose_ne.png": {
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals",
+      "https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=1434"
+    ],
+    "source_sha256": [
+      "e4508004b695067330f0772a17b2bc7b2393a86d60bbd4eb21ab3469828c32f7"
+    ],
+    "output_sha256": "5fb55403a93b5b8be254b09732434f39d915725d1996d476334da1a7b45fd299",
+    "fields": [
+      "M_ALAL_AN_SLI6WTSUI"
+    ],
+    "note": "Broad ecosystem habitat suitability model (1:250,000; 2003-era methodology). Classes 1\u20133 only, not observed animal distribution, confirmed occupancy or density. Coverage and input dates vary.",
+    "source_pixels": 153689
+  },
+  "summer-habitat-alaskan_moose_nw.png": {
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals",
+      "https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=1434"
+    ],
+    "source_sha256": [
+      "a45466c8b3762928259a18a3932e337175e8f056439a32460a7a3eab0af3d860"
+    ],
+    "output_sha256": "54c94846e24b33843573f15a007cd0e59dc065205a2eec45b245c15ecbc2d166",
+    "fields": [
+      "M_ALAL_GI_SLI6WTSUI"
+    ],
+    "note": "Broad ecosystem habitat suitability model (1:250,000; 2003-era methodology). Classes 1\u20133 only, not observed animal distribution, confirmed occupancy or density. Coverage and input dates vary.",
+    "source_pixels": 43611
+  },
+  "summer-habitat-shiras_moose_flathead.png": {
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals",
+      "https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=1434"
+    ],
+    "source_sha256": [
+      "9957e8579e7be48b3ad45d54311d8a9d9cd21684926ea5e533443b9f2d16fef1"
+    ],
+    "output_sha256": "ba5193ea9981a284b343d8b6b5b8404ac7e35a9d3a37ffbf63b831b264c45925",
+    "fields": [
+      "M_ALAL_SH_SLI6WTSUI"
+    ],
+    "note": "Broad ecosystem habitat suitability model (1:250,000; 2003-era methodology). Classes 1\u20133 only, not observed animal distribution, confirmed occupancy or density. Coverage and input dates vary.",
+    "source_pixels": 6936
+  },
+  "summer-habitat-stone_sheep.png": {
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals",
+      "https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=1434"
+    ],
+    "source_sha256": [
+      "551a219f5d2052d8274b0d29f76536aa7c9d98bd6b237a998c33d07f64b2a5d0"
+    ],
+    "output_sha256": "1892783535d95cdde3b0f0da59fe36337668a03614a2a346e509625773da26ae",
+    "fields": [
+      "M_OVDA_ST_SLI6WTSUI"
+    ],
+    "note": "Broad ecosystem habitat suitability model (1:250,000; 2003-era methodology). Classes 1\u20133 only, not observed animal distribution, confirmed occupancy or density. Coverage and input dates vary.",
+    "source_pixels": 26877
+  },
+  "summer-habitat-caribou_mountain.png": {
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals",
+      "https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=1434"
+    ],
+    "source_sha256": [
+      "8e6e057da35258682295bfc026601a2c5cceb60ff04e32b06107299663078ae5"
+    ],
+    "output_sha256": "3724a403b4e5cd6442d353b2be7cd6ea02bd1f2b21691e686f775e9f0550d327",
+    "fields": [
+      "M_RATA_MO_SLI6WTSUI"
+    ],
+    "note": "Broad ecosystem habitat suitability model (1:250,000; 2003-era methodology). Classes 1\u20133 only, not observed animal distribution, confirmed occupancy or density. Coverage and input dates vary.",
+    "source_pixels": 42749
   }
 }

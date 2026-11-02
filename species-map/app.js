@@ -23,6 +23,7 @@
   // Keep the source properties intact and classify the displayed ecotype by
   // BC's current Northern and Central Group herd lists.
   const NORTHERN_ECOTYPE_HERDS = new Set(['Graham','Chase','Wolverine','Takla','Telkwa','Tweedsmuir','Rainbows','Itcha-Ilgachuz','Charlotte Alplands','Kennedy Siding','Moberly','Scott','Narraway','Quintette','Redrock-Prairie Creek']);
+  const SUMMER_HABITAT = new Set(['mule_deer','white_tailed_deer','nw_whitetail_kootenay','dakota_whitetail_peace','elk','roosevelt_elk','rocky_elk_kootenay','moose','northwestern_moose_ne','alaskan_moose_nw','shiras_moose_flathead','stone_sheep','caribou_mountain']);
 
   const speciesByKey = Object.fromEntries(SPECIES.map((item) => [item.key, item]));
   const rasterCache = new Map();
@@ -436,6 +437,11 @@
         activeData.addGeoJson(payload);
         activeData.setStyle(f => ({ fillColor:f.getProperty('quality') === 'Very High' ? '#dca63a' : '#72b69e', fillOpacity:0.5, strokeOpacity:0, clickable:false }));
         document.getElementById('layer-note-text').textContent = `${season === 'summer' ? 'Summer' : 'Winter'}: BC high-elevation seasonal caribou habitat mapped in 2017 for South Peace herds and Graham. Green: high; gold: very high. Partial regional habitat, not current density or confirmed occupancy. Burnt Pine's resident herd was later extirpated.`;
+      } else if (viewMode === 'summer' && SUMMER_HABITAT.has(item.key)) {
+        winterOverlay = new google.maps.GroundOverlay(`data/summer-habitat-${item.key}.png?v=1`, BOUNDS, { map, opacity:0.9, clickable:false });
+        document.getElementById('layer-note').hidden = false;
+        document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals';
+        document.getElementById('layer-note-text').textContent = 'Summer: BC’s broad 2003-era habitat suitability model, not observations or animal density. Red: very high; orange: high; yellow: moderate suitability. Partial coverage and dated inputs; habitat may lie outside the animal’s range. No colour does not prove absence.';
       } else if (viewMode === 'winter') {
         const note = document.getElementById('layer-note');
         const text = document.getElementById('layer-note-text');
