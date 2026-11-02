@@ -1,5 +1,5 @@
 /* HuntSmart offline-lite cache: current app shell + conservative offline fallback. */
-const HS_CACHE = 'huntsmart-offline-lite-v80';
+const HS_CACHE = 'huntsmart-offline-lite-v81';
 const HS_CORE = [
   './', './index.html', './site.webmanifest', './style.css', './terrain-intelligence.css',
   './maps.js', './terrain-intelligence.js', './bc-open-seasons.js', './data.js',
@@ -49,6 +49,11 @@ self.addEventListener('fetch', event => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // Never persist or serve private species-map resources from Cache Storage.
+  // Bypass interception entirely so each request goes through server auth.
+  if (url.pathname === '/species-map' || url.pathname.startsWith('/species-map/') ||
+      url.pathname === '/.netlify/functions/species-data') return;
 
   // Do not turn provincial vector tiles or large geometry into an unbounded browser cache.
   if (url.pathname.startsWith('/map-tiles/') || /\.(?:pbf|pmtiles|geojson)$/i.test(url.pathname)) return;

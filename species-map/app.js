@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const APP_BUILD = 'species-map-rebuild-v11';
+  const APP_BUILD = 'species-map-rebuild-v12';
   window.__HUNTSMART_SPECIES_MAP_BUILD__ = APP_BUILD;
   const BOUNDS = { north: 60.1, south: 48.1, east: -113.8, west: -139.2 };
   const PALETTE = [
@@ -15,34 +15,15 @@
   const DEFAULT_RASTER_H = 123;
   const ASSET_REV = 'rebuild-20261031-11';
 
-  const SPECIES = [
-    { key: 'mule_deer', label: 'Mule Deer (including Black-tailed Deer)', type: 'raster', asset: 'data/mule_deer.js', source: 'mule_deer' },
-    { key: 'white_tailed_deer', label: 'White-tailed Deer', type: 'raster', asset: 'data/white_tailed_deer.js', source: 'white_tailed_deer' },
-    { key: 'nw_whitetail_kootenay', label: 'Northwestern White-tailed Deer (Kootenay winter habitat)', type: 'partial_winter', asset: 'data/winter-nw-whitetail-kootenay.png', note: 'Blue: Kootenay white-tailed deer winter habitat. Northwestern subspecies assignment is approximate, not genetically verified. Incomplete seasonal habitat, not the full range or animal density.' },
-    { key: 'dakota_whitetail_peace', label: 'Dakota White-tailed Deer (possible Peace harvest)', type: 'harvest_context', asset: 'data/dakota-whitetail-peace-context.geojson', note: 'Purple: Peace-region units with reported or estimated white-tail harvest, 2020–24. BC says these deer may be Dakota, but harvest records do not identify subspecies, precise locations or density.' },
-    { key: 'elk', label: 'Elk', type: 'raster', asset: 'data/elk.js', source: 'elk' },
-    { key: 'roosevelt_elk', label: 'Roosevelt Elk', type: 'roosevelt' },
-    { key: 'rocky_elk_kootenay', label: 'Rocky Mountain Elk (Kootenay winter habitat)', type: 'partial_winter', asset: 'data/winter-rocky-elk-kootenay.png', note: 'Blue: approved elk winter habitat in the Kootenay region. Incomplete seasonal habitat, not the full Rocky Mountain elk range or animal density.' },
-    { key: 'moose', label: 'Moose', type: 'raster', asset: 'data/moose.js', source: 'moose' },
-    { key: 'northwestern_moose_ne', label: 'Northwestern Moose (northeast winter habitat)', type: 'partial_winter', asset: 'data/winter-northwestern-moose-ne.png', note: 'Blue: approved moose winter habitat within northeastern areas where a BC report identifies Northwestern moose. Incomplete seasonal habitat, not the full subspecies range or animal density.' },
-    { key: 'alaskan_moose_nw', label: 'Alaskan Moose (possible northwest harvest)', type: 'harvest_context', asset: 'data/alaskan_moose_nw-harvest-context.geojson', note: 'Purple: selected northwest BC units with reported or estimated moose harvest, 2020–24. Alaskan moose are described in this broad region, but records do not identify subspecies, precise locations or density.' },
-    { key: 'shiras_moose_flathead', label: 'Shiras’ Moose (possible Flathead harvest)', type: 'harvest_context', asset: 'data/shiras_moose_flathead-harvest-context.geojson', note: 'Purple: Flathead-area unit with reported or estimated moose harvest, 2020–24. Shiras’ moose are described in this broad region, but records do not identify subspecies, precise locations or density.' },
-    { key: 'mountain_goat', label: 'Mountain Goat', type: 'raster', asset: 'data/mountain_goat.js', source: 'mountain_goat' },
-    { key: 'wild_sheep', label: 'Wild Sheep (all)', type: 'range', asset: 'data/sheep-ranges.geojson' },
-    { key: 'bighorn_sheep', label: 'Bighorn Sheep', type: 'range', asset: 'data/sheep-ranges.geojson', filter: 'M-OVCA' },
-    { key: 'rocky_bighorn_kootenay', label: 'Rocky Mountain Bighorn (Kootenay winter habitat)', type: 'partial_winter', asset: 'data/winter-rocky_bighorn_kootenay.png', note: 'Blue: East Kootenay bighorn winter habitat. Rocky Mountain subspecies assignment is approximate, not genetically verified. Incomplete seasonal habitat, not the full range or density.' },
-    { key: 'california_bighorn_boundary', label: 'California Bighorn (Boundary winter habitat)', type: 'partial_winter', asset: 'data/winter-california_bighorn_boundary.png', note: 'Blue: Boundary-area bighorn winter habitat. California subspecies assignment is approximate, not genetically verified. Incomplete seasonal habitat, not the full range or density.' },
-    { key: 'thinhorn_sheep', label: 'Thinhorn Sheep', type: 'range', asset: 'data/sheep-ranges.geojson', filter: 'M-OVDA' },
-    { key: 'dall_tatshenshini', label: 'Dall’s Sheep (Tatshenshini range context)', type: 'range', asset: 'data/dall-tatshenshini-context.geojson', note: 'Thinhorn sheep range inside Tatshenshini-Alsek Park, where BC Parks reports Dall’s sheep in the Dollis and Datlaska ranges. Broad context only: not a Dall-specific boundary, full range or density.' },
-    { key: 'stone_sheep', label: 'Stone’s Sheep (partial winter habitat)', type: 'stone', asset: 'data/sheep-ranges.geojson', filter: 'M-OVDA' },
-    { key: 'caribou', label: 'Caribou (all)', type: 'range', asset: 'data/caribou-herds.geojson' },
-    { key: 'caribou_northern', label: 'Northern Caribou', type: 'range', asset: 'data/caribou-herds.geojson', filter: 'Northern', filterField: 'ECOTYPE' },
-    { key: 'caribou_mountain', label: 'Mountain Caribou', type: 'range', asset: 'data/caribou-herds.geojson', filter: 'Mountain', filterField: 'ECOTYPE' },
-    { key: 'caribou_boreal', label: 'Boreal Caribou', type: 'range', asset: 'data/caribou-herds.geojson', filter: 'Boreal', filterField: 'ECOTYPE' },
-    { key: 'grizzly_bear', label: 'Grizzly Bear', type: 'grizzly', asset: 'data/grizzly-2018.geojson' },
-    { key: 'black_bear', label: 'Black Bear', type: 'range', asset: 'data/black-bear-broad-range.geojson' },
-    { key: 'wood_bison', label: 'Wood Bison', type: 'range', asset: 'data/wood-bison-herds.geojson' },
-  ];
+  const SPECIES = window.HUNTSMART_SPECIES;
+  if (!Array.isArray(SPECIES) || !SPECIES.length) throw new Error('Species catalogue is unavailable.');
+
+  // The source's legacy ECOTYPE field groups Southern Mountain DU7/DU8 as
+  // "Mountain", but BC identifies these named herds as Northern ecotype.
+  // Keep the source properties intact and classify the displayed ecotype by
+  // BC's current Northern and Central Group herd lists.
+  const NORTHERN_ECOTYPE_HERDS = new Set(['Graham','Chase','Wolverine','Takla','Telkwa','Tweedsmuir','Rainbows','Itcha-Ilgachuz','Charlotte Alplands','Kennedy Siding','Moberly','Scott','Narraway','Quintette','Redrock-Prairie Creek']);
+  const SUMMER_HABITAT = new Set(['mule_deer','white_tailed_deer','nw_whitetail_kootenay','dakota_whitetail_peace','elk','roosevelt_elk','rocky_elk_kootenay','moose','northwestern_moose_ne','alaskan_moose_nw','shiras_moose_flathead','stone_sheep','caribou_mountain']);
 
   const speciesByKey = Object.fromEntries(SPECIES.map((item) => [item.key, item]));
   const rasterCache = new Map();
@@ -60,6 +41,7 @@
   let map = null;
   let activeOverlay = null;
   let winterOverlay = null;
+  let seasonalOverlays = [];
   let activeData = null;
   let islandData = null;
   let contextData = null;
@@ -69,11 +51,16 @@
   let renderAbort = null;
   let errorTimer = null;
   let stoneDetail = null;
-  let viewMode = localStorage.getItem('bc-species-map-era') === 'historical' ? 'historical' : 'modern';
+  const storedMode = localStorage.getItem('bc-species-map-era');
+  let viewMode = ['modern', 'winter', 'summer', 'historical'].includes(storedMode) ? storedMode : 'modern';
   const eraModern = document.getElementById('era-modern');
+  const eraWinter = document.getElementById('era-winter');
+  const eraSummer = document.getElementById('era-summer');
   const eraHistorical = document.getElementById('era-historical');
   function setEraButtons() {
     eraModern.setAttribute('aria-pressed', viewMode === 'modern' ? 'true' : 'false');
+    eraWinter.setAttribute('aria-pressed', viewMode === 'winter' ? 'true' : 'false');
+    eraSummer.setAttribute('aria-pressed', viewMode === 'summer' ? 'true' : 'false');
     eraHistorical.setAttribute('aria-pressed', viewMode === 'historical' ? 'true' : 'false');
   }
   function changeEra(mode) {
@@ -84,6 +71,8 @@
     return renderSelected();
   }
   eraModern.addEventListener('click', () => changeEra('modern'));
+  eraWinter.addEventListener('click', () => changeEra('winter'));
+  eraSummer.addEventListener('click', () => changeEra('summer'));
   eraHistorical.addEventListener('click', () => changeEra('historical'));
   setEraButtons();
 
@@ -131,6 +120,8 @@
       winterOverlay.setMap(null);
       winterOverlay = null;
     }
+    seasonalOverlays.forEach(overlay => overlay.setMap(null));
+    seasonalOverlays = [];
     if (contextData) {
       contextData.setMap(null);
       contextData = null;
@@ -157,6 +148,7 @@
     document.getElementById('moose-survey-link').hidden = true;
     document.getElementById('revelstoke-survey-link').hidden = true;
     document.getElementById('mule-source').hidden = true;
+    document.getElementById('caribou-ecotype-link').hidden = true;
     document.getElementById('epu-link').hidden = true;
     document.getElementById('roosevelt-history-link').hidden = true;
     document.getElementById('roosevelt-range-link').hidden = true;
@@ -296,7 +288,14 @@
       rangeCache.set(item.asset, payload);
     }
     if (!allowEmpty && !payload.features.length) throw new Error('Species range data is invalid.');
-    return { ...payload, features: item.filter ? payload.features.filter((f) => f.properties?.[item.filterField || 'SPECIES_CODE'] === item.filter) : payload.features };
+    const features = item.asset === 'data/caribou-herds.geojson' && ['caribou_northern','caribou_mountain'].includes(item.key)
+      ? payload.features.filter(f => {
+        const p = f.properties || {};
+        const northern = p.ECOTYPE === 'Northern' || NORTHERN_ECOTYPE_HERDS.has(p.HERD_NAME);
+        return item.key === 'caribou_northern' ? northern : p.ECOTYPE === 'Mountain' && !northern;
+      })
+      : item.filter ? payload.features.filter((f) => f.properties?.[item.filterField || 'SPECIES_CODE'] === item.filter) : payload.features;
+    return { ...payload, features };
   }
 
   async function historicRoosevelt(signal) {
@@ -360,7 +359,7 @@
     data.setStyle((feature) => {
       const smallCaribouHerd = item.asset === 'data/caribou-herds.geojson' && ['Narrow Lake', 'Frisby Boulder'].includes(feature.getProperty('HERD_NAME'));
       if (smallCaribouHerd) return { fillOpacity: 0, strokeColor: '#f5c76b', strokeOpacity: 0.95, strokeWeight: 2, clickable: false };
-      const density = Number(feature.getProperty('density_2018'));
+      const density = Number(feature.getProperty(item.densityField || 'density_2018'));
       const level = item.type === 'grizzly' ? (density <= 5 ? 1 : density <= 15 ? 2 : density <= 30 ? 3 : 4) : 1;
       const color = PALETTE[level];
       return { fillColor: `rgb(${color[0]},${color[1]},${color[2]})`, fillOpacity: item.type === 'stone' ? 0.16 : 0.65, strokeColor: '#fff', strokeOpacity: 0.35, strokeWeight: 0.6, zIndex: item.type === 'stone' ? 1 : 0, clickable: false };
@@ -422,23 +421,133 @@
     localStorage.setItem('bc-species-map-v2', item.key);
 
     try {
-      if (viewMode === 'historical') {
+      if ((viewMode === 'winter' || viewMode === 'summer') && ['caribou', 'caribou_northern'].includes(item.key)) {
+        const season = viewMode;
+        const note = document.getElementById('layer-note');
+        note.hidden = false;
+        document.getElementById('layer-source').href = 'https://www2.gov.bc.ca/gov/content/environment/plants-animals-ecosystems/wildlife/regional-wildlife/northeast';
+        document.getElementById('layer-attribution').hidden = true;
+        document.getElementById('layer-note-text').textContent = `${season === 'summer' ? 'Summer' : 'Winter'}: loading BC seasonal habitat…`;
+        const response = await fetch(`/species-map/api/species-data?kind=${season === 'summer' ? 'caribouSummer' : 'caribouWinter'}`, { signal:renderAbort.signal });
+        if (!response.ok) throw new Error('Seasonal caribou habitat could not load.');
+        const payload = await response.json();
+        if (payload?.type !== 'FeatureCollection' || !Array.isArray(payload.features) || !payload.features.length) throw new Error('Seasonal caribou habitat is invalid.');
+        if (version !== renderVersion) return;
+        activeData = new google.maps.Data({ map });
+        activeData.addGeoJson(payload);
+        activeData.setStyle(f => ({ fillColor:f.getProperty('quality') === 'Very High' ? '#dca63a' : '#72b69e', fillOpacity:0.5, strokeOpacity:0, clickable:false }));
+        document.getElementById('layer-note-text').textContent = `${season === 'summer' ? 'Summer' : 'Winter'}: BC high-elevation seasonal caribou habitat mapped in 2017 for South Peace herds and Graham. Green: high; gold: very high. Partial regional habitat, not current density or confirmed occupancy. Burnt Pine's resident herd was later extirpated.`;
+      } else if (viewMode === 'summer' && SUMMER_HABITAT.has(item.key)) {
+        winterOverlay = new google.maps.GroundOverlay(`data/summer-habitat-${item.key}.png?v=1`, BOUNDS, { map, opacity:0.9, clickable:false });
+        document.getElementById('layer-note').hidden = false;
+        document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals';
+        document.getElementById('layer-note-text').textContent = 'Summer: BC’s broad 2003-era habitat suitability model, not observations or animal density. Red: very high; orange: high; yellow: moderate suitability. Partial coverage and dated inputs; habitat may lie outside the animal’s range. No colour does not prove absence.';
+      } else if (viewMode === 'winter') {
+        const note = document.getElementById('layer-note');
+        const text = document.getElementById('layer-note-text');
+        note.hidden = false;
+        document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved';
+        if (item.type === 'raster' || item.type === 'partial_winter') {
+          const asset = item.type === 'raster' ? `data/winter-${item.key}.png` : item.asset;
+          winterOverlay = new google.maps.GroundOverlay(`${asset}?v=1`, BOUNDS, { map, opacity:0.9, clickable:false });
+          text.textContent = `Winter: blue is approved BC winter habitat. ${item.type === 'partial_winter' ? item.note : 'Incomplete seasonal habitat; not the full range or animal density.'}`;
+        } else if (['wild_sheep', 'bighorn_sheep', 'thinhorn_sheep'].includes(item.key)) {
+          if (item.key !== 'thinhorn_sheep') {
+            for (const asset of ['data/winter-rocky_bighorn_kootenay.png', 'data/winter-california_bighorn_boundary.png']) {
+              seasonalOverlays.push(new google.maps.GroundOverlay(`${asset}?v=1`, BOUNDS, { map, opacity:0.9, clickable:false }));
+            }
+          }
+          if (item.key !== 'bighorn_sheep') {
+            const payload = await stoneWinterRange('data/stone-sheep-winter-range-overview.geojson', renderAbort.signal);
+            if (version !== renderVersion) return;
+            renderIslandWinterRange(payload);
+          }
+          text.textContent = 'Winter: blue shows available regional bighorn and/or Stone’s sheep winter habitat, depending on selection. Partial BC coverage; not the full species range or animal density.';
+        } else if (item.type === 'roosevelt' || item.type === 'stone') {
+          const asset = item.type === 'stone' && map.getZoom() <= 8 ? 'data/stone-sheep-winter-range-overview.geojson' : 'data/stone-sheep-winter-range.geojson';
+          if (item.type === 'stone') stoneDetail = map.getZoom() <= 8 ? 'overview' : 'full';
+          const payload = item.type === 'roosevelt' ? await islandWinterRange(renderAbort.signal) : await stoneWinterRange(asset, renderAbort.signal);
+          if (version !== renderVersion) return;
+          renderIslandWinterRange(payload);
+          text.textContent = item.type === 'roosevelt' ? 'Winter: blue is approved Roosevelt elk winter habitat on Vancouver Island. Coverage is incomplete and seasonal; not the full range or density.' : 'Winter: blue is mapped Stone’s sheep winter habitat from four BC orders. Coverage is incomplete and seasonal; not the full range or density.';
+        } else {
+          document.getElementById('layer-source').hidden = true;
+          document.getElementById('layer-attribution').hidden = true;
+          text.textContent = 'Winter: no verified winter-specific layer is available for this selection.';
+        }
+      } else if (viewMode === 'summer') {
+        document.getElementById('layer-note').hidden = false;
+        document.getElementById('layer-source').hidden = true;
+        document.getElementById('layer-attribution').hidden = true;
+        document.getElementById('layer-note-text').textContent = 'Summer: no verified summer-specific layer is available for this selection.';
+      } else if (viewMode === 'historical') {
         const note = document.getElementById('layer-note');
         note.hidden = false;
         document.getElementById('layer-note-text').textContent = 'Historical: loading data…';
-        if (item.type === 'raster') {
+        if (item.key === 'elk') {
+          const kinds = ['rooseveltHistorical1990', 'rockyElkHistorical1990'];
+          const results = await Promise.allSettled(kinds.map(async kind => {
+            const response = await fetch(`/species-map/api/species-data?kind=${kind}`, { signal:renderAbort.signal });
+            if (!response.ok) throw new Error('Historical elk archive unavailable');
+            const data = await response.json();
+            if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features) || !data.features.length) throw new Error('Invalid historical elk archive');
+            return data.features;
+          }));
+          if (version !== renderVersion) return;
+          const features = results.filter(result => result.status === 'fulfilled').flatMap(result => result.value);
+          if (!features.length) throw new Error('Historical elk distribution is unavailable.');
+          renderHistoricalRoosevelt({ type:'FeatureCollection', features });
+          document.getElementById('layer-source').href = 'https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=40140';
+          document.getElementById('layer-attribution').hidden = true;
+          document.getElementById('layer-note-text').textContent = 'Historical: BC 1990 Roosevelt and Rocky Mountain elk distribution. Green, yellow and red show historical low, medium and high classes, not current density or confirmed present-day range.';
+          if (results.some(result => result.status === 'rejected')) markIncomplete('Some historical elk source layers could not load.');
+        } else if (item.type === 'raster' && !['mountain_goat','white_tailed_deer','moose','mule_deer'].includes(item.key)) {
           const url = await rasterUrl(item);
           if (version !== renderVersion) return;
           activeOverlay = new google.maps.GroundOverlay(url, BOUNDS, { map, opacity: 0.72, clickable: false });
           document.getElementById('layer-source').href = 'https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=40140';
           document.getElementById('layer-attribution').hidden = true;
           document.getElementById('layer-note-text').textContent = 'Historical: approximate legacy distribution. Its exact dates and source composition are not fully verified; it has been checked against some 1988–1990 BC reference polygons. Not current animal density.';
-        } else if (item.type === 'grizzly') {
-          const payload = await staticRange(item, renderAbort.signal);
+        } else if (['wild_sheep','bighorn_sheep','thinhorn_sheep','stone_sheep','dall_tatshenshini','rocky_bighorn_kootenay','california_bighorn_boundary','black_bear','mountain_goat','white_tailed_deer','moose','mule_deer'].includes(item.key)) {
+          const archives = {
+            wild_sheep:['stone','dall','rocky','california'], bighorn_sheep:['rocky','california'], thinhorn_sheep:['stone','dall'],
+            stone_sheep:['stone'], dall_tatshenshini:['dall'], rocky_bighorn_kootenay:['rocky'], california_bighorn_boundary:['california'], black_bear:['blackbear'], mountain_goat:['goat'], white_tailed_deer:['whitetail'], moose:['moose'], mule_deer:['mule','blacktail'],
+          }[item.key];
+          const results = await Promise.allSettled(archives.map(async taxon => {
+            const response = await fetch(`/species-map/api/species-data?kind=historicalSpecies&taxon=${taxon}`, { signal:renderAbort.signal });
+            if (!response.ok) throw new Error('Historical archive unavailable');
+            const data = await response.json();
+            if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features) || !data.features.length) throw new Error('Invalid historical archive');
+            return data.features;
+          }));
           if (version !== renderVersion) return;
-          renderStaticRange(payload, item);
+          const features = results.filter(result => result.status === 'fulfilled').flatMap(result => result.value);
+          if (!features.length) throw new Error('Historical distribution data is unavailable.');
+          renderHistoricalRoosevelt({ type:'FeatureCollection', features });
+          document.getElementById('layer-source').href = 'https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=40140';
+          document.getElementById('layer-attribution').hidden = true;
+          const year = ['mountain_goat','white_tailed_deer','moose'].includes(item.key) ? 1990 : 1988;
+          document.getElementById('layer-note-text').textContent = `Historical: BC ${year} distribution. Green, yellow and red show historical low, medium and high classes, not current density or confirmed present-day range. Subspecies boundaries reflect the historical classifications.`;
+          if (item.key === 'mule_deer') document.getElementById('layer-note-text').textContent += ' Combines mule and black-tailed deer; the two BC black-tail archives contain identical geometry, so they are not shown as separate subspecies.';
+          if (results.some(result => result.status === 'rejected')) markIncomplete('Some historical source layers could not load.');
+        } else if (item.key === 'caribou' || item.key === 'rocky_elk_kootenay') {
+          const isCaribou = item.key === 'caribou';
+          const response = await fetch(`/species-map/api/species-data?kind=${isCaribou ? 'caribouHistorical1990' : 'rockyElkHistorical1990'}`, { signal:renderAbort.signal });
+          if (!response.ok) throw new Error('Historical distribution data is unavailable.');
+          const payload = await response.json();
+          if (payload?.type !== 'FeatureCollection' || !Array.isArray(payload.features) || !payload.features.length) throw new Error('Historical caribou data is invalid.');
+          if (version !== renderVersion) return;
+          renderHistoricalRoosevelt(payload);
+          document.getElementById('layer-source').href = 'https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=40140';
+          document.getElementById('layer-attribution').hidden = true;
+          document.getElementById('layer-note-text').textContent = `Historical: BC 1990 ${isCaribou ? 'caribou distribution for all ecotypes combined' : 'Rocky Mountain elk distribution across BC'}. Green, yellow and red are historical low, medium and high classes; not current density or confirmed present-day range.`;
+        } else if (item.type === 'grizzly') {
+          const historicalGrizzly = { ...item, asset:'data/grizzly-2012.geojson', densityField:'density_2012' };
+          const payload = await staticRange(historicalGrizzly, renderAbort.signal);
+          if (version !== renderVersion) return;
+          renderStaticRange(payload, historicalGrizzly);
           document.getElementById('layer-source').href = payload.source;
-          document.getElementById('layer-note-text').textContent = 'Historical: 2018 grizzly estimates per 1,000 km² by population subunit. Green ≤5, yellow 5–15, orange 15–30, red >30; not precise locations.';
+          document.getElementById('layer-note-text').textContent = 'Historical: 2012 grizzly estimates per 1,000 km². Green ≤5, yellow 5–15, orange 15–30, red >30. Estimates are joined to approximate 2018 management boundaries; unmatched units are omitted. Not precise animal locations.';
         } else if (item.type === 'roosevelt') {
           document.getElementById('layer-source').hidden = true;
           document.getElementById('layer-attribution').hidden = true;
@@ -485,22 +594,21 @@
         document.getElementById('layer-note-text').textContent = item.note;
         document.getElementById('layer-note').hidden = false;
       } else if (item.type === 'partial_winter') {
-        winterOverlay = new google.maps.GroundOverlay(`${item.asset}?v=1`, BOUNDS, { map, opacity: 0.9, clickable: false });
-        document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved';
-        document.getElementById('layer-note-text').textContent = item.note;
+        document.getElementById('layer-source').hidden = true;
+        document.getElementById('layer-attribution').hidden = true;
+        document.getElementById('layer-note-text').textContent = 'Modern: a separate modern distribution layer is not available for this selection. Choose Winter for the available seasonal habitat.';
         document.getElementById('layer-note').hidden = false;
       } else if (item.type === 'raster') {
         // Begin supplemental downloads immediately while the base raster decodes.
         const extra = Promise.allSettled([
-          staticRange({ asset: `data/harvest-gap-${item.key}.geojson` }, renderAbort.signal, true),
+          staticRange({ asset: `data/harvest-context-${item.key}.geojson` }, renderAbort.signal, true),
           ...(item.key === 'moose' ? [staticRange({ asset: 'data/moose-724-survey-context.geojson' }, renderAbort.signal), staticRange({ asset: 'data/moose-revelstoke-2025-context.geojson' }, renderAbort.signal)] : []),
           ...(item.key === 'mule_deer' ? [staticRange({ asset: 'data/sitka-blacktail-haida.geojson' }, renderAbort.signal)] : []),
         ]);
-        winterOverlay = new google.maps.GroundOverlay(`data/winter-${item.key}.png?v=1`, BOUNDS, { map, opacity: 0.9, clickable: false });
         const note = document.getElementById('layer-note');
-        document.getElementById('layer-note-text').textContent = 'Modern: blue is approved BC winter habitat, incomplete and not density. Recent survey and harvest information is shown where available; dates vary.';
+        document.getElementById('layer-note-text').textContent = 'Modern: recent survey and harvest information is shown where available; dates vary. Coverage is incomplete. Choose Winter for mapped winter habitat.';
         if (item.key === 'mule_deer') document.getElementById('layer-note-text').textContent += ' Mule deer includes Columbian and Sitka black-tailed deer.';
-        document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved';
+        document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024';
         note.hidden = false;
         const extras = await extra;
         if (version !== renderVersion) return;
@@ -510,7 +618,7 @@
           data.addGeoJson(gaps);
           data.setStyle({ fillOpacity: 0, strokeColor: '#d19cff', strokeOpacity: 0.9, strokeWeight: 1.8, clickable: false });
           activeData = data;
-          document.getElementById('layer-note-text').textContent += ' Purple outlines: units with reported or estimated 2020–24 licensed harvest but no old-grid cell centre. Boundaries do not show precise locations or density.';
+          document.getElementById('layer-note-text').textContent += ' Purple outlines: units with reported or estimated 2020–24 licensed harvest. Boundaries do not show precise locations, current occupancy or density; no recorded harvest does not mean no animals.';
           document.getElementById('gap-link').hidden = false;
         }
         if (item.key === 'mule_deer' && extras[1].status === 'fulfilled') {
@@ -544,16 +652,13 @@
           ? 'data/stone-sheep-winter-range-overview.geojson'
           : 'data/stone-sheep-winter-range.geojson';
         document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved';
-        document.getElementById('layer-note-text').textContent = 'Blue: Stone’s sheep winter habitat from four BC orders; incomplete and not density. Green: all thinhorn sheep range, including Dall’s and mixed areas; not a Stone’s sheep boundary.';
+        document.getElementById('layer-note-text').textContent = 'Green: all thinhorn sheep range, including Dall’s and mixed areas; not a Stone’s sheep boundary. Choose Winter for available Stone’s sheep winter habitat.';
         document.getElementById('layer-note').hidden = false;
         // Paint each independent layer as soon as it arrives; a slow or failed
         // winter-habitat request must not hide the broad thinhorn range.
         const results = await Promise.allSettled([
           staticRange(item, renderAbort.signal).then(payload => {
             if (version === renderVersion) renderStaticRange(payload, item);
-          }),
-          stoneWinterRange(winterAsset, renderAbort.signal).then(winter => {
-            if (version === renderVersion) renderIslandWinterRange(winter);
           }),
         ]);
         if (version !== renderVersion) return;
@@ -570,6 +675,10 @@
           document.getElementById('layer-license').textContent = 'Open Government Licence – Northwest Territories';
         }
         document.getElementById('layer-note-text').textContent = item.note || (item.type === 'grizzly' ? 'Grizzly: estimated bears per 1,000 km² by population subunit, 2018. Green ≤5, yellow 5–15, orange 15–30, red >30. Not precise locations.' : (item.asset === 'data/caribou-herds.geojson' ? `Caribou: BC herd ranges by ecotype; survey dates vary. ${item.key === 'caribou' || item.key === 'caribou_mountain' ? 'Gold outlines include very small herds identified in 2023. ' : ''}Locally extinct resident herds are omitted; absence does not prove no animals. Range is not density.` : item.key === 'black_bear' ? 'Black Bear: broad BC range, not local distribution or density. Bears are found throughout BC, including Vancouver Island and Haida Gwaii.' : item.key === 'wood_bison' ? 'Wood Bison: three mapped transboundary herd ranges; dates vary. Incomplete: Hay-Zama bison occasionally enter BC outside these mapped ranges. Not population density.' : 'BC wild sheep registry ranges. Range is not animal density.'));
+        if (['caribou_northern','caribou_mountain'].includes(item.key)) {
+          document.getElementById('layer-note-text').textContent += ' Ecotype grouping uses BC’s Northern and Central Group herd descriptions; boundaries and status dates vary.';
+          document.getElementById('caribou-ecotype-link').hidden = false;
+        }
         note.hidden = false;
         if (item.key === 'wood_bison') {
           const river = await staticRange({ asset: 'data/hay-river-bison-context.geojson' }, renderAbort.signal);
@@ -578,7 +687,7 @@
           contextData.addGeoJson(river);
           contextData.setStyle({ strokeColor: '#f5c76b', strokeOpacity: 0.95, strokeWeight: 2.5, clickable: false });
           document.getElementById('layer-note-text').textContent += ' Gold: Hay River reference. A 2000 BC plan mentions occasional Hay-Zama crossings in this drainage; the line is not a bison range or sighting.';
-        } else if (item.key === 'caribou' || item.key === 'caribou_mountain') {
+        } else if (item.key === 'caribou' || item.key === 'caribou_northern') {
           const former = await staticRange({ asset: 'data/burnt-pine-context.geojson' }, renderAbort.signal);
           if (version !== renderVersion) return;
           contextData = new google.maps.Data({ map });
@@ -588,7 +697,7 @@
         }
       } else if (item.type === 'roosevelt') {
         document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved';
-        document.getElementById('layer-note-text').textContent = 'Green: broad Vancouver Island Roosevelt elk range context, not confirmed presence everywhere or local density. Blue: mapped approved Island winter habitat, incomplete and seasonal. Mainland historical range is in Historical.';
+        document.getElementById('layer-note-text').textContent = 'Green: broad Vancouver Island Roosevelt elk range context, not confirmed presence everywhere or local density. Choose Winter for mapped Island winter habitat.';
         document.getElementById('layer-note').hidden = false;
         const results = await Promise.allSettled([
           staticRange({ asset:'data/roosevelt-island-range-context.geojson' }, renderAbort.signal).then(payload => {
@@ -603,9 +712,6 @@
             rooseveltMainlandData.setStyle({ fillOpacity:0, strokeColor:'#f5c76b', strokeOpacity:0.95, strokeWeight:1.6, zIndex:1, clickable:false });
             document.getElementById('roosevelt-recent-link').hidden = false;
             document.getElementById('layer-note-text').textContent += ' Gold: mainland management units with nonzero estimates from 2013–2023, depending on unit. Outlines are not exact current occupancy or density.';
-          }),
-          islandWinterRange(renderAbort.signal).then((payload) => {
-            if (version === renderVersion) renderIslandWinterRange(payload);
           }),
           staticRange({ asset: 'data/roosevelt-elk-harvest-context.geojson' }, renderAbort.signal).then((payload) => {
             if (version !== renderVersion) return;
@@ -624,8 +730,9 @@
     } catch (error) {
       if (version === renderVersion && error?.name !== 'AbortError') {
         console.error(error);
-        if (viewMode === 'historical') {
-          document.getElementById('layer-note-text').textContent = 'Historical: this layer could not be loaded. Try again.';
+        if (viewMode !== 'modern') {
+          const label = viewMode === 'historical' ? 'Historical' : viewMode === 'winter' ? 'Winter' : 'Summer';
+          document.getElementById('layer-note-text').textContent = `${label}: this layer could not be loaded. Try again.`;
           document.getElementById('layer-note').hidden = false;
           document.getElementById('layer-source').hidden = true;
           document.getElementById('layer-attribution').hidden = true;
@@ -682,7 +789,7 @@
       }
 
       map.addListener('idle', () => {
-        if (viewMode === 'modern' && select.value === 'stone_sheep' && stoneDetail !== null &&
+        if (viewMode === 'winter' && select.value === 'stone_sheep' && stoneDetail !== null &&
             stoneDetail !== (map.getZoom() <= 8 ? 'overview' : 'full')) {
           renderSelected();
         }

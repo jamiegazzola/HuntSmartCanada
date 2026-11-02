@@ -1,0 +1,3 @@
+[submodule "private-species-map"]
+	path = private-species-map
+	url = git@github.com:jamiegazzola/HuntSmart-Species-Map.git
