@@ -105,12 +105,107 @@ const appReplacements = [
   ],
 ];
 
+function patchKmzGeoref(input) {
+  let app = input;
+
+  const cacheAnchor = '  const rasterCache = new Map();\n';
+  const cacheReplacement = '  const rasterCache = new Map();\n  const kmzOverlayCache = new Map();\n  let kmzManifestPromise = null;\n';
+  if (!app.includes(cacheAnchor)) throw new Error('Private species viewer raster cache anchor is missing');
+  app = app.replace(cacheAnchor, cacheReplacement);
+
+  const helperAnchor = '  async function rasterUrl(item) {';
+  const helper = `  async function loadKmzManifest() {
+    if (!kmzManifestPromise) {
+      kmzManifestPromise = fetch('data/sources.json?v=georef-2', { cache: 'no-store' }).then((response) => {
+        if (!response.ok) throw new Error('Species map metadata could not load.');
+        return response.json();
+      });
+      kmzManifestPromise.catch(() => { kmzManifestPromise = null; });
+    }
+    return kmzManifestPromise;
+  }
+
+  async function loadKmzImage(src, signal) {
+    const image = new Image();
+    image.decoding = 'async';
+    image.src = src;
+    const loaded = new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error('Species heat-map image could not load.'));
+    });
+    if (image.decode) {
+      try { await image.decode(); } catch { await loaded; }
+    } else {
+      await loaded;
+    }
+    if (signal?.aborted) throw new DOMException('The request was aborted.', 'AbortError');
+    return image;
+  }
+
+  async function kmzOverlayUrl(assetName, signal) {
+    if (kmzOverlayCache.has(assetName)) return kmzOverlayCache.get(assetName);
+    const promise = (async () => {
+      const manifest = await loadKmzManifest();
+      const src = \`data/\${assetName}?v=georef-2\`;
+      const processing = String(manifest?.[assetName]?.processing || '');
+      if (!processing.includes('Nearest-row reprojection from linear latitude to Web Mercator')) return src;
+
+      const image = await loadKmzImage(src, signal);
+      const width = image.naturalWidth;
+      const height = image.naturalHeight;
+      if (!width || !height) throw new Error('Species heat-map image dimensions are invalid.');
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d', { alpha: true });
+      ctx.imageSmoothingEnabled = false;
+
+      const mercator = (lat) => Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360));
+      const northM = mercator(BOUNDS.north);
+      const southM = mercator(BOUNDS.south);
+      const latSpan = BOUNDS.north - BOUNDS.south;
+
+      // The current private PNGs were warped once during the KMZ build and then
+      // positioned again by Google GroundOverlay. Undo that first row warp so
+      // their transparent BC mask and heat classes return to the source KML grid.
+      for (let y = 0; y < height; y += 1) {
+        const lat = BOUNDS.north - (y + 0.5) / height * latSpan;
+        const projectedY = (northM - mercator(lat)) / (northM - southM) * height - 0.5;
+        const sourceY = Math.max(0, Math.min(height - 1, Math.round(projectedY)));
+        ctx.drawImage(image, 0, sourceY, width, 1, 0, y, width, 1);
+      }
+
+      if (signal?.aborted) throw new DOMException('The request was aborted.', 'AbortError');
+      return canvas.toDataURL('image/png');
+    })();
+    kmzOverlayCache.set(assetName, promise);
+    promise.catch(() => kmzOverlayCache.delete(assetName));
+    return promise;
+  }
+
+`;
+  if (!app.includes(helperAnchor)) throw new Error('Private species viewer raster function anchor is missing');
+  app = app.replace(helperAnchor, helper + helperAnchor);
+
+  const overlayAnchor = "        activeOverlay = new google.maps.GroundOverlay(`data/kmz-${item.key}-${historical ? 'historic' : 'modern'}.png?v=1`, BOUNDS, { map, opacity: 1, clickable: false });";
+  const overlayReplacement = "        const kmzAsset = `kmz-${item.key}-${historical ? 'historic' : 'modern'}.png`;\n        const kmzUrl = await kmzOverlayUrl(kmzAsset, renderAbort.signal);\n        if (version !== renderVersion) return;\n        activeOverlay = new google.maps.GroundOverlay(kmzUrl, BOUNDS, { map, opacity: 1, clickable: false });";
+  if (!app.includes(overlayAnchor)) throw new Error('Private species viewer KMZ overlay anchor is missing');
+  app = app.replace(overlayAnchor, overlayReplacement);
+
+  const buildPattern = /const APP_BUILD = 'species-map-[^']+';/;
+  if (!buildPattern.test(app)) throw new Error('Private species viewer build marker is missing');
+  app = app.replace(buildPattern, "const APP_BUILD = 'species-map-georef-v2';");
+  return app;
+}
+
 function patchProductionApp(input) {
   let app = input;
   for (const [before, after] of appReplacements) {
     if (!app.includes(before)) throw new Error(`Private species viewer patch target missing: ${before}`);
     app = app.replace(before, after);
   }
+  app = patchKmzGeoref(app);
   // Parse the exact production output during every build, including deploy previews,
   // so a malformed build-time replacement cannot reach main unnoticed.
   new Function(app);
@@ -120,7 +215,7 @@ function patchProductionApp(input) {
 const sourceAppPath = path.join(source, '..', 'app.js');
 const patchedApp = patchProductionApp(fs.readFileSync(sourceAppPath, 'utf8'));
 if (process.env.CONTEXT !== 'production') {
-  console.log(`Verified ${staged.length} private map assets, Roosevelt Island source, and the production viewer patch. Installation is limited to production.`);
+  console.log(`Verified ${staged.length} private map assets, Roosevelt Island source, corrected KMZ georeferencing, and the production viewer patch. Installation is limited to production.`);
   process.exit(0);
 }
 
