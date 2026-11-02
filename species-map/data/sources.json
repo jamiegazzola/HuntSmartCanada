@@ -679,5 +679,70 @@
     ],
     "output_sha256": "71bf891b290ba2fde2fb8b77c6923b39b773fa3e1bd12ef27f08410584bab944",
     "note": "Approximate Vancouver Island geographic context for broad species range; not a population, continuous occupancy or a local habitat map. Coast generalized by 100 m; smaller nearby islands excluded."
+  },
+  "harvest-context-mule_deer.geojson": {
+    "retrieved": "2026-11-01",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units"
+    ],
+    "source_sha256": [
+      "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "f5d114930d816ab9fe3eb7c7f679498dd83c77e61959b5e47a1d7bf6cf47a898",
+    "note": "WMUs with estimated or reported licensed harvest in 2020\u20132024; unit boundaries are not occupancy or density. Moose 1-1 is excluded pending validation. Source records without a specific mapped unit are excluded."
+  },
+  "harvest-context-white_tailed_deer.geojson": {
+    "retrieved": "2026-11-01",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units"
+    ],
+    "source_sha256": [
+      "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "71d8740389375943eb8e36c990670cb318f828f83b8fe73157ce88bb5c323b39",
+    "note": "WMUs with estimated or reported licensed harvest in 2020\u20132024; unit boundaries are not occupancy or density. Moose 1-1 is excluded pending validation. Source records without a specific mapped unit are excluded."
+  },
+  "harvest-context-elk.geojson": {
+    "retrieved": "2026-11-01",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units"
+    ],
+    "source_sha256": [
+      "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "4232235fd0a78d1b96687d805fc75fef7b82a38fcbcb92d166064f15a55b8689",
+    "note": "WMUs with estimated or reported licensed harvest in 2020\u20132024; unit boundaries are not occupancy or density. Moose 1-1 is excluded pending validation. Source records without a specific mapped unit are excluded."
+  },
+  "harvest-context-moose.geojson": {
+    "retrieved": "2026-11-01",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units"
+    ],
+    "source_sha256": [
+      "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "06601a03e4fb9da722cf3260281c57842f44203e255c834bcbe0a60f5f562b6d",
+    "note": "WMUs with estimated or reported licensed harvest in 2020\u20132024; unit boundaries are not occupancy or density. Moose 1-1 is excluded pending validation. Source records without a specific mapped unit are excluded."
+  },
+  "harvest-context-mountain_goat.geojson": {
+    "retrieved": "2026-11-01",
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024",
+      "https://catalogue.data.gov.bc.ca/dataset/wildlife-management-units"
+    ],
+    "source_sha256": [
+      "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e",
+      "d1debaaa0f0f638ae6c48a913cf0f3efdecf89be909d95edc417b44761ddaba2"
+    ],
+    "output_sha256": "5d6363d034de3bf051754bd6fce1b3550d6ab337ab63ec8fb08af3726c6e8dc0",
+    "note": "WMUs with estimated or reported licensed harvest in 2020\u20132024; unit boundaries are not occupancy or density. Moose 1-1 is excluded pending validation. Source records without a specific mapped unit are excluded."
   }
 }

@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const APP_BUILD = 'species-map-rebuild-v11';
+  const APP_BUILD = 'species-map-rebuild-v12';
   window.__HUNTSMART_SPECIES_MAP_BUILD__ = APP_BUILD;
   const BOUNDS = { north: 60.1, south: 48.1, east: -113.8, west: -139.2 };
   const PALETTE = [
@@ -433,6 +433,17 @@
           document.getElementById('layer-source').href = 'https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=40140';
           document.getElementById('layer-attribution').hidden = true;
           document.getElementById('layer-note-text').textContent = 'Historical: approximate legacy distribution. Its exact dates and source composition are not fully verified; it has been checked against some 1988–1990 BC reference polygons. Not current animal density.';
+        } else if (item.key === 'caribou' || item.key === 'rocky_elk_kootenay') {
+          const isCaribou = item.key === 'caribou';
+          const response = await fetch(`/species-map/api/species-data?kind=${isCaribou ? 'caribouHistorical1990' : 'rockyElkHistorical1990'}`, { signal:renderAbort.signal });
+          if (!response.ok) throw new Error('Historical distribution data is unavailable.');
+          const payload = await response.json();
+          if (payload?.type !== 'FeatureCollection' || !Array.isArray(payload.features) || !payload.features.length) throw new Error('Historical caribou data is invalid.');
+          if (version !== renderVersion) return;
+          renderHistoricalRoosevelt(payload);
+          document.getElementById('layer-source').href = 'https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=40140';
+          document.getElementById('layer-attribution').hidden = true;
+          document.getElementById('layer-note-text').textContent = `Historical: BC 1990 ${isCaribou ? 'caribou distribution for all ecotypes combined' : 'Rocky Mountain elk distribution across BC'}. Green, yellow and red are historical low, medium and high classes; not current density or confirmed present-day range.`;
         } else if (item.type === 'grizzly') {
           const payload = await staticRange(item, renderAbort.signal);
           if (version !== renderVersion) return;
@@ -492,7 +503,7 @@
       } else if (item.type === 'raster') {
         // Begin supplemental downloads immediately while the base raster decodes.
         const extra = Promise.allSettled([
-          staticRange({ asset: `data/harvest-gap-${item.key}.geojson` }, renderAbort.signal, true),
+          staticRange({ asset: `data/harvest-context-${item.key}.geojson` }, renderAbort.signal, true),
           ...(item.key === 'moose' ? [staticRange({ asset: 'data/moose-724-survey-context.geojson' }, renderAbort.signal), staticRange({ asset: 'data/moose-revelstoke-2025-context.geojson' }, renderAbort.signal)] : []),
           ...(item.key === 'mule_deer' ? [staticRange({ asset: 'data/sitka-blacktail-haida.geojson' }, renderAbort.signal)] : []),
         ]);
@@ -510,7 +521,7 @@
           data.addGeoJson(gaps);
           data.setStyle({ fillOpacity: 0, strokeColor: '#d19cff', strokeOpacity: 0.9, strokeWeight: 1.8, clickable: false });
           activeData = data;
-          document.getElementById('layer-note-text').textContent += ' Purple outlines: units with reported or estimated 2020–24 licensed harvest but no old-grid cell centre. Boundaries do not show precise locations or density.';
+          document.getElementById('layer-note-text').textContent += ' Purple outlines: units with reported or estimated 2020–24 licensed harvest. Boundaries do not show precise locations, current occupancy or density; no recorded harvest does not mean no animals.';
           document.getElementById('gap-link').hidden = false;
         }
         if (item.key === 'mule_deer' && extras[1].status === 'fulfilled') {

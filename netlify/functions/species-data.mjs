@@ -8,6 +8,8 @@ const SOURCES = {
 
 const ROOSEVELT_EPU = 'https://services6.arcgis.com/ubm4tcTYICKBpist/arcgis/rest/services/EPU_Density_Trends_and_Risk/FeatureServer/0'
 const ROOSEVELT_1990 = 'https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6347_M_CECA_RO_POLY_1990_1391733020039_1732534014.zip'
+const CARIBOU_1990 = 'https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6360_M_RATA_POLY_1990_1391796701810_1796329109.zip'
+const ROCKY_ELK_1990 = 'https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6346_M_CECA_NE_POLY_1990_1391732986878_1732534014.zip'
 const ROOSEVELT_ABUNDANCE = 'https://services6.arcgis.com/ubm4tcTYICKBpist/arcgis/rest/services/SBOT_Roosevelt_Elk_Population_Abundance_2013_to_2023/FeatureServer/4'
 
 // The archive includes contradictory rows (for example HSV=M with NOT PRESENT).
@@ -23,8 +25,27 @@ export function filterHistoricalRoosevelt(collection) {
   return { type:'FeatureCollection', features, year:1990 }
 }
 
-async function fetchHistoricalRoosevelt() {
-  const response = await fetch(ROOSEVELT_1990, { headers:{ 'user-agent':'HuntSmartCanada/1.0' }, signal:AbortSignal.timeout(25000) })
+export function filterHistoricalCaribou(collection) {
+  const expected = { L:'1 CARIBOU PER 25-250 SQ KM', M:'1 CARIBOU PER 3.4-25 SQ KM', H:'OVER 1 CARIBOU PER 3.4 SQ KM' }
+  if (collection?.type !== 'FeatureCollection' || !Array.isArray(collection.features)) throw new Error('Invalid historical archive')
+  const features = collection.features.filter(feature => {
+    const p = feature?.properties || {}
+    return expected[p.HSV] && String(p.Density_Co || '').trim().toUpperCase() === expected[p.HSV] && ['Polygon', 'MultiPolygon'].includes(feature.geometry?.type)
+  }).map(feature => ({ type:'Feature', geometry:feature.geometry, properties:{ historical_class:feature.properties.HSV } }))
+  if (!features.length) throw new Error('Historical archive contains no unambiguous range polygons')
+  return { type:'FeatureCollection', features, year:1990 }
+}
+
+async function fetchHistoricalCaribou() {
+  const response = await fetch(CARIBOU_1990, { headers:{ 'user-agent':'HuntSmartCanada/1.0' }, signal:AbortSignal.timeout(25000) })
+  if (!response.ok) throw new Error(`Historical caribou archive returned ${response.status}`)
+  const buffer = await response.arrayBuffer()
+  if (buffer.byteLength > 8_000_000) throw new Error('Historical archive unexpectedly large')
+  return filterHistoricalCaribou(await shp(buffer))
+}
+
+async function fetchHistoricalElk(source = ROOSEVELT_1990) {
+  const response = await fetch(source, { headers:{ 'user-agent':'HuntSmartCanada/1.0' }, signal:AbortSignal.timeout(25000) })
   if (!response.ok) throw new Error(`Historical Roosevelt archive returned ${response.status}`)
   const buffer = await response.arrayBuffer()
   if (buffer.byteLength > 8_000_000) throw new Error('Historical archive unexpectedly large')
@@ -113,9 +134,27 @@ export default async (req) => {
   const url = new URL(req.url)
   const kind = url.searchParams.get('kind')
 
+  if (kind === 'caribouHistorical1990') {
+    try {
+      return Response.json(await fetchHistoricalCaribou(), { headers: { 'cache-control':'private, no-store' } })
+    } catch (error) {
+      console.error('Historical caribou archive fetch failed:', error)
+      return new Response('Historical caribou data unavailable', { status:502, headers:{ 'cache-control':'private, no-store' } })
+    }
+  }
+
+  if (kind === 'rockyElkHistorical1990') {
+    try {
+      return Response.json(await fetchHistoricalElk(ROCKY_ELK_1990), { headers: { 'cache-control':'private, no-store' } })
+    } catch (error) {
+      console.error('Historical Rocky Mountain elk archive fetch failed:', error)
+      return new Response('Historical Rocky Mountain elk data unavailable', { status:502, headers:{ 'cache-control':'private, no-store' } })
+    }
+  }
+
   if (kind === 'rooseveltHistorical1990') {
     try {
-      return Response.json(await fetchHistoricalRoosevelt(), { headers: { 'cache-control': 'private, no-store' } })
+      return Response.json(await fetchHistoricalElk(), { headers: { 'cache-control': 'private, no-store' } })
     } catch (error) {
       console.error('Historical Roosevelt archive fetch failed:', error)
       return new Response('Historical Roosevelt data unavailable', { status: 502, headers: { 'cache-control': 'private, no-store' } })

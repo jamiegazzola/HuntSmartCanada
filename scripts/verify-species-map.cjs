@@ -73,6 +73,12 @@ function setup({ failMainland = false, syntheticRaster = false, failOnce = '', d
     if (url.includes('rooseveltHistorical1990')) {
       return { ok:true, json:async () => ({ type:'FeatureCollection', year:1990, features:[{type:'Feature',properties:{historical_class:'M'},geometry:null}] }) };
     }
+    if (url.includes('caribouHistorical1990')) {
+      return { ok:true, json:async () => ({ type:'FeatureCollection', year:1990, features:[{type:'Feature',properties:{historical_class:'M'},geometry:null}] }) };
+    }
+    if (url.includes('rockyElkHistorical1990')) {
+      return { ok:true, json:async () => ({ type:'FeatureCollection', year:1990, features:[{type:'Feature',properties:{historical_class:'L'},geometry:null}] }) };
+    }
     if (url.includes('rooseveltModern')) {
       return { ok:true, json:async () => ({ type:'FeatureCollection', features:[{type:'Feature',properties:{unit:'Pitt',survey_year:2023},geometry:null}] }) };
     }
@@ -93,6 +99,12 @@ async function run() {
     const filename = `winter-${key}.png`;
     const bytes = fs.readFileSync(path.join('species-map/data', filename));
     assert.equal(createHash('sha256').update(bytes).digest('hex'), manifest[filename].output_sha256, `${filename} does not match its source record`);
+    const harvestFile = `harvest-context-${key}.geojson`;
+    const harvestBytes = fs.readFileSync(path.join('species-map/data', harvestFile));
+    assert.equal(createHash('sha256').update(harvestBytes).digest('hex'), manifest[harvestFile].output_sha256);
+    const harvest = JSON.parse(harvestBytes);
+    assert(harvest.features.length > 90, `${key}: expected province-wide reported harvest context`);
+    assert(harvest.features.every(f => f.properties.reported_harvest_years.every(y => y >= 2020 && y <= 2024)));
   }
   assert(!manifest['winter-elk.png'].candidate_approved_orders.includes('U-7-002'));
   assert(!manifest['winter-elk.png'].candidate_approved_orders.includes('U-1-010'));
@@ -131,6 +143,14 @@ async function run() {
     assert.equal(createHash('sha256').update(fs.readFileSync(path.join('species-map/data',filename))).digest('hex'), manifest[filename].output_sha256);
   }
   const env = setup();
+  await select(env, 'caribou');
+  await env.element('era-historical').click();
+  assert(env.layers.at(-1).collection.features.length, 'Historical caribou must render the archive');
+  assert(env.element('layer-note-text').textContent.includes('1990 caribou'));
+  await select(env, 'rocky_elk_kootenay');
+  assert(env.layers.at(-1).collection.features.length, 'Historical Rocky Mountain elk must render the archive');
+  assert(env.element('layer-note-text').textContent.includes('1990 Rocky Mountain elk'));
+  await env.element('era-modern').click();
   const optionKeys = env.element('species').children.map(option => option.value);
   assert(optionKeys.includes('mule_deer') && optionKeys.includes('white_tailed_deer'));
   assert(!optionKeys.includes('columbian_blacktail_island') && !optionKeys.includes('sitka_blacktail'));
@@ -185,7 +205,7 @@ async function run() {
   assert.equal(env.fetchCounts.get(caribouUrl), 1, 'Related caribou selections should reuse the loaded data');
   await select(env, 'caribou');
   assert.equal(env.fetchCounts.get(caribouUrl), 1, 'Returning to a species should not redownload its data');
-  const mooseGapUrl = 'data/harvest-gap-moose.geojson?v=1';
+  const mooseGapUrl = 'data/harvest-context-moose.geojson?v=1';
   await select(env, 'moose');
   assert.equal(env.fetchCounts.get(mooseGapUrl), 1, 'Returning to moose should reuse harvest evidence');
   const retry = setup({ failOnce: 'grizzly-2018.geojson' });
