@@ -17,6 +17,13 @@ const staged = files.map(name => {
   return [name, bytes];
 });
 
+const rooseveltIslandPath = path.join('species-map', 'data', 'roosevelt-island-historic-2005.png');
+const rooseveltIslandBytes = fs.readFileSync(rooseveltIslandPath);
+const rooseveltIslandHash = crypto.createHash('sha256').update(rooseveltIslandBytes).digest('hex');
+if (rooseveltIslandHash !== 'fd0b753473311f8e11ce9645ef68460142a6f05b36969c55f51984852977b68f') {
+  throw new Error('Roosevelt Island March 2005 raster failed integrity check');
+}
+
 // Keep the protected API/auth regression checks tied to the same build step that
 // installs the private map so previews validate backend changes before main.
 execFileSync(process.execPath, ['scripts/verify-private-species.mjs'], { stdio:'inherit' });
@@ -36,7 +43,36 @@ const appReplacements = [
   ],
   [
     "const APP_BUILD = 'species-map-rebuild-v12';",
-    "const APP_BUILD = 'species-map-roosevelt-density-v1';",
+    "const APP_BUILD = 'species-map-roosevelt-single-v2';",
+  ],
+  [
+`    const item = speciesByKey[select.value];
+    if (!item || !map) return;`,
+`    const item = speciesByKey[select.value];
+    if (!item || !map) return;
+    document.querySelector('.era-control').hidden = item.type === 'roosevelt';`,
+  ],
+  [
+`    try {
+      if (!showEvidence && KMZ_HEATMAPS.has(item.key) && (viewMode === 'modern' || viewMode === 'historical')) {`,
+`    try {
+      if (item.type === 'roosevelt') {
+        activeOverlay = new google.maps.GroundOverlay('data/roosevelt-island-historic-2005.png?v=2005-1', BOUNDS, { map, opacity:0.9, clickable:false });
+        document.getElementById('layer-note').hidden = false;
+        document.getElementById('layer-source').hidden = true;
+        document.getElementById('layer-attribution').hidden = true;
+        document.getElementById('layer-note-text').textContent = 'Single Roosevelt Elk layer: March 2005 historical relative abundance on Vancouver Island plus the latest positive 2013–2023 mainland EPU abundance normalized by EPU land area. Green→red indicates lower→higher relative concentration within each source; blank does not prove absence.';
+        const payload = await recentRoosevelt(renderAbort.signal);
+        if (version !== renderVersion) return;
+        rooseveltMainlandData = new google.maps.Data({ map });
+        rooseveltMainlandData.addGeoJson(payload);
+        rooseveltMainlandData.setStyle((feature) => {
+          const heat = Math.max(1, Math.min(4, Number(feature.getProperty('heat_class')) || 1));
+          const color = ['#3f9646','#f4d03f','#f48b27','#d73027'][heat - 1];
+          return { fillColor:color, fillOpacity:0.42, strokeColor:color, strokeOpacity:0.9, strokeWeight:1.2, zIndex:2, clickable:false };
+        });
+        document.getElementById('roosevelt-recent-link').hidden = false;
+      } else if (!showEvidence && KMZ_HEATMAPS.has(item.key) && (viewMode === 'modern' || viewMode === 'historical')) {`,
   ],
   [
     "document.getElementById('layer-note-text').textContent = 'Green: broad Vancouver Island Roosevelt elk range context, not confirmed presence everywhere or local density. Choose Winter for mapped Island winter habitat.';",
@@ -84,7 +120,7 @@ function patchProductionApp(input) {
 const sourceAppPath = path.join(source, '..', 'app.js');
 const patchedApp = patchProductionApp(fs.readFileSync(sourceAppPath, 'utf8'));
 if (process.env.CONTEXT !== 'production') {
-  console.log(`Verified ${staged.length} private map assets and the production viewer patch. Installation is limited to production.`);
+  console.log(`Verified ${staged.length} private map assets, Roosevelt Island source, and the production viewer patch. Installation is limited to production.`);
   process.exit(0);
 }
 
