@@ -1,0 +1,10 @@
+{
+  "source_file": "Historic March 2005 roosevelt.kmz",
+  "source_sha256": "e30eda1a4f996ea2c4eabf3d2ca34444357a167c574b8ab554f9d617873545eb",
+  "embedded_overlay": "files/elk_historic_1.png",
+  "source_bounds": {"north": 60.1, "south": 48.1, "east": -113.8, "west": -139.2},
+  "source_description": "Historic BC Wildlife Distribution Mapping relative-abundance layer compiled March 2005.",
+  "transform": "Retained only Vancouver Island pixels from the province-wide elk raster so Interior/Rocky Mountain elk are not represented as Roosevelt elk. Mainland Roosevelt evidence is supplied separately from the current South Coast EPU abundance service.",
+  "output_file": "roosevelt-island-historic-2005.png",
+  "output_sha256": "8a06dfdd69ab9f7706fc9be78c0636aeaf0d5fb427b171228559fbdf7551303c"
+}
