@@ -76,6 +76,9 @@ function setup({ failMainland = false, syntheticRaster = false, failOnce = '', d
     if (url.includes('caribouSummer') || url.includes('caribouWinter')) {
       return { ok:true, json:async () => ({ type:'FeatureCollection', features:[{type:'Feature',properties:{herd:'Graham',quality:'High'},geometry:null}] }) };
     }
+    if (url.includes('kind=historicalSpecies')) {
+      return { ok:true, json:async () => ({ type:'FeatureCollection', year:1988, features:[{type:'Feature',properties:{historical_class:'L'},geometry:null}] }) };
+    }
     if (url.includes('caribouHistorical1990')) {
       return { ok:true, json:async () => ({ type:'FeatureCollection', year:1990, features:[{type:'Feature',properties:{historical_class:'M'},geometry:null}] }) };
     }
@@ -339,7 +342,7 @@ async function run() {
   assert.notEqual(sourceRow, y);
   assert.deepEqual(Array.from(projection.getLastImage().data.slice(y * width * 4, y * width * 4 + 4)), palette[sourceRow % 5]);
   await select(projection, 'black_bear');
-  assert(projection.element('layer-note-text').textContent.includes('no verified historical layer'));
+  assert(projection.element('layer-note-text').textContent.includes('1988 distribution'));
   await projection.element('era-modern').click();
   assert.equal(projection.element('era-modern').attributes['aria-pressed'], 'true');
   assert(projection.layers.at(-1).collection.features.length);
@@ -379,6 +382,14 @@ async function run() {
     assert.equal(historical.element('layer-note').hidden, false, `${key} must explain the historical view`);
     assert(historical.element('layer-note-text').textContent.startsWith('Historical:'), `${key} historical view must be clearly labelled`);
   }
+  const partialHistory = setup({ failOnce:'taxon=dall' });
+  await select(partialHistory, 'wild_sheep');
+  await partialHistory.element('era-historical').click();
+  assert(partialHistory.element('layer-note-text').textContent.includes('Some historical source layers could not load'));
+  assert(partialHistory.layers.at(-1).collection.features.length, 'Other sheep archives must render when one fails');
+  await select(historical, 'elk');
+  assert(historical.element('layer-note-text').textContent.includes('1990 Roosevelt and Rocky Mountain'));
+  assert.equal(historical.layers.at(-1).collection.features.length, 2, 'Both 1990 elk sources must be rendered');
   console.log('Species selections, harvest gaps, elk fallback and raster reprojection passed.');
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });

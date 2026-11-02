@@ -1,6 +1,7 @@
 import { authorizeSpeciesMap, speciesMapUnauthorized } from '../lib/species-private.mjs'
 import shp from 'shpjs'
 import { createHash } from 'node:crypto'
+import { gzipSync } from 'node:zlib'
 
 const SOURCES = {
   grizzly2018: 'https://catalogue.data.gov.bc.ca/dataset/2bf91935-9158-4f77-9c2c-4310480e6c29/resource/6406840f-9525-4544-9c36-e725fb2e399a/download/bc_grizzly_population_estimates_2015_and_2018_by_gbpu_population_units.csv',
@@ -11,6 +12,16 @@ const ROOSEVELT_EPU = 'https://services6.arcgis.com/ubm4tcTYICKBpist/arcgis/rest
 const ROOSEVELT_1990 = 'https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6347_M_CECA_RO_POLY_1990_1391733020039_1732534014.zip'
 const CARIBOU_1990 = 'https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6360_M_RATA_POLY_1990_1391796701810_1796329109.zip'
 const ROCKY_ELK_1990 = 'https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6346_M_CECA_NE_POLY_1990_1391732986878_1732534014.zip'
+const HISTORICAL_ARCHIVES = {
+  stone: ['https://a100.gov.bc.ca/pub/acat/documents/r40140/Bapid_6384_M_OVDA_ST_POLY_1988_1391797729746_1796329109.zip', 'sheep'],
+  dall: ['https://a100.gov.bc.ca/pub/acat/documents/r40140/Bapid_6385_M_OVDA_DA_POLY_1988_1391797828526_1796329109.zip', 'sheep'],
+  rocky: ['https://a100.gov.bc.ca/pub/acat/documents/r40140/Bapid_6386_M_OVCA_CN_POLY_1988_1391797871812_1796329109.zip', 'sheep'],
+  california: ['https://a100.gov.bc.ca/pub/acat/documents/r40140/Bapid_6387_M_OVCA_CA_POLY_1988_1391797916399_1796329109.zip', 'sheep'],
+  blackbear: ['https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6342_M_URAM_POLY_1988_1391732862892_1732534014.zip', 'bear'],
+  goat: ['https://a100.gov.bc.ca/pub/acat/documents/r40140/Bapid_6380_M_ORAM_POLY_1990_1391797364512_1796329109.zip', 'goat'],
+  whitetail: ['https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6355_M_ODVI_POLY_1990_1391733353873_1732534014.zip', 'whitetail'],
+  moose: ['https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6345_M_ALAM_POLY_1990_1391732955419_1732534014.zip', 'moose'],
+}
 const CARIBOU_SEASONAL = {
   summer: 'https://www2.gov.bc.ca/assets/gov/environment/plants-animals-and-ecosystems/wildlife-wildlife-habitat/regional-wildlife/northeast-region/caribou/high_elevation_summer_range.zip',
   winter: 'https://www2.gov.bc.ca/assets/gov/environment/plants-animals-and-ecosystems/wildlife-wildlife-habitat/regional-wildlife/northeast-region/caribou/high_elevation_winter_range.zip',
@@ -46,6 +57,34 @@ export function filterHistoricalCaribou(collection) {
   }).map(feature => ({ type:'Feature', geometry:feature.geometry, properties:{ historical_class:feature.properties.HSV } }))
   if (!features.length) throw new Error('Historical archive contains no unambiguous range polygons')
   return { type:'FeatureCollection', features, year:1990 }
+}
+
+export function filterHistoricalSpecies(collection, taxon) {
+  if (collection?.type !== 'FeatureCollection' || !Array.isArray(collection.features)) throw new Error('Invalid historical archive')
+  const expected = taxon === 'sheep' ? {
+    L: ['1 SHEEP PER 5-250 SQ. KILOMETRES'], M:['1 SHEEP PER 1.3-5 SQ. KILOMETRES', 'ONE SHEEP PER 1.3-5 SQ. KILOMETRES'], H:['OVER 1 SHEEP PER 1.3 SQ. KILOMETRES'],
+  } : taxon === 'bear' ? {
+    L:['1 BLACK BEAR PER 50-500 SQ. KM'], M:['1 BLACK BEAR PER 8-50 SQ. KM'], H:['OVER 1 BLACK BEAR PER 8 SQ. KM'],
+  } : taxon === 'goat' ? {
+    L:['1 GOAT PER 13-260 SQ. KILOMETRES'], M:['1 GOAT PER 3-13 SQ. KILOMETRES'], H:['OVER 1 GOAT PER 3 SQ. KILOMETRES'],
+  } : taxon === 'whitetail' ? {
+    L:['1 DEER PER 5-518 SQ. KILOMETRES'], M:['1 DEER PER 0.5-5 SQ. KILOMETRES'], H:['OVER 1 DEER PER 0.5 SQ. KILOMETRES'],
+  } : taxon === 'moose' ? {
+    L:['1 MOOSE PER 10-260 SQ KM'], M:['1 MOOSE PER 1.3-10 SQ KM'], H:['OVER 1 MOOSE PER 1.3 SQ KM'],
+  } : null
+  if (!expected) throw new Error('Unknown historical taxon')
+  const features = collection.features.filter(f => expected[f.properties?.HSV]?.includes(String(f.properties?.Density_Co || '').trim().toUpperCase()) && ['Polygon','MultiPolygon'].includes(f.geometry?.type)).map(f => ({ type:'Feature', geometry:f.geometry, properties:{ historical_class:f.properties.HSV } }))
+  if (!features.length) throw new Error('Historical archive contains no unambiguous range polygons')
+  return { type:'FeatureCollection', features, year:['goat','whitetail','moose'].includes(taxon) ? 1990 : 1988 }
+}
+
+async function fetchHistoricalSpecies(kind) {
+  const [url, taxon] = HISTORICAL_ARCHIVES[kind]
+  const response = await fetch(url, { headers:{ 'user-agent':'HuntSmartCanada/1.0' }, signal:AbortSignal.timeout(25000) })
+  if (!response.ok) throw new Error(`Historical archive returned ${response.status}`)
+  const buffer = await response.arrayBuffer()
+  if (buffer.byteLength > 8_000_000) throw new Error('Historical archive unexpectedly large')
+  return filterHistoricalSpecies(await shp(buffer), taxon)
 }
 
 async function fetchHistoricalCaribou() {
@@ -182,6 +221,18 @@ async function fetchRecentRoosevelt() {
 
 export const config = { path: '/species-map/api/species-data' }
 
+function privateJson(data, request) {
+  const body = JSON.stringify(data)
+  const headers = { 'cache-control':'private, no-store', 'content-type':'application/json; charset=utf-8', 'vary':'Accept-Encoding' }
+  if (Buffer.byteLength(body) > 1_000_000 && /(?:^|[,\s])gzip(?:[,;\s]|$)/i.test(request.headers.get('accept-encoding') || '')) {
+    const compressed = gzipSync(Buffer.from(body), { level:6 })
+    if (compressed.byteLength > 4_000_000) throw new Error('Compressed response exceeds safe size')
+    return new Response(compressed, { headers:{ ...headers, 'content-encoding':'gzip' } })
+  }
+  if (Buffer.byteLength(body) > 5_500_000) throw new Error('Response too large for an uncompressed client')
+  return new Response(body, { headers })
+}
+
 export default async (req) => {
   const hash = Netlify.env.get('SPECIES_MAP_PASSWORD_HASH')
   if (!hash) return new Response('The private map is not configured.', { status: 503, headers: { 'cache-control': 'no-store' } })
@@ -189,9 +240,20 @@ export default async (req) => {
   const url = new URL(req.url)
   const kind = url.searchParams.get('kind')
 
+  if (kind === 'historicalSpecies') {
+    const taxon = url.searchParams.get('taxon')
+    if (!Object.hasOwn(HISTORICAL_ARCHIVES, taxon)) return new Response('Unknown dataset', { status:404, headers:{ 'cache-control':'private, no-store' } })
+    try {
+      return privateJson(await fetchHistoricalSpecies(taxon), req)
+    } catch (error) {
+      console.error('Historical species archive fetch failed:', error)
+      return new Response('Historical data unavailable', { status:502, headers:{ 'cache-control':'private, no-store' } })
+    }
+  }
+
   if (kind === 'caribouSummer' || kind === 'caribouWinter') {
     try {
-      return Response.json(await fetchSeasonalCaribou(kind === 'caribouSummer' ? 'summer' : 'winter'), { headers:{ 'cache-control':'private, no-store' } })
+      return privateJson(await fetchSeasonalCaribou(kind === 'caribouSummer' ? 'summer' : 'winter'), req)
     } catch (error) {
       console.error('Seasonal caribou archive fetch failed:', error)
       return new Response('Seasonal caribou data unavailable', { status:502, headers:{ 'cache-control':'private, no-store' } })

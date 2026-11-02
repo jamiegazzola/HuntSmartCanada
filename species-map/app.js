@@ -464,13 +464,51 @@
         const note = document.getElementById('layer-note');
         note.hidden = false;
         document.getElementById('layer-note-text').textContent = 'Historical: loading data…';
-        if (item.type === 'raster') {
+        if (item.key === 'elk') {
+          const kinds = ['rooseveltHistorical1990', 'rockyElkHistorical1990'];
+          const results = await Promise.allSettled(kinds.map(async kind => {
+            const response = await fetch(`/species-map/api/species-data?kind=${kind}`, { signal:renderAbort.signal });
+            if (!response.ok) throw new Error('Historical elk archive unavailable');
+            const data = await response.json();
+            if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features) || !data.features.length) throw new Error('Invalid historical elk archive');
+            return data.features;
+          }));
+          if (version !== renderVersion) return;
+          const features = results.filter(result => result.status === 'fulfilled').flatMap(result => result.value);
+          if (!features.length) throw new Error('Historical elk distribution is unavailable.');
+          renderHistoricalRoosevelt({ type:'FeatureCollection', features });
+          document.getElementById('layer-source').href = 'https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=40140';
+          document.getElementById('layer-attribution').hidden = true;
+          document.getElementById('layer-note-text').textContent = 'Historical: BC 1990 Roosevelt and Rocky Mountain elk distribution. Green, yellow and red show historical low, medium and high classes, not current density or confirmed present-day range.';
+          if (results.some(result => result.status === 'rejected')) markIncomplete('Some historical elk source layers could not load.');
+        } else if (item.type === 'raster' && !['mountain_goat','white_tailed_deer','moose'].includes(item.key)) {
           const url = await rasterUrl(item);
           if (version !== renderVersion) return;
           activeOverlay = new google.maps.GroundOverlay(url, BOUNDS, { map, opacity: 0.72, clickable: false });
           document.getElementById('layer-source').href = 'https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=40140';
           document.getElementById('layer-attribution').hidden = true;
           document.getElementById('layer-note-text').textContent = 'Historical: approximate legacy distribution. Its exact dates and source composition are not fully verified; it has been checked against some 1988–1990 BC reference polygons. Not current animal density.';
+        } else if (['wild_sheep','bighorn_sheep','thinhorn_sheep','stone_sheep','dall_tatshenshini','rocky_bighorn_kootenay','california_bighorn_boundary','black_bear','mountain_goat','white_tailed_deer','moose'].includes(item.key)) {
+          const archives = {
+            wild_sheep:['stone','dall','rocky','california'], bighorn_sheep:['rocky','california'], thinhorn_sheep:['stone','dall'],
+            stone_sheep:['stone'], dall_tatshenshini:['dall'], rocky_bighorn_kootenay:['rocky'], california_bighorn_boundary:['california'], black_bear:['blackbear'], mountain_goat:['goat'], white_tailed_deer:['whitetail'], moose:['moose'],
+          }[item.key];
+          const results = await Promise.allSettled(archives.map(async taxon => {
+            const response = await fetch(`/species-map/api/species-data?kind=historicalSpecies&taxon=${taxon}`, { signal:renderAbort.signal });
+            if (!response.ok) throw new Error('Historical archive unavailable');
+            const data = await response.json();
+            if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features) || !data.features.length) throw new Error('Invalid historical archive');
+            return data.features;
+          }));
+          if (version !== renderVersion) return;
+          const features = results.filter(result => result.status === 'fulfilled').flatMap(result => result.value);
+          if (!features.length) throw new Error('Historical distribution data is unavailable.');
+          renderHistoricalRoosevelt({ type:'FeatureCollection', features });
+          document.getElementById('layer-source').href = 'https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=40140';
+          document.getElementById('layer-attribution').hidden = true;
+          const year = ['mountain_goat','white_tailed_deer','moose'].includes(item.key) ? 1990 : 1988;
+          document.getElementById('layer-note-text').textContent = `Historical: BC ${year} distribution. Green, yellow and red show historical low, medium and high classes, not current density or confirmed present-day range. Subspecies boundaries reflect the historical classifications.`;
+          if (results.some(result => result.status === 'rejected')) markIncomplete('Some historical source layers could not load.');
         } else if (item.key === 'caribou' || item.key === 'rocky_elk_kootenay') {
           const isCaribou = item.key === 'caribou';
           const response = await fetch(`/species-map/api/species-data?kind=${isCaribou ? 'caribouHistorical1990' : 'rockyElkHistorical1990'}`, { signal:renderAbort.signal });
