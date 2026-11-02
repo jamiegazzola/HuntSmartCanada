@@ -43,7 +43,36 @@ const appReplacements = [
   ],
   [
     "const APP_BUILD = 'species-map-rebuild-v12';",
-    "const APP_BUILD = 'species-map-kmz-v11-clean';",
+    "const APP_BUILD = 'species-map-roosevelt-density-v1';",
+  ],
+  [
+    "document.getElementById('layer-note-text').textContent = 'Green: broad Vancouver Island Roosevelt elk range context, not confirmed presence everywhere or local density. Choose Winter for mapped Island winter habitat.';",
+    "document.getElementById('layer-note-text').textContent = 'Mainland: latest positive 2013–2023 EPU abundance normalized by EPU area. Island: broad range context plus approved winter range where mapped.';",
+  ],
+  [
+    "rooseveltMainlandData.setStyle({ fillOpacity:0, strokeColor:'#f5c76b', strokeOpacity:0.95, strokeWeight:1.6, zIndex:1, clickable:false });",
+    "rooseveltMainlandData.setStyle((feature) => { const heat = Math.max(1, Math.min(4, Number(feature.getProperty('heat_class')) || 1)); const color = ['#3f9646','#f4d03f','#f48b27','#d73027'][heat - 1]; return { fillColor:color, fillOpacity:0.4, strokeColor:color, strokeOpacity:0.9, strokeWeight:1.3, zIndex:1, clickable:false }; });",
+  ],
+  [
+    "document.getElementById('layer-note-text').textContent += ' Gold: mainland management units with nonzero estimates from 2013–2023, depending on unit. Outlines are not exact current occupancy or density.';",
+    "document.getElementById('layer-note-text').textContent += ' Mainland fill: green→red ranks recently surveyed EPUs from lower→higher estimated elk density using each unit’s latest positive 2013–2023 estimate divided by EPU land area. It is management-unit scale, not exact animal locations.';",
+  ],
+  [
+`          staticRange({ asset: 'data/roosevelt-elk-harvest-context.geojson' }, renderAbort.signal).then((payload) => {
+            if (version !== renderVersion) return;
+            contextData = new google.maps.Data({ map });
+            contextData.addGeoJson(payload);
+            contextData.setStyle({ fillOpacity: 0, strokeColor: '#d19cff', strokeOpacity: 0.9, strokeWeight: 1.8, clickable: false });
+            document.getElementById('layer-note-text').textContent += ' Purple: units with 2020–24 licensed elk harvest, not identified to subspecies, exact location or density.';
+            document.getElementById('gap-link').hidden = false;
+          }),`,
+`          staticRange({ asset: 'data/roosevelt-island-winter-range.geojson' }, renderAbort.signal).then((payload) => {
+            if (version !== renderVersion) return;
+            contextData = new google.maps.Data({ map });
+            contextData.addGeoJson(payload);
+            contextData.setStyle({ fillColor:'#f4b63f', fillOpacity:0.34, strokeColor:'#f4b63f', strokeOpacity:0.85, strokeWeight:1.1, zIndex:2, clickable:false });
+            document.getElementById('layer-note-text').textContent += ' Orange on Vancouver Island: approved Roosevelt elk winter range where mapped. This is verified habitat evidence, not complete year-round range or local density.';
+          }),`,
   ],
 ];
 for (const [before, after] of appReplacements) {
