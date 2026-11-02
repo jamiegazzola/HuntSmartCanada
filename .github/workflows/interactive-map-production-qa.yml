@@ -24,6 +24,10 @@ on:
       - netlify.toml
       - species-map/**
       - netlify/functions/species-data.mjs
+      - netlify/edge-functions/**
+      - netlify/lib/**
+      - scripts/verify-private-species.mjs
+      - scripts/verify-species-map.cjs
       - .github/workflows/interactive-map-production-qa.yml
 
 permissions:
@@ -38,6 +42,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Verify species layer selection and fallback
+        run: node scripts/verify-species-map.cjs
+      - name: Verify private species map access
+        run: node scripts/verify-private-species.mjs
       - name: Validate deployed map, species data, and PWA assets
         env:
           URL: https://huntsmartcanada.ca
@@ -70,41 +78,21 @@ jobs:
             const manifest=JSON.parse(await text('/site.webmanifest'));assert(manifest.display==='standalone','manifest display invalid');
             const sw=await text('/hs-offline-lite-sw.js');assert(sw.includes('networkFirst(request)'),'service worker update policy missing');
 
-            const speciesHtml=await waitForMarker('/species-map/','app.js?v=rebuild-20261031-3');
-            assert(!speciesHtml.includes('app-fast.js')&&!speciesHtml.includes('app-b.js'),'legacy species bundle is still referenced');
-            const speciesJs=await waitForMarker('/species-map/app.js',"species-map-rebuild-v3");
-            assert(speciesJs.includes('const DEFAULT_RASTER_W = 260;')&&speciesJs.includes('const DEFAULT_RASTER_H = 123;'),'default species raster dimensions are wrong');
-            assert(speciesJs.includes("source: 'caribou', width: 650, height: 307"),'caribou raster dimensions are missing');
-            assert(speciesJs.includes("kind=rooseveltEpu"),'Roosevelt same-origin endpoint missing');
-            assert(speciesJs.includes("data/mule_deer.js"),'local species raster path missing');
-            assert(speciesJs.includes('AbortController'),'layer request cancellation missing');
-            assert(!speciesJs.includes('DecompressionStream'),'legacy gzip runtime dependency still present');
-
-            const rasterAssets=[
-              ['mule_deer','mule_deer',260,123],
-              ['white_tailed_deer','white_tailed_deer',260,123],
-              ['elk','elk',260,123],
-              ['moose','moose',260,123],
-              ['mountain_goat','mountain_goat',260,123],
-              ['wild_sheep','wild_sheep',260,123],
-              ['caribou','caribou',650,307],
-            ];
-            for(const [file,source,width,height] of rasterAssets){
-              const body=await text(`/species-map/data/${file}.js`);
-              const pixels=rasterPixels(body,source);
-              assert(pixels===width*height,`${source} raster has ${pixels} pixels; expected ${width*height}`);
+            async function waitForPrivate(path){
+              for(let i=0;i<18;i++){
+                const r=await response(path);
+                if(r.status===401 && r.headers.get('x-species-private')==='v1'){
+                  assert((r.headers.get('cache-control')||'').includes('no-store'),`${path} private response must not be cached`);
+                  return;
+                }
+                await sleep(5000);
+              }
+              throw new Error(`${path} was not protected by the private-map gate`);
             }
-
-            const epu=await waitForJson('/.netlify/functions/species-data?kind=rooseveltEpu',j=>j?.type==='FeatureCollection'&&Array.isArray(j.features)&&j.features.length>0&&j.densityField==='__density');
-            const byName=name=>epu.features.find(f=>String(f.properties?.EPU_Unit_Name||'').toLowerCase()===name.toLowerCase());
-            const pitt=byName('Pitt'),chehalis=byName('Chehalis');
-            assert(pitt,'Pitt Roosevelt EPU missing');assert(chehalis,'Chehalis Roosevelt EPU missing');
-            assert(Number.isFinite(Number(pitt.properties.__density)),'Pitt Roosevelt density invalid');
-            assert(Number.isFinite(Number(chehalis.properties.__density)),'Chehalis Roosevelt density invalid');
-            assert(Number(pitt.properties.POP_Est_2012)===50,'Pitt population estimate changed unexpectedly');
-            assert(Number(chehalis.properties.POP_Est_2012)===3,'Chehalis population estimate changed unexpectedly');
-            console.log(`Species-map raster QA passed: ${rasterAssets.length} local layers with verified per-layer dimensions.`);
-            console.log(`Species-map Roosevelt QA passed: units=${epu.features.length}; Pitt=${pitt.properties.__density}; Chehalis=${chehalis.properties.__density}`);
+            for(const path of ['/species-map','/species-map/','/species-map/app.js','/species-map/api/species-data?kind=rooseveltEpu']) await waitForPrivate(path);
+            const legacy=await response('/.netlify/functions/species-data?kind=rooseveltEpu');
+            assert(legacy.status===401||legacy.status===404,'legacy species-data URL remains publicly accessible');
+            console.log('Species map and data endpoint deny unauthenticated requests.');
             console.log('HuntSmart production map/PWA smoke passed.');
           })().catch(e=>{console.error(e.stack||e);process.exit(1)});
           NODE
