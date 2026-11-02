@@ -25,4 +25,43 @@ fs.copyFileSync(path.join(source, 'sources.json'), path.join(dest, 'sources.json
 for (const file of ['app.js', 'index.html', 'app.css', 'species-catalog.js']) {
   fs.copyFileSync(path.join(source, '..', file), path.join(dest, '..', file));
 }
-console.log(`Installed ${staged.length} verified private map assets.`);
+
+// Production viewer is intentionally limited to the exact species groups and
+// two eras contained in the supplied KMZ. Do not expose legacy seasonal or
+// subspecies-specific layers here: those are separate evidence products and
+// visually mixing them with the KMZ makes the map misleading.
+const appPath = path.join(dest, '..', 'app.js');
+let app = fs.readFileSync(appPath, 'utf8');
+const appReplacements = [
+  [
+    "const DISPLAYED_SPECIES = new Set([...KMZ_HEATMAPS, 'roosevelt_elk', 'rocky_elk_kootenay']);",
+    'const DISPLAYED_SPECIES = new Set(KMZ_HEATMAPS);',
+  ],
+  [
+    "let viewMode = ['modern', 'winter', 'summer', 'historical'].includes(storedMode) ? storedMode : 'modern';",
+    "let viewMode = ['modern', 'historical'].includes(storedMode) ? storedMode : 'modern';",
+  ],
+  [
+    "const APP_BUILD = 'species-map-rebuild-v12';",
+    "const APP_BUILD = 'species-map-kmz-v12-clean';",
+  ],
+];
+for (const [before, after] of appReplacements) {
+  if (!app.includes(before)) throw new Error(`Private species viewer patch target missing: ${before}`);
+  app = app.replace(before, after);
+}
+fs.writeFileSync(appPath, app);
+
+// Keep the legacy elements in the private source DOM so older JS references
+// remain safe, but remove them completely from the production interface.
+const cssPath = path.join(dest, '..', 'app.css');
+fs.appendFileSync(cssPath, `
+/* HuntSmart KMZ-only production controls */
+#era-winter,
+#era-summer,
+.evidence-toggle,
+.layer-note { display: none !important; }
+.era-control button { flex: 1 1 50%; }
+`);
+
+console.log(`Installed ${staged.length} verified private map assets in KMZ-only mode.`);
