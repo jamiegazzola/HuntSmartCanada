@@ -125,14 +125,5 @@ if (source.includes('async function march2005Roosevelt')) throw new Error('Roose
 if (!source.includes('historicRoosevelt(renderAbort.signal)')) throw new Error('Official Roosevelt historical GIS is not wired into the production renderer');
 if (!speciesData.includes("historical_class:'R'")) throw new Error('Roosevelt Rare / Occasional range class was not restored');
 
-// Wire the final UI-control transform into the installer after all Roosevelt
-// and georeferencing patches are complete.
-const requireAnchor = "const { execFileSync } = require('node:child_process');\n";
-if (!source.includes(requireAnchor)) throw new Error('Species-map installer require anchor missing');
-source = source.replace(requireAnchor, requireAnchor + "const { patchSpeciesMapControls } = require('./patch-species-map-controls.cjs');\n");
-const pipelineAnchor = '  app = patchKmzGeoref(app);\n';
-if (!source.includes(pipelineAnchor)) throw new Error('Species-map installer pipeline anchor missing');
-source = source.replace(pipelineAnchor, pipelineAnchor + '  app = patchSpeciesMapControls(app);\n');
-
 fs.writeFileSync(installerPath, source);
-console.log('Rebuilt Roosevelt from BC 1990 GIS polygons plus current mainland EPU density and wired final map controls.');
+console.log('Rebuilt Roosevelt from BC 1990 GIS polygons plus current mainland EPU density.');
