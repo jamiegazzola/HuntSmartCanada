@@ -15,34 +15,8 @@
   const DEFAULT_RASTER_H = 123;
   const ASSET_REV = 'rebuild-20261031-11';
 
-  const SPECIES = [
-    { key: 'mule_deer', label: 'Mule Deer (including Black-tailed Deer)', type: 'raster', asset: 'data/mule_deer.js', source: 'mule_deer' },
-    { key: 'white_tailed_deer', label: 'White-tailed Deer', type: 'raster', asset: 'data/white_tailed_deer.js', source: 'white_tailed_deer' },
-    { key: 'nw_whitetail_kootenay', label: 'Northwestern White-tailed Deer (Kootenay winter habitat)', type: 'partial_winter', asset: 'data/winter-nw-whitetail-kootenay.png', note: 'Blue: Kootenay white-tailed deer winter habitat. Northwestern subspecies assignment is approximate, not genetically verified. Incomplete seasonal habitat, not the full range or animal density.' },
-    { key: 'dakota_whitetail_peace', label: 'Dakota White-tailed Deer (possible Peace harvest)', type: 'harvest_context', asset: 'data/dakota-whitetail-peace-context.geojson', note: 'Purple: Peace-region units with reported or estimated white-tail harvest, 2020–24. BC says these deer may be Dakota, but harvest records do not identify subspecies, precise locations or density.' },
-    { key: 'elk', label: 'Elk', type: 'raster', asset: 'data/elk.js', source: 'elk' },
-    { key: 'roosevelt_elk', label: 'Roosevelt Elk', type: 'roosevelt' },
-    { key: 'rocky_elk_kootenay', label: 'Rocky Mountain Elk (Kootenay winter habitat)', type: 'partial_winter', asset: 'data/winter-rocky-elk-kootenay.png', note: 'Blue: approved elk winter habitat in the Kootenay region. Incomplete seasonal habitat, not the full Rocky Mountain elk range or animal density.' },
-    { key: 'moose', label: 'Moose', type: 'raster', asset: 'data/moose.js', source: 'moose' },
-    { key: 'northwestern_moose_ne', label: 'Northwestern Moose (northeast winter habitat)', type: 'partial_winter', asset: 'data/winter-northwestern-moose-ne.png', note: 'Blue: approved moose winter habitat within northeastern areas where a BC report identifies Northwestern moose. Incomplete seasonal habitat, not the full subspecies range or animal density.' },
-    { key: 'alaskan_moose_nw', label: 'Alaskan Moose (possible northwest harvest)', type: 'harvest_context', asset: 'data/alaskan_moose_nw-harvest-context.geojson', note: 'Purple: selected northwest BC units with reported or estimated moose harvest, 2020–24. Alaskan moose are described in this broad region, but records do not identify subspecies, precise locations or density.' },
-    { key: 'shiras_moose_flathead', label: 'Shiras’ Moose (possible Flathead harvest)', type: 'harvest_context', asset: 'data/shiras_moose_flathead-harvest-context.geojson', note: 'Purple: Flathead-area unit with reported or estimated moose harvest, 2020–24. Shiras’ moose are described in this broad region, but records do not identify subspecies, precise locations or density.' },
-    { key: 'mountain_goat', label: 'Mountain Goat', type: 'raster', asset: 'data/mountain_goat.js', source: 'mountain_goat' },
-    { key: 'wild_sheep', label: 'Wild Sheep (all)', type: 'range', asset: 'data/sheep-ranges.geojson' },
-    { key: 'bighorn_sheep', label: 'Bighorn Sheep', type: 'range', asset: 'data/sheep-ranges.geojson', filter: 'M-OVCA' },
-    { key: 'rocky_bighorn_kootenay', label: 'Rocky Mountain Bighorn (Kootenay winter habitat)', type: 'partial_winter', asset: 'data/winter-rocky_bighorn_kootenay.png', note: 'Blue: East Kootenay bighorn winter habitat. Rocky Mountain subspecies assignment is approximate, not genetically verified. Incomplete seasonal habitat, not the full range or density.' },
-    { key: 'california_bighorn_boundary', label: 'California Bighorn (Boundary winter habitat)', type: 'partial_winter', asset: 'data/winter-california_bighorn_boundary.png', note: 'Blue: Boundary-area bighorn winter habitat. California subspecies assignment is approximate, not genetically verified. Incomplete seasonal habitat, not the full range or density.' },
-    { key: 'thinhorn_sheep', label: 'Thinhorn Sheep', type: 'range', asset: 'data/sheep-ranges.geojson', filter: 'M-OVDA' },
-    { key: 'dall_tatshenshini', label: 'Dall’s Sheep (Tatshenshini range context)', type: 'range', asset: 'data/dall-tatshenshini-context.geojson', note: 'Thinhorn sheep range inside Tatshenshini-Alsek Park, where BC Parks reports Dall’s sheep in the Dollis and Datlaska ranges. Broad context only: not a Dall-specific boundary, full range or density.' },
-    { key: 'stone_sheep', label: 'Stone’s Sheep (partial winter habitat)', type: 'stone', asset: 'data/sheep-ranges.geojson', filter: 'M-OVDA' },
-    { key: 'caribou', label: 'Caribou (all)', type: 'range', asset: 'data/caribou-herds.geojson' },
-    { key: 'caribou_northern', label: 'Northern Caribou', type: 'range', asset: 'data/caribou-herds.geojson', filter: 'Northern', filterField: 'ECOTYPE' },
-    { key: 'caribou_mountain', label: 'Mountain Caribou', type: 'range', asset: 'data/caribou-herds.geojson', filter: 'Mountain', filterField: 'ECOTYPE' },
-    { key: 'caribou_boreal', label: 'Boreal Caribou', type: 'range', asset: 'data/caribou-herds.geojson', filter: 'Boreal', filterField: 'ECOTYPE' },
-    { key: 'grizzly_bear', label: 'Grizzly Bear', type: 'grizzly', asset: 'data/grizzly-2018.geojson' },
-    { key: 'black_bear', label: 'Black Bear', type: 'range', asset: 'data/black-bear-broad-range.geojson' },
-    { key: 'wood_bison', label: 'Wood Bison', type: 'range', asset: 'data/wood-bison-herds.geojson' },
-  ];
+  const SPECIES = window.HUNTSMART_SPECIES;
+  if (!Array.isArray(SPECIES) || !SPECIES.length) throw new Error('Species catalogue is unavailable.');
 
   const speciesByKey = Object.fromEntries(SPECIES.map((item) => [item.key, item]));
   const rasterCache = new Map();
@@ -370,7 +344,7 @@
     data.setStyle((feature) => {
       const smallCaribouHerd = item.asset === 'data/caribou-herds.geojson' && ['Narrow Lake', 'Frisby Boulder'].includes(feature.getProperty('HERD_NAME'));
       if (smallCaribouHerd) return { fillOpacity: 0, strokeColor: '#f5c76b', strokeOpacity: 0.95, strokeWeight: 2, clickable: false };
-      const density = Number(feature.getProperty('density_2018'));
+      const density = Number(feature.getProperty(item.densityField || 'density_2018'));
       const level = item.type === 'grizzly' ? (density <= 5 ? 1 : density <= 15 ? 2 : density <= 30 ? 3 : 4) : 1;
       const color = PALETTE[level];
       return { fillColor: `rgb(${color[0]},${color[1]},${color[2]})`, fillOpacity: item.type === 'stone' ? 0.16 : 0.65, strokeColor: '#fff', strokeOpacity: 0.35, strokeWeight: 0.6, zIndex: item.type === 'stone' ? 1 : 0, clickable: false };
@@ -509,11 +483,12 @@
           document.getElementById('layer-attribution').hidden = true;
           document.getElementById('layer-note-text').textContent = `Historical: BC 1990 ${isCaribou ? 'caribou distribution for all ecotypes combined' : 'Rocky Mountain elk distribution across BC'}. Green, yellow and red are historical low, medium and high classes; not current density or confirmed present-day range.`;
         } else if (item.type === 'grizzly') {
-          const payload = await staticRange(item, renderAbort.signal);
+          const historicalGrizzly = { ...item, asset:'data/grizzly-2012.geojson', densityField:'density_2012' };
+          const payload = await staticRange(historicalGrizzly, renderAbort.signal);
           if (version !== renderVersion) return;
-          renderStaticRange(payload, item);
+          renderStaticRange(payload, historicalGrizzly);
           document.getElementById('layer-source').href = payload.source;
-          document.getElementById('layer-note-text').textContent = 'Historical: 2018 grizzly estimates per 1,000 km² by population subunit. Green ≤5, yellow 5–15, orange 15–30, red >30; not precise locations.';
+          document.getElementById('layer-note-text').textContent = 'Historical: 2012 grizzly estimates per 1,000 km². Green ≤5, yellow 5–15, orange 15–30, red >30. Estimates are joined to approximate 2018 management boundaries; unmatched units are omitted. Not precise animal locations.';
         } else if (item.type === 'roosevelt') {
           document.getElementById('layer-source').hidden = true;
           document.getElementById('layer-attribution').hidden = true;

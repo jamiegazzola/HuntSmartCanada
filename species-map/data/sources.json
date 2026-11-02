@@ -744,5 +744,16 @@
     ],
     "output_sha256": "5d6363d034de3bf051754bd6fce1b3550d6ab337ab63ec8fb08af3726c6e8dc0",
     "note": "WMUs with estimated or reported licensed harvest in 2020\u20132024; unit boundaries are not occupancy or density. Moose 1-1 is excluded pending validation. Source records without a specific mapped unit are excluded."
+  },
+  "grizzly-2012.geojson": {
+    "source_urls": [
+      "https://catalogue.data.gov.bc.ca/dataset/grizzly-bear-population-estimates"
+    ],
+    "source_sha256": [
+      "fc41446ae2d55b60fb8d9eb4cda36a1c08524d407b92a8999863c49e31e5862c",
+      "dd93c0aa84fae15cc392954c88513da0f05bec5a3f839b019b2a47c97dc21595"
+    ],
+    "output_sha256": "ce560ce3c60bfe8a2a5fb63ae9ded63bb83cb7e8bf27787d16562be93e9d1276",
+    "note": "BC 2012 density estimates joined by population unit and wildlife management unit to 2018 boundaries. 2018 geometry is an approximation for 2012. Ambiguous or missing joins omitted; not precise animal locations."
   }
 }

@@ -90,6 +90,7 @@ function setup({ failMainland = false, syntheticRaster = false, failOnce = '', d
   };
   context = vm.createContext({ document, localStorage, google, fetch, AbortController, DOMException, console, setTimeout: () => 0, clearTimeout, Uint8ClampedArray });
   context.window = context;
+  vm.runInContext(fs.readFileSync(path.join(root, 'species-catalog.js'), 'utf8'), context);
   vm.runInContext(fs.readFileSync(path.join(root, 'app.js'), 'utf8'), context);
   context.initSpeciesMap();
   return { element, layers, overlays, fetchCounts, releaseDelayed, getLastImage: () => lastImage, getMap: () => mapStub };
@@ -98,6 +99,10 @@ function setup({ failMainland = false, syntheticRaster = false, failOnce = '', d
 async function select(env, key) { env.element('species').value = key; await env.element('species').change(); }
 async function run() {
   const manifest = JSON.parse(fs.readFileSync('species-map/data/sources.json', 'utf8'));
+  const grizzly2012 = JSON.parse(fs.readFileSync('species-map/data/grizzly-2012.geojson', 'utf8'));
+  assert.equal(createHash('sha256').update(fs.readFileSync('species-map/data/grizzly-2012.geojson')).digest('hex'), manifest['grizzly-2012.geojson'].output_sha256);
+  assert.equal(grizzly2012.features.length, 219);
+  assert(grizzly2012.features.every(f => Number.isFinite(f.properties.density_2012)));
   for (const key of ['mule_deer', 'white_tailed_deer', 'elk', 'moose', 'mountain_goat']) {
     const filename = `winter-${key}.png`;
     const bytes = fs.readFileSync(path.join('species-map/data', filename));
@@ -366,6 +371,9 @@ async function run() {
   }
   const historical = setup();
   await historical.element('era-historical').click();
+  await select(historical, 'grizzly_bear');
+  assert(historical.element('layer-note-text').textContent.includes('2012 grizzly'));
+  assert(historical.layers.at(-1).collection.features[0].properties.density_2012 !== undefined);
   for (const key of optionKeys) {
     await select(historical, key);
     assert.equal(historical.element('layer-note').hidden, false, `${key} must explain the historical view`);
