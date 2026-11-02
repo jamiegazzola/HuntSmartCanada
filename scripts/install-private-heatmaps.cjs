@@ -4,10 +4,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-if (process.env.CONTEXT !== 'production') {
-  console.log('Private map installation is limited to production.');
-  process.exit(0);
-}
 const source = path.join('private-species-map', 'species-map', 'data');
 const dest = path.join('site', 'species-map', 'data');
 const manifest = JSON.parse(fs.readFileSync(path.join(source, 'sources.json'), 'utf8'));
@@ -19,6 +15,10 @@ const staged = files.map(name => {
   if (!manifest[name]?.output_sha256 || hash !== manifest[name].output_sha256) throw new Error(`Private map asset failed integrity check: ${name}`);
   return [name, bytes];
 });
+if (process.env.CONTEXT !== 'production') {
+  console.log(`Verified access to ${staged.length} private map assets. Installation is limited to production.`);
+  process.exit(0);
+}
 fs.mkdirSync(dest, { recursive: true });
 for (const [name, bytes] of staged) fs.writeFileSync(path.join(dest, name), bytes);
 fs.copyFileSync(path.join(source, 'sources.json'), path.join(dest, 'sources.json'));
