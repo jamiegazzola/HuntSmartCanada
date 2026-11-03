@@ -70,15 +70,27 @@ const helper = `  function installCoordinateLongPress() {
       return copied;
     };
 
-    const copyFromTrustedRelease = (text) => {
+    const markCopied = (state) => {
+      if (state.copied) return;
+      state.copied = true;
+      showToast();
+    };
+
+    const tryTimedCopy = (state) => {
+      if (!state.text || state.copied || !navigator.clipboard?.writeText) return;
+      navigator.clipboard.writeText(state.text).then(() => markCopied(state)).catch(() => {});
+    };
+
+    const copyFromTrustedRelease = (state) => {
+      if (!state.text || state.copied) return;
       // execCommand is synchronous and still works as the iOS fallback while
       // touchend/pointerup retains transient user activation.
-      if (legacyCopy(text)) {
-        showToast();
+      if (legacyCopy(state.text)) {
+        markCopied(state);
         return;
       }
       if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(text).then(showToast).catch(() => {});
+        navigator.clipboard.writeText(state.text).then(() => markCopied(state)).catch(() => {});
       }
     };
 
@@ -121,6 +133,7 @@ const helper = `  function installCoordinateLongPress() {
         startX: event.clientX,
         startY: event.clientY,
         qualified: false,
+        copied: false,
         text: '',
         timer: null,
       };
@@ -128,6 +141,7 @@ const helper = `  function installCoordinateLongPress() {
         if (pointerPress !== state) return;
         state.text = coordinatesAt(state.startX, state.startY) || '';
         state.qualified = Boolean(state.text);
+        if (state.qualified) tryTimedCopy(state);
       }, COORDINATE_HOLD_MS);
       pointerPress = state;
     }, { capture: true, passive: true });
@@ -144,7 +158,7 @@ const helper = `  function installCoordinateLongPress() {
       const state = pointerPress;
       clearTimeout(state.timer);
       pointerPress = null;
-      if (state.qualified && state.text) copyFromTrustedRelease(state.text);
+      if (state.qualified && state.text && !state.copied) copyFromTrustedRelease(state);
     }, { capture: true, passive: true });
 
     window.addEventListener('pointercancel', cancelPointer, { capture: true, passive: true });
@@ -163,6 +177,7 @@ const helper = `  function installCoordinateLongPress() {
         startX: touch.clientX,
         startY: touch.clientY,
         qualified: false,
+        copied: false,
         text: '',
         timer: null,
       };
@@ -170,6 +185,7 @@ const helper = `  function installCoordinateLongPress() {
         if (touchPress !== state) return;
         state.text = coordinatesAt(state.startX, state.startY) || '';
         state.qualified = Boolean(state.text);
+        if (state.qualified) tryTimedCopy(state);
       }, COORDINATE_HOLD_MS);
       touchPress = state;
     }, { capture: true, passive: true });
@@ -193,7 +209,7 @@ const helper = `  function installCoordinateLongPress() {
       const state = touchPress;
       clearTimeout(state.timer);
       touchPress = null;
-      if (state.qualified && state.text) copyFromTrustedRelease(state.text);
+      if (state.qualified && state.text && !state.copied) copyFromTrustedRelease(state);
     }, { capture: true, passive: true });
 
     window.addEventListener('touchcancel', cancelTouch, { capture: true, passive: true });
@@ -216,6 +232,7 @@ for (const marker of [
   'const COORDINATE_HOLD_MS = 3000;',
   'const COORDINATE_HOLD_TOUCH_V2 = true;',
   "toast.textContent = 'Coordinates copied to clipboard';",
+  'tryTimedCopy(state);',
   "mapElement.addEventListener('touchstart'",
   "window.addEventListener('touchend'",
   "mapElement.style.setProperty('-webkit-touch-callout', 'none')",
