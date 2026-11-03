@@ -87,12 +87,16 @@ jobs:
             assert(mapPage.ok,`/species-map/ returned ${mapPage.status}`);
             assert(mapPage.status!==401,'species map unexpectedly requires authentication');
 
-            const app=await waitForMarker('/species-map/app.js','const COORDINATE_HOLD_MS = 3000;');
+            const app=await waitForMarker('/species-map/app.js','const COORDINATE_HOLD_TOUCH_V2 = true;');
+            assert(app.includes('const COORDINATE_HOLD_MS = 3000;'),'3-second hold marker missing');
             assert(app.includes("toast.textContent = 'Coordinates copied to clipboard'"),'coordinate-copy confirmation marker missing');
+            assert(app.includes("mapElement.addEventListener('touchstart'"),'iOS touchstart handler missing');
+            assert(app.includes("window.addEventListener('touchend'"),'iOS touchend handler missing');
+            assert(app.includes("mapElement.style.setProperty('-webkit-touch-callout', 'none')"),'iOS long-press callout suppression missing');
             assert(app.includes('projection.fromContainerPixelToLatLng'),'coordinate projection logic missing');
 
             await waitForJson('/species-map/api/species-data?kind=rooseveltEpu',j=>j?.type==='FeatureCollection'&&Array.isArray(j.features)&&j.features.length>0);
-            console.log('Public species map, coordinate-copy interaction, and data endpoint passed.');
+            console.log('Public species map, iOS-safe coordinate-copy interaction, and data endpoint passed.');
             console.log('HuntSmart production map/PWA smoke passed.');
           })().catch(e=>{console.error(e.stack||e);process.exit(1)});
           NODE
