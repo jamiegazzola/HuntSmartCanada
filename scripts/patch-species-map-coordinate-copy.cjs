@@ -5,61 +5,66 @@ const fs = require('node:fs');
 const appPath = 'site/species-map/app.js';
 let app = fs.readFileSync(appPath, 'utf8');
 
-if (app.includes('const COORDINATE_HOLD_TOUCH_V2 = true;')) {
-  console.log('Species-map coordinate long-press v2 is already installed.');
+if (app.includes('const DROP_PIN_COORDINATE_COPY = true;')) {
+  console.log('Species-map drop-pin coordinate copy is already installed.');
   process.exit(0);
 }
 
 const initAnchor = '  window.initSpeciesMap = () => {\n';
 if (!app.includes(initAnchor)) throw new Error('Species-map initialization anchor is missing');
 
-const helper = `  function installCoordinateLongPress() {
-    const mapElement = document.getElementById('map');
-    if (!mapElement || !map || mapElement.dataset.coordinateHoldReady === '2') return;
-    mapElement.dataset.coordinateHoldReady = '2';
+const helper = `  function installDropPinCoordinateCopy() {
+    if (!map || document.getElementById('coordinate-drop-pin')) return;
+    const DROP_PIN_COORDINATE_COPY = true;
+    let armed = false;
+    let toastTimer = null;
 
-    // Prevent iOS Safari's native long-press callout from taking ownership of
-    // a stationary touch. This does not disable Google Maps drag/pinch gestures.
-    mapElement.style.setProperty('-webkit-touch-callout', 'none');
-    mapElement.style.setProperty('-webkit-user-select', 'none');
-    mapElement.style.userSelect = 'none';
+    // Replace the built-in map-type control in the lower-left with one clean
+    // HuntSmart drop-pin action.
+    map.setOptions({ mapTypeControl: false });
 
-    const projectionOverlay = new google.maps.OverlayView();
-    projectionOverlay.onAdd = () => {};
-    projectionOverlay.draw = () => {};
-    projectionOverlay.onRemove = () => {};
-    projectionOverlay.setMap(map);
+    const style = document.createElement('style');
+    style.textContent = \`
+      #coordinate-drop-pin{position:fixed;left:12px;bottom:calc(22px + env(safe-area-inset-bottom));z-index:10001;width:50px;height:50px;border:1px solid rgba(255,255,255,.16);border-radius:15px;background:rgba(15,20,17,.94);color:#fff;display:grid;place-items:center;padding:0;box-shadow:0 8px 24px rgba(0,0,0,.30);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);cursor:pointer}
+      #coordinate-drop-pin[aria-pressed=\"true\"]{background:#527b56;border-color:rgba(255,255,255,.28)}
+      #coordinate-drop-pin svg{width:25px;height:25px;display:block;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+      #coordinate-copy-toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));z-index:10002;transform:translate(-50%,10px);opacity:0;transition:opacity .16s ease,transform .16s ease;pointer-events:none;white-space:nowrap;background:rgba(15,20,17,.96);color:#fff;padding:10px 14px;border-radius:999px;font:600 14px/1.2 -apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.28)}
+      #coordinate-copy-toast.show{opacity:1;transform:translate(-50%,0)}
+      .layer-note:not([hidden]){bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+    \`;
+    document.head.appendChild(style);
+
+    const button = document.createElement('button');
+    button.id = 'coordinate-drop-pin';
+    button.type = 'button';
+    button.setAttribute('aria-label', 'Copy coordinates from map');
+    button.setAttribute('aria-pressed', 'false');
+    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>';
+    document.body.appendChild(button);
 
     const toast = document.createElement('div');
-    toast.textContent = 'Coordinates copied to clipboard';
+    toast.id = 'coordinate-copy-toast';
     toast.setAttribute('role', 'status');
     toast.setAttribute('aria-live', 'polite');
-    toast.style.cssText = 'position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));z-index:10000;transform:translate(-50%,12px);opacity:0;transition:opacity .18s ease,transform .18s ease;pointer-events:none;white-space:nowrap;background:rgba(18,22,19,.94);color:#fff;padding:10px 14px;border-radius:999px;font:600 14px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.28);';
+    toast.textContent = 'Coordinates copied';
     document.body.appendChild(toast);
 
-    let toastTimer = null;
-    const showToast = () => {
-      clearTimeout(toastTimer);
-      toast.style.opacity = '1';
-      toast.style.transform = 'translate(-50%,0)';
-      toastTimer = setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translate(-50%,12px)';
-      }, 1600);
+    const setArmed = (value) => {
+      armed = value;
+      button.setAttribute('aria-pressed', value ? 'true' : 'false');
     };
 
-    const COORDINATE_HOLD_MS = 3000;
-    const COORDINATE_MOVE_TOLERANCE = 14;
-    const COORDINATE_HOLD_TOUCH_V2 = true;
-    let pointerPress = null;
-    let touchPress = null;
+    const showToast = () => {
+      clearTimeout(toastTimer);
+      toast.classList.add('show');
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+    };
 
     const legacyCopy = (text) => {
       const field = document.createElement('textarea');
       field.value = text;
       field.setAttribute('readonly', '');
-      field.setAttribute('aria-hidden', 'true');
-      field.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+      field.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none;';
       document.body.appendChild(field);
       field.focus({ preventScroll: true });
       field.select();
@@ -70,154 +75,28 @@ const helper = `  function installCoordinateLongPress() {
       return copied;
     };
 
-    const markCopied = (state) => {
-      if (state.copied) return;
-      state.copied = true;
-      showToast();
-    };
-
-    const tryTimedCopy = (state) => {
-      if (!state.text || state.copied || !navigator.clipboard?.writeText) return;
-      navigator.clipboard.writeText(state.text).then(() => markCopied(state)).catch(() => {});
-    };
-
-    const copyFromTrustedRelease = (state) => {
-      if (!state.text || state.copied) return;
-      // execCommand is synchronous and still works as the iOS fallback while
-      // touchend/pointerup retains transient user activation.
-      if (legacyCopy(state.text)) {
-        markCopied(state);
-        return;
-      }
+    const copyCoordinates = (text) => {
       if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(state.text).then(() => markCopied(state)).catch(() => {});
-      }
-    };
-
-    const coordinatesAt = (clientX, clientY) => {
-      const projection = projectionOverlay.getProjection();
-      if (!projection) return null;
-      const rect = mapElement.getBoundingClientRect();
-      if (!rect.width || !rect.height) return null;
-      const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
-      const y = Math.max(0, Math.min(rect.height, clientY - rect.top));
-      const latLng = projection.fromContainerPixelToLatLng(new google.maps.Point(x, y));
-      if (!latLng) return null;
-      return \`\${latLng.lat().toFixed(6)}, \${latLng.lng().toFixed(6)}\`;
-    };
-
-    const isInteractiveTarget = (target) => target instanceof Element && Boolean(target.closest(
-      'button,select,a,input,textarea,[role="button"],.species-control,.era-control,.layer-note,.gm-style-cc,.gm-control-active'
-    ));
-
-    const cancelPointer = () => {
-      if (!pointerPress) return;
-      clearTimeout(pointerPress.timer);
-      pointerPress = null;
-    };
-
-    const cancelTouch = () => {
-      if (!touchPress) return;
-      clearTimeout(touchPress.timer);
-      touchPress = null;
-    };
-
-    // Desktop / stylus path. Touch is deliberately handled below because
-    // Safari can cancel pointer events during a long press inside Google Maps.
-    mapElement.addEventListener('pointerdown', (event) => {
-      if (!event.isPrimary || event.pointerType === 'touch' || isInteractiveTarget(event.target)) return;
-      if (event.pointerType === 'mouse' && event.button !== 0) return;
-      cancelPointer();
-      const state = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        qualified: false,
-        copied: false,
-        text: '',
-        timer: null,
-      };
-      state.timer = setTimeout(() => {
-        if (pointerPress !== state) return;
-        state.text = coordinatesAt(state.startX, state.startY) || '';
-        state.qualified = Boolean(state.text);
-        if (state.qualified) tryTimedCopy(state);
-      }, COORDINATE_HOLD_MS);
-      pointerPress = state;
-    }, { capture: true, passive: true });
-
-    window.addEventListener('pointermove', (event) => {
-      if (!pointerPress || event.pointerId !== pointerPress.pointerId) return;
-      if (Math.hypot(event.clientX - pointerPress.startX, event.clientY - pointerPress.startY) > COORDINATE_MOVE_TOLERANCE) {
-        cancelPointer();
-      }
-    }, { capture: true, passive: true });
-
-    window.addEventListener('pointerup', (event) => {
-      if (!pointerPress || event.pointerId !== pointerPress.pointerId) return;
-      const state = pointerPress;
-      clearTimeout(state.timer);
-      pointerPress = null;
-      if (state.qualified && state.text && !state.copied) copyFromTrustedRelease(state);
-    }, { capture: true, passive: true });
-
-    window.addEventListener('pointercancel', cancelPointer, { capture: true, passive: true });
-
-    // iPhone/iPad path. Keep a separate touch state so a browser-generated
-    // pointercancel cannot erase a valid stationary long press.
-    mapElement.addEventListener('touchstart', (event) => {
-      if (event.touches.length !== 1 || isInteractiveTarget(event.target)) {
-        cancelTouch();
+        navigator.clipboard.writeText(text).then(showToast).catch(() => {
+          if (legacyCopy(text)) showToast();
+        });
         return;
       }
-      const touch = event.touches[0];
-      cancelTouch();
-      const state = {
-        identifier: touch.identifier,
-        startX: touch.clientX,
-        startY: touch.clientY,
-        qualified: false,
-        copied: false,
-        text: '',
-        timer: null,
-      };
-      state.timer = setTimeout(() => {
-        if (touchPress !== state) return;
-        state.text = coordinatesAt(state.startX, state.startY) || '';
-        state.qualified = Boolean(state.text);
-        if (state.qualified) tryTimedCopy(state);
-      }, COORDINATE_HOLD_MS);
-      touchPress = state;
-    }, { capture: true, passive: true });
+      if (legacyCopy(text)) showToast();
+    };
 
-    window.addEventListener('touchmove', (event) => {
-      if (!touchPress) return;
-      if (event.touches.length !== 1) {
-        cancelTouch();
-        return;
-      }
-      const touch = Array.from(event.touches).find((item) => item.identifier === touchPress.identifier);
-      if (!touch || Math.hypot(touch.clientX - touchPress.startX, touch.clientY - touchPress.startY) > COORDINATE_MOVE_TOLERANCE) {
-        cancelTouch();
-      }
-    }, { capture: true, passive: true });
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setArmed(!armed);
+    });
 
-    window.addEventListener('touchend', (event) => {
-      if (!touchPress) return;
-      const ended = Array.from(event.changedTouches || []).some((item) => item.identifier === touchPress.identifier);
-      if (!ended) return;
-      const state = touchPress;
-      clearTimeout(state.timer);
-      touchPress = null;
-      if (state.qualified && state.text && !state.copied) copyFromTrustedRelease(state);
-    }, { capture: true, passive: true });
-
-    window.addEventListener('touchcancel', cancelTouch, { capture: true, passive: true });
-    window.addEventListener('gesturestart', cancelTouch, { capture: true, passive: true });
-
-    mapElement.addEventListener('contextmenu', (event) => {
-      if (!isInteractiveTarget(event.target)) event.preventDefault();
-    }, { capture: true });
+    map.addListener('click', (event) => {
+      if (!armed || !event.latLng) return;
+      setArmed(false);
+      const text = \`\${event.latLng.lat().toFixed(6)}, \${event.latLng.lng().toFixed(6)}\`;
+      copyCoordinates(text);
+    });
   }
 
 `;
@@ -226,22 +105,24 @@ app = app.replace(initAnchor, helper + initAnchor);
 
 const callAnchor = '      if (!savedView) {\n';
 if (!app.includes(callAnchor)) throw new Error('Species-map post-initialization anchor is missing');
-app = app.replace(callAnchor, '      installCoordinateLongPress();\n\n' + callAnchor);
+app = app.replace(callAnchor, '      installDropPinCoordinateCopy();\n\n' + callAnchor);
 
 for (const marker of [
-  'const COORDINATE_HOLD_MS = 3000;',
-  'const COORDINATE_HOLD_TOUCH_V2 = true;',
-  "toast.textContent = 'Coordinates copied to clipboard';",
-  'tryTimedCopy(state);',
-  "mapElement.addEventListener('touchstart'",
-  "window.addEventListener('touchend'",
-  "mapElement.style.setProperty('-webkit-touch-callout', 'none')",
-  'projection.fromContainerPixelToLatLng',
-  'installCoordinateLongPress();',
+  'const DROP_PIN_COORDINATE_COPY = true;',
+  "button.id = 'coordinate-drop-pin';",
+  "toast.textContent = 'Coordinates copied';",
+  "map.setOptions({ mapTypeControl: false });",
+  "map.addListener('click'",
+  'setTimeout(() => toast.classList.remove(\'show\'), 3000)',
+  'installDropPinCoordinateCopy();',
 ]) {
-  if (!app.includes(marker)) throw new Error(`Coordinate-copy patch validation failed: ${marker}`);
+  if (!app.includes(marker)) throw new Error(`Drop-pin coordinate patch validation failed: ${marker}`);
+}
+
+if (app.includes('COORDINATE_HOLD_MS') || app.includes('installCoordinateLongPress')) {
+  throw new Error('Legacy long-press coordinate interaction is still present');
 }
 
 new Function(app);
 fs.writeFileSync(appPath, app);
-console.log('Installed iOS-safe 3-second species-map coordinate copy interaction.');
+console.log('Installed drop-pin coordinate copy interaction.');
