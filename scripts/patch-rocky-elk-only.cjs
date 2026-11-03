@@ -15,8 +15,23 @@ const caribouPopulationReplacement = 'const population = estimate.population == 
 if (!source.includes(caribouPopulationAnchor)) throw new Error('Caribou population parsing anchor is missing');
 source = source.replace(caribouPopulationAnchor, caribouPopulationReplacement);
 
-const eraAnchor = "document.querySelector('.era-control').hidden = item.type === 'roosevelt';";
-const eraReplacement = "document.querySelector('.era-control').hidden = item.type === 'roosevelt' || item.key === 'elk';";
+const eraAnchor = `    const eraControl = document.querySelector('.era-control');
+    const isRoosevelt = item.type === 'roosevelt';
+    eraControl.hidden = isRoosevelt;
+    eraControl.style.display = isRoosevelt ? 'none' : '';
+    if (isRoosevelt && viewMode !== 'modern') {
+      viewMode = 'modern';
+      setEraButtons();
+    }`;
+const eraReplacement = `    const eraControl = document.querySelector('.era-control');
+    const isRoosevelt = item.type === 'roosevelt';
+    const isRockyElk = item.key === 'elk';
+    eraControl.hidden = isRoosevelt || isRockyElk;
+    eraControl.style.display = (isRoosevelt || isRockyElk) ? 'none' : '';
+    if (isRoosevelt && viewMode !== 'modern') {
+      viewMode = 'modern';
+      setEraButtons();
+    }`;
 if (!source.includes(eraAnchor)) throw new Error('Species era-control anchor is missing');
 source = source.replace(eraAnchor, eraReplacement);
 
