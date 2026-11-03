@@ -5,8 +5,8 @@ const fs = require('node:fs');
 const appPath = 'site/species-map/app.js';
 let app = fs.readFileSync(appPath, 'utf8');
 
-if (app.includes('const COORDINATE_HOLD_MS = 3000;')) {
-  console.log('Species-map coordinate long-press is already installed.');
+if (app.includes('const COORDINATE_HOLD_TOUCH_V2 = true;')) {
+  console.log('Species-map coordinate long-press v2 is already installed.');
   process.exit(0);
 }
 
@@ -15,8 +15,14 @@ if (!app.includes(initAnchor)) throw new Error('Species-map initialization ancho
 
 const helper = `  function installCoordinateLongPress() {
     const mapElement = document.getElementById('map');
-    if (!mapElement || !map || mapElement.dataset.coordinateHoldReady === '1') return;
-    mapElement.dataset.coordinateHoldReady = '1';
+    if (!mapElement || !map || mapElement.dataset.coordinateHoldReady === '2') return;
+    mapElement.dataset.coordinateHoldReady = '2';
+
+    // Prevent iOS Safari's native long-press callout from taking ownership of
+    // a stationary touch. This does not disable Google Maps drag/pinch gestures.
+    mapElement.style.setProperty('-webkit-touch-callout', 'none');
+    mapElement.style.setProperty('-webkit-user-select', 'none');
+    mapElement.style.userSelect = 'none';
 
     const projectionOverlay = new google.maps.OverlayView();
     projectionOverlay.onAdd = () => {};
@@ -43,14 +49,17 @@ const helper = `  function installCoordinateLongPress() {
     };
 
     const COORDINATE_HOLD_MS = 3000;
-    const COORDINATE_MOVE_TOLERANCE = 12;
-    let press = null;
+    const COORDINATE_MOVE_TOLERANCE = 14;
+    const COORDINATE_HOLD_TOUCH_V2 = true;
+    let pointerPress = null;
+    let touchPress = null;
 
     const legacyCopy = (text) => {
       const field = document.createElement('textarea');
       field.value = text;
       field.setAttribute('readonly', '');
-      field.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none;';
+      field.setAttribute('aria-hidden', 'true');
+      field.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
       document.body.appendChild(field);
       field.focus({ preventScroll: true });
       field.select();
@@ -61,14 +70,16 @@ const helper = `  function installCoordinateLongPress() {
       return copied;
     };
 
-    const copyCoordinates = async (text) => {
-      if (navigator.clipboard?.writeText) {
-        try {
-          await navigator.clipboard.writeText(text);
-          return true;
-        } catch {}
+    const copyFromTrustedRelease = (text) => {
+      // execCommand is synchronous and still works as the iOS fallback while
+      // touchend/pointerup retains transient user activation.
+      if (legacyCopy(text)) {
+        showToast();
+        return;
       }
-      return legacyCopy(text);
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).then(showToast).catch(() => {});
+      }
     };
 
     const coordinatesAt = (clientX, clientY) => {
@@ -87,71 +98,106 @@ const helper = `  function installCoordinateLongPress() {
       'button,select,a,input,textarea,[role="button"],.species-control,.era-control,.layer-note,.gm-style-cc,.gm-control-active'
     ));
 
-    const cancelPress = () => {
-      if (!press) return;
-      clearTimeout(press.timer);
-      press = null;
+    const cancelPointer = () => {
+      if (!pointerPress) return;
+      clearTimeout(pointerPress.timer);
+      pointerPress = null;
     };
 
-    const markCopied = (state) => {
-      if (state.copied) return;
-      state.copied = true;
-      state.pendingText = '';
-      showToast();
+    const cancelTouch = () => {
+      if (!touchPress) return;
+      clearTimeout(touchPress.timer);
+      touchPress = null;
     };
 
+    // Desktop / stylus path. Touch is deliberately handled below because
+    // Safari can cancel pointer events during a long press inside Google Maps.
     mapElement.addEventListener('pointerdown', (event) => {
-      if (!event.isPrimary || isInteractiveTarget(event.target)) return;
+      if (!event.isPrimary || event.pointerType === 'touch' || isInteractiveTarget(event.target)) return;
       if (event.pointerType === 'mouse' && event.button !== 0) return;
-      cancelPress();
+      cancelPointer();
       const state = {
         pointerId: event.pointerId,
         startX: event.clientX,
         startY: event.clientY,
         qualified: false,
-        copied: false,
-        pendingText: '',
+        text: '',
         timer: null,
       };
       state.timer = setTimeout(() => {
-        if (press !== state) return;
-        state.qualified = true;
-        const text = coordinatesAt(state.startX, state.startY);
-        if (!text) return;
-        state.pendingText = text;
-        copyCoordinates(text).then((copied) => {
-          if (copied) markCopied(state);
-        });
+        if (pointerPress !== state) return;
+        state.text = coordinatesAt(state.startX, state.startY) || '';
+        state.qualified = Boolean(state.text);
       }, COORDINATE_HOLD_MS);
-      press = state;
+      pointerPress = state;
     }, { capture: true, passive: true });
 
     window.addEventListener('pointermove', (event) => {
-      if (!press || event.pointerId !== press.pointerId) return;
-      const distance = Math.hypot(event.clientX - press.startX, event.clientY - press.startY);
-      if (distance > COORDINATE_MOVE_TOLERANCE) cancelPress();
+      if (!pointerPress || event.pointerId !== pointerPress.pointerId) return;
+      if (Math.hypot(event.clientX - pointerPress.startX, event.clientY - pointerPress.startY) > COORDINATE_MOVE_TOLERANCE) {
+        cancelPointer();
+      }
     }, { capture: true, passive: true });
 
     window.addEventListener('pointerup', (event) => {
-      if (!press || event.pointerId !== press.pointerId) return;
-      const state = press;
+      if (!pointerPress || event.pointerId !== pointerPress.pointerId) return;
+      const state = pointerPress;
       clearTimeout(state.timer);
-      press = null;
-      if (!state.qualified || state.copied || !state.pendingText) return;
-
-      // Safari can reject an async clipboard write after a long timer because
-      // transient user activation has expired. Pointer-up is a fresh trusted
-      // gesture, so retry the legacy copy synchronously before the async API.
-      if (legacyCopy(state.pendingText)) {
-        markCopied(state);
-        return;
-      }
-      copyCoordinates(state.pendingText).then((copied) => {
-        if (copied) markCopied(state);
-      });
+      pointerPress = null;
+      if (state.qualified && state.text) copyFromTrustedRelease(state.text);
     }, { capture: true, passive: true });
 
-    window.addEventListener('pointercancel', cancelPress, { capture: true, passive: true });
+    window.addEventListener('pointercancel', cancelPointer, { capture: true, passive: true });
+
+    // iPhone/iPad path. Keep a separate touch state so a browser-generated
+    // pointercancel cannot erase a valid stationary long press.
+    mapElement.addEventListener('touchstart', (event) => {
+      if (event.touches.length !== 1 || isInteractiveTarget(event.target)) {
+        cancelTouch();
+        return;
+      }
+      const touch = event.touches[0];
+      cancelTouch();
+      const state = {
+        identifier: touch.identifier,
+        startX: touch.clientX,
+        startY: touch.clientY,
+        qualified: false,
+        text: '',
+        timer: null,
+      };
+      state.timer = setTimeout(() => {
+        if (touchPress !== state) return;
+        state.text = coordinatesAt(state.startX, state.startY) || '';
+        state.qualified = Boolean(state.text);
+      }, COORDINATE_HOLD_MS);
+      touchPress = state;
+    }, { capture: true, passive: true });
+
+    window.addEventListener('touchmove', (event) => {
+      if (!touchPress) return;
+      if (event.touches.length !== 1) {
+        cancelTouch();
+        return;
+      }
+      const touch = Array.from(event.touches).find((item) => item.identifier === touchPress.identifier);
+      if (!touch || Math.hypot(touch.clientX - touchPress.startX, touch.clientY - touchPress.startY) > COORDINATE_MOVE_TOLERANCE) {
+        cancelTouch();
+      }
+    }, { capture: true, passive: true });
+
+    window.addEventListener('touchend', (event) => {
+      if (!touchPress) return;
+      const ended = Array.from(event.changedTouches || []).some((item) => item.identifier === touchPress.identifier);
+      if (!ended) return;
+      const state = touchPress;
+      clearTimeout(state.timer);
+      touchPress = null;
+      if (state.qualified && state.text) copyFromTrustedRelease(state.text);
+    }, { capture: true, passive: true });
+
+    window.addEventListener('touchcancel', cancelTouch, { capture: true, passive: true });
+    window.addEventListener('gesturestart', cancelTouch, { capture: true, passive: true });
 
     mapElement.addEventListener('contextmenu', (event) => {
       if (!isInteractiveTarget(event.target)) event.preventDefault();
@@ -168,7 +214,11 @@ app = app.replace(callAnchor, '      installCoordinateLongPress();\n\n' + callAn
 
 for (const marker of [
   'const COORDINATE_HOLD_MS = 3000;',
+  'const COORDINATE_HOLD_TOUCH_V2 = true;',
   "toast.textContent = 'Coordinates copied to clipboard';",
+  "mapElement.addEventListener('touchstart'",
+  "window.addEventListener('touchend'",
+  "mapElement.style.setProperty('-webkit-touch-callout', 'none')",
   'projection.fromContainerPixelToLatLng',
   'installCoordinateLongPress();',
 ]) {
@@ -177,4 +227,4 @@ for (const marker of [
 
 new Function(app);
 fs.writeFileSync(appPath, app);
-console.log('Installed 3-second species-map coordinate copy interaction.');
+console.log('Installed iOS-safe 3-second species-map coordinate copy interaction.');
