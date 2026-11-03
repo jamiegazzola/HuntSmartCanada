@@ -10,6 +10,11 @@ if (source.includes('ROCKY_MOUNTAIN_ELK_ONLY')) {
   process.exit(0);
 }
 
+const caribouPopulationAnchor = 'const population = Number(estimate.population);';
+const caribouPopulationReplacement = 'const population = estimate.population == null ? null : Number(estimate.population);';
+if (!source.includes(caribouPopulationAnchor)) throw new Error('Caribou population parsing anchor is missing');
+source = source.replace(caribouPopulationAnchor, caribouPopulationReplacement);
+
 const eraAnchor = "document.querySelector('.era-control').hidden = item.type === 'roosevelt';";
 const eraReplacement = "document.querySelector('.era-control').hidden = item.type === 'roosevelt' || item.key === 'elk';";
 if (!source.includes(eraAnchor)) throw new Error('Species era-control anchor is missing');
@@ -46,4 +51,4 @@ if (!source.includes(catalogAnchor)) throw new Error('Species catalog rename anc
 source = source.replace(catalogAnchor, catalogReplacement);
 
 fs.writeFileSync(installerPath, source);
-console.log('Installed Rocky Mountain Elk-only renderer and catalog label patch.');
+console.log('Installed Rocky Mountain Elk-only renderer and preserved unknown caribou population states.');
