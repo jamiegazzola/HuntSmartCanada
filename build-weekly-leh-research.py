@@ -100,5 +100,5 @@ if URL not in xml:
     sitemap.write_text(xml,encoding="utf-8")
 assert URL in sitemap.read_text(encoding="utf-8")
 assert SLUG in journal.read_text(encoding="utf-8")
-assert "<polyline" in page and "research-data" in page and "Dataset" in page
+assert "add('polyline'" in page and "research-data" in page and "Dataset" in page
 print(f"Built {SLUG}: {len(rows)} real opportunities; Journal card and sitemap verified")
