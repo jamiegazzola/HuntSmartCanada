@@ -80,6 +80,14 @@ jobs:
             assert(app.includes("map.addListener('click'"),'next-map-tap handler missing');
             assert(app.includes("setTimeout(() => toast.classList.remove('show'), 3000)"),'3-second toast duration missing');
             assert(!app.includes('COORDINATE_HOLD_MS'),'legacy long-press interaction still deployed');
+            assert(app.includes("const cacheKey = 'rocky_elk_march_2005_clipped'"),'Rocky elk historical KMZ renderer missing');
+            assert(app.includes("kmzOverlayUrl('kmz-elk-historic.png'"),'March 2005 Rocky elk source is not selected');
+            assert(app.includes("ctx.globalCompositeOperation = 'destination-out'"),'Rocky elk Region 1/2 image mask missing');
+            assert(app.includes("feature.properties?.region_id === id"),'Rocky elk region exclusion validation missing');
+            assert(app.includes("if (item.type === 'roosevelt')"),'Roosevelt elk independent branch missing');
+            const regionMask = JSON.parse(await text('/species-map/data/rocky-elk-excluded-regions.geojson'));
+            assert(regionMask.type === 'FeatureCollection' && regionMask.features.length === 2,'Rocky elk Region 1/2 clip data missing');
+            assert(['1','2'].every(id => regionMask.features.some(f=>f.properties.region_id===id && f.geometry.type==='Polygon')),'Rocky elk mask polygon ids invalid');
 
             await waitForJson('/species-map/api/species-data?kind=rooseveltEpu',j=>j?.type==='FeatureCollection'&&Array.isArray(j.features)&&j.features.length>0);
             console.log('Public species map, drop-pin coordinate copy, and data endpoint passed.');
