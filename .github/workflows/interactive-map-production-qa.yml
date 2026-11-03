@@ -28,6 +28,8 @@ on:
       - netlify/lib/**
       - scripts/verify-private-species.mjs
       - scripts/verify-species-map.cjs
+      - scripts/patch-species-public.cjs
+      - scripts/patch-species-map-coordinate-copy.cjs
       - .github/workflows/interactive-map-production-qa.yml
 
 permissions:
@@ -44,8 +46,8 @@ jobs:
           node-version: '22'
       - name: Verify species layer selection and fallback
         run: node scripts/verify-species-map.cjs
-      - name: Verify private species map access
-        run: node scripts/verify-private-species.mjs
+      - name: Verify public species map data
+        run: node scripts/patch-species-public.cjs && node scripts/verify-private-species.mjs
       - name: Validate deployed map, species data, and PWA assets
         env:
           URL: https://huntsmartcanada.ca
@@ -78,21 +80,16 @@ jobs:
             const manifest=JSON.parse(await text('/site.webmanifest'));assert(manifest.display==='standalone','manifest display invalid');
             const sw=await text('/hs-offline-lite-sw.js');assert(sw.includes('networkFirst(request)'),'service worker update policy missing');
 
-            async function waitForPrivate(path){
-              for(let i=0;i<18;i++){
-                const r=await response(path);
-                if(r.status===401 && r.headers.get('x-species-private')==='v1'){
-                  assert((r.headers.get('cache-control')||'').includes('no-store'),`${path} private response must not be cached`);
-                  return;
-                }
-                await sleep(5000);
-              }
-              throw new Error(`${path} was not protected by the private-map gate`);
-            }
-            for(const path of ['/species-map','/species-map/','/species-map/app.js','/species-map/api/species-data?kind=rooseveltEpu']) await waitForPrivate(path);
-            const legacy=await response('/.netlify/functions/species-data?kind=rooseveltEpu');
-            assert(legacy.status===401||legacy.status===404,'legacy species-data URL remains publicly accessible');
-            console.log('Species map and data endpoint deny unauthenticated requests.');
+            const mapPage=await response('/species-map/');
+            assert(mapPage.ok,`/species-map/ returned ${mapPage.status}`);
+            assert(mapPage.status!==401,'species map unexpectedly requires authentication');
+
+            const app=await waitForMarker('/species-map/app.js','const COORDINATE_HOLD_MS = 3000;');
+            assert(app.includes("toast.textContent = 'Coordinates copied to clipboard'"),'coordinate-copy confirmation marker missing');
+            assert(app.includes('projection.fromContainerPixelToLatLng'),'coordinate projection logic missing');
+
+            await waitForJson('/species-map/api/species-data?kind=rooseveltEpu',j=>j?.type==='FeatureCollection'&&Array.isArray(j.features)&&j.features.length>0);
+            console.log('Public species map, coordinate-copy interaction, and data endpoint passed.');
             console.log('HuntSmart production map/PWA smoke passed.');
           })().catch(e=>{console.error(e.stack||e);process.exit(1)});
           NODE
