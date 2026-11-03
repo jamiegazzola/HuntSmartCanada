@@ -63,20 +63,6 @@ jobs:
           async function text(path){const r=await response(path);assert(r.ok,`${path} returned ${r.status}`);return r.text()}
           async function waitForMarker(path,marker){for(let i=0;i<18;i++){const r=await response(path);if(r.ok){const body=await r.text();if(body.includes(marker))return body}await sleep(5000)}throw new Error(`${path} never published marker ${marker}`)}
           async function waitForJson(path,validate){let last='';for(let i=0;i<18;i++){const r=await response(path);last=await r.text();if(r.ok){try{const j=JSON.parse(last);if(validate(j))return j}catch(_){}}await sleep(5000)}throw new Error(`${path} never became valid: ${last}`)}
-          function rasterPixels(body,source){
-            const match=body.match(new RegExp(`SPECIES_DATA\\.${source}='([^']+)'`));
-            assert(match,`${source} raster payload missing`);
-            let total=0;
-            for(const token of match[1].split(',')){
-              if(!token)continue;
-              const level=Number(token[0]);
-              const count=parseInt(token.slice(1),36);
-              assert(Number.isInteger(level)&&level>=0&&level<=4,`${source} raster level invalid`);
-              assert(Number.isFinite(count)&&count>0,`${source} raster run invalid`);
-              total+=count;
-            }
-            return total;
-          }
           (async()=>{
             const html=await text('/');
             assert(html.includes('name="huntsmart-pwa-shell"'),'PWA build marker missing');
@@ -87,16 +73,16 @@ jobs:
             assert(mapPage.ok,`/species-map/ returned ${mapPage.status}`);
             assert(mapPage.status!==401,'species map unexpectedly requires authentication');
 
-            const app=await waitForMarker('/species-map/app.js','const COORDINATE_HOLD_TOUCH_V2 = true;');
-            assert(app.includes('const COORDINATE_HOLD_MS = 3000;'),'3-second hold marker missing');
-            assert(app.includes("toast.textContent = 'Coordinates copied to clipboard'"),'coordinate-copy confirmation marker missing');
-            assert(app.includes("mapElement.addEventListener('touchstart'"),'iOS touchstart handler missing');
-            assert(app.includes("window.addEventListener('touchend'"),'iOS touchend handler missing');
-            assert(app.includes("mapElement.style.setProperty('-webkit-touch-callout', 'none')"),'iOS long-press callout suppression missing');
-            assert(app.includes('projection.fromContainerPixelToLatLng'),'coordinate projection logic missing');
+            const app=await waitForMarker('/species-map/app.js','const DROP_PIN_COORDINATE_COPY = true;');
+            assert(app.includes("button.id = 'coordinate-drop-pin'"),'drop-pin button missing');
+            assert(app.includes("toast.textContent = 'Coordinates copied'"),'coordinate-copy confirmation missing');
+            assert(app.includes("map.setOptions({ mapTypeControl: false })"),'old map-type control is not disabled');
+            assert(app.includes("map.addListener('click'"),'next-map-tap handler missing');
+            assert(app.includes("setTimeout(() => toast.classList.remove('show'), 3000)"),'3-second toast duration missing');
+            assert(!app.includes('COORDINATE_HOLD_MS'),'legacy long-press interaction still deployed');
 
             await waitForJson('/species-map/api/species-data?kind=rooseveltEpu',j=>j?.type==='FeatureCollection'&&Array.isArray(j.features)&&j.features.length>0);
-            console.log('Public species map, iOS-safe coordinate-copy interaction, and data endpoint passed.');
+            console.log('Public species map, drop-pin coordinate copy, and data endpoint passed.');
             console.log('HuntSmart production map/PWA smoke passed.');
           })().catch(e=>{console.error(e.stack||e);process.exit(1)});
           NODE
