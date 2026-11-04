@@ -1,0 +1,18 @@
+{
+  "id": "/species-map/",
+  "name": "BC Species Distribution",
+  "short_name": "BC Species",
+  "start_url": "/species-map/",
+  "scope": "/species-map/",
+  "display": "standalone",
+  "background_color": "#0b1010",
+  "theme_color": "#0b1010",
+  "icons": [
+    {
+      "src": "/species-map/stone-sheep-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
