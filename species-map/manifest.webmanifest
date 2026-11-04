@@ -9,10 +9,16 @@
   "theme_color": "#0b1010",
   "icons": [
     {
+      "src": "/species-map/stone-sheep-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
       "src": "/species-map/stone-sheep-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
