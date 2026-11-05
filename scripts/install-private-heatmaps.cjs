@@ -205,7 +205,12 @@ function patchProductionApp(input) {
     if (!app.includes(before)) throw new Error(`Private species viewer patch target missing: ${before}`);
     app = app.replace(before, after);
   }
-  app = patchKmzGeoref(app);
+  // Preserve the user's current map scale when enabling 3D. Forcing zoom 18
+  // upscales low-resolution Google aerial tiles in remote BC locations.
+  const forced3dZoom = '       map.setZoom(Math.max(map.getZoom(), 18));';
+  if (!app.includes(forced3dZoom)) throw new Error('Species map forced 3D zoom anchor is missing');
+  app = app.replace(forced3dZoom, '       // Preserve existing zoom; tilt only where Google imagery supports it.');
+    app = patchKmzGeoref(app);
   // Parse the exact production output during every build, including deploy previews,
   // so a malformed build-time replacement cannot reach main unnoticed.
   new Function(app);
