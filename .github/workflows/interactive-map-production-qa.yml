@@ -80,6 +80,9 @@ jobs:
             assert(app.includes("map.addListener('click'"),'next-map-tap handler missing');
             assert(app.includes("setTimeout(() => toast.classList.remove('show'), 3000)"),'3-second toast duration missing');
             assert(!app.includes('COORDINATE_HOLD_MS'),'legacy long-press interaction still deployed');
+            assert(!app.includes('map.setZoom(Math.max(map.getZoom(), 18))'),'3D toggle must not forcibly zoom to blurry satellite imagery');
+            assert(!app.includes('map.setZoom(preTiltView.zoom)'),'leaving 3D must not unexpectedly restore old zoom');
+            assert(app.includes('map.setTilt(45)'),'3D tilt toggle must remain available');
             assert(app.includes("const cacheKey = 'rocky_elk_march_2005_clipped'"),'Rocky elk historical KMZ renderer missing');
             assert(app.includes("kmzOverlayUrl('kmz-elk-historic.png'"),'March 2005 Rocky elk source is not selected');
             assert(app.includes("ctx.globalCompositeOperation = 'destination-out'"),'Rocky elk Region 1/2 image mask missing');
