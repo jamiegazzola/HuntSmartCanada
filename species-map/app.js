@@ -40,7 +40,8 @@
   const opacityInput = document.getElementById('layer-opacity');
   const opacityValue = document.getElementById('opacity-value');
   const terrainToggle = document.getElementById('terrain-toggle');
-  const savedOpacity = Number(localStorage.getItem('bc-species-map-opacity'));
+  const savedOpacityRaw = localStorage.getItem('bc-species-map-opacity');
+  const savedOpacity = savedOpacityRaw === null ? NaN : Number(savedOpacityRaw);
   let layerOpacity = Number.isFinite(savedOpacity) && savedOpacity >= 0 && savedOpacity <= 100 ? savedOpacity / 100 : 0.85;
   opacityInput.value = String(Math.round(layerOpacity * 100));
   opacityValue.textContent = `${Math.round(layerOpacity * 100)}%`;
