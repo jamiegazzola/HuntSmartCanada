@@ -7,9 +7,9 @@ if (app.includes('const HUNTSMART_FOREST_SERVICE_ROADS = true;')) {
   console.log('FSR and 3D zoom controls already installed.');
   process.exit(0);
 }
-const forceZoom = 'map.setZoom(Math.max(map.getZoom(), 18));';
+const forceZoom = /map\\.setZoom\\(Math\\.max\\(map\\.getZoom\\(\\),\\s*(?:12|18)\\)\\);/;
 const restoreZoom = 'map.setZoom(preTiltView.zoom);';
-if (!app.includes(forceZoom) || !app.includes(restoreZoom)) {
+if (!forceZoom.test(app) || !app.includes(restoreZoom)) {
   throw new Error('Expected 3D viewer zoom anchors not found');
 }
 app = app.replace(forceZoom, '// Preserve current zoom when enabling 3D.');
