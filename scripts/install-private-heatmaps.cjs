@@ -210,6 +210,9 @@ function patchProductionApp(input) {
   const forced3dZoom = '       map.setZoom(Math.max(map.getZoom(), 18));';
   if (!app.includes(forced3dZoom)) throw new Error('Species map forced 3D zoom anchor is missing');
   app = app.replace(forced3dZoom, '       // Preserve existing zoom; tilt only where Google imagery supports it.');
+  const reset3dZoom = '         map.setZoom(preTiltView.zoom);';
+  if (!app.includes(reset3dZoom)) throw new Error('Species map 3D restore zoom anchor is missing');
+  app = app.replace(reset3dZoom, '         // Keep the zoom the user selected while viewing 3D.');
     app = patchKmzGeoref(app);
   // Parse the exact production output during every build, including deploy previews,
   // so a malformed build-time replacement cannot reach main unnoticed.
