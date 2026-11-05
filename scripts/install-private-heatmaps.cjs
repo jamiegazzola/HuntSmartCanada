@@ -220,7 +220,7 @@ function patchProductionApp(input) {
   // province-wide GeoJSON download), and omitted at excessive overview scales.
   const fsrInitAnchor = '  window.initSpeciesMap = () => {\n';
   if (!app.includes(fsrInitAnchor)) throw new Error('FSR overlay init anchor is missing');
-  const fsrHelper = \`  function installForestServiceRoads() {
+  const fsrHelper = `  function installForestServiceRoads() {
     const tools = document.querySelector('.map-tools');
     if (!tools || !map) return;
     const button = document.createElement('button');
@@ -281,7 +281,7 @@ function patchProductionApp(input) {
     tools.appendChild(button);
   }
 
-\`;
+`;
   app = app.replace(fsrInitAnchor, fsrHelper + fsrInitAnchor);
   const fsrStart = '      if (!savedView) {\n';
   if (!app.includes(fsrStart)) throw new Error('FSR overlay map initialization anchor missing');
