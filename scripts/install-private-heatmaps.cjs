@@ -207,13 +207,87 @@ function patchProductionApp(input) {
   }
   // Preserve the user's current map scale when enabling 3D. Forcing zoom 18
   // upscales low-resolution Google aerial tiles in remote BC locations.
-  const forced3dZoom = '       map.setZoom(Math.max(map.getZoom(), 18));';
+  const forced3dZoom = '      map.setZoom(Math.max(map.getZoom(), 18));';
   if (!app.includes(forced3dZoom)) throw new Error('Species map forced 3D zoom anchor is missing');
-  app = app.replace(forced3dZoom, '       // Preserve existing zoom; tilt only where Google imagery supports it.');
-  const reset3dZoom = '         map.setZoom(preTiltView.zoom);';
+  app = app.replace(forced3dZoom, '      // Preserve existing zoom; tilt only where Google imagery supports it.');
+  const reset3dZoom = '        map.setZoom(preTiltView.zoom);';
   if (!app.includes(reset3dZoom)) throw new Error('Species map 3D restore zoom anchor is missing');
-  app = app.replace(reset3dZoom, '         // Keep the zoom the user selected while viewing 3D.');
-    app = patchKmzGeoref(app);
+  app = app.replace(reset3dZoom, '        // Keep the zoom the user selected while viewing 3D.');
+  
+  // Gold FSR overlay from the BC Forest Tenure Road Segment Lines service.
+  // FEATURE_CLASS_SKEY 558 is the Ministry's Forest Service Road classification.
+  // Tiles are requested for the visible map only (not a multi-megabyte
+  // province-wide GeoJSON download), and omitted at excessive overview scales.
+  const fsrInitAnchor = '  window.initSpeciesMap = () => {\n';
+  if (!app.includes(fsrInitAnchor)) throw new Error('FSR overlay init anchor is missing');
+  const fsrHelper = \`  function installForestServiceRoads() {
+    const tools = document.querySelector('.map-tools');
+    if (!tools || !map) return;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.id = 'fsr-toggle';
+    button.textContent = '🚚';
+    button.title = 'Show BC Forest Service Roads in gold';
+    button.setAttribute('aria-label', 'Show BC Forest Service Roads');
+    button.setAttribute('aria-pressed', 'false');
+    button.style.cssText = 'flex:0 0 52px;min-height:65px;padding:0;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(15,20,17,.94);color:white;box-shadow:0 8px 24px rgba(0,0,0,.24);font-size:25px;cursor:pointer;touch-action:manipulation';
+    button.addEventListener('click', () => {
+      const active = button.getAttribute('aria-pressed') === 'true';
+      if (active) {
+        const index = map.overlayMapTypes.getArray().indexOf(fsrLayer);
+        if (index >= 0) map.overlayMapTypes.removeAt(index);
+      } else {
+        map.overlayMapTypes.push(fsrLayer);
+      }
+      button.setAttribute('aria-pressed', String(!active));
+      button.setAttribute('aria-label', (!active ? 'Hide' : 'Show') + ' BC Forest Service Roads');
+      button.title = (!active ? 'Hide' : 'Show') + ' BC Forest Service Roads';
+      button.style.background = active ? 'rgba(15,20,17,.94)' : 'rgba(122,93,29,.96)';
+      button.style.borderColor = active ? 'rgba(255,255,255,.16)' : '#e8b94c';
+    });
+    const fsrLayer = new google.maps.ImageMapType({
+      name:'BC Forest Service Roads',
+      alt:'BC Forest Service Roads - gold lines',
+      tileSize:new google.maps.Size(256,256),
+      minZoom:10,
+      maxZoom:20,
+      opacity:0.95,
+      getTileUrl:(coord,zoom) => {
+        if (zoom < 10 || zoom > 20 || coord.y < 0 || coord.y >= Math.pow(2,zoom) ||
+            coord.x < 0 || coord.x >= Math.pow(2,zoom)) return '';
+        const origin = 20037508.342789244;
+        const tileSpan = origin * 2 / Math.pow(2,zoom);
+        const west = -origin + coord.x * tileSpan;
+        const east = west + tileSpan;
+        const north = origin - coord.y * tileSpan;
+        const south = north - tileSpan;
+        const layer = [{
+          id:21,
+          source:{type:'mapLayer',mapLayerId:21},
+          definitionExpression:'FEATURE_CLASS_SKEY = 558',
+          drawingInfo:{renderer:{type:'simple',symbol:{
+            type:'esriSLS',style:'esriSLSSolid',color:[238,183,52,255],width:2
+          }}}
+        }];
+        const params = new URLSearchParams({
+          bbox:[west,south,east,north].join(','),
+          bboxSR:'3857',imageSR:'3857',size:'256,256',
+          format:'png32',transparent:'true',f:'image',
+          dynamicLayers:JSON.stringify(layer)
+        });
+        return 'https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_forest_tenure/MapServer/export?' + params;
+      }
+    });
+    tools.appendChild(button);
+  }
+
+\`;
+  app = app.replace(fsrInitAnchor, fsrHelper + fsrInitAnchor);
+  const fsrStart = '      if (!savedView) {\n';
+  if (!app.includes(fsrStart)) throw new Error('FSR overlay map initialization anchor missing');
+  app = app.replace(fsrStart, '      installForestServiceRoads();\n' + fsrStart);
+
+  app = patchKmzGeoref(app);
   // Parse the exact production output during every build, including deploy previews,
   // so a malformed build-time replacement cannot reach main unnoticed.
   new Function(app);
