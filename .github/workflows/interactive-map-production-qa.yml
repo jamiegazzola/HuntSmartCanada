@@ -80,6 +80,14 @@ jobs:
             assert(app.includes("map.addListener('click'"),'next-map-tap handler missing');
             assert(app.includes("setTimeout(() => toast.classList.remove('show'), 3000)"),'3-second toast duration missing');
             assert(!app.includes('COORDINATE_HOLD_MS'),'legacy long-press interaction still deployed');
+            assert(!app.includes('map.setZoom(Math.max(map.getZoom(), 18))'),'3D toggle must not forcibly zoom to blurry satellite imagery');
+            assert(!app.includes('map.setZoom(preTiltView.zoom)'),'leaving 3D must not unexpectedly restore old zoom');
+            assert(app.includes('map.setTilt(45)'),'3D tilt toggle must remain available');
+            assert(app.includes("button.id = 'fsr-toggle'"),'FSR truck toggle is missing');
+            assert(app.includes("button.textContent = '🚚'"),'FSR truck emoji is missing');
+            assert(app.includes("definitionExpression:'FEATURE_CLASS_SKEY = 558'"),'FSR roads filter is missing');
+            assert(app.includes("color:[238,183,52,255]"),'FSR roads must render gold');
+            assert(app.includes("map.overlayMapTypes.push(fsrLayer)"),'FSR map tiles toggle is missing');
             assert(app.includes("const cacheKey = 'rocky_elk_march_2005_clipped'"),'Rocky elk historical KMZ renderer missing');
             assert(app.includes("kmzOverlayUrl('kmz-elk-historic.png'"),'March 2005 Rocky elk source is not selected');
             assert(app.includes("ctx.globalCompositeOperation = 'destination-out'"),'Rocky elk Region 1/2 image mask missing');
