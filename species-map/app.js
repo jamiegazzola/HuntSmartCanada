@@ -37,6 +37,75 @@
   const select = document.getElementById('species');
   const control = document.querySelector('.species-control');
   const errorEl = document.getElementById('error');
+  const opacityInput = document.getElementById('layer-opacity');
+  const opacityValue = document.getElementById('opacity-value');
+  const terrainToggle = document.getElementById('terrain-toggle');
+  const savedOpacity = Number(localStorage.getItem('bc-species-map-opacity'));
+  let layerOpacity = Number.isFinite(savedOpacity) && savedOpacity >= 0 && savedOpacity <= 100 ? savedOpacity / 100 : 0.85;
+  opacityInput.value = String(Math.round(layerOpacity * 100));
+  opacityValue.textContent = `${Math.round(layerOpacity * 100)}%`;
+  const dataLayers = new Set();
+  let terrainEnabled = false;
+  let preTiltView = null;
+
+  // Wrap each data layer's style so the slider also affects polygon overlays,
+  // without changing the styles used by the original species renderers.
+  function makeDataLayer() {
+    const data = new google.maps.Data({ map });
+    const originalSetStyle = data.setStyle.bind(data);
+    let baseStyle = null;
+    data.setStyle = (style) => {
+      baseStyle = style;
+      const fade = (options) => {
+        if (!options || typeof options !== 'object') return options;
+        return {
+          ...options,
+          ...(options.fillOpacity == null ? {} : { fillOpacity: options.fillOpacity * layerOpacity }),
+          ...(options.strokeOpacity == null ? {} : { strokeOpacity: options.strokeOpacity * layerOpacity }),
+        };
+      };
+      originalSetStyle(typeof baseStyle === 'function' ? (feature) => fade(baseStyle(feature)) : fade(baseStyle));
+    };
+    data.refreshOpacity = () => { if (baseStyle !== null) data.setStyle(baseStyle); };
+    dataLayers.add(data);
+    return data;
+  }
+  function applyLayerOpacity() {
+    for (const overlay of [activeOverlay, winterOverlay, ...seasonalOverlays]) {
+      if (overlay) overlay.setOpacity(layerOpacity);
+    }
+    for (const data of dataLayers) data.refreshOpacity();
+  }
+  opacityInput.addEventListener('input', () => {
+    layerOpacity = Number(opacityInput.value) / 100;
+    opacityValue.textContent = `${opacityInput.value}%`;
+    applyLayerOpacity();
+  });
+  opacityInput.addEventListener('change', () => {
+    localStorage.setItem('bc-species-map-opacity', opacityInput.value);
+  });
+  terrainToggle.addEventListener('click', () => {
+    if (!map) return;
+    if (terrainEnabled) {
+      terrainEnabled = false;
+      map.setTilt(0);
+      if (preTiltView) {
+        map.setZoom(preTiltView.zoom);
+        map.setHeading(preTiltView.heading);
+      }
+      preTiltView = null;
+    } else {
+      preTiltView = { zoom: map.getZoom(), heading: map.getHeading() || 0 };
+      terrainEnabled = true;
+      // Google's raster HYBRID map supports 45-degree aerials only at
+      // sufficiently close zoom levels and in locations with imagery coverage.
+      map.setZoom(Math.max(map.getZoom(), 18));
+      map.setTilt(45);
+    }
+    terrainToggle.setAttribute('aria-pressed', String(terrainEnabled));
+    terrainToggle.textContent = terrainEnabled ? '2D' : '3D';
+  });
+
 
   let map = null;
   let activeOverlay = null;
@@ -112,6 +181,7 @@
   }
 
   function clearLayer() {
+    dataLayers.clear();
     if (activeOverlay) {
       activeOverlay.setMap(null);
       activeOverlay = null;
@@ -339,13 +409,13 @@
   }
 
   function renderRooseveltIslandContext(payload) {
-    rooseveltRangeData = new google.maps.Data({ map });
+    rooseveltRangeData = makeDataLayer();
     rooseveltRangeData.addGeoJson(payload);
     rooseveltRangeData.setStyle({ fillColor:'#74af6f', fillOpacity:0.16, strokeColor:'#91cb8c', strokeOpacity:0.7, strokeWeight:1, zIndex:0, clickable:false });
   }
 
   function renderHistoricalRoosevelt(payload) {
-    activeData = new google.maps.Data({ map });
+    activeData = makeDataLayer();
     activeData.addGeoJson(payload);
     activeData.setStyle(feature => {
       const color = { L:'#3f9646', M:'#f4d03f', H:'#d73027' }[feature.getProperty('historical_class')] || '#3f9646';
@@ -354,7 +424,7 @@
   }
 
   function renderStaticRange(payload, item) {
-    const data = new google.maps.Data({ map });
+    const data = makeDataLayer();
     data.addGeoJson(payload);
     data.setStyle((feature) => {
       const smallCaribouHerd = item.asset === 'data/caribou-herds.geojson' && ['Narrow Lake', 'Frisby Boulder'].includes(feature.getProperty('HERD_NAME'));
@@ -381,13 +451,13 @@
   }
 
   function renderIslandWinterRange(payload) {
-    islandData = new google.maps.Data({ map });
+    islandData = makeDataLayer();
     islandData.addGeoJson(payload);
     islandData.setStyle({ fillColor: '#39a7d0', fillOpacity: 0.65, strokeColor: '#83d7ee', strokeOpacity: 0.7, strokeWeight: 1, zIndex: 2, clickable: false });
   }
 
   function renderPolygonData(payload) {
-    const data = new google.maps.Data({ map });
+    const data = makeDataLayer();
     data.addGeoJson(payload.geojson);
     const cuts = Array.isArray(payload.cuts) && payload.cuts.length === 3 ? payload.cuts : [0.05, 0.10, 0.25];
     const densityField = payload.densityField || 'density';
@@ -433,12 +503,12 @@
         const payload = await response.json();
         if (payload?.type !== 'FeatureCollection' || !Array.isArray(payload.features) || !payload.features.length) throw new Error('Seasonal caribou habitat is invalid.');
         if (version !== renderVersion) return;
-        activeData = new google.maps.Data({ map });
+        activeData = makeDataLayer();
         activeData.addGeoJson(payload);
         activeData.setStyle(f => ({ fillColor:f.getProperty('quality') === 'Very High' ? '#dca63a' : '#72b69e', fillOpacity:0.5, strokeOpacity:0, clickable:false }));
         document.getElementById('layer-note-text').textContent = `${season === 'summer' ? 'Summer' : 'Winter'}: BC high-elevation seasonal caribou habitat mapped in 2017 for South Peace herds and Graham. Green: high; gold: very high. Partial regional habitat, not current density or confirmed occupancy. Burnt Pine's resident herd was later extirpated.`;
       } else if (viewMode === 'summer' && SUMMER_HABITAT.has(item.key)) {
-        winterOverlay = new google.maps.GroundOverlay(`data/summer-habitat-${item.key}.png?v=1`, BOUNDS, { map, opacity:0.9, clickable:false });
+        winterOverlay = new google.maps.GroundOverlay(`data/summer-habitat-${item.key}.png?v=1`, BOUNDS, { map, opacity:layerOpacity, clickable:false });
         document.getElementById('layer-note').hidden = false;
         document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals';
         document.getElementById('layer-note-text').textContent = 'Summer: BC’s broad 2003-era habitat suitability model, not observations or animal density. Red: very high; orange: high; yellow: moderate suitability. Partial coverage and dated inputs; habitat may lie outside the animal’s range. No colour does not prove absence.';
@@ -449,12 +519,12 @@
         document.getElementById('layer-source').href = 'https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved';
         if (item.type === 'raster' || item.type === 'partial_winter') {
           const asset = item.type === 'raster' ? `data/winter-${item.key}.png` : item.asset;
-          winterOverlay = new google.maps.GroundOverlay(`${asset}?v=1`, BOUNDS, { map, opacity:0.9, clickable:false });
+          winterOverlay = new google.maps.GroundOverlay(`${asset}?v=1`, BOUNDS, { map, opacity:layerOpacity, clickable:false });
           text.textContent = `Winter: blue is approved BC winter habitat. ${item.type === 'partial_winter' ? item.note : 'Incomplete seasonal habitat; not the full range or animal density.'}`;
         } else if (['wild_sheep', 'bighorn_sheep', 'thinhorn_sheep'].includes(item.key)) {
           if (item.key !== 'thinhorn_sheep') {
             for (const asset of ['data/winter-rocky_bighorn_kootenay.png', 'data/winter-california_bighorn_boundary.png']) {
-              seasonalOverlays.push(new google.maps.GroundOverlay(`${asset}?v=1`, BOUNDS, { map, opacity:0.9, clickable:false }));
+              seasonalOverlays.push(new google.maps.GroundOverlay(`${asset}?v=1`, BOUNDS, { map, opacity:layerOpacity, clickable:false }));
             }
           }
           if (item.key !== 'bighorn_sheep') {
@@ -504,7 +574,7 @@
         } else if (item.type === 'raster' && !['mountain_goat','white_tailed_deer','moose','mule_deer'].includes(item.key)) {
           const url = await rasterUrl(item);
           if (version !== renderVersion) return;
-          activeOverlay = new google.maps.GroundOverlay(url, BOUNDS, { map, opacity: 0.72, clickable: false });
+          activeOverlay = new google.maps.GroundOverlay(url, BOUNDS, { map, opacity: layerOpacity, clickable: false });
           document.getElementById('layer-source').href = 'https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=40140';
           document.getElementById('layer-attribution').hidden = true;
           document.getElementById('layer-note-text').textContent = 'Historical: approximate legacy distribution. Its exact dates and source composition are not fully verified; it has been checked against some 1988–1990 BC reference polygons. Not current animal density.';
@@ -563,7 +633,7 @@
               if (version !== renderVersion) return;
               const features = payload.geojson.features.filter(f => Number(f.properties?.__density) > 0);
               if (!features.length) return;
-              contextData = new google.maps.Data({ map });
+              contextData = makeDataLayer();
               contextData.addGeoJson({ type:'FeatureCollection', features });
               contextData.setStyle({ fillOpacity:0, strokeColor:'#f5c76b', strokeOpacity:0.9, strokeWeight:1.3, zIndex:2, clickable:false });
               document.getElementById('epu-link').hidden = false;
@@ -587,7 +657,7 @@
       } else if (item.type === 'harvest_context') {
         const payload = await staticRange(item, renderAbort.signal);
         if (version !== renderVersion) return;
-        activeData = new google.maps.Data({ map });
+        activeData = makeDataLayer();
         activeData.addGeoJson(payload);
         activeData.setStyle({ fillOpacity: 0, strokeColor: '#d19cff', strokeOpacity: 0.9, strokeWeight: 1.8, clickable: false });
         document.getElementById('layer-source').href = payload.source;
@@ -614,7 +684,7 @@
         if (version !== renderVersion) return;
         const gaps = extras[0].status === 'fulfilled' ? extras[0].value : null;
         if (gaps?.features.length) {
-          const data = new google.maps.Data({ map });
+          const data = makeDataLayer();
           data.addGeoJson(gaps);
           data.setStyle({ fillOpacity: 0, strokeColor: '#d19cff', strokeOpacity: 0.9, strokeWeight: 1.8, clickable: false });
           activeData = data;
@@ -622,7 +692,7 @@
           document.getElementById('gap-link').hidden = false;
         }
         if (item.key === 'mule_deer' && extras[1].status === 'fulfilled') {
-          contextData = new google.maps.Data({ map });
+          contextData = makeDataLayer();
           contextData.addGeoJson(extras[1].value);
           contextData.setStyle({ fillColor: '#3f9646', fillOpacity: 0.35, strokeOpacity: 0, clickable: false });
           document.getElementById('layer-note-text').textContent += ' Haida Gwaii green is broad Sitka black-tail range context, not local density; coastal coverage is incomplete.';
@@ -632,7 +702,7 @@
         if (item.key === 'moose') {
           const surveys = extras.slice(1).filter(result => result.status === 'fulfilled').flatMap(result => result.value.features);
           if (surveys.length) {
-            contextData = new google.maps.Data({ map });
+            contextData = makeDataLayer();
             contextData.addGeoJson({ type: 'FeatureCollection', features: surveys });
             contextData.setStyle({ fillOpacity: 0, strokeColor: '#f5c76b', strokeOpacity: 0.95, strokeWeight: 2, clickable: false });
           }
@@ -683,14 +753,14 @@
         if (item.key === 'wood_bison') {
           const river = await staticRange({ asset: 'data/hay-river-bison-context.geojson' }, renderAbort.signal);
           if (version !== renderVersion) return;
-          contextData = new google.maps.Data({ map });
+          contextData = makeDataLayer();
           contextData.addGeoJson(river);
           contextData.setStyle({ strokeColor: '#f5c76b', strokeOpacity: 0.95, strokeWeight: 2.5, clickable: false });
           document.getElementById('layer-note-text').textContent += ' Gold: Hay River reference. A 2000 BC plan mentions occasional Hay-Zama crossings in this drainage; the line is not a bison range or sighting.';
         } else if (item.key === 'caribou' || item.key === 'caribou_northern') {
           const former = await staticRange({ asset: 'data/burnt-pine-context.geojson' }, renderAbort.signal);
           if (version !== renderVersion) return;
-          contextData = new google.maps.Data({ map });
+          contextData = makeDataLayer();
           contextData.addGeoJson(former);
           contextData.setStyle({ fillOpacity: 0, strokeColor: '#f5c76b', strokeOpacity: 0.95, strokeWeight: 2, clickable: false });
           document.getElementById('layer-note-text').textContent += ' Gold outline: former Burnt Pine herd range; the resident herd is extirpated, but neighbouring caribou used part of it in 2024. The outline is not a current occupancy boundary.';
@@ -707,7 +777,7 @@
           }),
           recentRoosevelt(renderAbort.signal).then(payload => {
             if (version !== renderVersion) return;
-            rooseveltMainlandData = new google.maps.Data({ map });
+            rooseveltMainlandData = makeDataLayer();
             rooseveltMainlandData.addGeoJson(payload);
             rooseveltMainlandData.setStyle({ fillOpacity:0, strokeColor:'#f5c76b', strokeOpacity:0.95, strokeWeight:1.6, zIndex:1, clickable:false });
             document.getElementById('roosevelt-recent-link').hidden = false;
@@ -715,7 +785,7 @@
           }),
           staticRange({ asset: 'data/roosevelt-elk-harvest-context.geojson' }, renderAbort.signal).then((payload) => {
             if (version !== renderVersion) return;
-            contextData = new google.maps.Data({ map });
+            contextData = makeDataLayer();
             contextData.addGeoJson(payload);
             contextData.setStyle({ fillOpacity: 0, strokeColor: '#d19cff', strokeOpacity: 0.9, strokeWeight: 1.8, clickable: false });
             document.getElementById('layer-note-text').textContent += ' Purple: units with 2020–24 licensed elk harvest, not identified to subspecies, exact location or density.';
@@ -751,6 +821,7 @@
         if (viewMode === 'modern' && !note.hidden && !text.textContent.startsWith('Modern:')) {
           text.textContent = `Modern: best available evidence; dates vary. ${text.textContent}`;
         }
+        applyLayerOpacity();
         setLoading(false);
       }
     }
