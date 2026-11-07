@@ -27,8 +27,8 @@ const helper = String.raw`
     button.type = 'button';
     button.id = 'fsr-toggle';
     button.textContent = '🚚';
-    button.title = 'Show Forest Service Roads in gold';
-    button.setAttribute('aria-label', 'Show Forest Service Roads');
+    button.title = 'Show BC resource and forest roads in gold';
+    button.setAttribute('aria-label', 'Show BC resource and forest roads');
     button.setAttribute('aria-pressed', 'false');
     button.style.cssText = 'flex:0 0 52px;min-height:65px;padding:0;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(15,20,17,.94);color:white;box-shadow:0 8px 24px rgba(0,0,0,.24);font-size:25px;cursor:pointer;touch-action:manipulation';
 
@@ -36,11 +36,11 @@ const helper = String.raw`
       name: 'BC Forest Service Roads',
       alt: 'BC Forest Service Roads, gold',
       tileSize: new google.maps.Size(256,256),
-      minZoom: 10,
+      minZoom: 9,
       maxZoom: 20,
       opacity: 0.95,
       getTileUrl: (coord, zoom) => {
-        if (zoom < 10 || zoom > 20 || coord.x < 0 || coord.x >= 2 ** zoom ||
+        if (zoom < 9 || zoom > 20 || coord.x < 0 || coord.x >= 2 ** zoom ||
             coord.y < 0 || coord.y >= 2 ** zoom) return '';
         const origin = 20037508.342789244;
         const span = origin * 2 / 2 ** zoom;
@@ -48,12 +48,21 @@ const helper = String.raw`
         const east = west + span;
         const north = origin - coord.y * span;
         const south = north - span;
+        // BC's published ArcGIS layers have native minimum scales of 1:125,000
+        // (tenure roads) and 1:100,000 (DRA). Without overriding the scale in
+        // a dynamic layer, tiles are blank at useful regional scouting zooms.
+        // At close zooms use the comprehensive DRA, not only tenure roads.
+        const useDra = zoom >= 11;
+        const layerId = useDra ? 68 : 21;
         const dynamicLayers = [{
-          id: 21,
-          source: { type: 'mapLayer', mapLayerId: 21 },
-          definitionExpression: 'FEATURE_CLASS_SKEY = 558',
+          id: layerId,
+          source: { type: 'mapLayer', mapLayerId: layerId },
+          minScale: 0,
+          maxScale: 0,
+          ...(useDra ? { definitionExpression:
+            "ROAD_CLASS IN ('resource','unclassified','recreation','skid','trail')" } : {}),
           drawingInfo: {renderer: {type: 'simple', symbol: {
-            type: 'esriSLS', style: 'esriSLSSolid', color: [238,183,52,255], width: 2
+            type: 'esriSLS', style: 'esriSLSSolid', color: [238,183,52,255], width: useDra ? 1.5 : 2
           }}}
         }];
         const params = new URLSearchParams({
@@ -62,7 +71,7 @@ const helper = String.raw`
           format:'png32', transparent:'true', f:'image',
           dynamicLayers:JSON.stringify(dynamicLayers)
         });
-        return 'https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_forest_tenure/MapServer/export?' + params;
+        return 'https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/' + (useDra ? 'bcgw_pub_whse_basemapping' : 'bcgw_pub_whse_forest_tenure') + '/MapServer/export?' + params;
       }
     });
     button.addEventListener('click', () => {
@@ -74,7 +83,7 @@ const helper = String.raw`
         map.overlayMapTypes.push(fsrLayer);
       }
       button.setAttribute('aria-pressed', String(!on));
-      button.setAttribute('aria-label', (on ? 'Show' : 'Hide') + ' Forest Service Roads');
+      button.setAttribute('aria-label', (on ? 'Show' : 'Hide') + ' BC resource and forest roads');
       button.title = (on ? 'Show' : 'Hide') + ' Forest Service Roads';
       button.style.background = on ? 'rgba(15,20,17,.94)' : 'rgba(122,93,29,.96)';
       button.style.borderColor = on ? 'rgba(255,255,255,.16)' : '#e8b94c';
