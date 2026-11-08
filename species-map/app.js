@@ -91,16 +91,14 @@
       terrainEnabled = false;
       map.setTilt(0);
       if (preTiltView) {
-        map.setZoom(preTiltView.zoom);
+        // Keep the user's current zoom when returning to 2D.
         map.setHeading(preTiltView.heading);
       }
       preTiltView = null;
     } else {
       preTiltView = { zoom: map.getZoom(), heading: map.getHeading() || 0 };
       terrainEnabled = true;
-      // Google's raster HYBRID map supports 45-degree aerials only at
-      // sufficiently close zoom levels and in locations with imagery coverage.
-      map.setZoom(Math.max(map.getZoom(), 18));
+      // Preserve the user's zoom when enabling vector 3D tilt.
       map.setTilt(45);
     }
     terrainToggle.setAttribute('aria-pressed', String(terrainEnabled));
