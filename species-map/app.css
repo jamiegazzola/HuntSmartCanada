@@ -21,7 +21,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 
 .layer-note{position:fixed;z-index:19;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);max-width:min(340px,calc(100vw - 24px));max-height:25vh;overflow-y:auto;overscroll-behavior:contain;padding:9px 12px;border-radius:11px;background:rgba(15,20,17,.94);font-size:12px;line-height:1.4;color:#fff}.layer-note[hidden]{display:none}.layer-note a{color:#a6dff1}
 
-.map-tools{position:fixed;z-index:20;top:calc(env(safe-area-inset-top,0px) + 124px);left:12px;display:flex;align-items:stretch;gap:8px;width:min(340px,calc(100vw - 24px))}
+.map-tools{position:fixed;z-index:20;top:calc(env(safe-area-inset-top,0px) + 124px);left:12px;display:flex;align-items:stretch;gap:8px;width:min(260px,calc(100vw - 24px))}
 .opacity-control{min-width:0;flex:1;display:grid;grid-template-columns:1fr auto;align-items:center;gap:3px 10px;padding:7px 11px 8px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(15,20,17,.94);box-shadow:0 8px 24px rgba(0,0,0,.24);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .opacity-control label{font-size:11px;font-weight:650;color:#c4d0c5}
 .opacity-control output{font-size:11px;font-weight:750;font-variant-numeric:tabular-nums;color:#fff}
@@ -31,4 +31,4 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .terrain-toggle:focus-visible,.opacity-control input:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .evidence-toggle{top:calc(env(safe-area-inset-top,0px) + 195px)}
 .error{top:calc(env(safe-area-inset-top,0px) + 244px)}
-@media(max-width:520px){.map-tools{top:calc(env(safe-area-inset-top,0px) + 118px);left:9px;width:calc(100vw - 18px);max-width:340px}.evidence-toggle{top:calc(env(safe-area-inset-top,0px) + 190px);left:9px}.error{top:calc(env(safe-area-inset-top,0px) + 239px)}}
+@media(max-width:520px){.map-tools{top:calc(env(safe-area-inset-top,0px) + 118px);left:9px;width:min(260px,calc(100vw - 18px))}.evidence-toggle{top:calc(env(safe-area-inset-top,0px) + 190px);left:9px}.error{top:calc(env(safe-area-inset-top,0px) + 239px)}}
