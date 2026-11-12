@@ -1,5 +1,4 @@
 'use strict';
-try {
 (function installAlberta(){
   'use strict';
   const fs = require('node:fs');
@@ -139,8 +138,3 @@ try {
   fs.writeFileSync(cssFile,css);
   console.log('Installed BC/Alberta province switch after private viewer; existing BC heatmaps and 3D terrain preserved.');
 })();
-} catch (error) {
-  // Temporary diagnostics are sanitized and contain no private wildlife data.
-  require('node:fs').writeFileSync('site/species-map/alberta-install-diagnostic.txt', String(error?.message || error).slice(0,500));
-  console.error('Alberta installer diagnostic:', error?.message || error);
-}
