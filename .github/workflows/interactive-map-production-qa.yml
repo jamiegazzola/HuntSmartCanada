@@ -61,7 +61,7 @@ jobs:
           const within=(promise,ms,label)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(`${label} timed out`)),ms))]);
           async function response(path){return within(fetch(`${process.env.URL}${path}${path.includes('?')?'&':'?'}qa=${Date.now()}`,{cache:'no-store'}),20000,`fetch ${path}`)}
           async function text(path){const r=await response(path);assert(r.ok,`${path} returned ${r.status}`);return r.text()}
-          async function waitForMarker(path,marker){for(let i=0;i<18;i++){const r=await response(path);if(r.ok){const body=await r.text();if(body.includes(marker))return body}await sleep(5000)}throw new Error(`${path} never published marker ${marker}`)}
+          async function waitForMarker(path,marker){for(let i=0;i<18;i++){const r=await response(path);if(r.ok){const body=await r.text();if(body.includes(marker))return body;if(path==='/species-map/' && i>=2)throw new Error(`Species-map HTML missing province markup: ${body.slice(0,2200)}`)}await sleep(5000)}throw new Error(`${path} never published marker ${marker}`)}
           async function waitForJson(path,validate){let last='';for(let i=0;i<18;i++){const r=await response(path);last=await r.text();if(r.ok){try{const j=JSON.parse(last);if(validate(j))return j}catch(_){}}await sleep(5000)}throw new Error(`${path} never became valid: ${last}`)}
           (async()=>{
             const html=await text('/');
