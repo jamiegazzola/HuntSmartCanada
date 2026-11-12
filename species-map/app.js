@@ -151,6 +151,11 @@
   const bcProvinceButton = document.getElementById('province-bc');
   const abProvinceButton = document.getElementById('province-alberta');
   const eraControl = document.getElementById('era-control');
+  const personalAlberta = window.HUNTSMART_ALBERTA_LOCAL.attach({
+    getProvince: () => province,
+    getSelected: () => albertaByKey[select.value],
+    repaint: () => renderSelected(),
+  });
   function populateSpecies() {
     const list = province === 'ab' ? AB_SPECIES : SPECIES;
     const byKey = province === 'ab' ? albertaByKey : speciesByKey;
@@ -521,6 +526,7 @@
     setLoading(true);
     clearLayer();
     clearError();
+    personalAlberta.hide();
     localStorage.setItem(province === 'ab' ? 'alberta-species-map-v1' : 'bc-species-map-v2', item.key);
 
     try {
@@ -530,9 +536,15 @@
         const source = document.getElementById('layer-source');
         note.hidden = false;
         source.href = item.sourceUrl;
-        source.textContent = item.type === 'federal_boreal_range' ? 'ECCC federal range source' : 'Review official source';
+        source.textContent = item.type === 'federal_boreal_range' ? 'ECCC federal range source' :
+          item.type === 'personal_government_file' ? 'Government of Alberta GIS ZIP' : 'Review official source';
         document.getElementById('layer-attribution').hidden = true;
-        if (item.type === 'federal_boreal_range') {
+        if (item.type === 'personal_government_file') {
+          activeData = personalAlberta.draw(item, makeDataLayer);
+          noteText.textContent = activeData
+            ? 'Government of Alberta: ' + item.displayName + '. Personally imported unchanged ZIP; these are sensitivity or range polygons, not animal density, precise occupancy or live sightings. Not an official or endorsed HuntSmart government map.'
+            : 'Government of Alberta: download the official ZIP, then open it locally to view the range/sensitivity polygons. These are not animal density estimates.';
+        } else if (item.type === 'federal_boreal_range') {
           noteText.textContent = 'Alberta: loading federally mapped boreal caribou ranges…';
           const response = await fetch('/.netlify/functions/alberta-boreal-caribou', { signal: renderAbort.signal });
           if (!response.ok) throw new Error('Federal Alberta caribou ranges could not load.');

@@ -48,6 +48,9 @@
     .replace('    if (renderAbort) renderAbort.abort();','    showEvidence = false;\n    if (renderAbort) renderAbort.abort();');
   assert(switchBlock.includes('DISPLAYED_SPECIES.has(item.key)'), 'private BC species filter preserved');
   app = app.slice(0,listStart)+switchBlock+'\n'+app.slice(listEnd);
+  assert(app.includes('HUNTSMART_ALBERTA_LOCAL.attach') &&
+    app.includes('personalAlberta.draw(item, makeDataLayer)') === false,
+    'private browser-file importer attachment missing');
   app = replace(app,"    document.getElementById('layer-license').href = 'https://www2.gov.bc.ca/gov/content/data/open-data/open-government-licence-bc';",
     "    document.getElementById('layer-source').textContent = 'BC data';\n    document.getElementById('layer-license').href = 'https://www2.gov.bc.ca/gov/content/data/open-data/open-government-licence-bc';",'source reset');
   app = replace(app,
@@ -119,14 +122,28 @@
     controls.indexOf('id="province-bc"')<controls.indexOf('id="province-alberta"') &&
     controls.indexOf('id="province-alberta"')<controls.indexOf('id="terrain-toggle"'),
     'opacity / province / 3D ordering');
+  const authoredHtml = fs.readFileSync(path.join('species-map','index.html'),'utf8');
+  const panelStart = authoredHtml.indexOf('  <section id="alberta-personal-panel"');
+  const panelEnd = authoredHtml.indexOf('  <div id="layer-note"',panelStart);
+  assert(panelStart > 0 && panelEnd > panelStart, 'personal GIS HTML source');
+  html = replace(html,'  <div id="layer-note"', authoredHtml.slice(panelStart,panelEnd) + '  <div id="layer-note"','personal GIS panel');
   html=replace(html,'  <div class="era-control"','  <div id="era-control" class="era-control"','era ID');
   html=replace(html,'<title>BC Species Map</title>','<title>HuntSmart Species Map · BC / Alberta</title>','title');
   html=replace(html,'British Columbia big game species distribution map','BC and Alberta big game species distribution map','map label');
   const script=html.match(/<script src="species-catalog\.js\?v=[^"]+"><\/script>/);
   assert(!!script,'catalog script');
   html=replace(html,script[0],script[0]+'\n  <script src="alberta-species.js?v=20261112-1"></script>','AB catalog script');
-  html=html.replace(/app\.js\?v=[^"]+/, 'app.js?v=province-inline-20261112d');
-  html=html.replace(/app\.css\?v=[^"]+/, 'app.css?v=province-inline-20261112d');
+  html=html.replace(/app\.js\?v=[^"]+/, 'app.js?v=personal-gis-20261112a');
+  html=html.replace(/app\.css\?v=[^"]+/, 'app.css?v=personal-gis-20261112a');
+  const vendor = path.join('node_modules','shpjs','dist','shp.min.js');
+  assert(fs.existsSync(vendor), 'installed shpjs browser parser missing');
+  fs.mkdirSync(path.join(target,'vendor'),{recursive:true});
+  fs.copyFileSync(vendor,path.join(target,'vendor','shp.min.js'));
+  const appScript = html.match(/<script src="app\.js\?v=[^"]+"><\/script>/);
+  assert(appScript, 'private map JS script');
+  html = replace(html,appScript[0],
+    '<script src="vendor/shp.min.js?v=6.2.0"></script>\n  <script src="alberta-local.js?v=20261112a"></script>\n  ' + appScript[0],
+    'private browser parser scripts');
   css+='\n/* Alberta map-note visibility and compact 3D panel offsets. */\n'+[
     'body.province-alberta.terrain-3d-on .terrain-exaggeration{top:calc(env(safe-area-inset-top,0px) + 135px)}',
     'body.province-alberta .layer-note{display:block!important}',
@@ -135,7 +152,13 @@
     'body.province-alberta.terrain-3d-on .error{top:calc(env(safe-area-inset-top,0px) + 235px)}',
     '@media(max-width:520px){body.province-alberta.terrain-3d-on .terrain-exaggeration{top:calc(env(safe-area-inset-top,0px) + 128px)}body.province-alberta .error{top:calc(env(safe-area-inset-top,0px) + 131px)}body.province-alberta.terrain-3d-on .error{top:calc(env(safe-area-inset-top,0px) + 228px)}}',
   ].join('\n')+'\n';
+  const sourceCss = fs.readFileSync(path.join('species-map','app.css'),'utf8');
+  const extraCss = sourceCss.indexOf('/* Personal GIS ZIPs are rendered');
+  assert(extraCss > 0, 'personal importer CSS');
+  css += '\n' + sourceCss.slice(extraCss);
   new Function(app);
+  assert(html.includes('id="alberta-personal-panel"') && html.includes('alberta-local.js') &&
+    app.includes('personalAlberta.draw(item, makeDataLayer)'), 'government local file wiring');
   assert(html.includes('id="province-alberta"')&&html.includes('alberta-species.js'), 'province markup absent');
   assert(app.includes("const APP_BUILD = 'species-map-alberta-range-v13'")&&app.includes('toggleTerrain3D()'), 'runtime version/DEM bridge');
   fs.writeFileSync(appFile,app);

@@ -39,3 +39,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .province-control button[aria-pressed=true]{background:#527b56;color:#fff}
 .province-control button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .era-control[hidden]{display:none}
+
+/* Personal GIS ZIPs are rendered in browser memory, never hosted. */
+.alberta-personal-panel{position:fixed;z-index:22;top:calc(env(safe-area-inset-top,0px) + 139px);left:12px;width:min(354px,calc(100vw - 24px));max-height:min(40vh,320px);overflow-y:auto;overscroll-behavior:contain;padding:10px 12px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(15,20,17,.96);box-shadow:0 8px 24px rgba(0,0,0,.24);color:#fff}
+.alberta-personal-panel[hidden]{display:none!important}
+.alberta-personal-heading{font-size:11px;font-weight:750;color:#a9d9ae}
+.alberta-personal-panel p{margin:5px 0 9px;font-size:11px;line-height:1.4;color:#d7ded9}
+.alberta-personal-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.alberta-personal-actions a,.alberta-personal-import,.alberta-personal-actions button{min-height:35px;display:inline-flex;align-items:center;justify-content:center;padding:6px 9px;border:1px solid rgba(255,255,255,.22);border-radius:8px;background:rgba(75,115,80,.24);color:#e9fff0;font-size:11px;font-weight:700;text-decoration:none;cursor:pointer}
+.alberta-personal-actions a:focus-visible,.alberta-personal-import:focus-visible,.alberta-personal-actions button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+#alberta-personal-file{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+#alberta-personal-status{margin-top:8px;color:#bfcfc3;font-size:10px;line-height:1.45}
+@media(max-width:520px){.alberta-personal-panel{top:calc(env(safe-area-inset-top,0px) + 130px);left:9px;width:min(354px,calc(100vw - 18px));max-height:34vh}}

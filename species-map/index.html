@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/species-map/stone-sheep-icon.png?v=20261104b">
   <link rel="preconnect" href="https://maps.googleapis.com">
   <link rel="preconnect" href="https://maps.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="app.css?v=province-inline-20261112-1">
+  <link rel="stylesheet" href="app.css?v=personal-gis-20261112a">
 </head>
 <body>
   <main id="map" aria-label="BC and Alberta big game species distribution map"></main>
@@ -42,10 +42,23 @@
     </div>
     <button id="terrain-toggle" class="terrain-toggle" type="button" aria-pressed="false" title="Tilt the map where 3D imagery is available">3D</button>
   </div>
+  <section id="alberta-personal-panel" class="alberta-personal-panel" aria-label="Private Alberta government GIS layer" hidden>
+    <div class="alberta-personal-heading">Government of Alberta · Personal GIS</div>
+    <p id="alberta-personal-description">Download an official GIS ZIP file to view it privately.</p>
+    <div class="alberta-personal-actions">
+      <a id="alberta-personal-source" href="https://www.alberta.ca/wildlife-sensitivity-maps" target="_blank" rel="noopener noreferrer">Download official ZIP</a>
+      <label class="alberta-personal-import" for="alberta-personal-file">Open ZIP</label>
+      <input id="alberta-personal-file" type="file" accept=".zip,application/zip,application/x-zip-compressed" aria-label="Choose original Government of Alberta GIS ZIP">
+      <button id="alberta-personal-clear" type="button" hidden>Clear</button>
+    </div>
+    <div id="alberta-personal-status" role="status" aria-live="polite">Your file stays in this tab; nothing is uploaded.</div>
+  </section>
   <div id="layer-note" class="layer-note" hidden><span id="layer-note-text"></span> <a id="layer-source" href="https://catalogue.data.gov.bc.ca/dataset/ungulate-winter-range-approved" target="_blank" rel="noopener">BC data</a><span id="layer-attribution"> · Contains information licensed under the <a id="layer-license" href="https://www2.gov.bc.ca/gov/content/data/open-data/open-government-licence-bc" target="_blank" rel="noopener">Open Government Licence – BC</a>.</span><span id="roosevelt-range-link" hidden> · <a href="https://www2.gov.bc.ca/assets/gov/environment/plants-animals-and-ecosystems/wildlife/wildlife-habitat/roosevelt_elk_management_plan.pdf" target="_blank" rel="noopener">BC elk range account</a></span><span id="roosevelt-history-link" hidden> · <a href="https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=40140" target="_blank" rel="noopener">1990 BC distribution</a></span><span id="roosevelt-recent-link" hidden> · <a href="https://catalogue.data.gov.bc.ca/dataset/roosevelt-elk-population-abundance-2013-to-2023-south-coast-sbot" target="_blank" rel="noopener">BC 2013–2023 estimates (access only)</a></span><span id="epu-link" hidden> · <a href="https://catalogue.data.gov.bc.ca/dataset/roosevelt-elk-epu-density-trends-and-risk-data-south-coast-sbot" target="_blank" rel="noopener">South Coast source (access only)</a></span><span id="mule-source" hidden> · <a href="https://a100.gov.bc.ca/pub/eswp/esr.do?id=15272" target="_blank" rel="noopener">BC black-tailed deer account</a></span><span id="gap-link" hidden> · <a href="https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024" target="_blank" rel="noopener">BC harvest data</a></span><span id="revelstoke-survey-link" hidden> · <a href="https://a100.gov.bc.ca/pub/siwe/details.do?projectId=2531" target="_blank" rel="noopener">2025 Lake Revelstoke survey</a></span><span id="moose-survey-link" hidden> · <a href="https://scwa.bc.ca/wp-content/uploads/2024/06/Anderson-et-al.-2024-Moose-SRB-report-for-WMU-724-2023-24.pdf" target="_blank" rel="noopener">2023–24 moose survey</a></span><span id="caribou-ecotype-link" hidden> · <a href="https://www2.gov.bc.ca/gov/content/environment/plants-animals-ecosystems/wildlife/wildlife-conservation/caribou/learn-about-caribou" target="_blank" rel="noopener">BC ecotype definitions</a></span><span id="layer-additional" hidden> Boundary data contains information licensed under the <a href="https://www2.gov.bc.ca/gov/content/data/open-data/open-government-licence-bc" target="_blank" rel="noopener">Open Government Licence – BC</a>.</span></div>
   <div id="error" class="error" role="status" aria-live="polite"></div>
   <script src="species-catalog.js?v=rebuild-20261102-1"></script>
   <script src="alberta-species.js?v=20261112-1"></script>
-  <script src="app.js?v=alberta-20261112-1"></script>
+  <script src="vendor/shp.min.js?v=6.2.0"></script>
+  <script src="alberta-local.js?v=20261112a"></script>
+  <script src="app.js?v=personal-gis-20261112a"></script>
 </body>
 </html>
