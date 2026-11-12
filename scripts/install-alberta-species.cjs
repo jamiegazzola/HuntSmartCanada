@@ -108,27 +108,32 @@
   assert(app.includes(oldViewStore), 'view persistence anchor');
   app = app.replaceAll(oldViewStore,
     "localStorage.setItem(province === 'ab' ? 'alberta-species-map-view-v1' : 'bc-species-map-view-v2', JSON.stringify({");
-  const provinceHtmlStart=fs.readFileSync(path.join('species-map','index.html'),'utf8');
-  const domStart=provinceHtmlStart.indexOf('  <div class="province-control"');
-  const domEnd=provinceHtmlStart.indexOf('  <div class="species-control"',domStart);
-  assert(domStart>0&&domEnd>domStart,'province HTML');
-  html=replace(html,'  <div class="species-control">',provinceHtmlStart.slice(domStart,domEnd)+'  <div class="species-control">','HTML province');
+  // The earlier display-controls installer copies the complete authored
+  // map-tools block. Require opacity, province, and 3D controls in that order.
+  const toolsStart=html.indexOf('  <div class="map-tools"');
+  const toolsEnd=html.indexOf('  <div id="layer-note"',toolsStart);
+  const controls=html.slice(toolsStart,toolsEnd);
+  assert(toolsStart>=0 && toolsEnd>toolsStart &&
+    controls.indexOf('id="layer-opacity"')>=0 &&
+    controls.indexOf('id="layer-opacity"')<controls.indexOf('id="province-bc"') &&
+    controls.indexOf('id="province-bc"')<controls.indexOf('id="province-alberta"') &&
+    controls.indexOf('id="province-alberta"')<controls.indexOf('id="terrain-toggle"'),
+    'opacity / province / 3D ordering');
   html=replace(html,'  <div class="era-control"','  <div id="era-control" class="era-control"','era ID');
   html=replace(html,'<title>BC Species Map</title>','<title>HuntSmart Species Map · BC / Alberta</title>','title');
   html=replace(html,'British Columbia big game species distribution map','BC and Alberta big game species distribution map','map label');
   const script=html.match(/<script src="species-catalog\.js\?v=[^"]+"><\/script>/);
   assert(!!script,'catalog script');
   html=replace(html,script[0],script[0]+'\n  <script src="alberta-species.js?v=20261112-1"></script>','AB catalog script');
-  html=html.replace(/app\.js\?v=[^"]+/, 'app.js?v=ab-live-20261112c');
-  html=html.replace(/app\.css\?v=[^"]+/, 'app.css?v=ab-live-20261112c');
-  css+='\n/* Province controls installed after the pinned private viewer. */\n'+[
-    '.map-tools{width:min(260px,calc(100vw - 24px))}',
-    'body.province-alberta .era-control[hidden]~.map-tools{top:calc(env(safe-area-inset-top,0px) + 120px)}',
-    'body.province-alberta.terrain-3d-on .terrain-exaggeration{top:calc(env(safe-area-inset-top,0px) + 198px)}',
+  html=html.replace(/app\.js\?v=[^"]+/, 'app.js?v=province-inline-20261112d');
+  html=html.replace(/app\.css\?v=[^"]+/, 'app.css?v=province-inline-20261112d');
+  css+='\n/* Alberta map-note visibility and compact 3D panel offsets. */\n'+[
+    'body.province-alberta.terrain-3d-on .terrain-exaggeration{top:calc(env(safe-area-inset-top,0px) + 135px)}',
     'body.province-alberta .layer-note{display:block!important}',
     'body.province-alberta .layer-note[hidden]{display:none!important}',
-    'body.province-alberta .error{top:calc(env(safe-area-inset-top,0px) + 193px)}',
-    '@media(max-width:520px){.map-tools{width:min(260px,calc(100vw - 18px))}body.province-alberta .era-control[hidden]~.map-tools{top:calc(env(safe-area-inset-top,0px) + 115px)}body.province-alberta.terrain-3d-on .terrain-exaggeration{top:calc(env(safe-area-inset-top,0px) + 191px)}body.province-alberta .error{top:calc(env(safe-area-inset-top,0px) + 187px)}}',
+    'body.province-alberta .error{top:calc(env(safe-area-inset-top,0px) + 138px)}',
+    'body.province-alberta.terrain-3d-on .error{top:calc(env(safe-area-inset-top,0px) + 235px)}',
+    '@media(max-width:520px){body.province-alberta.terrain-3d-on .terrain-exaggeration{top:calc(env(safe-area-inset-top,0px) + 128px)}body.province-alberta .error{top:calc(env(safe-area-inset-top,0px) + 131px)}body.province-alberta.terrain-3d-on .error{top:calc(env(safe-area-inset-top,0px) + 228px)}}',
   ].join('\n')+'\n';
   new Function(app);
   assert(html.includes('id="province-alberta"')&&html.includes('alberta-species.js'), 'province markup absent');

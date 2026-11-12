@@ -52,15 +52,15 @@ css+='\n'+[
 '#terrain3d{position:fixed;inset:0;z-index:5;width:100%;height:100%;background:#101512}',
 '#terrain3d[hidden]{display:none}',
 '#terrain3d .maplibregl-control-container{font-family:inherit}',
-'.terrain-exaggeration{display:none;position:fixed;z-index:20;top:calc(env(safe-area-inset-top,0px)  + 258px);left:12px;width:min(340px,calc(100vw - 24px));padding:9px 12px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(15,20,17,.94);box-shadow:0 8px 24px rgba(0,0,0,.24)}',
+'.terrain-exaggeration{display:none;position:fixed;z-index:20;top:calc(env(safe-area-inset-top,0px)  + 190px);left:12px;width:min(340px,calc(100vw - 24px));padding:9px 12px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(15,20,17,.94);box-shadow:0 8px 24px rgba(0,0,0,.24)}',
 'body.terrain-3d-on .terrain-exaggeration{display:grid;gap:6px}',
 '.terrain-exaggeration label{display:flex;justify-content:space-between;font-size:11px;font-weight:650;color:#c4d0c5}',
 '.terrain-exaggeration output{color:#fff}',
 '.terrain-exaggeration input{width:100%;height:20px;margin:0;accent-color:#79b67e;cursor:pointer;touch-action:pan-x}',
 '#terrain-imagery-label{font-size:10px;line-height:1.3;color:#acb9ad}',
 '.terrain-toggle:disabled{opacity:.68;cursor:progress}',
-'body.terrain-3d-on .error{top:calc(env(safe-area-inset-top,0px)  + 373px)}',
-'@media(max-width:520px){.terrain-exaggeration{top:calc(env(safe-area-inset-top,0px)  + 251px);left:9px;width:min(340px,calc(100vw - 18px))}body.terrain-3d-on .error{top:calc(env(safe-area-inset-top,0px)  + 365px)}}'
+'body.terrain-3d-on .error{top:calc(env(safe-area-inset-top,0px)  + 299px)}',
+'@media(max-width:520px){.terrain-exaggeration{top:calc(env(safe-area-inset-top,0px)  + 184px);left:9px;width:min(340px,calc(100vw - 18px))}body.terrain-3d-on .error{top:calc(env(safe-area-inset-top,0px)  + 293px)}}'
 ].join('\n')+'\n';
 new Function(app);
 assert(app.includes('void syncTerrain3D(version)')&&app.includes('toggleTerrain3D()'),'runtime not wired');

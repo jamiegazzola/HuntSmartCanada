@@ -14,14 +14,10 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/species-map/stone-sheep-icon.png?v=20261104b">
   <link rel="preconnect" href="https://maps.googleapis.com">
   <link rel="preconnect" href="https://maps.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="app.css?v=alberta-20261112-1">
+  <link rel="stylesheet" href="app.css?v=province-inline-20261112-1">
 </head>
 <body>
   <main id="map" aria-label="BC and Alberta big game species distribution map"></main>
-  <div class="province-control" role="group" aria-label="Province">
-    <button id="province-bc" type="button" aria-pressed="true">BC</button>
-    <button id="province-alberta" type="button" aria-pressed="false">Alberta</button>
-  </div>
   <div class="species-control">
     <label class="sr-only" for="species">Species</label>
     <select id="species" aria-label="Species"></select>
@@ -39,6 +35,10 @@
       <label for="layer-opacity">Layer opacity</label>
       <input id="layer-opacity" type="range" min="0" max="100" step="5" value="85" aria-label="Layer opacity">
       <output id="opacity-value" for="layer-opacity">85%</output>
+    </div>
+    <div class="province-control" role="group" aria-label="Province">
+      <button id="province-bc" type="button" aria-pressed="true" title="British Columbia">BC</button>
+      <button id="province-alberta" type="button" aria-pressed="false" aria-label="Alberta" title="Alberta">AB</button>
     </div>
     <button id="terrain-toggle" class="terrain-toggle" type="button" aria-pressed="false" title="Tilt the map where 3D imagery is available">3D</button>
   </div>

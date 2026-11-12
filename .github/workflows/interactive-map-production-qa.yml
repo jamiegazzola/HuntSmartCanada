@@ -96,6 +96,16 @@ jobs:
             // Roads feature was retired by design; don't assert legacy FSR controls.
             const abPage=await waitForMarker('/species-map/', 'id="province-alberta"');
             assert(abPage.includes('alberta-species.js?v='), 'Alberta species catalogue not published');
+            const controlPositions = [abPage.indexOf('id="layer-opacity"'),
+              abPage.indexOf('id="province-bc"'), abPage.indexOf('id="province-alberta"'),
+              abPage.indexOf('id="terrain-toggle"')];
+            assert(controlPositions.every(v=>v>=0) &&
+              controlPositions.every((v,i)=>i===0||v>controlPositions[i-1]),
+              'Controls must render as opacity, BC/AB, then 3D');
+            const displayCss=await text('/species-map/app.css');
+            assert(displayCss.includes('.province-control{position:relative;flex:0 0 98px'),
+              'Province switch must sit inside the shared display row');
+
             const abCatalog=await text('/species-map/alberta-species.js');
             assert(abCatalog.includes("type:'federal_boreal_range'"), 'Alberta federal range catalog missing');
             assert(app.includes('species-map-alberta-range-v13'), 'Alberta province switching JS is not deployed');
