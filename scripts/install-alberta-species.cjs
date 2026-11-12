@@ -51,6 +51,12 @@
   app = replace(app,
     '    const item = speciesByKey[select.value];',
     "    const item = (province === 'ab' ? albertaByKey : speciesByKey)[select.value];",'selected species');
+  // The private map hides the era control for special elk modes. Alberta
+  // has no validated seasonal datasets, so its era control stays hidden.
+  app = app.replaceAll('eraControl.hidden = isRoosevelt || isRockyElk;',
+    "eraControl.hidden = province === 'ab' || isRoosevelt || isRockyElk;");
+  app = app.replaceAll("eraControl.style.display = (isRoosevelt || isRockyElk) ? 'none' : '';",
+    "eraControl.style.display = (province === 'ab' || isRoosevelt || isRockyElk) ? 'none' : '';");
   app = replace(app,
     "    evidenceToggle.hidden = !(KMZ_HEATMAPS.has(item.key) && (viewMode === 'modern' || viewMode === 'historical'));",
     "    evidenceToggle.hidden = province === 'ab' || !(KMZ_HEATMAPS.has(item.key) && (viewMode === 'modern' || viewMode === 'historical'));",'hide BC evidence');
@@ -62,10 +68,15 @@
   const abBranch = authored.slice(branchStart,branchEnd+"\n      }".length);
   assert(abBranch.includes('/.netlify/functions/alberta-boreal-caribou') &&
     abBranch.includes('Open Government Licence – Canada'),'Alberta render provenance');
-  app = replace(app,
-    "      if (!showEvidence && KMZ_HEATMAPS.has(item.key) && (viewMode === 'modern' || viewMode === 'historical')) {",
-    abBranch+" else if (!showEvidence && KMZ_HEATMAPS.has(item.key) && (viewMode === 'modern' || viewMode === 'historical')) {",
-    'render branch');
+  // Production's pinned private viewer adds its Roosevelt / Rocky elk branches
+  // ahead of the generic KMZ branch. Preserve that dispatch order for BC.
+  const renderStart = app.indexOf('  async function renderSelected() {');
+  const renderTry = app.indexOf('    try {\n', renderStart);
+  const firstBranch = renderTry + '    try {\n'.length;
+  assert(renderStart >= 0 && renderTry > renderStart &&
+    app.slice(firstBranch).startsWith('      if ('), 'first render branch');
+  app = app.slice(0,firstBranch) + abBranch +
+    app.slice(firstBranch).replace(/^      if \(/, ' else if (');
   app = replace(app,
     "        if (viewMode !== 'modern') {\n          const label = viewMode === 'historical'",
     "        if (province === 'ab') {\n          document.getElementById('layer-note-text').textContent = 'Alberta: source unavailable. Please try again later or follow the official source link.';\n          document.getElementById('layer-note').hidden = false;\n          document.getElementById('layer-attribution').hidden = true;\n        } else if (viewMode !== 'modern') {\n          const label = viewMode === 'historical'",
