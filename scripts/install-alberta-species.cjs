@@ -32,7 +32,9 @@ try {
     '  const SPECIES = window.HUNTSMART_SPECIES;',
     '  const SPECIES = window.HUNTSMART_SPECIES;\n'+authored.slice(provinceVarsStart,provinceVarsEnd).trimEnd(),
     'registry');
-  app = replace(app,'  const APP_BUILD = \'species-map-rebuild-v12\';',"  const APP_BUILD = 'species-map-alberta-range-v13';",'version');
+  const oldBuildMarker = app.match(/  const APP_BUILD = '[^']+';/g);
+  assert(oldBuildMarker?.length === 1, 'build marker expected once');
+  app = replace(app,oldBuildMarker[0],"  const APP_BUILD = 'species-map-alberta-range-v13';",'version');
   app = replace(app, '    if (mode === viewMode) return;', "    if (province === 'ab' || mode === viewMode) return;",'era');
   const listStart = app.indexOf('  for (const item of SPECIES.filter(item => DISPLAYED_SPECIES.has(item.key))) {');
   const listEnd = app.indexOf('\n  function setLoading(value) {',listStart);
