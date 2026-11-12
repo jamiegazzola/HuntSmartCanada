@@ -97,6 +97,16 @@ jobs:
             assert(regionMask.type === 'FeatureCollection' && regionMask.features.length === 2,'Rocky elk Region 1/2 clip data missing');
             assert(['1','2'].every(id => regionMask.features.some(f=>f.properties.region_id===id && f.geometry.type==='Polygon')),'Rocky elk mask polygon ids invalid');
 
+            const abPage=await waitForMarker('/species-map/', 'id="province-alberta"');
+            assert(abPage.includes('alberta-species.js?v='), 'Alberta species catalogue not published');
+            const abCatalog=await text('/species-map/alberta-species.js');
+            assert(abCatalog.includes("type:'federal_boreal_range'"), 'Alberta federal range catalog missing');
+            assert(app.includes('species-map-alberta-range-v13'), 'Alberta province switching JS is not deployed');
+            await waitForJson('/.netlify/functions/alberta-boreal-caribou',j=>j?.type==='FeatureCollection'&&
+              Array.isArray(j.features)&&j.features.length>=8&&
+              j.features.every(f=>/^AB(?:[1-9]|1[0-2])$/.test(f?.properties?.CODE||'')&&
+                ['Polygon','MultiPolygon'].includes(f?.geometry?.type)));
+
             await waitForJson('/species-map/api/species-data?kind=rooseveltEpu',j=>j?.type==='FeatureCollection'&&Array.isArray(j.features)&&j.features.length>0);
             console.log('Public species map, drop-pin coordinate copy, and data endpoint passed.');
             console.log('HuntSmart production map/PWA smoke passed.');
