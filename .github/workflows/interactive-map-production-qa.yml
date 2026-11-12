@@ -106,6 +106,15 @@ jobs:
             assert(displayCss.includes('.province-control{position:relative;flex:0 0 98px'),
               'Province switch must sit inside the shared display row');
 
+            const localImporter=await text('/species-map/alberta-local.js');
+            assert(localImporter.includes('window.shp(await file.arrayBuffer())') &&
+              !localImporter.includes('fetch('), 'Personal Alberta data must be loaded locally, without fetching source geometries');
+            const parser=await response('/species-map/vendor/shp.min.js');
+            assert(parser.ok && (await parser.text()).length>10000,
+              'Pinned browser shapefile parser not deployed');
+            assert(abPage.includes('id="alberta-personal-file"') &&
+              abPage.includes('alberta-local.js?v=') && abPage.includes('vendor/shp.min.js?v='),
+              'Personal GIS file picker or parser missing from production HTML');
             const abCatalog=await text('/species-map/alberta-species.js');
             assert(abCatalog.includes("type:'federal_boreal_range'"), 'Alberta federal range catalog missing');
             assert(app.includes('species-map-alberta-range-v13'), 'Alberta province switching JS is not deployed');

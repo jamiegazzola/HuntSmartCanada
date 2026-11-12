@@ -97,8 +97,17 @@ function setup({ failMainland = false, syntheticRaster = false, failOnce = '', d
   };
   context = vm.createContext({ document, localStorage, google, fetch, AbortController, DOMException, console, setTimeout: () => 0, clearTimeout, Uint8ClampedArray });
   context.window = context;
+  context.shp = async (bytes) => {
+    assert(bytes.byteLength >= 100, 'Browser parser receives local file bytes');
+    return {type:'FeatureCollection',features:[{
+      type:'Feature',properties:{ZONE:'Core'},geometry:{
+        type:'Polygon',coordinates:[[[-117,52],[-116,52],[-116,53],[-117,52]]]
+      }
+    }]};
+  };
   vm.runInContext(fs.readFileSync(path.join(root, 'species-catalog.js'), 'utf8'), context);
   vm.runInContext(fs.readFileSync(path.join(root, 'alberta-species.js'), 'utf8'), context);
+  vm.runInContext(fs.readFileSync(path.join(root, 'alberta-local.js'), 'utf8'), context);
   vm.runInContext(fs.readFileSync(path.join(root, 'app.js'), 'utf8'), context);
   context.initSpeciesMap();
   return { element, layers, overlays, fetchCounts, releaseDelayed, getLastImage: () => lastImage, getMap: () => mapStub };
@@ -416,6 +425,29 @@ async function run() {
   await alberta.element('province-bc').click();
   assert.equal(alberta.element('era-control').hidden, false);
   assert.equal(alberta.element('species').value, 'mule_deer');
+  const local = setup();
+  await local.element('province-alberta').click();
+  await select(local, 'grizzly_bear');
+  assert.equal(local.element('alberta-personal-panel').hidden, false);
+  assert(local.element('alberta-personal-description').textContent.includes('GrizzlyBearZone.zip'));
+  local.element('alberta-personal-file').files = [{
+    name:'GrizzlyBearZone.zip',size:400,arrayBuffer:async () => new ArrayBuffer(200)
+  }];
+  await local.element('alberta-personal-file').change();
+  assert.equal(local.layers.at(-1).collection.features[0].properties.ZONE,'Core',
+    'Locally selected government shape must render');
+  assert.equal(local.element('alberta-personal-clear').hidden,false);
+  assert(local.element('layer-note-text').textContent.includes('not animal density'));
+  assert([...local.fetchCounts.keys()].every(url=>!url.includes('extranet.gov.ab.ca')),
+    'Personal government polygons must never be fetched by HuntSmart');
+  await select(local,'elk');
+  assert.equal(local.element('alberta-personal-panel').hidden,true);
+  await select(local,'grizzly_bear');
+  assert.equal(local.layers.at(-1).collection.features[0].properties.ZONE,'Core',
+    'Personal GIS may be reused only in the same open browser tab');
+  await local.element('province-bc').click();
+  assert.equal(local.element('alberta-personal-panel').hidden,true);
+  console.log('Personal-only government ZIP import, BC isolation and no-upload policy passed.');
   console.log('BC/Alberta switch, federal range layer and permission gate passed.');
   console.log('Species selections, seasons and historical source fallbacks passed.');
 }
