@@ -28,6 +28,7 @@ on:
       - netlify/lib/**
       - scripts/verify-private-species.mjs
       - scripts/verify-species-map.cjs
+      - scripts/install-alberta-species.cjs
       - scripts/patch-species-public.cjs
       - scripts/patch-species-map-coordinate-copy.cjs
       - .github/workflows/interactive-map-production-qa.yml
