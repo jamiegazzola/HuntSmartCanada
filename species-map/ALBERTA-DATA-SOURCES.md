@@ -37,3 +37,32 @@ sightings as population density or confirmed distribution.
 4. Region validation and species taxonomy reconciled with BC catalogue.
 5. Download + provenance checksums, coverage and uncertainty notes recorded.
 6. Mobile render, species-switch, source error, and deployment checks pass.
+
+## Personal-only Government of Alberta GIS importer (November 12, 2026)
+
+HuntSmart's public site never contains Alberta's provincial sensitivity
+geometries. In Alberta mode select one of these options:
+
+- **Caribou — Alberta Govt (personal):** download the original
+  [CaribouRange.zip](https://extranet.gov.ab.ca/srd/geodiscover/srd_pub/LAT/FWDSensitivity/CaribouRange.zip).
+- **Mountain Goat & Sheep Areas (personal):** download the original
+  [MountainGoatAndSheepAreas.zip](https://extranet.gov.ab.ca/srd/geodiscover/srd_pub/LAT/FWDSensitivity/MountainGoatAndSheepAreas.zip).
+- **Grizzly Bear Zones (personal):** download the original
+  [GrizzlyBearZone.zip](https://extranet.gov.ab.ca/srd/geodiscover/srd_pub/LAT/FWDSensitivity/GrizzlyBearZone.zip).
+
+Use **Open ZIP** in the map to select the downloaded ZIP in a local file picker.
+The app uses its installed shpjs 6.2.0 browser parser and adds GeoJSON to the
+local Google Maps Data instance. All features remain in browser memory only,
+are never uploaded to HuntSmart or Netlify, and are not persisted between tabs.
+The map displays original generalized range/sensitivity polygons, not measured
+population density. The source must be attributed to the Government of Alberta
+and HuntSmart is not endorsed by the Government.
+
+Do **not** migrate these personal-source ZIPs, transformed polygons, or rendered
+GeoJSON to the public git repository, Netlify static assets, serverless APIs,
+client caches, analytics, or paid customer features. Written permission from
+the Government of Alberta is required before commercial distribution.
+FWMIS records remain excluded due to additional redistribution restrictions.
+
+Government source and metadata:
+https://www.alberta.ca/wildlife-sensitivity-maps

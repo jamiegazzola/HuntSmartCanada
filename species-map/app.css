@@ -51,3 +51,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 #alberta-personal-file{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 #alberta-personal-status{margin-top:8px;color:#bfcfc3;font-size:10px;line-height:1.45}
 @media(max-width:520px){.alberta-personal-panel{top:calc(env(safe-area-inset-top,0px) + 130px);left:9px;width:min(354px,calc(100vw - 18px));max-height:34vh}}
+
+/* Keep the private ZIP importer clear of 3D terrain settings on phones. */
+body.province-alberta.terrain-3d-on .alberta-personal-panel{top:calc(env(safe-area-inset-top,0px) + 245px);max-height:min(28vh,250px)}
+@media(max-width:520px){body.province-alberta.terrain-3d-on .alberta-personal-panel{top:calc(env(safe-area-inset-top,0px) + 238px);max-height:min(25vh,180px)}}
