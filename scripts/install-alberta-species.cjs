@@ -37,9 +37,9 @@
   const listEnd = app.indexOf('\n  function setLoading(value) {',listStart);
   assert(listStart>0 && listEnd>listStart, 'BC catalogue section');
   const authoredStart=authored.indexOf('  const bcProvinceButton = document.getElementById(\'province-bc\');');
-  const authoredEnd=authored.indexOf('  populateSpecies();',authoredStart);
+  const authoredEnd=authored.indexOf('\n  populateSpecies();\n',authoredStart);
   assert(authoredStart>0 && authoredEnd>authoredStart,'authored province switch');
-  const switchBlock=authored.slice(authoredStart,authoredEnd+'  populateSpecies();'.length)
+  const switchBlock=authored.slice(authoredStart,authoredEnd+'\n  populateSpecies();'.length)
     .replace("const list = province === 'ab' ? AB_SPECIES : SPECIES;",
              "const list = province === 'ab' ? AB_SPECIES : SPECIES.filter(item => DISPLAYED_SPECIES.has(item.key));")
     .replace("    eraControl.hidden = province === 'ab';","    eraControl.hidden = province === 'ab';\n    document.body.classList.toggle('province-alberta', province === 'ab');")
