@@ -82,7 +82,7 @@ jobs:
             assert(!app.includes('COORDINATE_HOLD_MS'),'legacy long-press interaction still deployed');
             assert(!app.includes('map.setZoom(Math.max(map.getZoom(), 18))'),'3D toggle must not forcibly zoom to blurry satellite imagery');
             assert(!app.includes('map.setZoom(preTiltView.zoom)'),'leaving 3D must not unexpectedly restore old zoom');
-            assert(app.includes('map.setTilt(45)'),'3D tilt toggle must remain available');
+            assert(app.includes('toggleTerrain3D()') && app.includes('syncTerrain3D(version)'), 'DEM-based 3D terrain toggle must remain available');
             assert(app.includes("button.id = 'fsr-toggle'"),'FSR truck toggle is missing');
             assert(app.includes("button.textContent = '🚚'"),'FSR truck emoji is missing');
             assert(app.includes("definitionExpression:'FEATURE_CLASS_SKEY = 558'"),'FSR roads filter is missing');
