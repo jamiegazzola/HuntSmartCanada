@@ -91,10 +91,10 @@
   app = replace(app,"if (viewMode === 'winter' && select.value === 'stone_sheep' && stoneDetail !== null &&",
     "if (province === 'bc' && viewMode === 'winter' && select.value === 'stone_sheep' && stoneDetail !== null &&",
     'stone sheep BC only');
-  app = replace(app,
-    "localStorage.setItem('bc-species-map-view-v2', JSON.stringify({",
-    "localStorage.setItem(province === 'ab' ? 'alberta-species-map-view-v1' : 'bc-species-map-view-v2', JSON.stringify({",
-    'view persistence');
+  const oldViewStore = "localStorage.setItem('bc-species-map-view-v2', JSON.stringify({";
+  assert(app.includes(oldViewStore), 'view persistence anchor');
+  app = app.replaceAll(oldViewStore,
+    "localStorage.setItem(province === 'ab' ? 'alberta-species-map-view-v1' : 'bc-species-map-view-v2', JSON.stringify({");
   const provinceHtmlStart=fs.readFileSync(path.join('species-map','index.html'),'utf8');
   const domStart=provinceHtmlStart.indexOf('  <div class="province-control"');
   const domEnd=provinceHtmlStart.indexOf('  <div class="species-control"',domStart);
