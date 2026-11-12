@@ -32,3 +32,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .evidence-toggle{top:calc(env(safe-area-inset-top,0px) + 195px)}
 .error{top:calc(env(safe-area-inset-top,0px) + 244px)}
 @media(max-width:520px){.map-tools{top:calc(env(safe-area-inset-top,0px) + 118px);left:9px;width:min(260px,calc(100vw - 18px))}.evidence-toggle{top:calc(env(safe-area-inset-top,0px) + 190px);left:9px}.error{top:calc(env(safe-area-inset-top,0px) + 239px)}}
+
+/* Province selector precedes the existing control stack on narrow and wide screens. */
+.province-control{position:fixed;z-index:21;top:calc(env(safe-area-inset-top,0px) + 12px);left:12px;display:flex;gap:3px;padding:3px;width:178px;border:1px solid rgba(255,255,255,.16);border-radius:12px;background:rgba(15,20,17,.94);box-shadow:0 8px 24px rgba(0,0,0,.24)}
+.province-control button{flex:1;min-height:38px;padding:0 10px;border:0;border-radius:9px;background:transparent;color:#c4d0c5;font:700 13px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer}
+.province-control button[aria-pressed=true]{background:#527b56;color:#fff}
+.province-control button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.species-control{top:calc(env(safe-area-inset-top,0px) + 64px)}
+.era-control{top:calc(env(safe-area-inset-top,0px) + 120px)}
+.era-control[hidden]{display:none}
+.map-tools{top:calc(env(safe-area-inset-top,0px) + 176px)}
+.evidence-toggle{top:calc(env(safe-area-inset-top,0px) + 248px)}
+.error{top:calc(env(safe-area-inset-top,0px) + 296px)}
+@media(max-width:520px){
+  .province-control{top:calc(env(safe-area-inset-top,0px) + 9px);left:9px}
+  .species-control{top:calc(env(safe-area-inset-top,0px) + 62px)}
+  .era-control{top:calc(env(safe-area-inset-top,0px) + 115px)}
+  .map-tools{top:calc(env(safe-area-inset-top,0px) + 171px)}
+  .evidence-toggle{top:calc(env(safe-area-inset-top,0px) + 244px)}
+  .error{top:calc(env(safe-area-inset-top,0px) + 292px)}
+}

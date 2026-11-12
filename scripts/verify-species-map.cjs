@@ -66,6 +66,9 @@ function setup({ failMainland = false, syntheticRaster = false, failOnce = '', d
       await delay;
       if (options.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     }
+    if (url.includes('alberta-boreal-caribou')) {
+      return { ok: true, json: async () => ({ type:'FeatureCollection', features:[{ type:'Feature',properties:{CODE:'AB1',HERD:'Chinchaga'},geometry:{type:'Polygon',coordinates:[[[-119,57],[-118,57],[-118,58],[-119,57]]]}}] }) };
+    }
     if (url.includes('rooseveltEpu')) {
       if (failMainland) return { ok: false };
       return { ok: true, json: async () => ({ type: 'FeatureCollection', densityField: '__density', features: [{ type: 'Feature', properties: { __density: 1 }, geometry: null }] }) };
@@ -94,6 +97,7 @@ function setup({ failMainland = false, syntheticRaster = false, failOnce = '', d
   context = vm.createContext({ document, localStorage, google, fetch, AbortController, DOMException, console, setTimeout: () => 0, clearTimeout, Uint8ClampedArray });
   context.window = context;
   vm.runInContext(fs.readFileSync(path.join(root, 'species-catalog.js'), 'utf8'), context);
+  vm.runInContext(fs.readFileSync(path.join(root, 'alberta-species.js'), 'utf8'), context);
   vm.runInContext(fs.readFileSync(path.join(root, 'app.js'), 'utf8'), context);
   context.initSpeciesMap();
   return { element, layers, overlays, fetchCounts, releaseDelayed, getLastImage: () => lastImage, getMap: () => mapStub };
@@ -400,6 +404,18 @@ async function run() {
   await select(historical, 'elk');
   assert(historical.element('layer-note-text').textContent.includes('1990 Roosevelt and Rocky Mountain'));
   assert.equal(historical.layers.at(-1).collection.features.length, 2, 'Both 1990 elk sources must be rendered');
+  const alberta = setup();
+  await alberta.element('province-alberta').click();
+  assert.equal(alberta.element('province-alberta').attributes['aria-pressed'], 'true');
+  assert.equal(alberta.element('era-control').hidden, true);
+  assert.equal(alberta.element('species').value, 'caribou');
+  assert.equal(alberta.layers.at(-1).collection.features[0].properties.CODE, 'AB1');
+  await select(alberta, 'elk');
+  assert(alberta.element('layer-note-text').textContent.includes('no verified commercially reusable'));
+  await alberta.element('province-bc').click();
+  assert.equal(alberta.element('era-control').hidden, false);
+  assert.equal(alberta.element('species').value, 'mule_deer');
+  console.log('BC/Alberta switch, federal range layer and permission gate passed.');
   console.log('Species selections, seasons and historical source fallbacks passed.');
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });

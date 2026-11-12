@@ -1,9 +1,10 @@
 (() => {
   'use strict';
 
-  const APP_BUILD = 'species-map-rebuild-v12';
+  const APP_BUILD = 'species-map-alberta-range-v13';
   window.__HUNTSMART_SPECIES_MAP_BUILD__ = APP_BUILD;
   const BOUNDS = { north: 60.1, south: 48.1, east: -113.8, west: -139.2 };
+  const ALBERTA_BOUNDS = { north: 60.0, south: 49.0, east: -110.0, west: -120.0 };
   const PALETTE = [
     [0, 0, 0, 0],
     [63, 150, 70, 190],
@@ -16,6 +17,9 @@
   const ASSET_REV = 'rebuild-20261031-11';
 
   const SPECIES = window.HUNTSMART_SPECIES;
+  const AB_SPECIES = window.HUNTSMART_ALBERTA_SPECIES || [];
+  const albertaByKey = Object.fromEntries(AB_SPECIES.map(item => [item.key, item]));
+  let province = localStorage.getItem('huntsmart-species-province') === 'ab' ? 'ab' : 'bc';
   if (!Array.isArray(SPECIES) || !SPECIES.length) throw new Error('Species catalogue is unavailable.');
 
   // The source's legacy ECOTYPE field groups Southern Mountain DU7/DU8 as
@@ -132,7 +136,7 @@
     eraHistorical.setAttribute('aria-pressed', viewMode === 'historical' ? 'true' : 'false');
   }
   function changeEra(mode) {
-    if (mode === viewMode) return;
+    if (province === 'ab' || mode === viewMode) return;
     viewMode = mode;
     localStorage.setItem('bc-species-map-era', mode);
     setEraButtons();
@@ -144,15 +148,44 @@
   eraHistorical.addEventListener('click', () => changeEra('historical'));
   setEraButtons();
 
-  for (const item of SPECIES) {
-    const option = document.createElement('option');
-    option.value = item.key;
-    option.textContent = item.label;
-    select.appendChild(option);
+  const bcProvinceButton = document.getElementById('province-bc');
+  const abProvinceButton = document.getElementById('province-alberta');
+  const eraControl = document.getElementById('era-control');
+  function populateSpecies() {
+    const list = province === 'ab' ? AB_SPECIES : SPECIES;
+    const byKey = province === 'ab' ? albertaByKey : speciesByKey;
+    const storageKey = province === 'ab' ? 'alberta-species-map-v1' : 'bc-species-map-v2';
+    const saved = localStorage.getItem(storageKey);
+    select.innerHTML = '';
+    for (const item of list) {
+      const option = document.createElement('option');
+      option.value = item.key;
+      option.textContent = item.label;
+      select.appendChild(option);
+    }
+    select.value = byKey[saved] ? saved : (province === 'ab' ? 'caribou' : 'mule_deer');
+    eraControl.hidden = province === 'ab';
+    bcProvinceButton.setAttribute('aria-pressed', String(province === 'bc'));
+    abProvinceButton.setAttribute('aria-pressed', String(province === 'ab'));
   }
-
-  const savedSpecies = localStorage.getItem('bc-species-map-v2');
-  select.value = speciesByKey[savedSpecies] ? savedSpecies : 'mule_deer';
+  function changeProvince(next) {
+    if (next === province) return;
+    province = next;
+    localStorage.setItem('huntsmart-species-province', province);
+    if (renderAbort) renderAbort.abort();
+    populateSpecies();
+    if (map) {
+      const bounds = province === 'ab' ? ALBERTA_BOUNDS : BOUNDS;
+      map.fitBounds(new google.maps.LatLngBounds(
+        { lat: bounds.south, lng: bounds.west },
+        { lat: bounds.north, lng: bounds.east },
+      ), 18);
+      return renderSelected();
+    }
+  }
+  bcProvinceButton.addEventListener('click', () => changeProvince('bc'));
+  abProvinceButton.addEventListener('click', () => changeProvince('ab'));
+  populateSpecies();
 
   function setLoading(value) {
     control.classList.toggle('loading', value);
@@ -222,6 +255,7 @@
     document.getElementById('roosevelt-history-link').hidden = true;
     document.getElementById('roosevelt-range-link').hidden = true;
     document.getElementById('roosevelt-recent-link').hidden = true;
+    document.getElementById('layer-source').textContent = 'BC data';
     document.getElementById('layer-license').href = 'https://www2.gov.bc.ca/gov/content/data/open-data/open-government-licence-bc';
     document.getElementById('layer-license').textContent = 'Open Government Licence – BC';
     if (activeData) {
@@ -479,7 +513,7 @@
 
   async function renderSelected() {
     const version = ++renderVersion;
-    const item = speciesByKey[select.value];
+    const item = (province === 'ab' ? albertaByKey : speciesByKey)[select.value];
     if (!item || !map) return;
 
     if (renderAbort) renderAbort.abort();
@@ -487,10 +521,40 @@
     setLoading(true);
     clearLayer();
     clearError();
-    localStorage.setItem('bc-species-map-v2', item.key);
+    localStorage.setItem(province === 'ab' ? 'alberta-species-map-v1' : 'bc-species-map-v2', item.key);
 
     try {
-      if ((viewMode === 'winter' || viewMode === 'summer') && ['caribou', 'caribou_northern'].includes(item.key)) {
+      if (province === 'ab') {
+        const note = document.getElementById('layer-note');
+        const noteText = document.getElementById('layer-note-text');
+        const source = document.getElementById('layer-source');
+        note.hidden = false;
+        source.href = item.sourceUrl;
+        source.textContent = item.type === 'federal_boreal_range' ? 'ECCC federal range source' : 'Review official source';
+        document.getElementById('layer-attribution').hidden = true;
+        if (item.type === 'federal_boreal_range') {
+          noteText.textContent = 'Alberta: loading federally mapped boreal caribou ranges…';
+          const response = await fetch('/.netlify/functions/alberta-boreal-caribou', { signal: renderAbort.signal });
+          if (!response.ok) throw new Error('Federal Alberta caribou ranges could not load.');
+          const data = await response.json();
+          if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features) || !data.features.length ||
+              data.features.some(f => !/^AB(?:[1-9]|1[0-2])$/.test(f.properties?.CODE || ''))) {
+            throw new Error('Federal Alberta caribou range response is invalid.');
+          }
+          if (version !== renderVersion) return;
+          activeData = makeDataLayer();
+          activeData.addGeoJson(data);
+          activeData.setStyle({ fillColor:'#7caa74', fillOpacity:0.42, strokeColor:'#b9e3a9',
+            strokeOpacity:0.9, strokeWeight:1.5, clickable:false });
+          noteText.textContent = 'Alberta boreal caribou: federal 2012 herd-range boundaries used in ECCC 2020 disturbance mapping. Broad ranges, not density, confirmed occupancy everywhere, or mountain caribou distribution.';
+          document.getElementById('layer-license').href = 'https://open.canada.ca/en/open-government-licence-canada/';
+          document.getElementById('layer-license').textContent = 'Open Government Licence – Canada';
+          document.getElementById('layer-attribution').hidden = false;
+        } else {
+          noteText.textContent = 'Alberta ' + item.label.replace(/ \(.*\)$/, '') +
+            ': no verified commercially reusable species-distribution layer is integrated yet. Source is available for review, but draw areas, observations, and sensitivity zones are not animal density or confirmed range.';
+        }
+      } else if ((viewMode === 'winter' || viewMode === 'summer') && ['caribou', 'caribou_northern'].includes(item.key)) {
         const season = viewMode;
         const note = document.getElementById('layer-note');
         note.hidden = false;
@@ -799,7 +863,11 @@
     } catch (error) {
       if (version === renderVersion && error?.name !== 'AbortError') {
         console.error(error);
-        if (viewMode !== 'modern') {
+        if (province === 'ab') {
+          document.getElementById('layer-note-text').textContent = 'Alberta: source unavailable. Please try again later or follow the official source link.';
+          document.getElementById('layer-note').hidden = false;
+          document.getElementById('layer-attribution').hidden = true;
+        } else if (viewMode !== 'modern') {
           const label = viewMode === 'historical' ? 'Historical' : viewMode === 'winter' ? 'Winter' : 'Summer';
           document.getElementById('layer-note-text').textContent = `${label}: this layer could not be loaded. Try again.`;
           document.getElementById('layer-note').hidden = false;
@@ -817,7 +885,7 @@
       if (version === renderVersion) {
         const note = document.getElementById('layer-note');
         const text = document.getElementById('layer-note-text');
-        if (viewMode === 'modern' && !note.hidden && !text.textContent.startsWith('Modern:')) {
+        if (province === 'bc' && viewMode === 'modern' && !note.hidden && !text.textContent.startsWith('Modern:')) {
           text.textContent = `Modern: best available evidence; dates vary. ${text.textContent}`;
         }
         applyLayerOpacity();
@@ -830,9 +898,9 @@
 
   window.initSpeciesMap = () => {
     try {
-      const savedView = JSON.parse(localStorage.getItem('bc-species-map-view-v2') || 'null');
+      const savedView = JSON.parse(localStorage.getItem(province === 'ab' ? 'alberta-species-map-view-v1' : 'bc-species-map-view-v2') || 'null');
       map = new google.maps.Map(document.getElementById('map'), {
-        center: savedView?.center || { lat: 54.4, lng: -125.7 },
+        center: savedView?.center || (province === 'ab' ? { lat: 54.5, lng: -114.8 } : { lat: 54.4, lng: -125.7 }),
         zoom: savedView?.zoom || 5,
         mapTypeId: google.maps.MapTypeId.HYBRID,
         mapTypeControl: false,
@@ -849,23 +917,24 @@
       });
 
       if (!savedView) {
+        const initialBounds = province === 'ab' ? ALBERTA_BOUNDS : BOUNDS;
         map.fitBounds(
           new google.maps.LatLngBounds(
-            { lat: BOUNDS.south, lng: BOUNDS.west },
-            { lat: BOUNDS.north, lng: BOUNDS.east },
+            { lat: initialBounds.south, lng: initialBounds.west },
+            { lat: initialBounds.north, lng: initialBounds.east },
           ),
           18,
         );
       }
 
       map.addListener('idle', () => {
-        if (viewMode === 'winter' && select.value === 'stone_sheep' && stoneDetail !== null &&
+        if (province === 'bc' && viewMode === 'winter' && select.value === 'stone_sheep' && stoneDetail !== null &&
             stoneDetail !== (map.getZoom() <= 8 ? 'overview' : 'full')) {
           renderSelected();
         }
         const center = map.getCenter();
         if (!center) return;
-        localStorage.setItem('bc-species-map-view-v2', JSON.stringify({
+        localStorage.setItem(province === 'ab' ? 'alberta-species-map-view-v1' : 'bc-species-map-view-v2', JSON.stringify({
           center: { lat: center.lat(), lng: center.lng() },
           zoom: map.getZoom(),
         }));
