@@ -49,6 +49,7 @@ function setup({ failMainland = false, syntheticRaster = false, failOnce = '', d
   class GroundOverlay {
     constructor(url, bounds, options) { this.map = options.map; this.url = url; overlays.push(this); }
     setMap(map) { this.map = map; }
+    setOpacity(value) { this.opacity = value; }
   }
   let mapStub;
   class MapStub {
