@@ -8,6 +8,7 @@ const base = path.join('site', 'species-map');
 const appFile = path.join(base, 'app.js');
 const htmlFile = path.join(base, 'index.html');
 const catalogFile = path.join(base, 'species-catalog.js');
+const cssFile = path.join(base, 'app.css');
 const evidenceFile = path.join(base, 'bc-species-evidence.js');
 assert(fs.existsSync(evidenceFile), 'BC evidence renderer was not copied to publish directory');
 const evidence = fs.readFileSync(evidenceFile, 'utf8');
@@ -53,7 +54,8 @@ assert(render.includes('    clearLayer();') &&
   render.includes("      if (province === 'ab') {"),
   'BC/province render dispatch anchors missing');
 render = render.replace('    clearLayer();',
-  '    clearLayer();\n    window.HUNTSMART_BC_EVIDENCE.clear();');
+  '    clearLayer();\n    window.HUNTSMART_BC_EVIDENCE.clear();\n' +
+  "    document.body.classList.toggle('bc-official-evidence-on', province === 'bc' && item.type === 'bc_official_evidence');");
 render = render.replace("      if (province === 'ab') {",
   "      if (province === 'bc' && item.type === 'bc_official_evidence') {\n" +
   "        window.HUNTSMART_BC_EVIDENCE.render(item.key, viewMode, map, layerOpacity);\n" +
@@ -74,6 +76,11 @@ html = html.replace(/app\.js\?v=[^"]+/,
 assert(html.indexOf('bc-species-evidence.js') < html.indexOf('app.js?v='),
   'government evidence must load before map application');
 
+let css = fs.readFileSync(cssFile, 'utf8');
+css += '\n/* Source notes must remain visible for BC government-evidence layers. */\n' +
+  'body.bc-official-evidence-on .layer-note{display:block!important}\n' +
+  'body.bc-official-evidence-on .layer-note[hidden]{display:none!important}\n';
+fs.writeFileSync(cssFile, css);
 fs.writeFileSync(catalogFile, catalog);
 fs.writeFileSync(appFile, app);
 fs.writeFileSync(htmlFile, html);
