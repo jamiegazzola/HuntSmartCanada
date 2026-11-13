@@ -35,13 +35,33 @@ jobs:
              print('FIELDS',reader.fieldnames,flush=True)
              counts=Counter()
              examples=[]
+             byunit={}
              for row in reader:
               if (row.get('SPECIES') or '').strip()=='SHEE':
                counts[row.get('HUNT YEAR','')]+=1
+               try:
+                yr=int(row.get('HUNT YEAR') or 0)
+                wmu=int(row.get('WMU') or 0)
+                if 2015<=yr<=2024 and 0 < wmu%100 < 99 and wmu>=100 and wmu<900:
+                 key=f'{wmu//100}-{wmu%100}'
+                 def num(name):
+                  raw=(row.get(name) or '').strip().replace(',','')
+                  return None if not raw else int(float(raw))
+                 record=[num('RESIDENT HUNTERS'),num('RESIDENT KILLS'),num('RESIDENT DAYS'),num('NON-RESIDENT HUNTERS'),num('NON-RESIDENT KILLS')]
+                 byunit.setdefault(key,{})[yr]=record
+               except (ValueError,TypeError):
+                pass
                if row.get('HUNT YEAR','')=='2024' and len(examples)<15:
                 examples.append(row)
              print('SHEEP_YEARS',counts.most_common(6),flush=True)
              print('SHEEP_2024_ROWS',json.dumps(examples)[:10500],flush=True)
+             result={}
+             for unit,years in sorted(byunit.items()):
+              def pooled(period):
+               valid=[r for y,r in years.items() if y>=period and r[0] is not None and r[1] is not None]
+               return [sum(r[0] for r in valid),sum(r[1] for r in valid),len(valid)]
+              result[unit]={'y':years.get(2024),'p5':pooled(2020),'p10':pooled(2015)}
+             print('BC_SHEEP_JSON',json.dumps({'year':2024,'source':'Government of British Columbia','units':result},separators=(',',':')),flush=True)
             else:
              z=zipfile.ZipFile(BytesIO(blob))
              sheets=[n for n in z.namelist() if n.startswith('xl/worksheets/sheet') and n.endswith('.xml')]
@@ -70,7 +90,7 @@ jobs:
                  vals.append(t)
                 e.clear()
                 if vals: rows.append(vals[:100])
-                if len(rows)>=3:break
+                if len(rows)>=(70 if key=='CI_FIELDS' else 3):break
               print('SHEET',sheet,'START_ROWS',json.dumps(rows,ensure_ascii=False)[:9500],flush=True)
            except Exception as e:
             print('SOURCE_ERROR',key,type(e).__name__,str(e)[:500],flush=True)
