@@ -1,34 +1,29 @@
-name: Probe BC Official WMU Harvest CSV
+name: Build BC Official WMU Harvest Snapshot
 on:
   push:
     branches: [main]
-    paths: [.github/workflows/probe-bc-harvest.yml]
+    paths:
+      - .github/workflows/probe-bc-harvest.yml
+      - scripts/build-bc-harvest-snapshot.py
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
-  probe:
+  source:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 5
     steps:
-      - name: Read provincial CSV and report 2024 coverage
+      - uses: actions/checkout@v4
+      - name: Generate verified provincial source snapshot
+        run: python3 scripts/build-bc-harvest-snapshot.py
+      - name: Commit current pinned provincial snapshot
         run: |
-          python3 - <<'PY'
-          import urllib.request, csv, io, collections, hashlib
-          url="https://catalogue.data.gov.bc.ca/dataset/f2303645-5952-4766-bd5c-3b9b50dda1ca/resource/ea1505f6-77ab-4838-b4a9-309ec55a3c20/download/big-game-harvest-statistics-1976-to-2024-wmu.csv"
-          req=urllib.request.Request(url,headers={'User-Agent':'HuntSmartCanada/1.0 (official-data-ingest)'})
-          with urllib.request.urlopen(req,timeout=35) as resp:
-            raw=resp.read(18_000_000)
-            print('HTTP',resp.status,'Bytes',len(raw),'SHA256',hashlib.sha256(raw).hexdigest())
-          reader=csv.DictReader(io.StringIO(raw.decode('utf-8-sig')))
-          print('COLUMNS',reader.fieldnames)
-          rows=list(reader)
-          print('ROWS',len(rows))
-          last=[r for r in rows if str(r.get('HUNT YEAR','')).strip()=='2024']
-          print('2024 COUNT',len(last))
-          counts=collections.Counter(r.get('SPECIES','') for r in last)
-          print('SPECIES',sorted(counts.items()))
-          for sp in ['SHEE','DEMU','ELK','BEAB','WOLF']:
-            group=[r for r in last if r.get('SPECIES')==sp]
-            print('SAMPLE',sp,group[:2])
-          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add species-map/data/bc-official-harvest-wmu-2020-2024.json
+          if git diff --cached --quiet; then
+            echo "No source changes"
+          else
+            git commit -m "data(species-map): pin BC government WMU harvest 2020-24"
+            git push origin HEAD:main
+          fi
