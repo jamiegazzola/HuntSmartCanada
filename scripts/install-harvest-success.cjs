@@ -15,6 +15,9 @@ assert(fs.existsSync(jsFile),'harvest success module must be copied from source'
 const newCode = fs.readFileSync(jsFile,'utf8');
 new Function(newCode);
 assert(newCode.includes('window.HUNTSMART_HARVEST_DATA_COVERAGE'),'dataset test');
+assert(newCode.includes('BC_GOVERNMENT_HARVEST_DATA') &&
+  newCode.includes('https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024') && !newCode.includes('hunting-access.com'),
+  'Hunter success data source must link to the BC government dataset');
 const dataParts = newCode.match(/^  const rows = (.+);$/m);
 assert(dataParts && JSON.parse(dataParts[1]).split(';').length === 64,'expected 64 verified WMU data records');
 const rootWMU = fs.readFileSync('bc-wmu-geojson.js','utf8');
@@ -42,12 +45,12 @@ html = insertUnique(html, '  <div id="error" ', `
       <span class="hs-legend-swatch" style="background:#c45145"></span><span>40%+</span>
     </div>
     <div id="hs-harvest-detail" role="status" aria-live="polite"></div>
-    <div class="hs-harvest-disclaimer">Estimated overall harvest success, not animal density, GOS-only or mature-buck success. <a href="https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024" target="_blank" rel="noopener">BC dataset</a>.</div>
+    <div class="hs-harvest-disclaimer">Estimated overall harvest success, not animal density, GOS-only or mature-buck success. <a href="https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024" target="_blank" rel="noopener">BC Government dataset</a>. Map values await direct reconciliation with the provincial workbook.</div>
   </section>
   <div id="error" `, 'panel before errors');
 const appTag = html.match(/<script src="app\.js\?v=[^"]+"><\/script>/);
 assert(appTag,'species map app script tag missing');
-html = insertUnique(html,appTag[0],'<script src="harvest-success.js?v=20261113b"></script>\n  ' + appTag[0], 'load harvest module before viewer');
+html = insertUnique(html,appTag[0],'<script src="harvest-success.js?v=official-bc-source-20261113c"></script>\n  ' + appTag[0], 'load harvest module before viewer');
 app = insertUnique(app,'  let map = null;', `  let map = null;
   const harvestSuccess = window.HUNTSMART_HARVEST_SUCCESS.attach({
     getMap: () => map,
@@ -65,8 +68,8 @@ app = insertUnique(app,'} finally {terrainToggle.disabled=false;}',
   'keep 3D disabled in hunter-success view');
 const appRef = html.match(/app\.js\?v=[^"]+/);
 assert(appRef, 'map script asset reference');
-html=html.replace(appRef[0], 'app.js?v=harvest-exclusive-20261113b');
-html=html.replace(/app\.css\?v=[^"]+/, 'app.css?v=harvest-exclusive-20261113b');
+html=html.replace(appRef[0], 'app.js?v=official-bc-source-20261113c');
+html=html.replace(/app\.css\?v=[^"]+/, 'app.css?v=official-bc-source-20261113c');
 assert(app.includes('if (harvestSuccess.isEnabled()) {') &&
   app.includes('onModeChange: () => renderSelected()') &&
   app.includes('terrainToggle.disabled = harvestSuccess.isEnabled()'), 'exclusive mode bridge missing');

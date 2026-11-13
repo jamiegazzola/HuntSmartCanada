@@ -1,9 +1,12 @@
 (() => {
   'use strict';
-  // Source: BC 2024 harvest statistics reproduced in individually verified WMU tables.
+  // Figures were manually compiled from secondary published WMU tables.
+  // The official BC dataset linked below is the underlying reference, but
+  // the map entries have not yet been directly reconciled to its workbook.
   // Columns: WMU : estimated hunters : estimated kills : reported 2024 success % : reported 2020-24 average %.
   // Only verified units are coloured. Do not infer success or population density for missing units.
   const rows = "2-3:199:61:31:24;3-12:876:197:22:19;3-13:538:53:10:13;3-14:77:8:10:12;3-15:61:15:25:18;3-16:133:39:29:22;3-17:629:167:27:28;3-18:1034:304:29:25;3-19:1573:334:21:21;3-20:1206:339:28:22;3-26:1276:349:27:21;3-27:1027:418:41:30;3-28:713:200:28:23;3-29:1081:382:35:31;3-30:1908:487:26:24;3-31:937:239:26:27;3-32:676:236:35:30;3-33:122:8:7:18;3-34:67:14:21:8;3-35:80:7:9:15;3-36:426:116:27:21;3-37:403:124:31:27;3-38:367:87:24:23;3-39:204:36:18:17;3-40:153:37:24:23;3-41:66:15:23:20;4-1:119:21:18:12;4-2:404:92:23:17;4-3:636:64:10:11;4-4:213:31:15:15;5-1:1437:254:18:17;5-2:3025:909:30:28;5-3:1090:496:46:43;5-4:209:75:36:36;5-5:60:8:13:31;5-6:68:23:34:11;5-8:16:0:0:33;5-10:7:0:0:0;5-11:17:0:0:25;5-12:181:55:30:27;5-13:801:230:29:28;5-14:995:465:47:47;5-15:236:46:19:7;8-1:568:212:37:29;8-2:215:87:40:30;8-3:134:47:35:28;8-4:497:83:17:16;8-5:1140:265:23:22;8-6:632:91:14:21;8-7:556:203:37:27;8-8:1194:364:30:23;8-9:457:85:19:19;8-10:820:200:24:15;8-11:768:160:21:21;8-12:1050:162:15:10;8-13:66:0:0:8;8-14:643:103:16:12;8-15:383:30:8:11;8-21:286:85:30:26;8-22:271:85:31:21;8-23:583:100:17:13;8-24:222:15:7:15;8-25:308:58:19:12;8-26:194:43:22:19";
+  const BC_GOVERNMENT_HARVEST_DATA = 'https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024';
   const stats = new Map(rows.split(';').map(row => {
     const [id, hunters, kills, current, average] = row.split(':');
     return [id, { id, hunters:Number(hunters), kills:Number(kills), current:Number(current), average:Number(average) }];
@@ -78,13 +81,17 @@
     ] : ['No verified harvest-success figure for this WMU.'])) {
       const p = document.createElement('div'); p.textContent = text; p.style.marginTop = '5px'; box.appendChild(p);
     }
+    const a = document.createElement('a');
+    a.href = BC_GOVERNMENT_HARVEST_DATA;
+    a.target = '_blank'; a.rel = 'noopener noreferrer';
+    a.textContent = 'Data source: Government of BC';
+    a.style.cssText = 'display:inline-block;margin-top:6px;color:#17653e';
+    box.appendChild(a);
     if (rec) {
-      const a = document.createElement('a');
-      a.href = 'https://hunting-access.com/bc/' + encodeURIComponent(id) + '/';
-      a.target = '_blank'; a.rel = 'noopener noreferrer';
-      a.textContent = '2024 unit source';
-      a.style.cssText = 'display:inline-block;margin-top:6px;color:#17653e';
-      box.appendChild(a);
+      const note = document.createElement('div');
+      note.textContent = 'Map values are manually compiled and not yet independently reconciled with the provincial dataset.';
+      note.style.cssText = 'font:10px/1.35 system-ui,sans-serif;color:#667469;margin-top:5px';
+      box.appendChild(note);
     }
     info.setContent(box);
     info.setPosition(event.latLng);
