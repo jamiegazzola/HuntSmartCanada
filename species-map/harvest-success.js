@@ -1,278 +1,259 @@
 (() => {
   'use strict';
-  // Figures were manually compiled from secondary published WMU tables.
-  // The official BC dataset linked below is the underlying reference, but
-  // the map entries have not yet been directly reconciled to its workbook.
-  // Columns: WMU : estimated hunters : estimated kills : reported 2024 success % : reported 2020-24 average %.
-  // Only verified units are coloured. Do not infer success or population density for missing units.
-  const rows = "2-3:199:61:31:24;3-12:876:197:22:19;3-13:538:53:10:13;3-14:77:8:10:12;3-15:61:15:25:18;3-16:133:39:29:22;3-17:629:167:27:28;3-18:1034:304:29:25;3-19:1573:334:21:21;3-20:1206:339:28:22;3-26:1276:349:27:21;3-27:1027:418:41:30;3-28:713:200:28:23;3-29:1081:382:35:31;3-30:1908:487:26:24;3-31:937:239:26:27;3-32:676:236:35:30;3-33:122:8:7:18;3-34:67:14:21:8;3-35:80:7:9:15;3-36:426:116:27:21;3-37:403:124:31:27;3-38:367:87:24:23;3-39:204:36:18:17;3-40:153:37:24:23;3-41:66:15:23:20;4-1:119:21:18:12;4-2:404:92:23:17;4-3:636:64:10:11;4-4:213:31:15:15;5-1:1437:254:18:17;5-2:3025:909:30:28;5-3:1090:496:46:43;5-4:209:75:36:36;5-5:60:8:13:31;5-6:68:23:34:11;5-8:16:0:0:33;5-10:7:0:0:0;5-11:17:0:0:25;5-12:181:55:30:27;5-13:801:230:29:28;5-14:995:465:47:47;5-15:236:46:19:7;8-1:568:212:37:29;8-2:215:87:40:30;8-3:134:47:35:28;8-4:497:83:17:16;8-5:1140:265:23:22;8-6:632:91:14:21;8-7:556:203:37:27;8-8:1194:364:30:23;8-9:457:85:19:19;8-10:820:200:24:15;8-11:768:160:21:21;8-12:1050:162:15:10;8-13:66:0:0:8;8-14:643:103:16:12;8-15:383:30:8:11;8-21:286:85:30:26;8-22:271:85:31:21;8-23:583:100:17:13;8-24:222:15:7:15;8-25:308:58:19:12;8-26:194:43:22:19";
-  const BC_GOVERNMENT_HARVEST_DATA = 'https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024';
-  const SHEEP_SOURCE = '/species-map/data/bc-sheep-harvest-2024.json?v=20261113f';
-  const SHEEP_AGES = '/species-map/data/bc-sheep-age-ci-2022-2025.json?v=20261113f';
-  const stats = new Map(rows.split(';').map(row => {
-    const [id, hunters, kills, current, average] = row.split(':');
-    return [id, { id, hunters:Number(hunters), kills:Number(kills), current:Number(current), average:Number(average) }];
-  }));
-  const btn = document.getElementById('hs-harvest-toggle');
-  const control = document.getElementById('hs-harvest-panel');
-  const period = document.getElementById('hs-harvest-period');
-  const detail = document.getElementById('hs-harvest-detail');
-  const legend = document.getElementById('hs-harvest-legend');
-  if (!btn || !control || !period || !detail || !legend) throw new Error('Harvest map controls missing');
+  // BC Government WMU 2020-24 figures, not third-party estimates. Parent-species
+  // records cannot be interpreted as subspecies-specific, GOS or trophy odds.
+  const BC_GOVERNMENT_HARVEST_DATA='https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024';
+  const OFFICIAL_SOURCE='/species-map/data/bc-official-harvest-wmu-2020-2024.json?v=gov-bc-20261113';
+  const SOURCE_SHA='e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e';
+  const SHEEP_AGES='/species-map/data/bc-sheep-age-ci-2022-2025.json?v=20261113f';
+  const CODE_BY_KEY=Object.freeze({
+    mule_deer:'DEMU',white_tailed_deer:'DEWT',
+    nw_whitetail_kootenay:'DEWT',dakota_whitetail_peace:'DEWT',
+    elk:'ELK',roosevelt_elk:'ELK',rocky_elk_kootenay:'ELK',
+    moose:'MOOS',northwestern_moose_ne:'MOOS',alaskan_moose_nw:'MOOS',
+    shiras_moose_flathead:'MOOS',mountain_goat:'GOAT',
+    wild_sheep:'SHEE',bighorn_sheep:'SHEE',
+    rocky_bighorn_kootenay:'SHEE',california_bighorn_boundary:'SHEE',
+    thinhorn_sheep:'SHEE',dall_tatshenshini:'SHEE',stone_sheep:'SHEE',
+    caribou:'CARI',caribou_northern:'CARI',caribou_mountain:'CARI',
+    caribou_boreal:'CARI',grizzly_bear:'BEAG',black_bear:'BEAB',
+    wood_bison:null,lynx:'LYNX',bobcat:'BOBC',cougar:'COUG',
+    wolf:'WOLF',wolverine:null
+  });
+  const NAMES={DEMU:'mule deer (incl. blacktail)',DEWT:'white-tailed deer',ELK:'elk',
+    MOOS:'moose',GOAT:'mountain goat',SHEE:'mountain sheep (all subspecies)',
+    CARI:'caribou (all ecotypes)',BEAG:'grizzly bear',BEAB:'black bear',
+    BOBC:'bobcat',LYNX:'lynx',COUG:'cougar',WOLF:'wolf'};
+  const EXACT=new Set(['mule_deer','white_tailed_deer','elk','moose',
+    'mountain_goat','wild_sheep','caribou','grizzly_bear','black_bear',
+    'lynx','bobcat','cougar','wolf']);
+  const classes=[{max:9,color:'#468f58'},{max:19,color:'#a3b950'},
+    {max:29,color:'#dfcb58'},{max:39,color:'#e28d42'},
+    {max:100,color:'#c45145'}];
+  const btn=document.getElementById('hs-harvest-toggle');
+  const control=document.getElementById('hs-harvest-panel');
+  const period=document.getElementById('hs-harvest-period');
+  const detail=document.getElementById('hs-harvest-detail');
+  const legend=document.getElementById('hs-harvest-legend');
+  if(!btn||!control||!period||!detail||!legend) throw Error('Hunter success controls missing');
+  let context=null,enabled=false,layer=null,info=null,renderSerial=0;
+  let boundaries=null,pendingBoundaries=null,official=null,pendingOfficial=null;
+  let sheepAge=null,pendingAge=null,selectedSpecies=null;
 
-  const classes = [
-    { max:9, color:'#468f58' }, { max:19, color:'#a3b950' },
-    { max:29, color:'#dfcb58' }, { max:39, color:'#e28d42' },
-    { max:100, color:'#c45145' }
-  ];
-  const metrics = { current:'2024', average:'2020–24 avg' };
-  let enabled = false;
-  let layer = null;
-  let info = null;
-  let renderSerial = 0;
-  let pendingBoundary = null;
-  let boundaryCache = null;
-  let context = null, sheepData = null, sheepAge = null, sheepPending = null, selectedSpecies = null;
-  function isSheep() { return context?.getSpecies() === 'wild_sheep'; }
-  function active() { return context && context.getProvince() === 'bc' &&
-    (context.getSpecies() === 'mule_deer' || isSheep()); }
-  function sheepSample(row) {
-    const values = period.value === 'average' ? row?.p5 : row?.y;
-    if (!values || !Number.isFinite(values[0]) || !Number.isFinite(values[1]) ||
-      values[0] <= 0 || values[1] < 0) return null;
-    const hunters = values[0], kills = values[1];
-    const years = period.value === 'average' ? values[2] : 1;
-    return {hunters, kills, years, rate:Math.round(1000*kills/hunters)/10,
-      reliable:hunters >= (period.value === 'average' ? 50 : 10) &&
-        kills <= hunters && years >= (period.value === 'average' ? 3 : 1)};
+  const key=()=>context?.getSpecies()||'';
+  const code=()=>CODE_BY_KEY[key()]||null;
+  const isSheep=()=>code()==='SHEE';
+  const active=()=>!!context&&context.getProvince()==='bc';
+  const label=()=>(window.HUNTSMART_SPECIES||[]).find(item=>item.key===key())?.label||
+    key().replace(/_/g,' ');
+  const rows=()=>official?.species?.[code()]||null;
+  function sample(rec) {
+    const pooled=period.value==='average',v=pooled?rec?.p5:rec?.y;
+    if(!Array.isArray(v)||!Number.isFinite(v[0])||!Number.isFinite(v[1])||
+       v[0]<=0||v[1]<0) return null;
+    const hunters=v[0],kills=v[1],years=pooled?v[2]:1;
+    return {hunters,kills,years,rate:Math.round(1000*kills/hunters)/10,
+      reliable:hunters>=(pooled?50:10)&&kills<=hunters&&
+        Number.isFinite(years)&&years>=(pooled?3:1)};
   }
-  async function loadSheep() {
-    if (sheepData) return;
-    if (!sheepPending) {
-      sheepPending = Promise.all([
-        fetch(SHEEP_SOURCE).then(r => {if (!r.ok) throw new Error('Official sheep harvest data unavailable'); return r.json();}),
-        fetch(SHEEP_AGES).then(r => r.ok ? r.json() : null).catch(() => null)
-      ]).then(([harvest,ages]) => {
-        if (harvest?.code !== 'SHEE' || harvest?.year !== 2024 ||
-          Object.keys(harvest.units || {}).length < 40 || !harvest.units['3-17']) {
-          throw new Error('Official sheep harvest snapshot is invalid');
-        }
-        sheepData = harvest;
-        sheepAge = ages?.minimum_display_sample === 5 ? ages : null;
-      }).finally(() => {sheepPending = null;});
-    }
-    return sheepPending;
+  const reliableCount=()=>Object.values(rows()||{}).filter(r=>sample(r)?.reliable).length;
+  const setDetail=text=>{detail.textContent=text;};
+  function updateButton(){
+    btn.textContent=enabled?'Show Distribution':'Show Hunter Success';
+    btn.setAttribute('aria-pressed',String(enabled));
+    btn.setAttribute('aria-label',enabled?'Show species distribution':'Show hunter success by WMU');
   }
-  function ageSummary(id) {
-    if (!sheepAge?.units) return null;
-    const records = Object.entries(sheepAge.units).filter(([key,vals]) =>
-      key.startsWith(id+'|') && !key.endsWith('|Unknown') &&
-      Array.isArray(vals) && vals[0] >= sheepAge.minimum_display_sample);
-    if (!records.length) return null;
-    return 'Inspected ram age ('+sheepAge.period+'): ' +
-      records.map(([key,vals]) => key.slice(id.length+1) +
-        ' mean '+vals[1]+' years (n='+vals[0]+')').join('; ') +
-      '. Age samples are incomplete and not a measure of herd age.';
+  function removeLayer(){
+    ++renderSerial;
+    if(layer){layer.setMap(null);layer=null;}
+    if(info)info.close();
+    info=null;
   }
-  function colour(value) { return classes.find(item => value <= item.max)?.color || '#c45145'; }
-  function pct(rec) { return period.value === 'average' ? rec.average : rec.current; }
-  function setDetail(text) { detail.textContent = text; }
-  function updateButton() {
-    btn.textContent = enabled ? 'Show Distribution' : 'Show Hunter Success';
-    btn.setAttribute('aria-pressed', String(enabled));
-    btn.setAttribute('aria-label', enabled
-      ? 'Return to mule deer distribution map' : 'Show mule deer hunter success by WMU');
-  }
-  function removeLayer() {
-    renderSerial++;
-    if (layer) { layer.setMap(null); layer = null; }
-    if (info) info.close();
-    info = null;
-  }
-  function refreshStyle() {
-    if (!layer) return;
-    const opacity = Math.max(0, Math.min(1, context.getOpacity()));
-    layer.setStyle(feature => {
-      const id = String(feature.getProperty('wmu_id') || feature.getProperty('WMUNIT_NUM') || '');
-      const rec = isSheep() ? sheepData?.units?.[id] : stats.get(id);
-      const sample = isSheep() ? sheepSample(rec) : null;
-      const valid = isSheep() ? !!sample?.reliable : !!rec;
-      const success = isSheep() ? sample?.rate : rec ? pct(rec) : null;
-      return {
-        fillColor:valid ? colour(success) : '#8c9494',
-        fillOpacity:(valid ? 0.76 : sample ? 0.18 : 0.08) * opacity,
-        strokeColor:valid ? '#e5e7da' : '#a9aeae',
-        strokeOpacity:(valid ? 0.85 : 0.28) * opacity,
-        strokeWeight:valid ? 1.05 : 0.65,
-        zIndex:25,clickable:true
-      };
+  function refreshStyle(){
+    if(!layer)return;
+    const opacity=Math.max(0,Math.min(1,context.getOpacity()));
+    layer.setStyle(feature=>{
+      const id=String(feature.getProperty('wmu_id')||feature.getProperty('WMUNIT_NUM')||'');
+      const record=sample(rows()?.[id]),ok=!!record?.reliable;
+      const colour=classes.find(x=>record?.rate<=x.max)?.color||'#c45145';
+      return {fillColor:ok?colour:'#8c9494',
+        fillOpacity:(ok?0.76:record?0.17:0.07)*opacity,
+        strokeColor:ok?'#e5e7da':'#a9aeae',
+        strokeOpacity:(ok?0.85:0.28)*opacity,
+        strokeWeight:ok?1.05:0.65,zIndex:25,clickable:true};
     });
   }
-  function displayPopup(event) {
-    const id = String(event.feature.getProperty('wmu_id') || event.feature.getProperty('WMUNIT_NUM') || '');
-    const sheep = isSheep();
-    const rec = sheep ? sheepData?.units?.[id] : stats.get(id);
-    if (!info) info = new google.maps.InfoWindow();
-    const box = document.createElement('div');
-    box.style.cssText = 'color:#18231b;font:13px/1.5 system-ui,sans-serif;max-width:245px';
-    const title = document.createElement('strong');
-    title.style.fontSize = '15px';
-    title.textContent = 'BC WMU ' + id + (sheep ? ' · Mountain sheep (all)' : ' · Mule deer');
-    box.appendChild(title);
-    let lines;
-    if (sheep) {
-      const sample = sheepSample(rec);
-      if (sample) {
-        const date = period.value === 'average' ? '2020–24 pooled' : '2024';
-        lines = [
-          sample.reliable ?
-            date + ' estimated resident hunter success: ' + sample.rate + '% (' +
-              sample.kills + ' inspected kills / ' + sample.hunters + ' estimated hunters)' :
-            date + ': ' + sample.kills + ' inspected kills / ' + sample.hunters +
-              ' resident hunters. Low or incomplete sample; no comparable success shading.',
-          'All mountain sheep subspecies combined; not legal-ram or trophy success.'
-        ];
-      } else lines = ['No comparable sheep hunter-success estimate for this WMU and period.'];
-      if (rec?.y?.[1] != null) lines.push('2024 resident kills: ' + rec.y[1] +
-        (rec.y[4] == null ? '' : '; non-resident kills: ' + rec.y[4]) + '.');
-      const ages = ageSummary(id);
-      lines.push(ages || 'Fewer than five aged, inspected rams for a named subspecies in this unit.');
-      lines.push('Official BC data: hunter effort is estimated; sheep kills are from compulsory inspection.');
-    } else {
-      lines = rec ? [
-        metrics[period.value] + ' estimated hunter success: ' + pct(rec) + '%',
-        '2024: ' + rec.hunters.toLocaleString() + ' estimated hunters · ' +
-          rec.kills.toLocaleString() + ' deer harvested',
-        'Overall harvest (not GOS-only or trophy buck success)'
-      ] : ['No verified harvest-success figure for this WMU.'];
-    }
-    for (const message of lines) {
-      const item = document.createElement('div');
-      item.textContent = message;
-      item.style.marginTop = '5px';
-      box.appendChild(item);
-    }
-    const source = document.createElement('a');
-    source.href = BC_GOVERNMENT_HARVEST_DATA;
-    source.target = '_blank'; source.rel = 'noopener noreferrer';
-    source.textContent = 'Data source: Government of BC';
-    source.style.cssText = 'display:inline-block;margin-top:6px;color:#17653e';
+  function ageSummary(id){
+    if(!isSheep()||!sheepAge?.units)return null;
+    const subtype={
+      stone_sheep:['Stone Sheep'],dall_tatshenshini:['Dall Sheep'],
+      thinhorn_sheep:['Stone Sheep','Dall Sheep'],
+      rocky_bighorn_kootenay:['Rocky Mtn Bighorn'],
+      california_bighorn_boundary:['California Bighorn']
+    }[key()];
+    const found=Object.entries(sheepAge.units).filter(([name,v])=>
+      name.startsWith(id+'|')&&!name.endsWith('|Unknown')&&
+      Array.isArray(v)&&v[0]>=sheepAge.minimum_display_sample&&
+      (!subtype||subtype.includes(name.slice(id.length+1))));
+    if(!found.length)return null;
+    return 'Inspected ram age ('+sheepAge.period+'): '+
+      found.map(([name,v])=>name.slice(id.length+1)+' mean '+v[1]+
+      ' years (n='+v[0]+')').join('; ')+'. Incomplete sample, not herd age.';
+  }
+  function displayPopup(event){
+    const id=String(event.feature.getProperty('wmu_id')||event.feature.getProperty('WMUNIT_NUM')||'');
+    const rec=rows()?.[id],s=sample(rec);
+    if(!info)info=new google.maps.InfoWindow();
+    const box=document.createElement('div');
+    box.style.cssText='color:#18231b;font:13px/1.5 system-ui,sans-serif;max-width:255px';
+    const header=document.createElement('strong');
+    header.style.fontSize='15px';
+    header.textContent='BC WMU '+id+' · '+label();
+    box.appendChild(header);
+    const add=message=>{const line=document.createElement('div');line.textContent=message;
+      line.style.marginTop='5px';box.appendChild(line);};
+    const date=period.value==='average'?'2020–24 pooled':'2024';
+    if(s)add(s.reliable?
+      date+' estimated resident harvest per 100 hunters: '+s.rate+
+        ' ('+s.kills.toLocaleString()+' animals / '+s.hunters.toLocaleString()+' hunters)':
+      date+': '+s.kills+' animals / '+s.hunters+
+        ' estimated hunters. Small/incomplete/non-comparable sample; no success colour.');
+    else add('No comparable hunter-success estimate for '+date+'.');
+    if(rec?.y)add('2024: '+(rec.y[0]==null?'hunters unavailable':rec.y[0].toLocaleString()+
+      ' estimated resident hunters')+' · '+(rec.y[1]==null?'harvest unavailable':
+      rec.y[1].toLocaleString()+' resident animals harvested'));
+    if(!EXACT.has(key()))add('BC reports '+(NAMES[code()]||'no category')+
+      ', not separate '+label()+' hunter success; this is NOT subspecies-specific.');
+    add('All resident harvest, not GOS-only, LEH draw, legal-male or trophy success.');
+    const age=ageSummary(id);
+    if(age)add(age);
+    const source=document.createElement('a');
+    source.href=BC_GOVERNMENT_HARVEST_DATA;
+    source.target='_blank';source.rel='noopener noreferrer';
+    source.textContent='Data source: Government of BC';
+    source.style.cssText='display:inline-block;margin-top:6px;color:#17653e';
     box.appendChild(source);
-    if (sheep) {
-      const ageLink = document.createElement('a');
-      ageLink.href = 'https://catalogue.data.gov.bc.ca/dataset/compulsory-inspection-data-1900-to-2023-24';
-      ageLink.target = '_blank'; ageLink.rel = 'noopener noreferrer';
-      ageLink.textContent = 'Ram-age inspection data';
-      ageLink.style.cssText = 'display:block;margin-top:4px;color:#17653e';
-      box.appendChild(ageLink);
-    } else if (rec) {
-      const note = document.createElement('div');
-      note.textContent = 'Map values are manually compiled and not yet independently reconciled with the provincial dataset.';
-      note.style.cssText = 'font:10px/1.35 system-ui,sans-serif;color:#667469;margin-top:5px';
-      box.appendChild(note);
+    if(age){
+      const a=document.createElement('a');
+      a.href='https://catalogue.data.gov.bc.ca/dataset/compulsory-inspection-data-1900-to-2023-24';
+      a.target='_blank';a.rel='noopener noreferrer';
+      a.textContent='Ram-age inspection data';
+      a.style.cssText='display:block;margin-top:4px;color:#17653e';
+      box.appendChild(a);
     }
-    info.setContent(box);
-    info.setPosition(event.latLng);
-    info.open({map:context.getMap()});
+    info.setContent(box);info.setPosition(event.latLng);info.open({map:context.getMap()});
   }
-
-  function fetchBoundaries() {
-    if (boundaryCache) return Promise.resolve(boundaryCache);
-    if (pendingBoundary) return pendingBoundary;
-    pendingBoundary = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = '/bc-wmu-geojson.js?v=harvest-wmu-20261113';
-      script.async = true;
-      script.onload = () => {
-        if (typeof BC_WMU_GEOJSON === 'undefined' || !Array.isArray(BC_WMU_GEOJSON.features) || BC_WMU_GEOJSON.features.length !== 225) {
-          reject(new Error('WMU boundaries are missing or incomplete.'));
-        } else {
-          boundaryCache = BC_WMU_GEOJSON;
-          resolve(boundaryCache);
-        }
+  async function loadOfficial(){
+    if(official)return;
+    if(!pendingOfficial)pendingOfficial=fetch(OFFICIAL_SOURCE)
+      .then(r=>{if(!r.ok)throw Error('Official BC harvest data unavailable');return r.json();})
+      .then(data=>{
+        if(data?.meta?.publisher!=='Government of British Columbia'||
+           data?.meta?.source_sha256!==SOURCE_SHA||
+           !data?.species?.DEMU?.['3-27']?.y||
+           !data?.species?.SHEE?.['3-17']?.y)
+          throw Error('Official BC harvest snapshot invalid');
+        official=data;
+      }).finally(()=>{pendingOfficial=null;});
+    return pendingOfficial;
+  }
+  async function loadAge(){
+    if(sheepAge)return;
+    if(!pendingAge)pendingAge=fetch(SHEEP_AGES)
+      .then(r=>r.ok?r.json():null)
+      .then(a=>{sheepAge=a?.minimum_display_sample===5?a:null;})
+      .catch(()=>{sheepAge=null;})
+      .finally(()=>{pendingAge=null;});
+    return pendingAge;
+  }
+  function fetchBoundaries(){
+    if(boundaries)return Promise.resolve(boundaries);
+    if(pendingBoundaries)return pendingBoundaries;
+    pendingBoundaries=new Promise((resolve,reject)=>{
+      const script=document.createElement('script');
+      script.src='/bc-wmu-geojson.js?v=harvest-wmu-20261113';
+      script.async=true;
+      script.onload=()=>{
+        if(typeof BC_WMU_GEOJSON==='undefined'||!Array.isArray(BC_WMU_GEOJSON.features)||
+           BC_WMU_GEOJSON.features.length!==225)
+          reject(Error('BC WMU boundaries are missing or incomplete.'));
+        else{boundaries=BC_WMU_GEOJSON;resolve(boundaries);}
       };
-      script.onerror = () => reject(new Error('The existing BC WMU boundaries could not be loaded.'));
+      script.onerror=()=>reject(Error('BC WMU boundaries could not load.'));
       document.head.appendChild(script);
-    }).finally(() => { pendingBoundary = null; });
-    return pendingBoundary;
+    }).finally(()=>{pendingBoundaries=null;});
+    return pendingBoundaries;
   }
-  async function draw() {
-    if (!enabled || !active() || !context.getMap() || layer) return;
-    const generation = ++renderSerial;
-    // Allow users to switch back while WMU boundaries are still loading.
-    setDetail(isSheep() ? 'Loading official BC sheep harvest statistics…' :
-      'Loading actual WMU boundaries…');
-    try {
-      if (isSheep()) await loadSheep();
-      if (generation !== renderSerial || !enabled || !active()) return;
-      const collection = await fetchBoundaries();
-      if (generation !== renderSerial || !enabled || !active()) return;
-      layer = new google.maps.Data({map:context.getMap()});
+  function summary(){
+    const type=code(),n=reliableCount();
+    if(!type)return 'No comparable BC Government WMU hunter-success category for '+label()+'.';
+    if(type==='BEAG')return 'Grizzly hunting has been closed in BC since 2017. No 2020–24 legal hunter-success figures.';
+    if(!n)return 'No sufficiently reported '+(period.value==='average'?'2020–24':'2024')+
+      ' WMU hunter-success data for '+label()+'.';
+    return n+' WMUs with comparable '+(period.value==='average'?'2020–24 pooled':'2024')+
+      ' resident harvest estimates. Grey = missing/small sample. Tap a WMU for details.'+
+      (EXACT.has(key())?'':' Provincial category: '+NAMES[type]+' (not subspecies-specific).');
+  }
+  async function draw(){
+    if(!enabled||!active()||!context.getMap()||layer)return;
+    const generation=++renderSerial;
+    setDetail('Loading official BC WMU harvest data…');
+    try{
+      await loadOfficial();
+      if(generation!==renderSerial||!enabled||!active())return;
+      if(isSheep())await loadAge();
+      if(generation!==renderSerial||!enabled||!active())return;
+      if(!rows()||!reliableCount()){
+        legend.hidden=true;setDetail(summary());return;
+      }
+      const collection=await fetchBoundaries();
+      if(generation!==renderSerial||!enabled||!active())return;
+      layer=new google.maps.Data({map:context.getMap()});
       layer.addGeoJson(collection);
-      layer.addListener('click', displayPopup);
+      layer.addListener('click',displayPopup);
       refreshStyle();
-      setDetail(isSheep() ?
-        'BC Government sheep harvest, all subspecies: resident success by WMU. Grey = low/incomplete sample. Tap a unit for counts and available ram ages.' :
-        '64 of 225 BC WMUs have verified estimates. Grey = unavailable. Tap a unit for hunters and harvest.');
-    } catch (e) {
-      if (generation === renderSerial) {
-        enabled = false;
-        updateButton();
-        legend.hidden = true;
-        period.hidden = true;
-        setDetail(e?.message || 'Harvest layer unavailable.');
-        // Restore distribution if WMU boundary loading fails.
+      legend.hidden=false;setDetail(summary());
+    }catch(e){
+      if(generation===renderSerial){
+        enabled=false;updateButton();legend.hidden=true;period.hidden=true;
+        setDetail(e?.message||'Hunter success unavailable.');
         context.onModeChange();
       }
-    } finally {
-      if (generation === renderSerial) btn.disabled = false;
-    }
+    }finally{if(generation===renderSerial)btn.disabled=false;}
   }
-  function sync() {
-    const visible = !!active();
-    control.hidden = !visible;
-    if (visible && selectedSpecies !== context.getSpecies()) {
-      selectedSpecies = context.getSpecies();
-      period.value = isSheep() ? 'average' : 'current';
+  function sync(){
+    const visible=active();
+    control.hidden=!visible;
+    if(!visible){
+      selectedSpecies=null;enabled=false;removeLayer();btn.disabled=false;
+      updateButton();period.hidden=true;legend.hidden=true;setDetail('');return;
     }
-    if (!visible) {
-      selectedSpecies = null;
-      removeLayer();
-      enabled = false;
-      btn.disabled = false;
-      updateButton();
-      period.hidden = true;
-      legend.hidden = true;
-      setDetail('');
-      return;
+    if(selectedSpecies!==key()){
+      removeLayer();selectedSpecies=key();
+      period.value=isSheep()?'average':'current';
     }
-    if (enabled && !layer) void draw();
+    if(enabled&&!layer)void draw();
   }
-  btn.addEventListener('click', () => {
-    if (!active() || btn.disabled) return;
-    enabled = !enabled;
-    updateButton();
-    period.hidden = !enabled;
-    legend.hidden = !enabled;
-    if (!enabled) {
-      removeLayer();
-      setDetail('');
-    }
-    // Re-render one exclusive mode instead of stacking species and WMU layers.
+  btn.addEventListener('click',()=>{
+    if(!active()||btn.disabled)return;
+    enabled=!enabled;updateButton();
+    period.hidden=!enabled;legend.hidden=!enabled;
+    if(!enabled){removeLayer();setDetail('');}
     return context.onModeChange();
   });
-  period.addEventListener('change', () => {
-    refreshStyle();
-    if (info) info.close();
+  period.addEventListener('change',()=>{
+    if(info)info.close();
+    if(!enabled)return;
+    if(!reliableCount()){removeLayer();legend.hidden=true;void draw();}
+    else if(!layer)void draw();
+    else{refreshStyle();legend.hidden=false;setDetail(summary());}
   });
-  document.getElementById('layer-opacity')?.addEventListener('input', refreshStyle);
-  window.HUNTSMART_HARVEST_DATA_COVERAGE = stats.size;
-  window.HUNTSMART_SHEEP_OFFICIAL_DATA = {harvest:SHEEP_SOURCE, ages:SHEEP_AGES};
-  window.HUNTSMART_HARVEST_SUCCESS = {
-    attach(args) {
-      context = args;
-      updateButton();
-      return {sync, isEnabled: () => enabled && active()};
-    }
+  document.getElementById('layer-opacity')?.addEventListener('input',refreshStyle);
+  window.HUNTSMART_BC_HARVEST_CODES=CODE_BY_KEY;
+  window.HUNTSMART_HARVEST_DATA_COVERAGE='Official BC WMU 2020–2024';
+  window.HUNTSMART_SHEEP_OFFICIAL_DATA={harvest:OFFICIAL_SOURCE,ages:SHEEP_AGES};
+  window.HUNTSMART_HARVEST_SUCCESS={
+    attach(args){context=args;updateButton();
+      return{sync,isEnabled:()=>enabled&&active()};}
   };
 })();

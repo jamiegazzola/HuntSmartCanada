@@ -98,7 +98,7 @@ jobs:
             assert(['1','2'].every(id => regionMask.features.some(f=>f.properties.region_id===id && f.geometry.type==='Polygon')),'Rocky elk mask polygon ids invalid');
 
             // Roads feature was retired by design; don't assert legacy FSR controls.
-            const abPage=await waitForMarker('/species-map/', 'BC mule deer or mountain sheep hunter success');
+            const abPage=await waitForMarker('/species-map/', 'BC species hunter success by management unit');
             assert(abPage.includes('alberta-species.js?v='), 'Alberta species catalogue not published');
             const controlPositions = [abPage.indexOf('id="layer-opacity"'),
               abPage.indexOf('id="province-bc"'), abPage.indexOf('id="province-alberta"'),
@@ -120,7 +120,7 @@ jobs:
               abPage.includes('alberta-local.js?v=') && abPage.includes('vendor/shp.min.js?v='),
               'Personal GIS file picker or parser missing from production HTML');
             const hunterModule=await waitForMarker('/species-map/harvest-success.js',
-              "context?.getSpecies() === 'wild_sheep'");
+              'window.HUNTSMART_BC_HARVEST_CODES=CODE_BY_KEY');
             assert(hunterModule.includes("btn.textContent = enabled ? 'Show Distribution' : 'Show Hunter Success'"),
               'Hunter-success toggle must switch map modes');
             assert(hunterModule.includes('context.onModeChange()'), 'Hunter success must rerender');
@@ -131,9 +131,17 @@ jobs:
               'WMU popup must cite only the official BC government harvest dataset');
             assert(abPage.includes('BC Government dataset'),
               'Hunter-success panel must identify government data');
-            assert(hunterModule.includes("context?.getSpecies() === 'wild_sheep'") &&
-              hunterModule.includes('ageSummary(id)') && hunterModule.includes('sheepSample(row)'),
-              'Wild sheep success and age layers not deployed');
+            assert(hunterModule.includes('window.HUNTSMART_BC_HARVEST_CODES=CODE_BY_KEY') &&
+              hunterModule.includes('loadOfficial()') &&
+              hunterModule.includes('ageSummary(id)'),
+              'Verified multi-species success and sheep ages not deployed');
+            const official=JSON.parse(await text('/species-map/data/bc-official-harvest-wmu-2020-2024.json'));
+            assert(official.meta.publisher==='Government of British Columbia' &&
+              official.meta.source_sha256==='e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e' &&
+              official.species.DEMU['3-27'].y[1]===418 &&
+              official.species.ELK && official.species.MOOS &&
+              official.species.BOBC && official.species.LYNX,
+              'Direct provincial WMU data not published');
             const sheepHarvest=JSON.parse(await text('/species-map/data/bc-sheep-harvest-2024.json'));
             const sheepAges=JSON.parse(await text('/species-map/data/bc-sheep-age-ci-2022-2025.json'));
             assert(sheepHarvest.code==='SHEE' && sheepHarvest.year===2024 &&

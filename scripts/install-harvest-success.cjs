@@ -14,22 +14,20 @@ const jsFile = path.join(dir,'harvest-success.js');
 assert(fs.existsSync(jsFile),'harvest success module must be copied from source');
 const newCode = fs.readFileSync(jsFile,'utf8');
 new Function(newCode);
-assert(newCode.includes('window.HUNTSMART_HARVEST_DATA_COVERAGE'),'dataset test');
-assert(newCode.includes('BC_GOVERNMENT_HARVEST_DATA') &&
-  newCode.includes('https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024') && !newCode.includes('hunting-access.com'),
-  'Hunter success data source must link to the BC government dataset');
-const dataParts = newCode.match(/^  const rows = (.+);$/m);
-assert(dataParts && JSON.parse(dataParts[1]).split(';').length === 64,'expected 64 verified WMU data records');
-const sheep = JSON.parse(fs.readFileSync(path.join(dir,'data','bc-sheep-harvest-2024.json'),'utf8'));
-const ages = JSON.parse(fs.readFileSync(path.join(dir,'data','bc-sheep-age-ci-2022-2025.json'),'utf8'));
-assert(sheep.code==='SHEE' && sheep.year===2024 &&
-  Object.keys(sheep.units).length>=40 &&
-  sheep.units['3-17'].y[0]===66 && sheep.units['3-31'].y[1]===4,
-  'official BC sheep harvest snapshot malformed');
-assert(ages.minimum_display_sample===5 &&
-  ages.units['7-50|Stone Sheep'][0]===94, 'official sheep CI age snapshot malformed');
-assert(newCode.includes('loadSheep()') && newCode.includes('ageSummary(id)') &&
-  newCode.includes('wild_sheep'), 'sheep map source wiring missing');
+assert(newCode.includes('window.HUNTSMART_BC_HARVEST_CODES') &&
+  newCode.includes('loadOfficial()') &&
+  newCode.includes('BC_GOVERNMENT_HARVEST_DATA') &&
+  !newCode.includes('hunting-access.com'), 'Official hunter-success module missing');
+const official=JSON.parse(fs.readFileSync(path.join(dir,'data','bc-official-harvest-wmu-2020-2024.json'),'utf8'));
+assert(official.meta.publisher==='Government of British Columbia' &&
+  official.meta.source_sha256==='e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e' &&
+  Object.keys(official.species).length===12 &&
+  official.species.DEMU['3-27'].y[1]===418 &&
+  official.species.SHEE['3-17'].y[0]===66,
+  'Verified provincial WMU dataset malformed');
+const ages=JSON.parse(fs.readFileSync(path.join(dir,'data','bc-sheep-age-ci-2022-2025.json'),'utf8'));
+assert(ages.minimum_display_sample===5 && ages.units['7-50|Stone Sheep'][0]===94,
+  'Provincial ram age records missing');
 const rootWMU = fs.readFileSync('bc-wmu-geojson.js','utf8');
 assert(rootWMU.startsWith('const BC_WMU_GEOJSON = '),'original HuntSmart WMU geometry source');
 assert(rootWMU.includes('"wmu_id":"3-31"'),'WMU IDs must align with source geometry');
@@ -39,9 +37,9 @@ const insertUnique = (text,before,after,label) => {
   return text.replace(before,after);
 };
 html = insertUnique(html, '  <div id="error" ', `
-  <section id="hs-harvest-panel" class="hs-harvest-panel" hidden aria-label="BC mule deer or mountain sheep hunter success by wildlife management unit">
+  <section id="hs-harvest-panel" class="hs-harvest-panel" hidden aria-label="BC species hunter success by management unit">
     <div class="hs-harvest-head">
-      <button id="hs-harvest-toggle" type="button" aria-pressed="false" aria-label="Show mule deer hunter success by WMU">Show Hunter Success</button>
+      <button id="hs-harvest-toggle" type="button" aria-pressed="false" aria-label="Show species hunter success by WMU">Show Hunter Success</button>
       <select id="hs-harvest-period" aria-label="Hunter success reporting period" hidden>
         <option value="current">2024</option>
         <option value="average">5-year avg</option>
@@ -55,12 +53,12 @@ html = insertUnique(html, '  <div id="error" ', `
       <span class="hs-legend-swatch" style="background:#c45145"></span><span>40%+</span>
     </div>
     <div id="hs-harvest-detail" role="status" aria-live="polite"></div>
-    <div class="hs-harvest-disclaimer">Mule deer: manually compiled estimates, pending direct reconciliation. Sheep: BC Government all-subspecies records with estimated resident effort; low samples muted. <a href="https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024" target="_blank" rel="noopener">BC Government dataset</a>.</div>
+    <div class="hs-harvest-disclaimer">Official BC Government harvest by WMU. Shows all reported resident hunting (not GOS-only); subspecies use parent-species data. Small samples muted. <a href="https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024" target="_blank" rel="noopener">BC Government dataset</a>.</div>
   </section>
   <div id="error" `, 'panel before errors');
 const appTag = html.match(/<script src="app\.js\?v=[^"]+"><\/script>/);
 assert(appTag,'species map app script tag missing');
-html = insertUnique(html,appTag[0],'<script src="harvest-success.js?v=official-bc-sheep-20261113f"></script>\n  ' + appTag[0], 'load harvest module before viewer');
+html = insertUnique(html,appTag[0],'<script src="harvest-success.js?v=all-bc-harvest-20261113g"></script>\n  ' + appTag[0], 'load harvest module before viewer');
 app = insertUnique(app,'  let map = null;', `  let map = null;
   const harvestSuccess = window.HUNTSMART_HARVEST_SUCCESS.attach({
     getMap: () => map,
@@ -78,8 +76,8 @@ app = insertUnique(app,'} finally {terrainToggle.disabled=false;}',
   'keep 3D disabled in hunter-success view');
 const appRef = html.match(/app\.js\?v=[^"]+/);
 assert(appRef, 'map script asset reference');
-html=html.replace(appRef[0], 'app.js?v=official-bc-sheep-20261113f');
-html=html.replace(/app\.css\?v=[^"]+/, 'app.css?v=official-bc-sheep-20261113f');
+html=html.replace(appRef[0], 'app.js?v=all-bc-harvest-20261113g');
+html=html.replace(/app\.css\?v=[^"]+/, 'app.css?v=all-bc-harvest-20261113g');
 assert(app.includes('if (harvestSuccess.isEnabled()) {') &&
   app.includes('onModeChange: () => renderSelected()') &&
   app.includes('terrainToggle.disabled = harvestSuccess.isEnabled()'), 'exclusive mode bridge missing');
@@ -106,4 +104,4 @@ body.hunter-success-only .terrain-toggle:disabled{opacity:.45;cursor:not-allowed
 fs.writeFileSync(htmlFile,html);
 fs.writeFileSync(appFile,app);
 fs.writeFileSync(cssFile,css);
-console.log('Installed mule deer and official BC sheep hunter-success maps, with inspected ram age notes.');
+console.log('Installed verified BC government hunter-success data for all mapped species.');
