@@ -131,6 +131,16 @@ jobs:
               'WMU popup must cite only the official BC government harvest dataset');
             assert(abPage.includes('BC Government dataset'),
               'Hunter-success panel must identify government data');
+            assert(hunterModule.includes("context?.getSpecies() === 'wild_sheep'") &&
+              hunterModule.includes('ageSummary(id)') && hunterModule.includes('sheepSample(row)'),
+              'Wild sheep success and age layers not deployed');
+            const sheepHarvest=JSON.parse(await text('/species-map/data/bc-sheep-harvest-2024.json'));
+            const sheepAges=JSON.parse(await text('/species-map/data/bc-sheep-age-ci-2022-2025.json'));
+            assert(sheepHarvest.code==='SHEE' && sheepHarvest.year===2024 &&
+              sheepHarvest.units['3-17'].y[0]===66 &&
+              sheepHarvest.units['3-31'].y[1]===4, 'Official sheep harvest not published');
+            assert(sheepAges.minimum_display_sample===5 &&
+              sheepAges.units['7-50|Stone Sheep'][0]===94, 'Official ram ages not published');
             assert(app.includes('terrainToggle.disabled = harvestSuccess.isEnabled()') &&
               app.includes('if (harvestSuccess.isEnabled()) {') &&
               app.includes('personalAlberta.hide();'), 'Distribution must be hidden behind hunter success');

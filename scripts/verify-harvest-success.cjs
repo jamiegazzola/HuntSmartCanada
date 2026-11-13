@@ -5,6 +5,8 @@ const path=require('node:path');
 const vm=require('node:vm');
 function setup({fail=false,defer=false}={}){
   const elements=new Map(),layers=[],popups=[],map={};
+  const sheepHarvest=JSON.parse(fs.readFileSync(path.join(__dirname,'../species-map/data/bc-sheep-harvest-2024.json'),'utf8'));
+  const sheepAge=JSON.parse(fs.readFileSync(path.join(__dirname,'../species-map/data/bc-sheep-age-ci-2022-2025.json'),'utf8'));
   let species='mule_deer',province='bc',distribution=true,release;
   const el=id=>{
     if(!elements.has(id))elements.set(id,{hidden:true,disabled:false,textContent:'',value:'current',
@@ -16,13 +18,14 @@ function setup({fail=false,defer=false}={}){
   class Data{constructor({map}){this.map=map;layers.push(this)}addGeoJson(fc){this.fc=fc}
     addListener(k,fn){this.listener=fn}setStyle(style){this.style=style}setMap(map){this.map=map}}
   const features=Array.from({length:225},(_,i)=>({type:'Feature',
-    properties:{wmu_id:i===0?'3-31':'other-'+i},geometry:{type:'Polygon',coordinates:[]}}));
+    properties:{wmu_id:i===0?'3-31':i===1?'7-50':'other-'+i},geometry:{type:'Polygon',coordinates:[]}}));
   const sandbox={window:{},document:{getElementById:el,
     createElement(){return {style:{},children:[],appendChild(child){this.children.push(child)}}},head:{appendChild(script){
       const send=()=>{sandbox.BC_WMU_GEOJSON={type:'FeatureCollection',features};
         if(fail)script.onerror();else script.onload()};
       if(defer)release=send;else send();
-    }}},google:{maps:{Data,InfoWindow:class{close(){}setContent(c){popups.push(c)}setPosition(){}open(){}}}},console};
+    }}},fetch:async url=>({ok:true,json:async()=>url.includes('bc-sheep-age-ci')?sheepAge:sheepHarvest}),
+    google:{maps:{Data,InfoWindow:class{close(){}setContent(c){popups.push(c)}setPosition(){}open(){}}}},console};
   vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../species-map/harvest-success.js'),'utf8'),sandbox);
   let api;
@@ -74,10 +77,35 @@ async function main(){
   assert.equal(waiting.distribution,true);
   waiting.release();await flush();
   assert.equal(waiting.layers.length,0,'cancelled load must not add WMU layer');
+  const sheep=setup();
+  sheep.setSpecies('wild_sheep');
+  assert.equal(sheep.el('hs-harvest-panel').hidden,false,'official sheep success visible');
+  sheep.el('hs-harvest-toggle').click();await flush();
+  assert.equal(sheep.api.isEnabled(),true);
+  assert.equal(sheep.distribution,false,'sheep distribution hidden');
+  assert.equal(sheep.el('hs-harvest-period').value,'average','five-year pooled safer default');
+  const sheepLayer=sheep.layers.at(-1);
+  assert(sheepLayer?.fc?.features?.length===225,'BC WMU sheep polygons rendered');
+  assert(sheepLayer.style({getProperty:()=> '3-31'}).fillOpacity>.4,'reliable sheep samples shaded');
+  assert(sheepLayer.style({getProperty:()=> '3-29'}).fillOpacity<.3,'tiny samples muted');
+  sheepLayer.listener({feature:{getProperty:()=> '7-50'},latLng:{}});
+  const agePopup=sheep.popups.at(-1).children;
+  assert(agePopup.some(child=>String(child.textContent).includes('Stone Sheep mean 7.9 years')),
+    'official inspected ram age must appear in sheep WMU popup');
+  assert(agePopup.some(child=>String(child.textContent).includes('all')),
+    'sheep popup must not imply subspecies-specific harvest odds');
+  sheep.el('hs-harvest-period').value='current';
+  sheep.el('hs-harvest-period').change();
+  sheepLayer.listener({feature:{getProperty:()=> '3-31'},latLng:{}});
+  assert(sheep.popups.at(-1).children.some(child=>String(child.textContent).includes('2024 estimated resident hunter success')),
+    '2024 resident sheep rate uses the official WMU figures');
+  sheep.el('hs-harvest-toggle').click();await flush();
+  assert.equal(sheep.distribution,true,'sheep distribution restored');
+  assert.equal(sheepLayer.map,null,'sheep WMU layer removed');
   const broken=setup({fail:true});broken.el('hs-harvest-toggle').click();await flush();
   assert.equal(broken.distribution,true,'failure must restore species distribution');
   assert.equal(broken.api.isEnabled(),false);
   assert.equal(broken.el('hs-harvest-toggle').textContent,'Show Hunter Success');
-  console.log('Hunter success mode switching, readable WMUs, async cancellation, species/AB isolation and failure recovery passed.');
+  console.log('Hunter success mode switching, official BC sheep harvest/ram ages, small-sample shading, species/AB isolation and failure recovery passed.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1});
