@@ -15,7 +15,7 @@ assert(fs.existsSync(jsFile),'harvest success module must be copied from source'
 const newCode = fs.readFileSync(jsFile,'utf8');
 new Function(newCode);
 assert(newCode.includes('window.HUNTSMART_HARVEST_DATA_COVERAGE'),'dataset test');
-const dataParts = newCode.match(/const rows = ([^;]+);/);
+const dataParts = newCode.match(/^  const rows = (.+);$/m);
 assert(dataParts && JSON.parse(dataParts[1]).split(';').length === 64,'expected 64 verified WMU data records');
 const rootWMU = fs.readFileSync('bc-wmu-geojson.js','utf8');
 assert(rootWMU.startsWith('const BC_WMU_GEOJSON = '),'original HuntSmart WMU geometry source');
