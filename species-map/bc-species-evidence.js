@@ -6,9 +6,9 @@
   const HABITAT_BASE = 'https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_terrestrial_ecology/MapServer';
   const WSI_BASE = 'https://delivery.maps.gov.bc.ca/arcgis/rest/services/mpcm/bcgwpub/MapServer';
   const WHA_BASE = 'https://delivery.maps.gov.bc.ca/arcgis/rest/services/whse/bcgw_pub_whse_wildlife_management/MapServer';
-  const HABITAT_SOURCE = 'https://catalogue.data.gov.bc.ca/dataset/broad-ecosystem-inventory-wildlife-habitat-ratings-interpretations-for-mammals';
-  const WSI_SOURCE = 'https://catalogue.data.gov.bc.ca/dataset/wildlife-species-inventory-telemetry-observations-non-sensitive';
-  const WHA_SOURCE = 'https://catalogue.data.gov.bc.ca/dataset/wildlife-habitat-areas-approved';
+  const HABITAT_SOURCE = 'https://catalogue.data.gov.bc.ca/dataset/36afb87d-58e7-4f05-b790-200ea849a8c2';
+  const WSI_SOURCE = 'https://catalogue.data.gov.bc.ca/dataset/6d48657f-ab33-43c5-ad40-09bd56140845';
+  const WHA_SOURCE = 'https://catalogue.data.gov.bc.ca/dataset/b19ff409-ef71-4476-924e-b3bcf26a0127';
 
   const RECORDS = Object.freeze({
     lynx: { name: 'Canada Lynx', kind: 'habitat', field: 'M_LYCA', source: HABITAT_SOURCE },
