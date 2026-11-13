@@ -121,13 +121,13 @@ jobs:
               'Personal GIS file picker or parser missing from production HTML');
             const hunterModule=await waitForMarker('/species-map/harvest-success.js',
               'window.HUNTSMART_BC_HARVEST_CODES=CODE_BY_KEY');
-            assert(hunterModule.includes("btn.textContent = enabled ? 'Show Distribution' : 'Show Hunter Success'"),
+            assert(hunterModule.includes("btn.textContent=enabled?'Show Distribution':'Show Hunter Success'"),
               'Hunter-success toggle must switch map modes');
             assert(hunterModule.includes('context.onModeChange()'), 'Hunter success must rerender');
-            assert(hunterModule.includes("source.href = BC_GOVERNMENT_HARVEST_DATA") &&
+            assert(hunterModule.includes("source.href=BC_GOVERNMENT_HARVEST_DATA") &&
               hunterModule.includes('https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024') &&
               !hunterModule.includes('hunting-access.com') &&
-              hunterModule.includes("source.textContent = 'Data source: Government of BC'"),
+              hunterModule.includes("source.textContent='Data source: Government of BC'"),
               'WMU popup must cite only the official BC government harvest dataset');
             assert(abPage.includes('BC Government dataset'),
               'Hunter-success panel must identify government data');
