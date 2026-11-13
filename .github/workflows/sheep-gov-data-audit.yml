@@ -1,0 +1,77 @@
+name: Audit BC official sheep datasets
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/sheep-gov-data-audit.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Inspect official BC harvest and inspection sheet schemas
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from urllib.request import Request, urlopen
+          from collections import Counter
+          from io import BytesIO, StringIO
+          import csv, zipfile, xml.etree.ElementTree as ET, json
+          urls = {
+           'HARVEST': 'https://catalogue.data.gov.bc.ca/dataset/f2303645-5952-4766-bd5c-3b9b50dda1ca/resource/ea1505f6-77ab-4838-b4a9-309ec55a3c20/download/big-game-harvest-statistics-1976-to-2024-wmu.csv',
+           'CI': 'https://catalogue.data.gov.bc.ca/dataset/45711667-7878-4d86-8b5e-d0be5997dd16/resource/6fd8fbe1-08a7-4352-8de9-1b0c323e2fb5/download/compulsory-inspection-data-1900-to-2023-24.xlsx',
+           'CI_FIELDS': 'https://catalogue.data.gov.bc.ca/dataset/45711667-7878-4d86-8b5e-d0be5997dd16/resource/065a94bd-ffa5-4eef-b771-940f834e5a28/download/field-definitions-compulsory-inspection-data.xlsx'}
+          for key,url in urls.items():
+           print('START',key,flush=True)
+           try:
+            with urlopen(Request(url,headers={'User-Agent':'Mozilla/5.0 HuntSmartDataAudit/1.0'}),timeout=30) as r:
+             blob = r.read(65000000)
+             print('HTTP',r.status,'CONTENT_TYPE',r.headers.get('Content-Type'),'LENGTH',len(blob),flush=True)
+            if key=='HARVEST':
+             reader=csv.DictReader(StringIO(blob.decode('utf-8-sig')))
+             print('FIELDS',reader.fieldnames,flush=True)
+             counts=Counter()
+             examples=[]
+             for row in reader:
+              if (row.get('SPECIES') or '').strip()=='SHEE':
+               counts[row.get('HUNT YEAR','')]+=1
+               if row.get('HUNT YEAR','')=='2024' and len(examples)<15:
+                examples.append(row)
+             print('SHEEP_YEARS',counts.most_common(6),flush=True)
+             print('SHEEP_2024_ROWS',json.dumps(examples)[:10500],flush=True)
+            else:
+             z=zipfile.ZipFile(BytesIO(blob))
+             sheets=[n for n in z.namelist() if n.startswith('xl/worksheets/sheet') and n.endswith('.xml')]
+             print('WORKSHEETS',sheets[:20],flush=True)
+             shared=[]
+             if 'xl/sharedStrings.xml' in z.namelist():
+              with z.open('xl/sharedStrings.xml') as stream:
+               for _,e in ET.iterparse(stream,events=('end',)):
+                if e.tag.endswith('}si'):
+                 shared.append(''.join(t.text or '' for t in e.iter() if t.tag.endswith('}t')))
+                 e.clear()
+             for sheet in sheets[:6]:
+              rows=[]
+              with z.open(sheet) as stream:
+               for _,e in ET.iterparse(stream,events=('end',)):
+                if not e.tag.endswith('}row'): continue
+                vals=[]
+                for cell in e:
+                 if not cell.tag.endswith('}c'):continue
+                 v=next((a for a in cell if a.tag.endswith('}v')),None)
+                 if v is None:continue
+                 t=v.text or ''
+                 if cell.attrib.get('t')=='s':
+                  try: t=shared[int(t)]
+                  except (ValueError,IndexError): pass
+                 vals.append(t)
+                e.clear()
+                if vals: rows.append(vals[:32])
+                if len(rows)>=3:break
+              print('SHEET',sheet,'START_ROWS',json.dumps(rows,ensure_ascii=False)[:4200],flush=True)
+           except Exception as e:
+            print('SOURCE_ERROR',key,type(e).__name__,str(e)[:500],flush=True)
+          PY
