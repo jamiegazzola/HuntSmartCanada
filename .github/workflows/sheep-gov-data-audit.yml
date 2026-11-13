@@ -95,3 +95,75 @@ jobs:
            except Exception as e:
             print('SOURCE_ERROR',key,type(e).__name__,str(e)[:500],flush=True)
           PY
+      - name: Summarize BC compulsory-inspection sheep ages without identifiers
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import io, json, re, statistics, zipfile
+          from urllib.request import Request, urlopen
+          from collections import Counter,defaultdict
+          import xml.etree.ElementTree as ET
+          url='https://catalogue.data.gov.bc.ca/dataset/45711667-7878-4d86-8b5e-d0be5997dd16/resource/6fd8fbe1-08a7-4352-8de9-1b0c323e2fb5/download/compulsory-inspection-data-1900-to-2023-24.xlsx'
+          with urlopen(Request(url,headers={'User-Agent':'Mozilla/5.0 HuntSmartDataAudit/1.0'}),timeout=35) as r:data=r.read(65000000)
+          z=zipfile.ZipFile(io.BytesIO(data));shared=[]
+          if 'xl/sharedStrings.xml' in z.namelist():
+           with z.open('xl/sharedStrings.xml') as st:
+            for _,e in ET.iterparse(st,events=('end',)):
+             if e.tag.endswith('}si'):
+              shared.append(''.join(n.text or '' for n in e.iter() if n.tag.endswith('}t')))
+              e.clear()
+          def idx(ref):
+           m=re.match(r'[A-Z]+',ref or '')
+           if not m:return -1
+           n=0
+           for c in m.group():n=n*26+ord(c)-64
+           return n-1
+          heads=None;year=Counter();methods=Counter();subspecies=Counter();kill=Counter();age=defaultdict(list);examples=[]
+          with z.open('xl/worksheets/sheet2.xml') as st:
+           for _,el in ET.iterparse(st,events=('end',)):
+            if not el.tag.endswith('}row'):continue
+            cells={}
+            for c in el:
+             if not c.tag.endswith('}c'):continue
+             i=idx(c.attrib.get('r'))
+             if i<0:continue
+             v=next((a for a in c if a.tag.endswith('}v')),None)
+             if v is None:continue
+             x=v.text or ''
+             if c.attrib.get('t')=='s':
+              try:x=shared[int(x)]
+              except (ValueError,IndexError):pass
+             cells[i]=x
+            if heads is None:
+             heads=[cells.get(i,'') for i in range(max(cells)+1)]
+            else:
+             row={name:cells.get(i,'') for i,name in enumerate(heads)}
+             if row.get('Species')=='SHEE':
+              year[row.get('Licence Year','')]+=1
+              subspecies[row.get('Sheep Sub-Species','')]+=1
+              kill[row.get('WILD Kill Code','')]+=1
+              entries=[]
+              for field in ['Tooth - I1','Tooth - I2','Tooth - I3','Tooth PM','Wear - Staining - Eruption','Visual Inpection of Animal']:
+               raw=row.get(field,'')
+               if not raw:continue
+               methods[field]+=1
+               try:
+                val=float(raw)
+                if val.is_integer() and 2<=val<=20 and field!='Visual Inpection of Animal':entries.append((field,int(val)))
+               except ValueError:pass
+              if (row.get('WILD Kill Code','').lower() in ('hunter kill','hunter') and
+                  row.get('Animal Class','').lower() in ('male','ram') and entries):
+               try:wmu=int(float(row.get('WMU','')))
+               except ValueError:wmu=0
+               if wmu>=100 and wmu%100 not in (0,99):
+                age[(f'{wmu//100}-{wmu%100}',row.get('Sheep Sub-Species') or 'unspecified')].append(entries[0][1])
+              if len(examples)<6:
+               examples.append({k:row.get(k) for k in ['Licence Year','Sheep Sub-Species','WILD Kill Code','Animal Class','WMU','Tooth - I1','Tooth - I2','Tooth - I3','Tooth PM','Visual Inpection of Animal','Wear - Staining - Eruption']})
+            el.clear()
+          print('CI_AGE_YEARS',year,flush=True)
+          print('CI_AGE_SPECIES',subspecies,flush=True)
+          print('CI_AGE_KILLS',kill,flush=True)
+          print('CI_AGE_METHODS',methods,flush=True)
+          print('CI_AGE_EXAMPLES',json.dumps(examples,separators=(',',':')),flush=True)
+          print('BC_SHEEP_AGE_JSON',json.dumps({'period':'2023/24','units':{key[0]+'|'+key[1]:[len(v),round(statistics.mean(v),1),statistics.median(v),sum(a>=8 for a in v)] for key,v in sorted(age.items())}},separators=(',',':')),flush=True)
+          PY
