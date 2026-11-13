@@ -56,17 +56,17 @@ app = insertUnique(app,'  let map = null;', `  let map = null;
     getOpacity: () => layerOpacity,
     onModeChange: () => renderSelected()
   });`, 'attach to map');
-app = insertUnique(app,'    clearLayer();\\n    clearError();',"    clearLayer();\n    // Hunter success and species distribution must never render together.\n    if (harvestSuccess.isEnabled() && terrainEnabled) void toggleTerrain3D();\n    terrainToggle.disabled = harvestSuccess.isEnabled();\n    harvestSuccess.sync();\n    clearError();\n    document.body.classList.toggle('hunter-success-only', harvestSuccess.isEnabled());\n    if (harvestSuccess.isEnabled()) {\n      personalAlberta.hide();\n      setLoading(false);\n      return;\n    }",'exclusive hunter-success mode');
+app = insertUnique(app,'    clearLayer();\n    clearError();',"    clearLayer();\n    // Hunter success and species distribution must never render together.\n    if (harvestSuccess.isEnabled() && terrainEnabled) void toggleTerrain3D();\n    terrainToggle.disabled = harvestSuccess.isEnabled();\n    harvestSuccess.sync();\n    clearError();\n    document.body.classList.toggle('hunter-success-only', harvestSuccess.isEnabled());\n    if (harvestSuccess.isEnabled()) {\n      personalAlberta.hide();\n      setLoading(false);\n      return;\n    }",'exclusive hunter-success mode');
 app = insertUnique(app,'      const current=await initTerrain3D();',
-  "      const current=await initTerrain3D();\\n      if (harvestSuccess.isEnabled()) { terrainHost.hidden=true; terrainHost.style.visibility=''; return; }",
+  "      const current=await initTerrain3D();\n      if (harvestSuccess.isEnabled()) { terrainHost.hidden=true; terrainHost.style.visibility=''; return; }",
   'cancel pending 3D initialization');
 app = insertUnique(app,'} finally {terrainToggle.disabled=false;}',
   '} finally {terrainToggle.disabled=harvestSuccess.isEnabled();}',
   'keep 3D disabled in hunter-success view');
-const appRef = html.match(/app\\.js\\?v=[^"]+/);
+const appRef = html.match(/app\.js\?v=[^"]+/);
 assert(appRef, 'map script asset reference');
 html=html.replace(appRef[0], 'app.js?v=harvest-exclusive-20261113b');
-html=html.replace(/app\\.css\\?v=[^"]+/, 'app.css?v=harvest-exclusive-20261113b');
+html=html.replace(/app\.css\?v=[^"]+/, 'app.css?v=harvest-exclusive-20261113b');
 assert(app.includes('if (harvestSuccess.isEnabled()) {') &&
   app.includes('onModeChange: () => renderSelected()') &&
   app.includes('terrainToggle.disabled = harvestSuccess.isEnabled()'), 'exclusive mode bridge missing');
