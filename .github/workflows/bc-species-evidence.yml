@@ -1,0 +1,32 @@
+name: BC species evidence regression
+
+on:
+  pull_request:
+    paths:
+      - 'species-map/bc-species-evidence.js'
+      - 'scripts/install-bc-species-evidence.cjs'
+      - 'scripts/test-bc-species-evidence.cjs'
+      - '.github/workflows/bc-species-evidence.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'species-map/bc-species-evidence.js'
+      - 'scripts/install-bc-species-evidence.cjs'
+      - 'scripts/test-bc-species-evidence.cjs'
+      - '.github/workflows/bc-species-evidence.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-and-installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify BC evidence rendering and production installer
+        run: node scripts/test-bc-species-evidence.cjs
