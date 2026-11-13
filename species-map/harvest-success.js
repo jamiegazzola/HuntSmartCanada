@@ -32,6 +32,12 @@
   function colour(value) { return classes.find(item => value <= item.max)?.color || '#c45145'; }
   function pct(rec) { return period.value === 'average' ? rec.average : rec.current; }
   function setDetail(text) { detail.textContent = text; }
+  function updateButton() {
+    btn.textContent = enabled ? 'Show Distribution' : 'Show Hunter Success';
+    btn.setAttribute('aria-pressed', String(enabled));
+    btn.setAttribute('aria-label', enabled
+      ? 'Return to mule deer distribution map' : 'Show mule deer hunter success by WMU');
+  }
   function removeLayer() {
     renderSerial++;
     if (layer) { layer.setMap(null); layer = null; }
@@ -46,10 +52,10 @@
       const rec = stats.get(id);
       return {
         fillColor:rec ? colour(pct(rec)) : '#8c9494',
-        fillOpacity:(rec ? 0.55 : 0.07) * opacity,
+        fillOpacity:(rec ? 0.76 : 0.10) * opacity,
         strokeColor:rec ? '#e5e7da' : '#a9aeae',
-        strokeOpacity:(rec ? 0.72 : 0.30) * opacity,
-        strokeWeight:rec ? 0.9 : 0.65,
+        strokeOpacity:(rec ? 0.85 : 0.38) * opacity,
+        strokeWeight:rec ? 1.05 : 0.65,
         zIndex:25,
         clickable:true
       };
@@ -107,7 +113,7 @@
   async function draw() {
     if (!enabled || !active() || !context.getMap() || layer) return;
     const generation = ++renderSerial;
-    btn.disabled = true;
+    // Allow users to switch back while WMU boundaries are still loading.
     setDetail('Loading actual WMU boundaries…');
     try {
       const collection = await fetchBoundaries();
@@ -120,10 +126,12 @@
     } catch (e) {
       if (generation === renderSerial) {
         enabled = false;
-        btn.setAttribute('aria-pressed','false');
+        updateButton();
         legend.hidden = true;
         period.hidden = true;
         setDetail(e?.message || 'Harvest layer unavailable.');
+        // Restore distribution if WMU boundary loading fails.
+        context.onModeChange();
       }
     } finally {
       if (generation === renderSerial) btn.disabled = false;
@@ -136,26 +144,26 @@
       removeLayer();
       enabled = false;
       btn.disabled = false;
-      btn.setAttribute('aria-pressed','false');
+      updateButton();
       period.hidden = true;
       legend.hidden = true;
       setDetail('');
       return;
     }
-    if (enabled && !layer) draw();
+    if (enabled && !layer) void draw();
   }
   btn.addEventListener('click', () => {
     if (!active() || btn.disabled) return;
     enabled = !enabled;
-    btn.setAttribute('aria-pressed', String(enabled));
+    updateButton();
     period.hidden = !enabled;
     legend.hidden = !enabled;
     if (!enabled) {
       removeLayer();
       setDetail('');
-    } else {
-      draw();
     }
+    // Re-render one exclusive mode instead of stacking species and WMU layers.
+    return context.onModeChange();
   });
   period.addEventListener('change', () => {
     refreshStyle();
@@ -166,7 +174,8 @@
   window.HUNTSMART_HARVEST_SUCCESS = {
     attach(args) {
       context = args;
-      return {sync};
+      updateButton();
+      return {sync, isEnabled: () => enabled && active()};
     }
   };
 })();

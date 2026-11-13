@@ -28,7 +28,7 @@ const insertUnique = (text,before,after,label) => {
 html = insertUnique(html, '  <div id="error" ', `
   <section id="hs-harvest-panel" class="hs-harvest-panel" hidden aria-label="Mule deer hunter success by wildlife management unit">
     <div class="hs-harvest-head">
-      <button id="hs-harvest-toggle" type="button" aria-pressed="false">Hunter success · WMUs</button>
+      <button id="hs-harvest-toggle" type="button" aria-pressed="false" aria-label="Show mule deer hunter success by WMU">Show Hunter Success</button>
       <select id="hs-harvest-period" aria-label="Hunter success reporting period" hidden>
         <option value="current">2024</option>
         <option value="average">5-year avg</option>
@@ -47,15 +47,29 @@ html = insertUnique(html, '  <div id="error" ', `
   <div id="error" `, 'panel before errors');
 const appTag = html.match(/<script src="app\.js\?v=[^"]+"><\/script>/);
 assert(appTag,'species map app script tag missing');
-html = insertUnique(html,appTag[0],'<script src="harvest-success.js?v=20261113a"></script>\n  ' + appTag[0], 'load harvest module before viewer');
+html = insertUnique(html,appTag[0],'<script src="harvest-success.js?v=20261113b"></script>\n  ' + appTag[0], 'load harvest module before viewer');
 app = insertUnique(app,'  let map = null;', `  let map = null;
   const harvestSuccess = window.HUNTSMART_HARVEST_SUCCESS.attach({
     getMap: () => map,
     getProvince: () => province,
     getSpecies: () => select.value,
-    getOpacity: () => layerOpacity
+    getOpacity: () => layerOpacity,
+    onModeChange: () => renderSelected()
   });`, 'attach to map');
-app = insertUnique(app,'    clearLayer();\n    clearError();','    clearLayer();\n    harvestSuccess.sync();\n    clearError();','map render synchronization');
+app = insertUnique(app,'    clearLayer();\\n    clearError();',"    clearLayer();\n    // Hunter success and species distribution must never render together.\n    if (harvestSuccess.isEnabled() && terrainEnabled) void toggleTerrain3D();\n    terrainToggle.disabled = harvestSuccess.isEnabled();\n    harvestSuccess.sync();\n    clearError();\n    document.body.classList.toggle('hunter-success-only', harvestSuccess.isEnabled());\n    if (harvestSuccess.isEnabled()) {\n      personalAlberta.hide();\n      setLoading(false);\n      return;\n    }",'exclusive hunter-success mode');
+app = insertUnique(app,'      const current=await initTerrain3D();',
+  "      const current=await initTerrain3D();\\n      if (harvestSuccess.isEnabled()) { terrainHost.hidden=true; terrainHost.style.visibility=''; return; }",
+  'cancel pending 3D initialization');
+app = insertUnique(app,'} finally {terrainToggle.disabled=false;}',
+  '} finally {terrainToggle.disabled=harvestSuccess.isEnabled();}',
+  'keep 3D disabled in hunter-success view');
+const appRef = html.match(/app\\.js\\?v=[^"]+/);
+assert(appRef, 'map script asset reference');
+html=html.replace(appRef[0], 'app.js?v=harvest-exclusive-20261113b');
+html=html.replace(/app\\.css\\?v=[^"]+/, 'app.css?v=harvest-exclusive-20261113b');
+assert(app.includes('if (harvestSuccess.isEnabled()) {') &&
+  app.includes('onModeChange: () => renderSelected()') &&
+  app.includes('terrainToggle.disabled = harvestSuccess.isEnabled()'), 'exclusive mode bridge missing');
 new Function(app);
 css += `
 /* HuntSmart BC mule deer / WMU hunter success overlay. */
@@ -65,6 +79,7 @@ css += `
 #hs-harvest-toggle{flex:1;min-height:36px;border:1px solid rgba(255,255,255,.19);border-radius:8px;background:rgba(255,255,255,.07);color:#e5f0e6;font:750 12px/1.15 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer}
 #hs-harvest-toggle[aria-pressed=true]{background:#527b56;color:#fff;border-color:#7eb383}
 #hs-harvest-toggle[disabled]{opacity:.67;cursor:wait}
+body.hunter-success-only .terrain-toggle:disabled{opacity:.45;cursor:not-allowed}
 #hs-harvest-period{width:106px;min-height:36px;padding:0 5px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:#1b2d22;color:#fff;font:650 11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 #hs-harvest-toggle:focus-visible,#hs-harvest-period:focus-visible{outline:2px solid white;outline-offset:2px}
 #hs-harvest-legend{display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;padding-top:9px;font-size:10px;color:#cbd9cf}
@@ -78,4 +93,4 @@ css += `
 fs.writeFileSync(htmlFile,html);
 fs.writeFileSync(appFile,app);
 fs.writeFileSync(cssFile,css);
-console.log('Installed real BC WMU mule deer harvest overlay with 64 verified units and click details.');
+console.log('Installed exclusive BC mule deer hunter-success mode with 64 verified WMUs.');

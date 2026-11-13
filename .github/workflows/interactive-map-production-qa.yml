@@ -28,6 +28,8 @@ on:
       - netlify/lib/**
       - scripts/verify-private-species.mjs
       - scripts/verify-species-map.cjs
+      - scripts/verify-harvest-success.cjs
+      - scripts/install-harvest-success.cjs
       - scripts/install-alberta-species.cjs
       - scripts/patch-species-public.cjs
       - scripts/patch-species-map-coordinate-copy.cjs
@@ -50,6 +52,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Verify species layer selection and fallback
         run: node scripts/verify-species-map.cjs
+      - name: Verify hunter-success exclusive mode
+        run: node scripts/verify-harvest-success.cjs
       - name: Verify public species map data
         run: node scripts/patch-species-public.cjs && node scripts/verify-private-species.mjs
       - name: Validate deployed map, species data, and PWA assets
@@ -115,6 +119,15 @@ jobs:
             assert(abPage.includes('id="alberta-personal-file"') &&
               abPage.includes('alberta-local.js?v=') && abPage.includes('vendor/shp.min.js?v='),
               'Personal GIS file picker or parser missing from production HTML');
+            const hunterModule=await text('/species-map/harvest-success.js');
+            assert(hunterModule.includes("btn.textContent = enabled ? 'Show Distribution' : 'Show Hunter Success'"),
+              'Hunter-success toggle must switch map modes');
+            assert(hunterModule.includes('context.onModeChange()'), 'Hunter success must rerender');
+            assert(app.includes('terrainToggle.disabled = harvestSuccess.isEnabled()') &&
+              app.includes('if (harvestSuccess.isEnabled()) {') &&
+              app.includes('personalAlberta.hide();'), 'Distribution must be hidden behind hunter success');
+            assert(abPage.includes('id="hs-harvest-toggle"') &&
+              abPage.includes('Show Hunter Success'), 'Hunter-success controls not present');
             const abCatalog=await text('/species-map/alberta-species.js');
             assert(abCatalog.includes("type:'federal_boreal_range'"), 'Alberta federal range catalog missing');
             assert(app.includes('species-map-alberta-range-v13'), 'Alberta province switching JS is not deployed');
