@@ -69,9 +69,9 @@ jobs:
                   except (ValueError,IndexError): pass
                  vals.append(t)
                 e.clear()
-                if vals: rows.append(vals[:32])
+                if vals: rows.append(vals[:100])
                 if len(rows)>=3:break
-              print('SHEET',sheet,'START_ROWS',json.dumps(rows,ensure_ascii=False)[:4200],flush=True)
+              print('SHEET',sheet,'START_ROWS',json.dumps(rows,ensure_ascii=False)[:9500],flush=True)
            except Exception as e:
             print('SOURCE_ERROR',key,type(e).__name__,str(e)[:500],flush=True)
           PY
