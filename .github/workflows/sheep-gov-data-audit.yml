@@ -152,7 +152,7 @@ jobs:
                 if val.is_integer() and 2<=val<=20 and field!='Visual Inpection of Animal':entries.append((field,int(val)))
                except ValueError:pass
               if (row.get('WILD Kill Code','').lower() in ('hunter kill','hunter') and
-                  row.get('Animal Class','').lower() in ('male','ram') and entries):
+                  ('ram' in row.get('Animal Class','').lower() or row.get('Animal Class','').lower()=='male') and entries and row.get('Licence Year','') in ('2022/23','2023/24','2024/25')):
                try:wmu=int(float(row.get('WMU','')))
                except ValueError:wmu=0
                if wmu>=100 and wmu%100 not in (0,99):
@@ -165,5 +165,5 @@ jobs:
           print('CI_AGE_KILLS',kill,flush=True)
           print('CI_AGE_METHODS',methods,flush=True)
           print('CI_AGE_EXAMPLES',json.dumps(examples,separators=(',',':')),flush=True)
-          print('BC_SHEEP_AGE_JSON',json.dumps({'period':'2023/24','units':{key[0]+'|'+key[1]:[len(v),round(statistics.mean(v),1),statistics.median(v),sum(a>=8 for a in v)] for key,v in sorted(age.items())}},separators=(',',':')),flush=True)
+          print('BC_SHEEP_AGE_JSON',json.dumps({'period':'2022/23–2024/25','units':{key[0]+'|'+key[1]:[len(v),round(statistics.mean(v),1),statistics.median(v),sum(a>=8 for a in v)] for key,v in sorted(age.items())}},separators=(',',':')),flush=True)
           PY
