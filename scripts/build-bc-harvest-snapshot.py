@@ -151,7 +151,17 @@ def main():
             history["species"][code][wmu] = cells
     assert sum(len(v) for v in history["species"].values()) > 1500, "Unexpectedly sparse full history"
     assert history["species"]["SHEE"]["3-17"]["2024"] == [66, 7], "Historical sheep data mismatch"
-    assert any("1985" in rows for rows in history["species"]["DEMU"].values()), "Missing 1980s mule deer records"
+    if not any("1985" in rows for rows in history["species"]["DEMU"].values()):
+        # Diagnose whether this is old nomenclature, old WMU encoding, or absent observations.
+        probe = [r for r in csv.DictReader(io.StringIO(data.decode("utf-8-sig")))
+                 if number(r.get("HUNT YEAR")) == 1985]
+        print("DIAGNOSTIC 1985 raw rows", len(probe),
+              "species", dict(collections.Counter(r.get("SPECIES") for r in probe)),
+              "region fields", dict(collections.Counter(r.get("REGION") for r in probe).most_common(12)))
+        print("DIAGNOSTIC 1985 sample", probe[:6])
+        print("DIAGNOSTIC 1985 parsed entries",
+              {c:sum("1985" in y for y in m.values()) for c,m in history["species"].items()})
+        raise AssertionError("Missing 1985 mule deer entries; inspect official source before mapping")
     HISTORY_OUT.write_text(json.dumps(history, separators=(",", ":"), sort_keys=True) + "\n", encoding="utf-8")
     print("Historical snapshot", HISTORY_OUT, "bytes", HISTORY_OUT.stat().st_size)
     print("Historic years", len({year for units in history["species"].values() for entries in units.values() for year in entries}),
