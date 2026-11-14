@@ -18,10 +18,10 @@ SHA256 = "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e"
 OUT = pathlib.Path("species-map/data/bc-official-harvest-wmu-2020-2024.json")
 HISTORY_OUT = pathlib.Path("species-map/data/bc-official-harvest-history-1976-2024.json")
 ALL_YEARS = range(1976, 2025)
-HISTORY_CODES = CODES + ("BEAG",)  # Historical legal grizzly harvest (closed since 2017)
 YEARS = range(2020, 2025)
 CODES = ("BEAB", "BOBC", "CARI", "COUG", "DEMU", "DEWT",
          "ELK", "GOAT", "LYNX", "MOOS", "SHEE", "WOLF")
+HISTORY_CODES = CODES + ("BEAG",)  # Historical legal grizzly harvest (closed since 2017)
 
 
 def number(raw):
