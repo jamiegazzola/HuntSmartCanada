@@ -20,7 +20,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add species-map/data/bc-official-harvest-wmu-2020-2024.json
+          git add species-map/data/bc-official-harvest-wmu-2020-2024.json species-map/data/bc-official-harvest-history-1976-2024.json
           if git diff --cached --quiet; then
             echo "No source changes"
           else

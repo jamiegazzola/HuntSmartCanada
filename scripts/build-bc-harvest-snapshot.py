@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build compact, directly sourced BC WMU resident-harvest statistics (2020-2024).
+"""Build compact, directly sourced BC WMU resident-harvest statistics (1976-2024).
 
 No imputation: blank provincial fields remain null, and species without a WMU
 record do not acquire one. Five-year rates pool matching hunters and kills,
@@ -16,6 +16,8 @@ import urllib.request
 URL = "https://catalogue.data.gov.bc.ca/dataset/f2303645-5952-4766-bd5c-3b9b50dda1ca/resource/ea1505f6-77ab-4838-b4a9-309ec55a3c20/download/big-game-harvest-statistics-1976-to-2024-wmu.csv"
 SHA256 = "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e"
 OUT = pathlib.Path("species-map/data/bc-official-harvest-wmu-2020-2024.json")
+HISTORY_OUT = pathlib.Path("species-map/data/bc-official-harvest-history-1976-2024.json")
+ALL_YEARS = range(1976, 2025)
 YEARS = range(2020, 2025)
 CODES = ("BEAB", "BOBC", "CARI", "COUG", "DEMU", "DEWT",
          "ELK", "GOAT", "LYNX", "MOOS", "SHEE", "WOLF")
@@ -64,18 +66,21 @@ def main():
     if not expected.issubset(set(reader.fieldnames or [])):
         raise ValueError(f"Missing provincial fields: {sorted(expected - set(reader.fieldnames or []))}")
     records = collections.defaultdict(dict)
+    historical = collections.defaultdict(dict)
     for row in reader:
         year = number(row["HUNT YEAR"])
         code = str(row["SPECIES"] or "").strip().upper()
-        if year not in YEARS or code not in CODES:
+        if year not in ALL_YEARS or code not in CODES:
             continue
         wmu = wmu_key(row)
         if not wmu:
             continue
         ident = (code, wmu)
-        if year in records[ident]:
+        if year in historical[ident]:
             raise ValueError(f"Duplicate official WMU/year record: {ident}, {year}")
-        records[ident][year] = row
+        historical[ident][year] = row
+        if year in YEARS:
+            records[ident][year] = row
 
     payload = {
         "meta": {
@@ -120,6 +125,37 @@ def main():
     assert len(payload["species"]["DEMU"]) > 100, "Mule deer WMU data missing"
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(payload, separators=(",", ":"), sort_keys=True) + "\n", encoding="utf-8")
+    # Historical values load only when someone selects a past year.
+    # Keep the original small 2024/5-year dataset for the default display.
+    history = {
+        "meta": {
+            "publisher": "Government of British Columbia",
+            "dataset": "Big Game Harvest Statistics 1976 to 2024",
+            "dataset_url": payload["meta"]["dataset_url"],
+            "source_csv": URL,
+            "source_sha256": digest,
+            "first_year": 1976,
+            "last_year": 2024,
+            "boundary_warning": "Historical WMU numbers use current map geometry. Boundaries and reporting methods have changed; historical locations are approximate.",
+            "missing_values": "Missing provincial estimates remain null, never imputed as zero."
+        },
+        "species": {code: {} for code in CODES}
+    }
+    for (code, wmu), years in sorted(historical.items()):
+        cells = {}
+        for year, row in sorted(years.items()):
+            hunters, kills = number(row["RESIDENT HUNTERS"]), number(row["RESIDENT KILLS"])
+            if hunters is not None or kills is not None:
+                cells[str(year)] = [hunters, kills]
+        if cells:
+            history["species"][code][wmu] = cells
+    assert sum(len(v) for v in history["species"].values()) > 1500, "Unexpectedly sparse full history"
+    assert history["species"]["SHEE"]["3-17"]["2024"] == [66, 7], "Historical sheep data mismatch"
+    assert any("1985" in rows for rows in history["species"]["DEMU"].values()), "Missing 1980s mule deer records"
+    HISTORY_OUT.write_text(json.dumps(history, separators=(",", ":"), sort_keys=True) + "\n", encoding="utf-8")
+    print("Historical snapshot", HISTORY_OUT, "bytes", HISTORY_OUT.stat().st_size)
+    print("Historic years", len({year for units in history["species"].values() for entries in units.values() for year in entries}),
+          "data rows", sum(len(entries) for units in history["species"].values() for entries in units.values()))
     print("Source SHA256", digest, "bytes", len(data))
     for code in CODES:
         cells = payload["species"][code]
