@@ -135,6 +135,22 @@ jobs:
               hunterModule.includes('loadOfficial()') &&
               hunterModule.includes('ageSummary(id)'),
               'Verified multi-species success and sheep ages not deployed');
+            const historicalHtml=abPage;
+            assert(historicalHtml.includes('value="1985"') &&
+              historicalHtml.includes('value="1976"') &&
+              historicalHtml.includes('value="2023"'),
+              'Historical WMU year options 1976–2023 were not deployed');
+            assert(hunterModule.includes('loadHistory()') &&
+              hunterModule.includes('selectedRow(id)') &&
+              hunterModule.includes('current WMU shapes'),
+              'Historical year layer, popup and boundary caution missing');
+            const historic=JSON.parse(await text('/species-map/data/bc-official-harvest-history-1976-2024.json'));
+            assert(historic.meta.publisher==='Government of British Columbia' &&
+              historic.meta.source_sha256==='e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e' &&
+              historic.meta.first_year===1976 && historic.meta.last_year===2024 &&
+              historic.species.MOOS['3-27']['1985'][0]===148 &&
+              historic.species.BEAG,
+              '1976–2024 provincial WMU archive absent, altered or incomplete');
             const official=JSON.parse(await text('/species-map/data/bc-official-harvest-wmu-2020-2024.json'));
             assert(official.meta.publisher==='Government of British Columbia' &&
               official.meta.source_sha256==='e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e' &&

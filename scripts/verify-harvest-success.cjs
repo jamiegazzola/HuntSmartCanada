@@ -2,6 +2,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const official=JSON.parse(fs.readFileSync(path.join(__dirname,'../species-map/data/bc-official-harvest-wmu-2020-2024.json'),'utf8'));
+const history=JSON.parse(fs.readFileSync(path.join(__dirname,'../species-map/data/bc-official-harvest-history-1976-2024.json'),'utf8'));
 const ages=JSON.parse(fs.readFileSync(path.join(__dirname,'../species-map/data/bc-sheep-age-ci-2022-2025.json'),'utf8'));
 const names=fs.readFileSync(path.join(__dirname,'../species-map/species-catalog.js'),'utf8');
 let catalogue;{const w={};vm.runInNewContext(names,{window:w});catalogue=w.HUNTSMART_SPECIES;}
@@ -30,7 +31,9 @@ function setup({fail=false,defer=false}={}){
         if(fail)script.onerror();else script.onload()};
       if(defer)release=done;else done();
     }}},
-    fetch:async url=>({ok:true,json:async()=>url.includes('bc-sheep-age')?ages:official}),
+    fetch:async url=>({ok:true,json:async()=>
+      url.includes('bc-sheep-age')?ages:
+      url.includes('bc-official-harvest-history')?history:official}),
     google:{maps:{Data,InfoWindow:class{close(){}setContent(c){popups.push(c)}setPosition(){}open(){}}}},
     console};
   vm.createContext(sandbox);
@@ -62,20 +65,40 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   assert(base.popups.at(-1).children.some(x=>String(x.textContent).includes('418')));
   assert(m.style({getProperty:()=> '3-27'}).fillOpacity>.5,'real BC mule deer rate');
   base.el('hs-harvest-period').value='average';base.el('hs-harvest-period').change();
+  base.el('hs-harvest-period').value='1985';base.el('hs-harvest-period').change();
+  await flush();
+  assert.equal(base.el('hs-harvest-detail').textContent.includes('No sufficiently reported 1985'),true,
+    '1985 mule deer category must remain unavailable rather than fabricated');
+  base.el('hs-harvest-period').value='1989';base.el('hs-harvest-period').change();
+  await flush();
+  const oldLayer=base.layers.at(-1);
+  assert(oldLayer!==m && oldLayer?.fc?.features?.length===225,'1989 mule deer WMU geometry visible');
+  oldLayer.listener({feature:{getProperty:()=> '3-27'},latLng:{}});
+  assert(base.popups.at(-1).children.some(x=>String(x.textContent).includes('1989')),
+    'Historic year must appear in WMU popup');
+  assert(base.popups.at(-1).children.some(x=>String(x.textContent).includes('current WMU shapes')),
+    'Historic boundary caveat must be visible');
+  base.el('hs-harvest-period').value='current';base.el('hs-harvest-period').change();
   base.el('hs-harvest-toggle').click();await flush();
-  assert.equal(base.distribution,true);assert.equal(m.map,null);
+  assert.equal(base.distribution,true);assert.equal(m.map,null);assert.equal(oldLayer.map,null);
   // Success mode persists when a BC species changes; old geometry must be detached.
   base.el('hs-harvest-toggle').click();await flush();const prior=base.layers.at(-1);
   base.setSpecies('elk');await flush();
   assert.equal(prior.map,null);assert(base.api.isEnabled());assert(!base.distribution);
   assert(base.layers.at(-1).fc.features.length===225);
+  base.el('hs-harvest-period').value='1985';base.el('hs-harvest-period').change();await flush();
+  assert(base.el('hs-harvest-detail').textContent.includes('1985'),
+    '1985 elk harvest data must be available');
   base.setSpecies('roosevelt_elk');await flush();
+  assert.equal(base.el('hs-harvest-period').value,'1985',
+    'Historical year selection persists across species');
   base.layers.at(-1).listener({feature:{getProperty:()=> '3-27'},latLng:{}});
   assert(base.popups.at(-1).children.some(x=>String(x.textContent).includes('not separate')));
   base.setSpecies('stone_sheep');await flush();
-  assert.equal(base.el('hs-harvest-period').value,'average');
+  assert.equal(base.el('hs-harvest-period').value,'1985');
   base.layers.at(-1).listener({feature:{getProperty:()=> '7-50'},latLng:{}});
   assert(base.popups.at(-1).children.some(x=>String(x.textContent).includes('Stone Sheep mean')));
+  base.el('hs-harvest-period').value='average';base.el('hs-harvest-period').change();
   base.setSpecies('wolverine');await flush();
   assert.equal(base.el('hs-harvest-panel').hidden,false);
   assert(base.el('hs-harvest-detail').textContent.includes('No comparable'));
@@ -89,5 +112,5 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   assert.equal(queued.layers.length,0,'cancelled boundary request must not paint');
   const broken=setup({fail:true});broken.el('hs-harvest-toggle').click();await flush();
   assert.equal(broken.distribution,true,'failed WMU geometry returns to distribution');
-  console.log('Official 12-category / 31-species mapping, parent warnings, five-year view, cancellation, no-data and AB isolation passed.');
+  console.log('Official 1976–2024 history, missing 1985 deer, 1989 deer, 1985 elk, parent subspecies, five-year view, cancellations, no-data and AB passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});

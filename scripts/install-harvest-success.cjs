@@ -25,6 +25,13 @@ assert(official.meta.publisher==='Government of British Columbia' &&
   official.species.DEMU['3-27'].y[1]===418 &&
   official.species.SHEE['3-17'].y[0]===66,
   'Verified provincial WMU dataset malformed');
+const history=JSON.parse(fs.readFileSync(path.join(dir,'data','bc-official-harvest-history-1976-2024.json'),'utf8'));
+assert(history.meta.publisher==='Government of British Columbia' &&
+  history.meta.source_sha256==='e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e' &&
+  history.meta.first_year===1976 && history.meta.last_year===2024 &&
+  history.species.MOOS['3-27']['1985'][0]===148 &&
+  history.species.BEAG && Object.values(history.species.BEAG).some(v=>v['1985']),
+  'Official 1976–2024 WMU history incomplete');
 const ages=JSON.parse(fs.readFileSync(path.join(dir,'data','bc-sheep-age-ci-2022-2025.json'),'utf8'));
 assert(ages.minimum_display_sample===5 && ages.units['7-50|Stone Sheep'][0]===94,
   'Provincial ram age records missing');
@@ -36,6 +43,8 @@ const insertUnique = (text,before,after,label) => {
   assert(text.indexOf(before) === text.lastIndexOf(before),'duplicate anchor: ' + label);
   return text.replace(before,after);
 };
+const historicalOptions=Array.from({length:48},(_,i)=>2023-i)
+  .map(year=>'<option value="'+year+'">'+year+'</option>').join('\\n        ');
 html = insertUnique(html, '  <div id="error" ', `
   <section id="hs-harvest-panel" class="hs-harvest-panel" hidden aria-label="BC species hunter success by management unit">
     <div class="hs-harvest-head">
@@ -43,6 +52,7 @@ html = insertUnique(html, '  <div id="error" ', `
       <select id="hs-harvest-period" aria-label="Hunter success reporting period" hidden>
         <option value="current">2024</option>
         <option value="average">5-year avg</option>
+        ${historicalOptions}
       </select>
     </div>
     <div id="hs-harvest-legend" hidden>
@@ -53,12 +63,12 @@ html = insertUnique(html, '  <div id="error" ', `
       <span class="hs-legend-swatch" style="background:#c45145"></span><span>40%+</span>
     </div>
     <div id="hs-harvest-detail" role="status" aria-live="polite"></div>
-    <div class="hs-harvest-disclaimer">Official BC Government harvest by WMU. Shows all reported resident hunting (not GOS-only); subspecies use parent-species data. Small samples muted. <a href="https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024" target="_blank" rel="noopener">BC Government dataset</a>.</div>
+    <div class="hs-harvest-disclaimer">Official BC Government harvest by WMU, 1976–2024 where available. Historical years use current WMU shapes; boundaries and reporting methods may differ. Not GOS-only; subspecies use parent-species records. Small samples muted. <a href="https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024" target="_blank" rel="noopener">BC Government dataset</a>.</div>
   </section>
   <div id="error" `, 'panel before errors');
 const appTag = html.match(/<script src="app\.js\?v=[^"]+"><\/script>/);
 assert(appTag,'species map app script tag missing');
-html = insertUnique(html,appTag[0],'<script src="harvest-success.js?v=all-bc-harvest-20261113g"></script>\n  ' + appTag[0], 'load harvest module before viewer');
+html = insertUnique(html,appTag[0],'<script src="harvest-success.js?v=bc-history-1976-20261113h"></script>\n  ' + appTag[0], 'load harvest module before viewer');
 app = insertUnique(app,'  let map = null;', `  let map = null;
   const harvestSuccess = window.HUNTSMART_HARVEST_SUCCESS.attach({
     getMap: () => map,
@@ -76,8 +86,8 @@ app = insertUnique(app,'} finally {terrainToggle.disabled=false;}',
   'keep 3D disabled in hunter-success view');
 const appRef = html.match(/app\.js\?v=[^"]+/);
 assert(appRef, 'map script asset reference');
-html=html.replace(appRef[0], 'app.js?v=all-bc-harvest-20261113g');
-html=html.replace(/app\.css\?v=[^"]+/, 'app.css?v=all-bc-harvest-20261113g');
+html=html.replace(appRef[0], 'app.js?v=bc-history-1976-20261113h');
+html=html.replace(/app\.css\?v=[^"]+/, 'app.css?v=bc-history-1976-20261113h');
 assert(app.includes('if (harvestSuccess.isEnabled()) {') &&
   app.includes('onModeChange: () => renderSelected()') &&
   app.includes('terrainToggle.disabled = harvestSuccess.isEnabled()'), 'exclusive mode bridge missing');
