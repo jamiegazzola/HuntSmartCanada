@@ -97,8 +97,21 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   base.setSpecies('stone_sheep');await flush();
   assert.equal(base.el('hs-harvest-period').value,'1985');
   base.layers.at(-1).listener({feature:{getProperty:()=> '7-50'},latLng:{}});
-  assert(base.popups.at(-1).children.some(x=>String(x.textContent).includes('Stone Sheep mean')));
+  assert(!base.popups.at(-1).children.some(x=>String(x.textContent).includes('Stone Sheep mean')),
+    'Modern inspected ram ages must not appear beside 1985 harvest');
   base.el('hs-harvest-period').value='average';base.el('hs-harvest-period').change();
+  base.layers.at(-1).listener({feature:{getProperty:()=> '7-50'},latLng:{}});
+  assert(base.popups.at(-1).children.some(x=>String(x.textContent).includes('Stone Sheep mean')),
+    'Current sheep average can include labelled 2022–25 age samples');
+  // Grizzly hunting is now closed, but historical 1985 records are valid.
+  const grizzly=setup();
+  grizzly.setSpecies('grizzly_bear');
+  grizzly.el('hs-harvest-toggle').click();await flush();
+  assert(grizzly.el('hs-harvest-detail').textContent.includes('closed'));
+  grizzly.el('hs-harvest-period').value='1985';
+  grizzly.el('hs-harvest-period').change();await flush();
+  assert(grizzly.layers.at(-1)?.fc?.features.length===225,'Historical grizzly harvest must render');
+  assert(grizzly.el('hs-harvest-detail').textContent.includes('1985'));
   base.setSpecies('wolverine');await flush();
   assert.equal(base.el('hs-harvest-panel').hidden,false);
   assert(base.el('hs-harvest-detail').textContent.includes('No comparable'));

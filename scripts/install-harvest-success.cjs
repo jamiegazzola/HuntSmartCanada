@@ -44,7 +44,7 @@ const insertUnique = (text,before,after,label) => {
   return text.replace(before,after);
 };
 const historicalOptions=Array.from({length:48},(_,i)=>2023-i)
-  .map(year=>'<option value="'+year+'">'+year+'</option>').join('\\n        ');
+  .map(year=>'<option value="'+year+'">'+year+'</option>').join('\n        ');
 html = insertUnique(html, '  <div id="error" ', `
   <section id="hs-harvest-panel" class="hs-harvest-panel" hidden aria-label="BC species hunter success by management unit">
     <div class="hs-harvest-head">

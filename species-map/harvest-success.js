@@ -106,7 +106,7 @@
     });
   }
   function ageSummary(id){
-    if(!isSheep()||!sheepAge?.units)return null;
+    if(!isSheep()||historicalYear()||!sheepAge?.units)return null;
     const subtype={
       stone_sheep:['Stone Sheep'],dall_tatshenshini:['Dall Sheep'],
       thinhorn_sheep:['Stone Sheep','Dall Sheep'],
