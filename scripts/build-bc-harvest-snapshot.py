@@ -18,6 +18,7 @@ SHA256 = "e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e"
 OUT = pathlib.Path("species-map/data/bc-official-harvest-wmu-2020-2024.json")
 HISTORY_OUT = pathlib.Path("species-map/data/bc-official-harvest-history-1976-2024.json")
 ALL_YEARS = range(1976, 2025)
+HISTORY_CODES = CODES + ("BEAG",)  # Historical legal grizzly harvest (closed since 2017)
 YEARS = range(2020, 2025)
 CODES = ("BEAB", "BOBC", "CARI", "COUG", "DEMU", "DEWT",
          "ELK", "GOAT", "LYNX", "MOOS", "SHEE", "WOLF")
@@ -70,7 +71,7 @@ def main():
     for row in reader:
         year = number(row["HUNT YEAR"])
         code = str(row["SPECIES"] or "").strip().upper()
-        if year not in ALL_YEARS or code not in CODES:
+        if year not in ALL_YEARS or code not in HISTORY_CODES:
             continue
         wmu = wmu_key(row)
         if not wmu:
@@ -79,7 +80,7 @@ def main():
         if year in historical[ident]:
             raise ValueError(f"Duplicate official WMU/year record: {ident}, {year}")
         historical[ident][year] = row
-        if year in YEARS:
+        if year in YEARS and code in CODES:
             records[ident][year] = row
 
     payload = {
@@ -139,7 +140,7 @@ def main():
             "boundary_warning": "Historical WMU numbers use current map geometry. Boundaries and reporting methods have changed; historical locations are approximate.",
             "missing_values": "Missing provincial estimates remain null, never imputed as zero."
         },
-        "species": {code: {} for code in CODES}
+        "species": {code: {} for code in HISTORY_CODES}
     }
     for (code, wmu), years in sorted(historical.items()):
         cells = {}
@@ -151,19 +152,18 @@ def main():
             history["species"][code][wmu] = cells
     assert sum(len(v) for v in history["species"].values()) > 1500, "Unexpectedly sparse full history"
     assert history["species"]["SHEE"]["3-17"]["2024"] == [66, 7], "Historical sheep data mismatch"
-    if not any("1985" in rows for rows in history["species"]["DEMU"].values()):
-        # Diagnose whether this is old nomenclature, old WMU encoding, or absent observations.
-        probe = [r for r in csv.DictReader(io.StringIO(data.decode("utf-8-sig")))
-                 if number(r.get("HUNT YEAR")) == 1985]
-        print("DIAGNOSTIC 1985 raw rows", len(probe),
-              "species", dict(collections.Counter(r.get("SPECIES") for r in probe)),
-              "region fields", dict(collections.Counter(r.get("REGION") for r in probe).most_common(12)))
-        print("DIAGNOSTIC 1985 sample", probe[:6])
-        print("DIAGNOSTIC 1985 parsed entries",
-              {c:sum("1985" in y for y in m.values()) for c,m in history["species"].items()})
-        print("WARNING: Official 1985 mule deer has no comparable WMU data; retain missing cells rather than infer.")
+    assert any("1985" in rows for rows in history["species"]["BEAG"].values()), (
+        "Historical legal grizzly harvest is missing"
+    )
+    # Before 1989 the provincial source has no separate mule-deer WMU category.
+    # Keep those years blank; do not reverse-engineer deer data from other sources.
     HISTORY_OUT.write_text(json.dumps(history, separators=(",", ":"), sort_keys=True) + "\n", encoding="utf-8")
     print("Historical snapshot", HISTORY_OUT, "bytes", HISTORY_OUT.stat().st_size)
+    print("WMUs with records by historical year", {
+        year: {code:sum(str(year) in vals for vals in history["species"][code].values())
+               for code in ("DEMU","ELK","MOOS","SHEE","BEAG")}
+        for year in (1976,1980,1985,1988,1989,1990,2024)
+    })
     print("Historic years", len({year for units in history["species"].values() for entries in units.values() for year in entries}),
           "data rows", sum(len(entries) for units in history["species"].values() for entries in units.values()))
     print("Source SHA256", digest, "bytes", len(data))
