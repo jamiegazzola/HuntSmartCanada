@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Generate verified provincial source snapshot
+      - name: Diagnose and generate verified provincial source snapshot
         run: python3 scripts/build-bc-harvest-snapshot.py
       - name: Commit current pinned provincial snapshot
         run: |
