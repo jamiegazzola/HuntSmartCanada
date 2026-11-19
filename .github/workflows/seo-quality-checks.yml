@@ -12,6 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install repository dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Validate Python syntax
         run: python3 -m py_compile build-seo-quality.py
       - name: Run generated-page regression checks
@@ -58,4 +63,27 @@ jobs:
           guide = Path("site/blog/how-does-bc-leh-work/index.html").read_text()
           assert guide.count("Looking for your next step?") == 1
           print("Synthetic SEO regression fixtures passed.")
+          PY
+      - name: Build all generated public pages
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          import tomllib
+          from pathlib import Path
+          with Path("netlify.toml").open("rb") as handle:
+              command = tomllib.load(handle)["build"]["command"]
+          subprocess.run(["bash", "-lc", command], check=True)
+          print("Full HuntSmart static build passed.")
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          assert 'name="description"' in Path("site/index.html").read_text().split("</head>", 1)[0]
+          for page in (
+              "site/bc-hunting/index.html",
+              "site/blog/how-does-bc-leh-work/index.html",
+              "site/research/index.html",
+          ):
+              assert Path(page).is_file(), f"Build missing {page}"
+          print("Real generated page checks passed.")
           PY
