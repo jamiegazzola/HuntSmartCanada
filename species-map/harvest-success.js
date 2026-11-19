@@ -25,6 +25,36 @@
       }).finally(()=>{pendingLeh=null;});
     return pendingLeh;
   }
+  let recorded=false,recordedData=null,recordedYear='all';
+  const subspecies={roosevelt_elk:['Roosevelt'],rocky_elk_kootenay:['Rocky Mountain'],bighorn_sheep:['Rocky Mtn Bighorn','California Bighorn'],rocky_bighorn_kootenay:['Rocky Mtn Bighorn'],california_bighorn_boundary:['California Bighorn'],thinhorn_sheep:['Stone Sheep','Dall Sheep'],stone_sheep:['Stone Sheep'],dall_tatshenshini:['Dall Sheep']};
+  function recordedCounts(){
+    const result=new Map();
+    for(const [species,sub,id,year,mode,n] of recordedData?.rows||[]){
+      if(species!==code()||excludedForSpecies(id)||
+        (subspecies[key()]&&!subspecies[key()].includes(sub))||
+        (recordedYear!=='all'&&year!==recordedYear)||
+        (huntMode!=='combined'&&mode!==huntMode))continue;
+      result.set(id,(result.get(id)||0)+n);
+    }
+    return result;
+  }
+  async function drawRecorded(generation){
+    const [data]=await Promise.all([recordedData||fetch('/species-map/data/bc-recorded-harvests.json?v=20261119').then(r=>{if(!r.ok)throw Error('Recorded harvest data unavailable');return r.json();}),fetchBoundaries()]);
+    if(generation!==renderSerial||!enabled||!recorded)return;
+    recordedData=data;
+    const counts=recordedCounts();
+    layer=new google.maps.Data({map:context.getMap()});
+    layer.addGeoJson({type:'FeatureCollection',features:boundaries.features.filter(f=>counts.has(f.properties.wmu_id||f.properties.WMUNIT_NUM))});
+    layer.setStyle({fillColor:'#468f58',fillOpacity:0.65*context.getOpacity(),strokeColor:'#e5e7da',strokeWeight:1});
+    layer.addListener('click',event=>{
+      const id=event.feature.getProperty('wmu_id')||event.feature.getProperty('WMUNIT_NUM');
+      setDetail('WMU '+id+' · '+counts.get(id)+' recorded '+huntMode.toUpperCase()+' harvests · '+(recordedYear==='all'?'all available licence years':recordedYear)+'. Inspected hunter kills, all residencies; not a success rate.');
+    });
+    legend.hidden=true;
+    const floating=document.getElementById('hs-metric-legend');if(floating)floating.hidden=true;
+    const trigger=document.getElementById('hs-year-trigger');if(trigger){trigger.hidden=false;trigger.textContent='Recorded harvests';}
+    setDetail(counts.size+' WMUs · '+[...counts.values()].reduce((a,b)=>a+b,0)+' recorded harvests. Incomplete inspection coverage; blank areas do not mean no hunting. 2025/26 is sparse.');
+  }
   const modeArchive=()=>huntMode==='leh'?lehData?.species?.[code()]||{}:
     huntMode==='combined'?history?.species?.[code()]||{}:{};
   const yearlyEstimate=(id,year)=>huntMode==='leh'?
@@ -347,6 +377,7 @@
   }
   function refreshStyle(){
     if(!layer)return;
+    if(recorded){layer.setStyle({fillColor:'#468f58',fillOpacity:0.65*context.getOpacity(),strokeColor:'#e5e7da',strokeWeight:1});return;}
     const opacity=Math.max(0,Math.min(1,context.getOpacity()));
     layer.setStyle(feature=>{
       const id=String(feature.getProperty('wmu_id')||feature.getProperty('WMUNIT_NUM')||'');
@@ -519,6 +550,7 @@
     const generation=++renderSerial;
     setDetail('Loading official BC WMU harvest data…');
     try{
+      if(recorded){await drawRecorded(generation);return;}
       const targetCode=code();
       if(!targetCode){
         syncYearControls();setDetail(summary());return;
@@ -655,6 +687,19 @@
   window.HUNTSMART_SHEEP_OFFICIAL_DATA={harvest:OFFICIAL_SOURCE,ages:SHEEP_AGES};
   window.HUNTSMART_HARVEST_SUCCESS={
     attach(args){context=args;updateButton();
+      const chooser=document.createElement('select');
+      chooser.setAttribute('aria-label','Harvest data view');
+      chooser.innerHTML='<option value="survey">Success estimates</option><option value="records">Recorded harvests</option>';
+      const years=document.createElement('select');
+      years.setAttribute('aria-label','Recorded harvest licence year');years.hidden=true;
+      years.innerHTML='<option value="all">All recorded years</option>'+['2021/22','2022/23','2023/24','2024/25','2025/26'].map(y=>'<option>'+y+'</option>').join('');
+      const source=document.createElement('a');source.textContent='Inspection source';source.href='https://catalogue.data.gov.bc.ca/dataset/compulsory-inspection-data-1900-to-2023-24';source.target='_blank';source.rel='noopener';source.hidden=true;
+      const modes=document.createElement('select');modes.setAttribute('aria-label','Recorded harvest hunt type');modes.hidden=true;
+      modes.innerHTML='<option value="combined">Combined</option><option value="gos">GOS</option><option value="leh">LEH</option>';
+      control.append(chooser,years,modes,source);
+      modes.addEventListener('change',()=>{huntMode=modes.value;removeLayer();if(enabled)void draw();});
+      chooser.addEventListener('change',()=>{recorded=chooser.value==='records';years.hidden=!recorded;modes.hidden=!recorded;modes.value=huntMode;source.hidden=!recorded;removeLayer();resetStats();if(enabled)void draw();});
+      years.addEventListener('change',()=>{recordedYear=years.value;removeLayer();if(enabled)void draw();});
       const instance={
         sync,exitSuccess,isEnabled:()=>enabled&&active(),
         // Production QA checks painted geometry rather than only rendered buttons.

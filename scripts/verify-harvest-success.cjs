@@ -12,7 +12,7 @@ function setup({fail=false,defer=false}={}){
   let species='mule_deer',province='bc',distribution=true;
   const el=id=>{
     if(!elements.has(id))elements.set(id,{hidden:true,disabled:false,textContent:'',value:'current',
-      attributes:{},listeners:{},setAttribute(k,v){this.attributes[k]=v},
+      style:{},dataset:{},append(){},appendChild(){},replaceChildren(){},classList:{toggle(){}},attributes:{},listeners:{},setAttribute(k,v){this.attributes[k]=v},
       addEventListener(k,fn){this.listeners[k]=fn},click(){return this.listeners.click?.()},
       change(){return this.listeners.change?.()},input(){return this.listeners.input?.()}});
     return elements.get(id);
@@ -24,8 +24,8 @@ function setup({fail=false,defer=false}={}){
     properties:{wmu_id:i===0?'3-27':i===1?'3-31':i===2?'7-50':'unused-'+i},
     geometry:{type:'Polygon',coordinates:[]}}));
   const w={HUNTSMART_SPECIES:catalogue};
-  const sandbox={window:w,document:{getElementById:el,
-    createElement(){return{style:{},children:[],appendChild(child){this.children.push(child)}}},
+  const sandbox={window:w,document:{createElementNS:()=>el('svg-'+elements.size),createTextNode:t=>t,getElementById:el,querySelectorAll:()=>[],querySelector:()=>null,
+    createElement(){return el('generated-'+elements.size)},
     head:{appendChild(script){
       const done=()=>{sandbox.BC_WMU_GEOJSON={type:'FeatureCollection',features};
         if(fail)script.onerror();else script.onload()};
@@ -39,6 +39,7 @@ function setup({fail=false,defer=false}={}){
         });
       }
       return Promise.resolve({ok:true,json:async()=>
+        url.includes('bc-recorded-harvests')?JSON.parse(fs.readFileSync(path.join(__dirname,'../species-map/data/bc-recorded-harvests.json'))):
         url.includes('bc-sheep-age')?ages:
         url.includes('harvest-history-')?(()=>{
           const selectedCode=url.match(/harvest-history-([a-z]+)\.json/)?.[1]?.toUpperCase();
@@ -55,12 +56,22 @@ function setup({fail=false,defer=false}={}){
     onModeChange(){distribution=!api.isEnabled();api.sync()}
   });
   api.sync();
-  return{el,api,w,layers,popups,get distribution(){return distribution},
+  return{elements,el,api,w,layers,popups,get distribution(){return distribution},
     setSpecies(v){species=v;api.sync()},setProvince(v){province=v;api.sync()},
     release(){assert(release);release()}};
 }
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 (async()=>{
+  const records=setup();records.setSpecies('bighorn_sheep');
+  const find=label=>[...records.elements.values()].find(e=>e.attributes['aria-label']===label);
+  find('Harvest data view').value='records';find('Harvest data view').change();
+  records.el('hs-harvest-toggle').click();await flush();
+  const units=()=>new Set(records.layers.at(-1).fc.features.map(f=>f.properties.wmu_id));
+  const combined=units();
+  find('Recorded harvest hunt type').value='gos';find('Recorded harvest hunt type').change();await flush();const gos=units();
+  find('Recorded harvest hunt type').value='leh';find('Recorded harvest hunt type').change();await flush();const leh=units();
+  assert.deepEqual(combined,new Set([...gos,...leh]));assert(combined.has('3-31'));
+  records.setSpecies('roosevelt_elk');await flush();assert(!units().has('3-31'));
   const base=setup();
   const keys=[...catalogue.map(x=>x.key),...extra];
   assert.equal(keys.length,31);
