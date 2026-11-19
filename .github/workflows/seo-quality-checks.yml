@@ -1,0 +1,91 @@
+name: SEO quality checks
+
+on:
+  pull_request:
+    paths:
+      - "build-seo-quality.py"
+      - "netlify.toml"
+      - ".github/workflows/seo-quality-checks.yml"
+
+jobs:
+  verify-generated-seo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install repository dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate Python syntax
+        run: python3 -m py_compile build-seo-quality.py
+      - name: Run generated-page regression checks
+        shell: bash
+        run: |
+          rm -rf site
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path("site")
+          files = [
+              "index.html",
+              "bc-hunting/moose-leh-odds/index.html",
+              "bc-hunting/index.html",
+              "blog/how-does-bc-leh-work/index.html",
+              "blog/easiest-bc-leh-draws-stability/index.html",
+              "blog/which-bc-leh-odds-are-most-stable/index.html",
+              "research/index.html",
+              "blog/bc-general-open-season-explorer/index.html",
+              "blog/bc-moose-leh-odds-trends/index.html",
+          ]
+          for rel in files:
+              path = root / rel
+              path.parent.mkdir(parents=True, exist_ok=True)
+              content = '<!doctype html><html><head><title>Original</title></head><body><article>Sample</article></body></html>'
+              if rel == "bc-hunting/index.html":
+                  content = '<html><head><title>Hub</title></head><body><article class="article-body">Hub content</article></body></html>'
+              if rel == "research/index.html":
+                  content = '<html><head><title>Research</title></head><body><article><h2>Source transparency</h2></article></body></html>'
+              if rel == "blog/how-does-bc-leh-work/index.html":
+                  content = '<html><head><title>Guide</title></head><body><article><h2 id="hunt">First topic</h2></article></body></html>'
+              path.write_text(content, encoding="utf-8")
+          PY
+          python3 build-seo-quality.py
+          python3 build-seo-quality.py
+          python3 - <<'PY'
+          from pathlib import Path
+          homepage = Path("site/index.html").read_text()
+          assert homepage.count('name="description"') == 1
+          assert "/blog/bc-moose-leh-odds-trends/" not in homepage
+          hub = Path("site/bc-hunting/index.html").read_text()
+          assert hub.count('id="huntsmart-related-research"') == 1
+          research = Path("site/research/index.html").read_text()
+          assert research.count("How to use these sources") == 1
+          guide = Path("site/blog/how-does-bc-leh-work/index.html").read_text()
+          assert guide.count("Looking for your next step?") == 1
+          print("Synthetic SEO regression fixtures passed.")
+          PY
+      - name: Build generated public SEO pages
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          import tomllib
+          from pathlib import Path
+          with Path("netlify.toml").open("rb") as handle:
+              command = tomllib.load(handle)["build"]["command"]
+          public_command = command.split(" && cp -R species-map site/species-map", 1)[0]
+          assert public_command != command, "Expected private map build boundary"
+          subprocess.run(["bash", "-lc", public_command], check=True)
+          print("Public SEO page generation passed; private species-map assembly is separate.")
+          PY
+          python3 - <<'PY'
+          from pathlib import Path
+          assert 'name="description"' in Path("site/index.html").read_text().split("</head>", 1)[0]
+          for page in (
+              "site/bc-hunting/index.html",
+              "site/blog/how-does-bc-leh-work/index.html",
+              "site/research/index.html",
+          ):
+              assert Path(page).is_file(), f"Build missing {page}"
+          print("Real generated page checks passed.")
+          PY
