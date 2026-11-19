@@ -3,10 +3,10 @@
   // BC Government WMU 2020-24 figures, not third-party estimates. Parent-species
   // records cannot be interpreted as subspecies-specific, GOS or trophy odds.
   const BC_GOVERNMENT_HARVEST_DATA='https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024';
-  const OFFICIAL_SOURCE='/species-map/data/bc-official-harvest-wmu-2020-2024.json?v=gov-bc-20261113';
+  const OFFICIAL_SOURCE='/species-map/data/verified/bc-official-harvest-wmu-2020-2024.json?v=validated-20261119';
   // Read only the selected government's species category instead of downloading
   // the entire ~916 KB provincial archive whenever Success is opened.
-  const HISTORY_SOURCE=code=>'/species-map/data/harvest-history-'+code.toLowerCase()+'.json?v=sharded-20261118';
+  const HISTORY_SOURCE=code=>'/species-map/data/verified/harvest-history-'+code.toLowerCase()+'.json?v=validated-20261119';
   const SOURCE_SHA='e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e';
   const SHEEP_AGES='/species-map/data/bc-sheep-age-ci-2022-2025.json?v=20261113f';
   const LEH_SOURCE='/species-map/data/bc-leh-single-wmu-1984-2023.json?v=20261119a';
@@ -295,7 +295,8 @@
     if(!yrs.length)return null;
     if(yrs.length===1){
       const y=yrs[0],v=yearlyEstimate(id,y);
-      return Array.isArray(v)?{y:v,coverage:1}:null;
+      const validated=huntMode==='combined'?history?.metrics?.[id]?.[String(y)]:null;
+      return Array.isArray(v)?{y:v,coverage:1,validated}:null;
     }
     // The published 2020–24 provincial pooled estimate is retained verbatim.
     if(huntMode==='combined'&&period.value==='average'&&yrs.length===5&&yrs[0]===2020&&yrs[4]===2024){
@@ -317,8 +318,12 @@
        v[0]<=0||v[1]<0)return null;
     const hunters=v[0],kills=v[1],years=pooled?v[2]:1;
     const requested=selectedYears().length;
-    return {hunters,kills,years,rate:Math.round(1000*kills/hunters)/10,
+    // Annual combined results use the Python-reconciled rate and quality contract.
+    // LEH and pooled statistics preserve their distinct source-specific calculations.
+    const checked=(!pooled&&huntMode==='combined')?rec?.validated:null;
+    return {hunters,kills,years,rate:checked&&Number.isFinite(checked[0])?checked[0]:Math.round(1000*kills/hunters)/10,
       reliable:hunters>=(pooled?50:10)&&kills<=hunters&&
+        (!checked||checked[1]==='ratio_comparable')&&
         Number.isFinite(years)&&years>=(pooled?Math.min(3,requested):1),
       coverage:years+'/'+requested};
   }
