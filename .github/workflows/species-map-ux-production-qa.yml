@@ -11,6 +11,7 @@ on:
       - species-map/harvest-success.js
       - species-map/elk-species.js
       - scripts/patch-rocky-elk-only.cjs
+      - scripts/install-alberta-species.cjs
       - scripts/install-harvest-success.cjs
       - scripts/install-huntsmart-minimal-ui.cjs
 
@@ -72,9 +73,13 @@ jobs:
             await page.locator('.hs-province-toggle').click();
             assert.equal(await page.locator('.hs-province-toggle').innerText(),'AB',
               'Province button must switch directly to Alberta without a menu');
+            assert.equal(await page.locator('#era-control').isVisible(),false,
+              'Alberta must not expose unsupported BC distribution and Success tabs');
             await page.locator('.hs-province-toggle').click();
             assert.equal(await page.locator('.hs-province-toggle').innerText(),'BC',
               'Province button must switch back to British Columbia');
+            assert.equal(await page.locator('#era-control').isVisible(),true,
+              'BC mode tabs must return after leaving Alberta');
             await page.locator('#hs-harvest-toggle').click();
             await page.locator('#hs-year-trigger').waitFor({state:'visible',timeout:30000});
             assert.equal(await page.locator('#hs-harvest-period').inputValue(),'ten',
@@ -129,7 +134,7 @@ jobs:
             await page.locator('#hs-harvest-toggle').click();
             await page.waitForFunction(()=>window.HUNTSMART_HARVEST_RENDER_STATE?.()?.ready,
               null,{timeout:45000});
-            const rockyDetail=await page.locator('#hs-harvest-detail').innerText();
+            const rockyDetail=await page.locator('#hs-harvest-detail').textContent();
             assert(rockyDetail.includes('Regions 1 and 2 excluded') && rockyDetail.includes('not subspecies-specific'),
               'Rocky elk success must explain exclusions and all-elk source data');
             await page.locator('#era-historical').click();
@@ -144,7 +149,7 @@ jobs:
             await page.locator('#hs-harvest-toggle').click();
             await page.waitForFunction(()=>window.HUNTSMART_HARVEST_RENDER_STATE?.()?.ready,
               null,{timeout:45000});
-            const rooseveltDetail=await page.locator('#hs-harvest-detail').innerText();
+            const rooseveltDetail=await page.locator('#hs-harvest-detail').textContent();
             assert(rooseveltDetail.includes('not subspecies-specific') &&
               !rooseveltDetail.includes('Regions 1 and 2 excluded'),
               'Roosevelt must use general elk methodology but not Rocky exclusions');

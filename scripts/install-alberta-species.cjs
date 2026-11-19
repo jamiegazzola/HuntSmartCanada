@@ -56,12 +56,12 @@
   app = replace(app,
     '    const item = speciesByKey[select.value];',
     "    const item = (province === 'ab' ? albertaByKey : speciesByKey)[select.value];",'selected species');
-  // The private map hides the era control for special elk modes. Alberta
-  // has no validated seasonal datasets, so its era control stays hidden.
-  app = app.replaceAll('eraControl.hidden = isRoosevelt || isRockyElk;',
-    "eraControl.hidden = province === 'ab' || isRoosevelt || isRockyElk;");
-  app = app.replaceAll("eraControl.style.display = (isRoosevelt || isRockyElk) ? 'none' : '';",
-    "eraControl.style.display = (province === 'ab' || isRoosevelt || isRockyElk) ? 'none' : '';");
+  // BC elk keeps its source-supported tabs and Success; Alberta does not
+  // offer validated historical or hunter-success overlays, so hide the modes.
+  app = replace(app,'    eraControl.hidden = false;',
+    "    eraControl.hidden = province === 'ab';",'Alberta era visibility');
+  app = replace(app,"    eraControl.style.display = '';",
+    "    eraControl.style.display = province === 'ab' ? 'none' : '';",'Alberta era display');
   app = replace(app,
     "    evidenceToggle.hidden = !(KMZ_HEATMAPS.has(item.key) && (viewMode === 'modern' || viewMode === 'historical'));",
     "    evidenceToggle.hidden = province === 'ab' || !(KMZ_HEATMAPS.has(item.key) && (viewMode === 'modern' || viewMode === 'historical'));",'hide BC evidence');

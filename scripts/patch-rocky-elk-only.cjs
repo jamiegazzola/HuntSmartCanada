@@ -33,7 +33,7 @@ const eraReplacement = `    const eraControl = document.querySelector('.era-cont
     const elkPolicy = window.HUNTSMART_ELK_POLICY;
     if (!elkPolicy) throw new Error('HuntSmart elk identity rules did not load.');
     const isRoosevelt = elkPolicy.isRoosevelt(item.key);
-    const isRockyElk = elkPolicy.isRocky(item.key);
+    const isRockyElk = elkPolicy.isRocky(item.key) && (typeof province === 'undefined' || province === 'bc');
     // Keep the common toolbar visible: Success is a child of .era-control.
     eraControl.hidden = false;
     eraControl.style.display = '';
