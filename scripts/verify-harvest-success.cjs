@@ -62,17 +62,11 @@ function setup({fail=false,defer=false}={}){
 }
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 (async()=>{
-  const records=setup();records.setSpecies('bighorn_sheep');
-  const find=label=>[...records.elements.values()].find(e=>e.attributes['aria-label']===label);
-  find('Harvest data view').value='records';find('Harvest data view').change();
-  records.el('hs-harvest-toggle').click();await flush();
-  const units=()=>new Set(records.layers.at(-1).fc.features.map(f=>f.properties.wmu_id));
-  const combined=units();
-  find('Recorded harvest hunt type').value='gos';find('Recorded harvest hunt type').change();await flush();const gos=units();
-  find('Recorded harvest hunt type').value='leh';find('Recorded harvest hunt type').change();await flush();const leh=units();
-  assert.deepEqual(combined,new Set([...gos,...leh]));assert(combined.has('3-31'));
-  records.setSpecies('roosevelt_elk');await flush();assert(!units().has('3-31'));
   const base=setup();
+  assert(![...base.elements.values()].some(e=>e.attributes['aria-label']==='Harvest data view'),
+    'Success must not add a survey/inspection chooser');
+  assert(![...base.elements.values()].some(e=>e.attributes['aria-label']==='Recorded harvest hunt type'),
+    'Recorded-harvest-only selector must not appear');
   const keys=[...catalogue.map(x=>x.key),...extra];
   assert.equal(keys.length,31);
   assert.equal(Object.keys(base.w.HUNTSMART_BC_HARVEST_CODES).length,31,
@@ -82,6 +76,8 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   base.el('hs-harvest-toggle').click();await flush();
   assert(base.api.isEnabled());assert.equal(base.distribution,false);
   assert(base.layers.at(-1).fc.features.length===225);
+  assert(base.el('hs-harvest-detail').textContent.includes('WMUs with comparable'),
+    'Official combined survey view must draw directly without a data-view switch');
   // Single-year data and compact WMU card must be tied to real unit geometry.
   base.el('hs-harvest-period').value='current';base.el('hs-harvest-period').change();await flush();
   const m=base.layers.at(-1);
