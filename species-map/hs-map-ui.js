@@ -58,7 +58,7 @@
   toolbar.append(header,modes);
   // Terrain stays an independent floating control, outside the compact toolbar.
   const current=()=>document.getElementById('province-alberta')?.getAttribute('aria-pressed')==='true'?'AB':'BC';
-  const refreshProvince=()=>{provinceToggle.textContent=current()+'⌄';};
+  const refreshProvince=()=>{provinceToggle.textContent=current();};
   refreshProvince();
   const closeProvince=()=>{provinceMenu.hidden=true;provinceToggle.setAttribute('aria-expanded','false');};
   provinceToggle.addEventListener('click',()=>{
