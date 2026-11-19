@@ -9,6 +9,9 @@ on:
       - species-map/hs-map-ui.js
       - species-map/hs-map-ui.css
       - species-map/harvest-success.js
+      - species-map/elk-species.js
+      - scripts/patch-rocky-elk-only.cjs
+      - scripts/install-harvest-success.cjs
       - scripts/install-huntsmart-minimal-ui.cjs
 
 permissions:
@@ -111,6 +114,44 @@ jobs:
               'Switching from success to Modern failed');
             assert.equal(await page.locator('#hs-year-trigger').isVisible(),false,
               'Year picker should hide outside Success');
+            // Elk's only supported distribution era remains accessible alongside Success.
+            await page.locator('#species').selectOption('elk');
+            assert.equal(await page.locator('#era-control').isVisible(),true,
+              'Rocky Mountain elk must not hide the toolbar containing Success');
+            assert.equal(await page.locator('#era-modern').isVisible(),false,
+              'Rocky Mountain elk does not have a verified modern distribution layer');
+            assert.equal(await page.locator('#era-historical').isVisible(),true);
+            assert.equal(await page.locator('#era-historical').getAttribute('aria-pressed'),'true');
+            assert.equal(await page.locator('#hs-harvest-toggle').isVisible(),true);
+            assert(await page.evaluate(()=>window.HUNTSMART_ELK_POLICY?.excludesFromSuccess('elk','1-10') &&
+              window.HUNTSMART_ELK_POLICY?.excludesFromSuccess('elk','2-12')),
+              'Production elk species identity must exclude Regions 1 and 2');
+            await page.locator('#hs-harvest-toggle').click();
+            await page.waitForFunction(()=>window.HUNTSMART_HARVEST_RENDER_STATE?.()?.ready,
+              null,{timeout:45000});
+            const rockyDetail=await page.locator('#hs-harvest-detail').innerText();
+            assert(rockyDetail.includes('Regions 1 and 2 excluded') && rockyDetail.includes('not subspecies-specific'),
+              'Rocky elk success must explain exclusions and all-elk source data');
+            await page.locator('#era-historical').click();
+            assert.equal(await page.locator('#hs-year-trigger').isVisible(),false);
+            await page.locator('#species').selectOption('roosevelt_elk');
+            assert.equal(await page.locator('#era-control').isVisible(),true,
+              'Roosevelt elk must not hide the toolbar containing Success');
+            assert.equal(await page.locator('#era-modern').isVisible(),true);
+            assert.equal(await page.locator('#era-modern').innerText(),'Distribution');
+            assert.equal(await page.locator('#era-historical').isVisible(),false);
+            assert.equal(await page.locator('#hs-harvest-toggle').isVisible(),true);
+            await page.locator('#hs-harvest-toggle').click();
+            await page.waitForFunction(()=>window.HUNTSMART_HARVEST_RENDER_STATE?.()?.ready,
+              null,{timeout:45000});
+            const rooseveltDetail=await page.locator('#hs-harvest-detail').innerText();
+            assert(rooseveltDetail.includes('not subspecies-specific') &&
+              !rooseveltDetail.includes('Regions 1 and 2 excluded'),
+              'Roosevelt must use general elk methodology but not Rocky exclusions');
+            await page.locator('#species').selectOption('moose');
+            assert.equal(await page.locator('#era-modern').isVisible(),true);
+            assert.equal(await page.locator('#era-historical').isVisible(),true);
+            assert.equal(await page.locator('#era-modern').innerText(),'Modern');
             // Page-origin errors originating from Google/Mapbox can be logged independently.
             assert(!errs.some(s=>/controls missing|ReferenceError.*hs-map-ui|Cannot read properties of null.*appendChild/i.test(s)),
               'HuntSmart control runtime failed: '+errs.join(' | '));

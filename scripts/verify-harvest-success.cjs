@@ -21,7 +21,8 @@ function setup({fail=false,defer=false}={}){
     addGeoJson(fc){this.fc=fc}addListener(k,fn){this.listener=fn}
     setStyle(style){this.style=style}setMap(map){this.map=map}}
   const features=Array.from({length:225},(_,i)=>({type:'Feature',
-    properties:{wmu_id:i===0?'3-27':i===1?'3-31':i===2?'7-50':'unused-'+i},
+    properties:{wmu_id:i===0?'3-27':i===1?'3-31':i===2?'7-50':
+      i===3?'1-10':i===4?'2-12':i===5?'4-24':'unused-'+i},
     geometry:{type:'Polygon',coordinates:[]}}));
   const w={HUNTSMART_SPECIES:catalogue};
   const sandbox={window:w,document:{createElementNS:()=>el('svg-'+elements.size),createTextNode:t=>t,getElementById:el,querySelectorAll:()=>[],querySelector:()=>null,
@@ -49,6 +50,7 @@ function setup({fail=false,defer=false}={}){
     google:{maps:{Data,InfoWindow:class{close(){}setContent(c){popups.push(c)}setPosition(){}open(){}}}},
     console};
   vm.createContext(sandbox);
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'../species-map/elk-species.js'),'utf8'),sandbox);
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../species-map/harvest-success.js'),'utf8'),sandbox);
   let api;
   api=w.HUNTSMART_HARVEST_SUCCESS.attach({
@@ -67,6 +69,10 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
     'Success must not add a survey/inspection chooser');
   assert(![...base.elements.values()].some(e=>e.attributes['aria-label']==='Recorded harvest hunt type'),
     'Recorded-harvest-only selector must not appear');
+  const patched=fs.readFileSync(path.join(__dirname,'patch-rocky-elk-only.cjs'),'utf8');
+  assert(patched.includes("eraControl.hidden = false;") && patched.includes("eraModern.hidden = isRockyElk;") &&
+         patched.includes("eraHistorical.hidden = isRoosevelt;"),
+    'Private distribution patch must preserve visible Success controls for both elk species');
   const keys=[...catalogue.map(x=>x.key),...extra];
   assert.equal(keys.length,31);
   assert.equal(Object.keys(base.w.HUNTSMART_BC_HARVEST_CODES).length,31,
@@ -108,10 +114,33 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   base.setSpecies('elk');await flush();
   assert.equal(prior.map,null);assert(base.api.isEnabled());assert(!base.distribution);
   assert(base.layers.at(-1).fc.features.length===225);
+  const policy=base.w.HUNTSMART_ELK_POLICY;
+  assert(policy.isRocky('elk')&&policy.isRocky('rocky_elk_kootenay'));
+  assert(policy.isRoosevelt('roosevelt_elk')&&!policy.isRocky('roosevelt_elk'));
+  for(const id of ['1-10','2-12']) {
+    assert(policy.excludesFromSuccess('elk',id));
+    const style=base.layers.at(-1).style({getProperty:()=>id});
+    assert.equal(style.fillOpacity,0,'Rocky elk must not shade WMU '+id);
+    assert.equal(style.clickable,false,'Rocky elk must not allow selection in WMU '+id);
+  }
+  const elkLayer=base.layers.at(-1);
+  assert(elkLayer.style({getProperty:()=> '4-24'}).fillOpacity>0,
+    'Kootenay elk success layer should still render where official records are comparable');
+  elkLayer.listener({feature:{getProperty:()=> '1-10'},latLng:{}});
+  assert.equal(base.el('hs-wmu-card').hidden,true,'Excluded Rocky elk unit cannot open details');
+  elkLayer.listener({feature:{getProperty:()=> '4-24'},latLng:{}});
+  assert(base.el('hs-wmu-meta').textContent.includes('Elk (all subspecies)'),
+    'Rocky distribution must not mislabel official all-elk statistics');
+  assert(base.el('hs-wmu-caveats').textContent.includes('not subspecies-specific'));
+  assert(base.el('hs-harvest-detail').textContent.includes('Regions 1 and 2 excluded'));
   base.el('hs-harvest-period').value='1985';base.el('hs-harvest-period').change();await flush();
   assert(base.el('hs-harvest-detail').textContent.includes('1985'),
     '1985 elk harvest data must be available');
   base.setSpecies('roosevelt_elk');await flush();
+  assert.equal(base.layers.at(-1).style({getProperty:()=> '1-10'}).clickable,true,
+    'Roosevelt selection should not inherit Rocky Mountain elk region exclusions');
+  assert(!base.el('hs-harvest-detail').textContent.includes('Regions 1 and 2 excluded'),
+    'Roosevelt view must not inherit Rocky exclusion note');
   assert.equal(base.el('hs-harvest-period').value,'1985',
     'Historical year selection persists across species');
   base.layers.at(-1).listener({feature:{getProperty:()=> '3-27'},latLng:{}});
