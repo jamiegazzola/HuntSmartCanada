@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
+const {execFileSync}=require('node:child_process');
 const dir = path.join('site','species-map');
 const htmlFile = path.join(dir,'index.html');
 const appFile = path.join(dir,'app.js');
@@ -18,6 +19,10 @@ assert(newCode.includes('window.HUNTSMART_BC_HARVEST_CODES') &&
   newCode.includes('loadOfficial()') &&
   newCode.includes('BC_GOVERNMENT_HARVEST_DATA') &&
   !newCode.includes('hunting-access.com'), 'Official hunter-success module missing');
+// Data contract runs after species-map is copied to site; do not mutate source snapshots.
+execFileSync('python3',['scripts/build-verified-bc-harvest.py','--input',path.join(dir,'data'),'--output',path.join(dir,'data','verified')],{stdio:'inherit'});
+const audit=JSON.parse(fs.readFileSync(path.join(dir,'data','verified','audit-report.json'),'utf8'));
+assert(audit.checks.current_rows_checked>=1400&&audit.checks.pooled_rows_checked>=1400,'BC data contract failed');
 const official=JSON.parse(fs.readFileSync(path.join(dir,'data','bc-official-harvest-wmu-2020-2024.json'),'utf8'));
 assert(official.meta.publisher==='Government of British Columbia' &&
   official.meta.source_sha256==='e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e' &&

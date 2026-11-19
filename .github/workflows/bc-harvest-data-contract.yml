@@ -1,0 +1,50 @@
+name: BC Harvest Data Contract
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/build-verified-bc-harvest.py'
+      - 'scripts/install-harvest-success.cjs'
+      - 'species-map/harvest-success.js'
+      - 'species-map/data/bc-official-harvest-*.json'
+      - 'species-map/data/harvest-history-*.json'
+      - '.github/workflows/bc-harvest-data-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/build-verified-bc-harvest.py'
+      - 'scripts/install-harvest-success.cjs'
+      - 'species-map/harvest-success.js'
+      - 'species-map/data/bc-official-harvest-*.json'
+      - 'species-map/data/harvest-history-*.json'
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build and validate BC source-backed map extracts
+        run: |
+          python3 scripts/build-verified-bc-harvest.py --input species-map/data --output /tmp/bc-harvest-verified
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('/tmp/bc-harvest-verified')
+          report=json.loads((root/'audit-report.json').read_text())
+          assert report['checks']['current_rows_checked'] >= 1400
+          assert report['checks']['pooled_rows_checked'] >= 1400
+          assert any(x['species']=='DEMU' and x['wmu']=='6-13' for x in report['non_probability_records'])
+          assert len(list(root.glob('harvest-history-*.json'))) == 12
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm browser module parses and LEH CSV parser passes
+        run: |
+          node --check species-map/harvest-success.js
+          node scripts/build-leh-history.cjs --self-test
