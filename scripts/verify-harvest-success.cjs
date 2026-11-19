@@ -56,14 +56,19 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   assert.equal(Object.keys(base.w.HUNTSMART_BC_HARVEST_CODES).length,31,
     'Each BC distribution species must have an explicit government category or null');
   for(const key of keys)assert(Object.hasOwn(base.w.HUNTSMART_BC_HARVEST_CODES,key),key+' missing');
+  assert.equal(base.el('hs-harvest-period').value,'ten','Default reporting range is 10 years');
   base.el('hs-harvest-toggle').click();await flush();
   assert(base.api.isEnabled());assert.equal(base.distribution,false);
   assert(base.layers.at(-1).fc.features.length===225);
+  // Single-year data and compact WMU card must be tied to real unit geometry.
+  base.el('hs-harvest-period').value='current';base.el('hs-harvest-period').change();await flush();
   const m=base.layers.at(-1);
   m.listener({feature:{getProperty:()=> '3-27'},latLng:{}});
-  assert.equal(base.popups.at(-1).children.find(x=>x.href)?.textContent,'Data source: Government of BC');
-  assert(base.popups.at(-1).children.some(x=>String(x.textContent).includes('418')));
+  assert.equal(base.el('hs-wmu-title').textContent,'WMU 3-27');
+  assert(base.el('hs-wmu-harvest').textContent.includes('418'),'Actual 2024 harvest in selected WMU');
+  assert.equal(base.el('hs-wmu-card').hidden,false,'Card opens for clicked WMU');
   assert(m.style({getProperty:()=> '3-27'}).fillOpacity>.5,'real BC mule deer rate');
+  assert.equal(m.style({getProperty:()=> '3-27'}).strokeWeight,2.6,'Only clicked WMU highlighted');
   base.el('hs-harvest-period').value='average';base.el('hs-harvest-period').change();
   base.el('hs-harvest-period').value='1985';base.el('hs-harvest-period').change();
   await flush();
@@ -74,12 +79,11 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   const oldLayer=base.layers.at(-1);
   assert(oldLayer!==m && oldLayer?.fc?.features?.length===225,'1989 mule deer WMU geometry visible');
   oldLayer.listener({feature:{getProperty:()=> '3-27'},latLng:{}});
-  assert(base.popups.at(-1).children.some(x=>String(x.textContent).includes('1989')),
-    'Historic year must appear in WMU popup');
-  assert(base.popups.at(-1).children.some(x=>String(x.textContent).includes('current WMU shapes')),
-    'Historic boundary caveat must be visible');
+  assert(base.el('hs-wmu-meta').textContent.includes('1989'),'Historical year labelled in WMU card');
+  assert(base.el('hs-wmu-caveats').textContent.includes('current WMU shapes'),
+    'Historic boundary caveat must remain available');
   base.el('hs-harvest-period').value='current';base.el('hs-harvest-period').change();
-  base.el('hs-harvest-toggle').click();await flush();
+  base.api.exitSuccess();await flush();
   assert.equal(base.distribution,true);assert.equal(m.map,null);assert.equal(oldLayer.map,null);
   // Success mode persists when a BC species changes; old geometry must be detached.
   base.el('hs-harvest-toggle').click();await flush();const prior=base.layers.at(-1);
@@ -93,15 +97,15 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   assert.equal(base.el('hs-harvest-period').value,'1985',
     'Historical year selection persists across species');
   base.layers.at(-1).listener({feature:{getProperty:()=> '3-27'},latLng:{}});
-  assert(base.popups.at(-1).children.some(x=>String(x.textContent).includes('not separate')));
+  assert(base.el('hs-wmu-caveats').textContent.includes('not subspecies-specific'));
   base.setSpecies('stone_sheep');await flush();
   assert.equal(base.el('hs-harvest-period').value,'1985');
   base.layers.at(-1).listener({feature:{getProperty:()=> '7-50'},latLng:{}});
-  assert(!base.popups.at(-1).children.some(x=>String(x.textContent).includes('Stone Sheep mean')),
+  assert(!base.el('hs-wmu-caveats').textContent.includes('Stone Sheep mean'),
     'Modern inspected ram ages must not appear beside 1985 harvest');
   base.el('hs-harvest-period').value='average';base.el('hs-harvest-period').change();
   base.layers.at(-1).listener({feature:{getProperty:()=> '7-50'},latLng:{}});
-  assert(base.popups.at(-1).children.some(x=>String(x.textContent).includes('Stone Sheep mean')),
+  assert(base.el('hs-wmu-caveats').textContent.includes('Stone Sheep mean'),
     'Current sheep average can include labelled 2022–25 age samples');
   // Grizzly hunting is now closed, but historical 1985 records are valid.
   const grizzly=setup();
@@ -121,7 +125,7 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   assert.equal(base.api.isEnabled(),false);
   assert.equal(base.el('hs-harvest-panel').hidden,true);
   const queued=setup({defer:true});queued.el('hs-harvest-toggle').click();await flush();
-  queued.el('hs-harvest-toggle').click();queued.release();await flush();
+  queued.api.exitSuccess();queued.release();await flush();
   assert.equal(queued.layers.length,0,'cancelled boundary request must not paint');
   const broken=setup({fail:true});broken.el('hs-harvest-toggle').click();await flush();
   assert.equal(broken.distribution,true,'failed WMU geometry returns to distribution');

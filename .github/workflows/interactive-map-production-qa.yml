@@ -107,6 +107,12 @@ jobs:
               controlPositions.every((v,i)=>i===0||v>controlPositions[i-1]),
               'Controls must render as opacity, BC/AB, then 3D');
             const displayCss=await text('/species-map/app.css');
+            const compactCss=await text('/species-map/hs-map-ui.css');
+            const compactJs=await text('/species-map/hs-map-ui.js');
+            assert(compactCss.includes('.hs-wmu-card') && compactCss.includes('@media(max-width:700px)') &&
+              compactJs.includes("era.appendChild(success)"), 'Responsive compact map toolbar not deployed');
+            assert(app.includes("? storedMode : 'historical'") && app.includes('harvestSuccess.exitSuccess(true)'),
+              'Historical default or exclusive mode switching missing');
             assert(displayCss.includes('.province-control{position:relative;flex:0 0 98px'),
               'Province switch must sit inside the shared display row');
 
@@ -121,13 +127,13 @@ jobs:
               'Personal GIS file picker or parser missing from production HTML');
             const hunterModule=await waitForMarker('/species-map/harvest-success.js',
               'window.HUNTSMART_BC_HARVEST_CODES=CODE_BY_KEY');
-            assert(hunterModule.includes("btn.textContent=enabled?'Show Distribution':'Show Hunter Success'"),
+            assert(hunterModule.includes("btn.textContent='Success'"),
               'Hunter-success toggle must switch map modes');
             assert(hunterModule.includes('context.onModeChange()'), 'Hunter success must rerender');
-            assert(hunterModule.includes("source.href=BC_GOVERNMENT_HARVEST_DATA") &&
+            assert(hunterModule.includes('BC_GOVERNMENT_HARVEST_DATA') &&
               hunterModule.includes('https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024') &&
               !hunterModule.includes('hunting-access.com') &&
-              hunterModule.includes("source.textContent='Data source: Government of BC'"),
+              abPage.includes('Government of BC harvest statistics'),
               'WMU popup must cite only the official BC government harvest dataset');
             assert(abPage.includes('BC Government dataset'),
               'Hunter-success panel must identify government data');
@@ -169,7 +175,11 @@ jobs:
               app.includes('if (harvestSuccess.isEnabled()) {') &&
               app.includes('personalAlberta.hide();'), 'Distribution must be hidden behind hunter success');
             assert(abPage.includes('id="hs-harvest-toggle"') &&
-              abPage.includes('Show Hunter Success'), 'Hunter-success controls not present');
+              abPage.includes('Show Hunter Success') &&
+              abPage.includes('id="hs-wmu-card"') &&
+              abPage.includes('data-hs-period="ten"') &&
+              abPage.includes('hs-map-ui.js?v=') &&
+              displayCss.includes('.province-control{'), 'Compact historical/success controls not present');
             const abCatalog=await text('/species-map/alberta-species.js');
             assert(abCatalog.includes("type:'federal_boreal_range'"), 'Alberta federal range catalog missing');
             assert(app.includes('species-map-alberta-range-v13'), 'Alberta province switching JS is not deployed');

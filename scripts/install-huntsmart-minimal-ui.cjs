@@ -1,0 +1,89 @@
+'use strict';
+// Runs after every private-map installer. Only the generated species viewer is changed.
+const fs=require('node:fs');
+const path=require('node:path');
+const assert=require('node:assert/strict');
+const root=path.join('site','species-map');
+const file=name=>path.join(root,name);
+const htmlFile=file('index.html'),appFile=file('app.js');
+assert(fs.existsSync(file('hs-map-ui.js'))&&fs.existsSync(file('hs-map-ui.css')),
+  'Compact HuntSmart UI assets must be copied into the generated site');
+let html=fs.readFileSync(htmlFile,'utf8');
+let app=fs.readFileSync(appFile,'utf8');
+assert(html.includes('id="hs-harvest-panel"')&&html.includes('id="hs-harvest-toggle"')&&
+  html.includes('id="province-bc"')&&html.includes('id="era-historical"'),
+  'The existing province, history and hunter-success controls must be installed first');
+assert(app.includes('harvestSuccess.isEnabled()')&&app.includes('function changeEra(mode)'),
+  'Existing exclusive mode logic must be present');
+assert(!html.includes('id="hs-wmu-card"'),'compact UI already installed');
+const periodPanel=html.indexOf('  <section id="hs-harvest-panel"');
+const periodEnd=html.indexOf('  </section>',periodPanel);
+assert(periodPanel>=0&&periodEnd>periodPanel,'year panel boundary missing');
+const yearMarkup=[
+'    <div class="hs-year-header">',
+'      <span>Reporting years</span>',
+'      <button id="hs-year-close" class="hs-year-close" type="button" aria-label="Close year selector">×</button>',
+'    </div>',
+'    <div class="hs-year-presets" role="group" aria-label="Reporting range">',
+'      <button type="button" data-hs-period="current">1 year</button>',
+'      <button type="button" data-hs-period="average">5 yrs</button>',
+'      <button type="button" data-hs-period="ten" aria-pressed="true">10 yrs</button>',
+'      <button type="button" data-hs-period="all">All</button>',
+'      <button type="button" data-hs-period="custom">Custom</button>',
+'    </div>',
+'    <div class="hs-year-custom-label">Custom year range</div>',
+'    <div class="hs-year-custom">',
+'      <label class="sr-only" for="hs-year-from">Start year</label>',
+'      <select id="hs-year-from" aria-label="Start year"><option value="2015">2015</option></select>',
+'      <span aria-hidden="true">–</span>',
+'      <label class="sr-only" for="hs-year-to">End year</label>',
+'      <select id="hs-year-to" aria-label="End year"><option value="2024">2024</option></select>',
+'    </div>',
+'    <p class="hs-year-help">Only reported years are selectable. Multi-year success uses pooled resident harvest and estimated hunters, with missing records excluded.</p>'
+].join('\n')+'\n';
+html=html.slice(0,periodEnd)+yearMarkup+html.slice(periodEnd);
+const extra=[
+'  <button id="hs-year-trigger" class="hs-year-trigger" type="button" hidden aria-controls="hs-harvest-panel" aria-label="Choose hunter success reporting years">Years ▾</button>',
+'  <section id="hs-wmu-card" class="hs-wmu-card" aria-label="Selected wildlife management unit" hidden>',
+'    <div class="hs-wmu-heading">',
+'      <div><h2 id="hs-wmu-title" class="hs-wmu-title">WMU</h2><div id="hs-wmu-meta" class="hs-wmu-meta"></div></div>',
+'      <button type="button" id="hs-wmu-close" class="hs-wmu-close" aria-label="Close management unit details">×</button>',
+'    </div>',
+'    <div class="hs-wmu-stats">',
+'      <div><strong id="hs-wmu-rate">—</strong><span>Success</span></div>',
+'      <div><strong id="hs-wmu-harvest">—</strong><span>Harvest</span></div>',
+'      <div><strong id="hs-wmu-hunters">—</strong><span>Hunters</span></div>',
+'    </div>',
+'    <details><summary>Source &amp; methodology</summary>',
+'      <p id="hs-wmu-caveats" class="hs-wmu-caveats"></p>',
+'      <a href="https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024" target="_blank" rel="noopener noreferrer">Government of BC harvest statistics</a>',
+'    </details>',
+'  </section>',
+''].join('\n');
+const errorAnchor='  <div id="error" ';
+assert(html.includes(errorAnchor),'error mount anchor missing');
+html=html.replace(errorAnchor,extra+errorAnchor);
+const originalDefault="let viewMode = ['modern', 'historical'].includes(storedMode) ? storedMode : 'modern';";
+assert(app.includes(originalDefault),'historic default anchor changed');
+app=app.replace(originalDefault,
+  "const historicalDefaultInitialized=localStorage.getItem('hs-historical-default-v1')==='1';\n"+
+  "  let viewMode = historicalDefaultInitialized && ['modern', 'historical'].includes(storedMode) ? storedMode : 'historical';\n"+
+  "  if(!historicalDefaultInitialized){localStorage.setItem('bc-species-map-era','historical');localStorage.setItem('hs-historical-default-v1','1');}");
+const priorEra="    if (province === 'ab' || mode === viewMode) return;";
+assert(app.includes(priorEra),'expected Alberta era handler not found');
+app=app.replace(priorEra,
+  "    if (province === 'ab') return;\n"+
+  "    const wasSuccess=harvestSuccess.isEnabled();\n"+
+  "    if(wasSuccess)harvestSuccess.exitSuccess(true);\n"+
+  "    if(mode === viewMode){ if(wasSuccess)return renderSelected(); return; }");
+new Function(app);
+const appTag=html.match(/<script src="app\.js\?v=[^"]+"><\/script>/);
+assert(appTag,'app script missing');
+html=html.replace(appTag[0],appTag[0]+'\n  <script src="hs-map-ui.js?v=compact-20261118a"></script>');
+html=html.replace('</head>','  <link rel="stylesheet" href="hs-map-ui.css?v=compact-20261118a">\n</head>');
+html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=compact-20261118a');
+html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=compact-20261118a');
+assert(html.includes('hs-map-ui.js?v=')&&html.includes('hs-map-ui.css?v='),'UI assets not linked');
+fs.writeFileSync(htmlFile,html);
+fs.writeFileSync(appFile,app);
+console.log('Installed two-row HuntSmart toolbar, historical default, WMU card and smart reporting-year picker.');
