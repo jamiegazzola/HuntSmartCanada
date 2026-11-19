@@ -72,6 +72,23 @@ jobs:
             await page.locator('#hs-year-trigger').waitFor({state:'visible',timeout:30000});
             assert.equal(await page.locator('#hs-harvest-period').inputValue(),'ten',
               'Success should default to the real ten-year preset');
+            // A visible toolbar does not prove data was painted. Observe real network
+            // completion and map data before changing periods.
+            const harvestStatus=async()=>page.evaluate(()=>({
+              detail:document.getElementById('hs-harvest-detail')?.textContent,
+              selected:document.getElementById('species')?.value,
+              pressed:document.getElementById('hs-harvest-toggle')?.getAttribute('aria-pressed'),
+              year:document.getElementById('hs-harvest-period')?.value,
+              errors:document.getElementById('error')?.textContent,
+              resources:performance.getEntriesByType('resource').filter(x=>
+                /harvest-history|harvest-wmu|bc-wmu-geojson/.test(x.name)).map(x=>({
+                  url:x.name.split('?')[0],duration:Math.round(x.duration),
+                  transferSize:x.transferSize,decodedBodySize:x.decodedBodySize})),
+            }));
+            await page.waitForTimeout(7000);
+            console.log('SUCCESS_LAYER_DIAGNOSTIC',JSON.stringify({width,...await harvestStatus(),errs:errs.slice(0,10)}));
+            assert((await harvestStatus()).detail?.includes('WMUs with comparable'),
+              'No coloured WMU harvest overlay rendered: '+JSON.stringify(await harvestStatus()));
             await page.locator('#hs-year-trigger').click();
             await page.locator('[data-hs-period="average"]').click();
             assert.equal(await page.locator('#hs-harvest-period').inputValue(),'average',
