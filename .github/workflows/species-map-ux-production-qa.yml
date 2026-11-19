@@ -42,7 +42,13 @@ jobs:
             const page=await context.newPage();
             const errs=[];
             page.on('pageerror',error=>errs.push(error.message));
-            await page.goto(process.env.URL+'?ux-qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+            const navigation=await page.goto(process.env.URL+'?ux-qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+            console.log('SPECIES_MAP_NAV',JSON.stringify({
+              status:navigation?.status(),url:page.url(),title:await page.title(),
+              foundToolbar:await page.locator('.hs-map-toolbar').count(),
+              foundSpecies:await page.locator('.species-control').count(),
+              pageErrors:errs.slice(0,8)
+            }));
             await page.locator('.hs-map-toolbar').waitFor({state:'visible',timeout:30000});
             assert.equal(await page.locator('#era-historical').getAttribute('aria-pressed'),'true',
               'Historical must be the initial map mode');
