@@ -29,6 +29,7 @@
   provinceToggle.setAttribute('aria-label','Switch to Alberta');
   // Single-tap province switch: no dropdown, arrow or extra overlay.
   province.hidden=true;
+  province.style.display='none';
   provinceWrap.append(provinceToggle);
   header.append(species,provinceWrap);
 
