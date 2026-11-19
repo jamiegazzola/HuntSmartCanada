@@ -178,6 +178,8 @@ jobs:
               abPage.includes('Show Hunter Success') &&
               abPage.includes('id="hs-wmu-card"') &&
               abPage.includes('data-hs-period="ten"') &&
+              abPage.includes('<option value="ten">10-year pooled</option>') &&
+              abPage.includes('<option value="all">All available years</option>') &&
               abPage.includes('hs-map-ui.js?v=') &&
               displayCss.includes('.province-control{'), 'Compact historical/success controls not present');
             const abCatalog=await text('/species-map/alberta-species.js');

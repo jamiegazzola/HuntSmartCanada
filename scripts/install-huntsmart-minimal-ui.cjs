@@ -16,6 +16,14 @@ assert(html.includes('id="hs-harvest-panel"')&&html.includes('id="hs-harvest-tog
 assert(app.includes('harvestSuccess.isEnabled()')&&app.includes('function changeEra(mode)'),
   'Existing exclusive mode logic must be present');
 assert(!html.includes('id="hs-wmu-card"'),'compact UI already installed');
+// Preset state must correspond to real <select> option values; otherwise browsers
+// silently reset its value and the map loses the selected reporting period.
+const currentOption='<option value="current">2024</option>';
+assert(html.includes(currentOption),'existing hunter-success select option missing');
+html=html.replace(currentOption,
+  '<option value="ten">10-year pooled</option>\n'+
+  '        <option value="all">All available years</option>\n'+
+  '        <option value="custom">Custom range</option>\n        '+currentOption);
 const periodPanel=html.indexOf('  <section id="hs-harvest-panel"');
 const periodEnd=html.indexOf('  </section>',periodPanel);
 assert(periodPanel>=0&&periodEnd>periodPanel,'year panel boundary missing');
