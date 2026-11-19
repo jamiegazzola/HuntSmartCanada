@@ -19,6 +19,8 @@
   };
   const toolbar=node('div','hs-map-toolbar');
   toolbar.setAttribute('aria-label','Species map controls');
+  // Mount the toolbar before moving its existing controls into it.
+  species.parentNode.insertBefore(toolbar,species);
   const header=node('div','hs-toolbar-header');
   const modes=node('div','hs-toolbar-modes');
   const provinceWrap=node('div','hs-province-wrap');
@@ -54,7 +56,6 @@
   era.appendChild(success);
   modes.append(era,settingsWrap);
   toolbar.append(header,modes);
-  species.parentNode.insertBefore(toolbar,species);
   // Terrain stays an independent floating control, outside the compact toolbar.
   const current=()=>document.getElementById('province-alberta')?.getAttribute('aria-pressed')==='true'?'AB':'BC';
   const refreshProvince=()=>{provinceToggle.textContent=current()+'⌄';};
