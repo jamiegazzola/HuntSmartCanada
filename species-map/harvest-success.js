@@ -74,10 +74,6 @@
   function updateMetricControls(){
     document.querySelectorAll?.('[data-hs-metric]')?.forEach(button=>
       button.setAttribute('aria-pressed',String(button.dataset.hsMetric===mapMetric)));
-    const description=document.getElementById('hs-metric-description');
-    if(description)description.textContent=mapMetric==='success'?
-      'Estimated resident harvest success (%)':
-      'Mean annual estimated hunters per 100 km² of mapped WMU area';
     const legendNode=document.getElementById('hs-metric-legend');
     if(legendNode){
       const labels=mapMetric==='success'?['0–9%','10–19%','20–29%','30–39%','40%+']:
@@ -92,6 +88,7 @@
         legendNode.append(span);
       });
       legendNode.setAttribute('aria-label',mapMetric==='success'?'Success rate legend':'Annual estimated hunters per 100 square kilometres legend');
+      legendNode.hidden=!enabled||!active();
     }
   }
   const btn=document.getElementById('hs-harvest-toggle');
@@ -273,7 +270,7 @@
     const years=availableYears(),chip=document.getElementById('hs-year-trigger');
     if(chip){
       const label=selectedYearLabel().replace(' pooled','');
-      chip.textContent=label==='No available years'?'Years unavailable':label+' ▾';
+      chip.textContent=label==='No available years'?'Years unavailable':label;
       chip.hidden=!enabled||!active();
     }
     const start=document.getElementById('hs-year-from'),end=document.getElementById('hs-year-to');
@@ -288,6 +285,8 @@
       customEnd=Math.max(customStart,Math.min(max,customEnd));
       start.value=String(customStart);end.value=String(customEnd);
     }
+    const customControls=document.getElementById('hs-year-custom-controls');
+    if(customControls)customControls.hidden=period.value!=='custom';
     for(const preset of ['current','average','ten','all','custom']){
       const button=document.querySelector?.('[data-hs-period="'+preset+'"]');
       if(button)button.setAttribute('aria-pressed',String(period.value===preset));
@@ -304,6 +303,8 @@
     selectedWmu=null;
     const card=document.getElementById('hs-wmu-card');
     if(card)card.hidden=true;
+    const floatingLegend=document.getElementById('hs-metric-legend');
+    if(floatingLegend)floatingLegend.hidden=true;
     if(layer){layer.setMap(null);layer=null;}
     if(info)info.close();
     info=null;
@@ -491,7 +492,7 @@
       layer.addGeoJson(collection);
       layer.addListener('click',displayPopup);
       refreshStyle();
-      legend.hidden=false;setDetail(summary());
+      legend.hidden=false;updateMetricControls();setDetail(summary());
     }catch(e){
       if(generation===renderSerial){
         enabled=false;updateButton();legend.hidden=true;period.hidden=true;
@@ -516,6 +517,7 @@
     }
     updateButton();syncYearControls();
     if(enabled&&!layer)void draw();
+    else if(enabled)updateMetricControls();
   }
   function exitSuccess(silent=false){
     if(!enabled)return;

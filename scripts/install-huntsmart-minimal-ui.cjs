@@ -33,8 +33,6 @@ const yearMarkup=[
 '      <button type="button" data-hs-metric="success" aria-pressed="true">Hunter success</button>',
 '      <button type="button" data-hs-metric="density" aria-pressed="false">Hunter density</button>',
 '    </div>',
-'    <div id="hs-metric-description" class="hs-metric-description">Estimated resident harvest success (%)</div>',
-'    <div id="hs-metric-legend" class="hs-metric-legend" aria-label="Hunter success map legend"></div>',
 '    <div class="hs-year-header">',
 '      <span>Reporting years</span>',
 '      <button id="hs-year-close" class="hs-year-close" type="button" aria-label="Close year selector">×</button>',
@@ -46,6 +44,7 @@ const yearMarkup=[
 '      <button type="button" data-hs-period="all">All</button>',
 '      <button type="button" data-hs-period="custom">Custom</button>',
 '    </div>',
+'    <div id="hs-year-custom-controls" class="hs-custom-controls" hidden>',
 '    <div class="hs-year-custom-label">Custom year range</div>',
 '    <div class="hs-year-custom">',
 '      <label class="sr-only" for="hs-year-from">Start year</label>',
@@ -54,11 +53,12 @@ const yearMarkup=[
 '      <label class="sr-only" for="hs-year-to">End year</label>',
 '      <select id="hs-year-to" aria-label="End year"><option value="2024">2024</option></select>',
 '    </div>',
-'    <p class="hs-year-help">Only reported years are selectable. Multi-year success pools reported harvest and estimated hunters. Density uses annual mean estimated hunters per 100 km² of mapped WMU area. This does not measure actual hunter locations or huntable land; missing years are excluded.</p>'
+'    </div>'
 ].join('\n')+'\n';
 html=html.slice(0,periodEnd)+yearMarkup+html.slice(periodEnd);
 const extra=[
-'  <button id="hs-year-trigger" class="hs-year-trigger" type="button" hidden aria-controls="hs-harvest-panel" aria-label="Choose hunter success reporting years">Years ▾</button>',
+'  <button id="hs-year-trigger" class="hs-year-trigger" type="button" hidden aria-controls="hs-harvest-panel" aria-label="Choose hunter success reporting years">Years</button>',
+'  <div id="hs-metric-legend" class="hs-metric-legend" hidden aria-label="Map metric legend"></div>',
 '  <section id="hs-wmu-card" class="hs-wmu-card" aria-label="Selected wildlife management unit" hidden>',
 '    <div class="hs-wmu-heading">',
 '      <div><h2 id="hs-wmu-title" class="hs-wmu-title">WMU</h2><div id="hs-wmu-meta" class="hs-wmu-meta"></div></div>',
