@@ -8,6 +8,8 @@ on:
       - 'scripts/verify-harvest-success.cjs'
       - 'scripts/install-huntsmart-minimal-ui.cjs'
       - 'species-map/harvest-success.js'
+      - 'species-map/elk-species.js'
+      - 'scripts/patch-rocky-elk-only.cjs'
       - 'species-map/data/bc-official-harvest-*.json'
       - 'species-map/data/harvest-history-*.json'
       - '.github/workflows/bc-harvest-data-contract.yml'
@@ -17,6 +19,8 @@ on:
       - 'scripts/build-verified-bc-harvest.py'
       - 'scripts/install-harvest-success.cjs'
       - 'species-map/harvest-success.js'
+      - 'species-map/elk-species.js'
+      - 'scripts/patch-rocky-elk-only.cjs'
       - 'species-map/data/bc-official-harvest-*.json'
       - 'species-map/data/harvest-history-*.json'
 
@@ -48,6 +52,7 @@ jobs:
           node-version: '22'
       - name: Confirm browser module parses and LEH CSV parser passes
         run: |
+          node --check species-map/elk-species.js
           node --check species-map/harvest-success.js
           node scripts/build-leh-history.cjs --self-test
           node scripts/verify-harvest-success.cjs

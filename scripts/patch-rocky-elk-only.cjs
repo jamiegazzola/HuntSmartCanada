@@ -30,12 +30,19 @@ const eraAnchor = `    const eraControl = document.querySelector('.era-control')
       setEraButtons();
     }`;
 const eraReplacement = `    const eraControl = document.querySelector('.era-control');
-    const isRoosevelt = item.type === 'roosevelt';
-    const isRockyElk = item.key === 'elk';
-    eraControl.hidden = isRoosevelt || isRockyElk;
-    eraControl.style.display = (isRoosevelt || isRockyElk) ? 'none' : '';
-    if (isRoosevelt && viewMode !== 'modern') {
-      viewMode = 'modern';
+    const elkPolicy = window.HUNTSMART_ELK_POLICY;
+    if (!elkPolicy) throw new Error('HuntSmart elk identity rules did not load.');
+    const isRoosevelt = elkPolicy.isRoosevelt(item.key);
+    const isRockyElk = elkPolicy.isRocky(item.key) && (typeof province === 'undefined' || province === 'bc');
+    // Keep the common toolbar visible: Success is a child of .era-control.
+    eraControl.hidden = false;
+    eraControl.style.display = '';
+    // Each elk distribution has one defensible era; other species keep both.
+    eraModern.hidden = isRockyElk;
+    eraHistorical.hidden = isRoosevelt;
+    eraModern.textContent = isRoosevelt ? 'Distribution' : 'Modern';
+    if ((isRoosevelt && viewMode !== 'modern') || (isRockyElk && viewMode !== 'historical')) {
+      viewMode = isRoosevelt ? 'modern' : 'historical';
       setEraButtons();
     }`;
 if (!source.includes(eraAnchor)) throw new Error('Species era-control anchor is missing');
@@ -44,7 +51,7 @@ source = source.replace(eraAnchor, eraReplacement);
 const branchAnchor = "      } else if (!showEvidence && KMZ_HEATMAPS.has(item.key) && !(item.key === 'wild_sheep' && viewMode === 'historical') && (viewMode === 'modern' || viewMode === 'historical')) {";
 if (!source.includes(branchAnchor)) throw new Error('Species KMZ branch anchor is missing');
 
-const branchReplacement = `      } else if (item.key === 'elk') {
+const branchReplacement = `      } else if (window.HUNTSMART_ELK_POLICY.isRocky(item.key)) {
         // ROCKY_MOUNTAIN_ELK_ONLY: render the precise historical March 2005
         // image from the user's KMZ, masked against BC Region 1/2 polygons.
         // Do not alter the independent Roosevelt Elk rendering path.

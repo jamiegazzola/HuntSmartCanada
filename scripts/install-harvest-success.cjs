@@ -11,6 +11,9 @@ const cssFile = path.join(dir,'app.css');
 let html = fs.readFileSync(htmlFile,'utf8');
 let app = fs.readFileSync(appFile,'utf8');
 let css = fs.readFileSync(cssFile,'utf8');
+const policyFile = path.join(dir,'elk-species.js');
+assert(fs.existsSync(policyFile),'shared elk species policy must ship with the map');
+new Function(fs.readFileSync(policyFile,'utf8'));
 const jsFile = path.join(dir,'harvest-success.js');
 assert(fs.existsSync(jsFile),'harvest success module must be copied from source');
 const newCode = fs.readFileSync(jsFile,'utf8');
@@ -73,7 +76,7 @@ html = insertUnique(html, '  <div id="error" ', `
   <div id="error" `, 'panel before errors');
 const appTag = html.match(/<script src="app\.js\?v=[^"]+"><\/script>/);
 assert(appTag,'species map app script tag missing');
-html = insertUnique(html,appTag[0],'<script src="harvest-success.js?v=bc-recorded-20261119b"></script>\n  ' + appTag[0], 'load harvest module before viewer');
+html = insertUnique(html,appTag[0],'<script src="elk-species.js?v=elk-identity-20261119a"></script>\n  <script src="harvest-success.js?v=elk-identity-20261119a"></script>\n  ' + appTag[0], 'load shared species policy and harvest module before viewer');
 app = insertUnique(app,'  let map = null;', `  let map = null;
   const harvestSuccess = window.HUNTSMART_HARVEST_SUCCESS.attach({
     getMap: () => map,

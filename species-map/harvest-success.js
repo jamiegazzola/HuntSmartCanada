@@ -2,6 +2,8 @@
   'use strict';
   // BC Government WMU 2020-24 figures, not third-party estimates. Parent-species
   // records cannot be interpreted as subspecies-specific, GOS or trophy odds.
+  const elkPolicy = window.HUNTSMART_ELK_POLICY;
+  if (!elkPolicy?.isElk || !elkPolicy?.excludesFromSuccess) throw Error('Elk species policy unavailable');
   const BC_GOVERNMENT_HARVEST_DATA='https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024';
   const OFFICIAL_SOURCE='/species-map/data/verified/bc-official-harvest-wmu-2020-2024.json?v=validated-20261119';
   // Read only the selected government's species category instead of downloading
@@ -216,12 +218,13 @@
   const key=()=>context?.getSpecies()||'';
   const code=()=>CODE_BY_KEY[key()]||null;
   const isSheep=()=>code()==='SHEE';
-  // The official ELK harvest category combines Roosevelt and Rocky Mountain elk.
-  // Region 1 and 2 elk records cannot be presented as Rocky Mountain elk success.
-  const excludedForSpecies=id=>key()==='rocky_elk_kootenay'&&/^[12]-\d+(?:\D|$)/.test(String(id));
+  // Shared with the private distribution viewer; 'elk' is its Rocky key.
+  const excludedForSpecies=id=>elkPolicy.excludesFromSuccess(key(),id);
   const active=()=>!!context&&context.getProvince()==='bc';
-  const label=()=>(window.HUNTSMART_SPECIES||[]).find(item=>item.key===key())?.label||
-    key().replace(/_/g,' ');
+  // The drop-down may say Rocky Mountain or Roosevelt; the source's success
+  // denominator is the combined provincial ELK category, never subspecies.
+  const label=()=>elkPolicy.isElk(key())?elkPolicy.surveyLabel:
+    (window.HUNTSMART_SPECIES||[]).find(item=>item.key===key())?.label||key().replace(/_/g,' ');
   const rows=()=>official?.species?.[code()]||null;
   const historicalYear=()=>/^\d{4}$/.test(period.value)&&Number(period.value)<2024;
   let yearsMemoCode=null,yearsMemoHistory=null,yearsMemoOfficial=null,yearsMemo=[];
@@ -425,8 +428,9 @@
     if(huntersLabel)huntersLabel.textContent=huntMode==='leh'?'LEH hunter participations':'Hunters';
     if(!s?.reliable)caveats.push(s?'Small or non-comparable sample; not mapped as a reliable rate.':'No comparable resident estimate for this period.');
     if(s?.coverage&&selectedYears().length>1)caveats.push('Reported years: '+s.coverage+'.');
-    if(!EXACT.has(key()))caveats.push('BC category: '+(NAMES[code()]||'unavailable')+'; not subspecies-specific.');
-    if(key()==='rocky_elk_kootenay')caveats.push('Regions 1 and 2 excluded: provincial elk figures combine Roosevelt and Rocky Mountain elk; other regions are not subspecies-verified.');
+    if(elkPolicy.isElk(key()))caveats.push('BC provincial ELK harvest statistics combine Roosevelt and Rocky Mountain elk; the success rate is not subspecies-specific.');
+    else if(!EXACT.has(key()))caveats.push('BC category: '+(NAMES[code()]||'unavailable')+'; not subspecies-specific.');
+    if(elkPolicy.isRocky(key()))caveats.push('Regions 1 and 2 are excluded from the Rocky Mountain elk success layer.');
     caveats.push(huntMode==='leh'?
       'LEH estimates are by hunt code, aggregated only where each record refers to one WMU and has complete survey estimates. Hunter participation may count a person more than once across hunt codes.':
       'Combined resident harvest; not GOS-only, LEH draw, legal-ram or trophy odds.');
@@ -515,11 +519,13 @@
     if(!type)return 'No comparable BC Government WMU hunter-success category for '+label()+'.';
     const closure=type==='BEAG'?' Grizzly bear hunting is closed in BC; these are historical records.':'';
     if(huntMode==='gos')return 'GOS-only WMU success is not available in the published datasets. The Hunter Sample Survey includes GOS and LEH; subtracting separate LEH survey counts would not be statistically valid. Switch to LEH or Combined.';
-    const elkWarning=key()==='rocky_elk_kootenay'?' Regions 1 and 2 excluded; remaining provincial ELK figures are not subspecies-specific.':'';
+    const elkWarning=elkPolicy.isElk(key())?
+      ' Provincial ELK records combine Roosevelt and Rocky Mountain elk; not subspecies-specific success.'+
+        (elkPolicy.isRocky(key())?' Regions 1 and 2 excluded for Rocky Mountain elk.':''):'';
     if(!n)return 'No sufficiently reported '+date+' WMU hunter-success data for '+label()+'.'+caution;
     return n+' WMUs with comparable '+date+
       ' resident harvest estimates. Grey = missing/small sample. Tap a WMU for details.'+
-      (EXACT.has(key())?'':' Provincial category: '+NAMES[type]+' (not subspecies-specific).')+
+      (EXACT.has(key())||elkPolicy.isElk(key())?'':' Provincial category: '+NAMES[type]+' (not subspecies-specific).')+
       closure+elkWarning+caution+(huntMode==='leh'?' LEH survey is reported by hunt code; mapped only for single-WMU hunt areas.':'');
   }
   async function draw(){
