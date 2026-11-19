@@ -26,12 +26,10 @@
   const provinceWrap=node('div','hs-province-wrap');
   const provinceToggle=node('button','hs-province-toggle','BC');
   provinceToggle.type='button';
-  provinceToggle.setAttribute('aria-label','Choose province');
-  provinceToggle.setAttribute('aria-expanded','false');
-  const provinceMenu=node('div','hs-province-menu');
-  provinceMenu.hidden=true;
-  provinceMenu.appendChild(province);
-  provinceWrap.append(provinceToggle,provinceMenu);
+  provinceToggle.setAttribute('aria-label','Switch to Alberta');
+  // Single-tap province switch: no dropdown, arrow or extra overlay.
+  province.hidden=true;
+  provinceWrap.append(provinceToggle);
   header.append(species,provinceWrap);
 
   const settingsWrap=node('div','hs-settings-wrap');
@@ -58,20 +56,20 @@
   toolbar.append(header,modes);
   // Terrain stays an independent floating control, outside the compact toolbar.
   const current=()=>document.getElementById('province-alberta')?.getAttribute('aria-pressed')==='true'?'AB':'BC';
-  const refreshProvince=()=>{provinceToggle.textContent=current();};
+  const refreshProvince=()=>{
+    const chosen=current();
+    provinceToggle.textContent=chosen;
+    provinceToggle.setAttribute('aria-label',chosen==='BC'?'Switch to Alberta':'Switch to British Columbia');
+  };
   refreshProvince();
-  const closeProvince=()=>{provinceMenu.hidden=true;provinceToggle.setAttribute('aria-expanded','false');};
   provinceToggle.addEventListener('click',()=>{
-    const expanded=provinceMenu.hidden;
-    provinceMenu.hidden=!expanded;
-    provinceToggle.setAttribute('aria-expanded',String(expanded));
+    const next=current()==='BC'?'province-alberta':'province-bc';
+    document.getElementById(next)?.click();
+    refreshProvince();
     settings.hidden=true;settingsToggle.setAttribute('aria-expanded','false');
   });
   for(const id of ['province-bc','province-alberta']){
-    const button=document.getElementById(id);
-    button?.addEventListener('click',()=>{
-      refreshProvince();closeProvince();
-    });
+    document.getElementById(id)?.addEventListener('click',refreshProvince);
   }
   settingsToggle.addEventListener('click',()=>{
     const expanded=settings.hidden;
@@ -83,11 +81,10 @@
     if(!settingsWrap.contains(event.target)){
       settings.hidden=true;settingsToggle.setAttribute('aria-expanded','false');
     }
-    if(!provinceWrap.contains(event.target))closeProvince();
   });
   document.addEventListener('keydown',event=>{
     if(event.key==='Escape'){
-      closeProvince();settings.hidden=true;
+      settings.hidden=true;
       settingsToggle.setAttribute('aria-expanded','false');
       document.getElementById('hs-harvest-panel')?.classList.remove('is-open');
     }

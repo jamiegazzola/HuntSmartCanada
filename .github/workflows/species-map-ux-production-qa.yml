@@ -60,6 +60,14 @@ jobs:
             });
             assert(geometry.left>=0&&geometry.right<=width+2,
               'Toolbar exceeds the map viewport: '+JSON.stringify(geometry));
+            const initialProvince=await page.locator('.hs-province-toggle').innerText();
+            assert.equal(initialProvince,'BC','Default province should be BC');
+            await page.locator('.hs-province-toggle').click();
+            assert.equal(await page.locator('.hs-province-toggle').innerText(),'AB',
+              'Province button must switch directly to Alberta without a menu');
+            await page.locator('.hs-province-toggle').click();
+            assert.equal(await page.locator('.hs-province-toggle').innerText(),'BC',
+              'Province button must switch back to British Columbia');
             await page.locator('#hs-harvest-toggle').click();
             await page.locator('#hs-year-trigger').waitFor({state:'visible',timeout:30000});
             assert.equal(await page.locator('#hs-harvest-period').inputValue(),'ten',
