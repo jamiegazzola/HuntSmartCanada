@@ -54,6 +54,10 @@ jobs:
               'Historical must be the initial map mode');
             assert.equal(await page.locator('.hs-map-toolbar #hs-harvest-toggle').count(),1,
               'Success must be in compact toolbar');
+            assert.equal(await page.getByLabel('Harvest data view').count(),0,
+              'Separate survey and inspection switch must not appear');
+            assert.equal(await page.locator('[data-hs-huntmode]').count(),0,
+              'Separate LEH/GOS controls must not appear');
             const geometry=await page.locator('.hs-map-toolbar').evaluate(e=>{
               const r=e.getBoundingClientRect();
               return {left:r.left,right:r.right,bottom:r.bottom,width:innerWidth,height:innerHeight};

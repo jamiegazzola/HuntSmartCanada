@@ -64,11 +64,6 @@ const extra=[
 '      <div><h2 id="hs-wmu-title" class="hs-wmu-title">WMU</h2><div id="hs-wmu-meta" class="hs-wmu-meta"></div></div>',
 '      <button type="button" id="hs-wmu-close" class="hs-wmu-close" aria-label="Close management unit details">×</button>',
 '    </div>',
-'    <div class="hs-trend-mode" role="group" aria-label="Hunting regulation type">',
-'      <button type="button" data-hs-huntmode="leh" aria-pressed="false">LEH</button>',
-'      <button type="button" data-hs-huntmode="gos" aria-pressed="false">GOS</button>',
-'      <button type="button" data-hs-huntmode="combined" aria-pressed="true">Combined</button>',
-'    </div>',
 '    <div class="hs-wmu-stats">',
 '      <div><strong id="hs-wmu-rate">—</strong><span>Success</span></div>',
 '      <div><strong id="hs-wmu-harvest">—</strong><span>Harvest</span></div>',
@@ -80,7 +75,7 @@ const extra=[
 '      <div class="hs-trend-key"><span class="hs-trend-success-key">Success (%)</span><span class="hs-trend-hunters-key">Est. hunters</span></div>',
 '      <div id="hs-trend-chart" class="hs-trend-chart"></div>',
 '      <div id="hs-trend-readout" class="hs-trend-readout" aria-live="polite"></div>',
-'      <div id="hs-trend-note" class="hs-trend-note">Combined resident harvest estimates. Separate LEH survey figures are available through 2023; GOS-only WMU estimates are not published.</div>',
+'      <div id="hs-trend-note" class="hs-trend-note">Official BC resident harvest estimates combine hunt types where reported. Not a separate GOS or LEH success rate.</div>',
 '    </section>',
 '    <details><summary>Source &amp; methodology</summary>',
 '      <p id="hs-wmu-caveats" class="hs-wmu-caveats"></p>',
@@ -108,10 +103,11 @@ new Function(app);
 const appTag=html.match(/<script src="app\.js\?v=[^"]+"><\/script>/);
 assert(appTag,'app script missing');
 html=html.replace(appTag[0],appTag[0]+'\n  <script src="hs-map-ui.js?v=compact-20261118a"></script>');
-html=html.replace('</head>','  <link rel="stylesheet" href="hs-map-ui.css?v=recorded-20261119b">\n</head>');
+html=html.replace('</head>','  <link rel="stylesheet" href="hs-map-ui.css?v=single-success-20261119a">\n</head>');
 html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=compact-20261118a');
-html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=compact-20261118a');
+html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=single-success-20261119a');
 assert(html.includes('hs-map-ui.js?v=')&&html.includes('hs-map-ui.css?v='),'UI assets not linked');
+assert(!html.includes('data-hs-huntmode'),'Single Success view may not add hunt type controls');
 fs.writeFileSync(htmlFile,html);
 fs.writeFileSync(appFile,app);
 console.log('Installed two-row HuntSmart toolbar, historical default, WMU card and smart reporting-year picker.');
