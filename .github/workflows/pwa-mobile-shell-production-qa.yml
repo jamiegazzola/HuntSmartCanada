@@ -99,7 +99,9 @@ jobs:
             assert(head.touchIcon === '/images/logo.png', `touch icon wrong: ${JSON.stringify(head)}`);
 
             const swText = await page.evaluate(async () => (await fetch('/hs-offline-lite-sw.js', { cache: 'no-store' })).text());
-            assert(swText.includes('huntsmart-offline-lite-v80'), 'service-worker cache version is stale');
+            const cacheSource = require('node:fs').readFileSync('hs-offline-lite-sw.js', 'utf8');
+            const cacheName = cacheSource.match(/const HS_CACHE = '([^']+)'/)?.[1];
+            assert(cacheName && swText.includes(cacheName), 'service-worker cache version is stale');
             assert(swText.includes("url.pathname.startsWith('/map-tiles/')"), 'service worker still risks caching vector tiles');
             assert(swText.includes('networkFirst(request)'), 'service worker is not using network-first app updates');
 

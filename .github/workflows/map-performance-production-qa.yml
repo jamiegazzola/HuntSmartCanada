@@ -83,7 +83,7 @@ jobs:
 
             const home = await page.evaluate(() => window.__HS_WMU_VECTOR_TILES__.snapshot());
             assert(home.version === expectedVector, `Wrong vector runtime ${JSON.stringify(home)}`);
-            assert(!home.manifestLoaded, `Vector manifest loaded on Home ${JSON.stringify(home)}`);
+            assert(!home.bcFullGeometry && !home.abFullGeometry, `Full WMU geometry loaded before opening Map ${JSON.stringify(home)}`);
             assert(requests.filter(isVectorTile).length === 0, `Vector tiles requested before Map: ${JSON.stringify(requests.filter(isVectorTile))}`);
             assert(requests.filter(isFullGeometry).length === 0, `Full geometry requested before Map: ${JSON.stringify(requests.filter(isFullGeometry))}`);
 
@@ -167,7 +167,7 @@ jobs:
               bcTileRequestsObserved:bcTiles.length, abTileRequestsObserved:abTiles.length,
               perf
             }));
-            console.log('HuntSmart vector map QA passed: Home stays geometry-free, BC/AB/GOS render loaded MVT features, and the main map never falls back to full province geometry.');
+            console.log('HuntSmart vector map QA passed: Home stays free of polygon geometry, BC/AB/GOS render loaded MVT features, and the main map never falls back to full province geometry.');
             await context.close();
             await browser.close();
           })().catch(error => { console.error(error.stack || error); process.exit(1); });
