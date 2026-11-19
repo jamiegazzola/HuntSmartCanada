@@ -4,8 +4,9 @@
   // records cannot be interpreted as subspecies-specific, GOS or trophy odds.
   const BC_GOVERNMENT_HARVEST_DATA='https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024';
   const OFFICIAL_SOURCE='/species-map/data/bc-official-harvest-wmu-2020-2024.json?v=gov-bc-20261113';
-  // Lazy-load 1976–2024 only when a historical year is selected.
-  const HISTORY_SOURCE='/species-map/data/bc-official-harvest-history-1976-2024.json?v=history-20261113a';
+  // Read only the selected government's species category instead of downloading
+  // the entire ~916 KB provincial archive whenever Success is opened.
+  const HISTORY_SOURCE=code=>'/species-map/data/harvest-history-'+code.toLowerCase()+'.json?v=sharded-20261118';
   const SOURCE_SHA='e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e';
   const SHEEP_AGES='/species-map/data/bc-sheep-age-ci-2022-2025.json?v=20261113f';
   const CODE_BY_KEY=Object.freeze({
@@ -41,7 +42,10 @@
   let context=null,enabled=false,layer=null,info=null,renderSerial=0;
   let boundaries=null,pendingBoundaries=null,official=null,pendingOfficial=null;
   let sheepAge=null,pendingAge=null,selectedSpecies=null;
-  let history=null,pendingHistory=null;
+  let history=null;
+  const historyByCode=new Map(),pendingHistoryByCode=new Map();
+  let sampleCache=new Map(),cachedYears=null,cachedYearsKey=null;
+  const resetStats=()=>{sampleCache.clear();cachedYears=null;cachedYearsKey=null;};
   let selectedWmu=null;
   const storage=()=>{try{return window.localStorage}catch(_){return null}};
   const storedPeriod=storage()?.getItem('hs-success-period')||'ten';
@@ -74,15 +78,19 @@
   }
   function selectedYears(){
     if(historicalYear())return [Number(period.value)];
+    const cacheKey=code()+'|'+period.value+'|'+customStart+'|'+customEnd+'|'+(history?.species?.[code()]?'ready':'pending');
+    if(cachedYearsKey===cacheKey)return cachedYears;
+    cachedYearsKey=cacheKey;
     const available=availableYears();
-    if(!available.length)return [];
+    if(!available.length)return cachedYears=[];
     const latest=available[available.length-1];
-    if(period.value==='current')return [latest];
-    if(period.value==='average')return available.filter(y=>y>=latest-4);
-    if(period.value==='ten')return available.filter(y=>y>=latest-9);
-    if(period.value==='all')return available;
-    if(period.value==='custom')return available.filter(y=>y>=customStart&&y<=customEnd);
-    return [latest];
+    if(period.value==='current')cachedYears=[latest];
+    else if(period.value==='average')cachedYears=available.filter(y=>y>=latest-4);
+    else if(period.value==='ten')cachedYears=available.filter(y=>y>=latest-9);
+    else if(period.value==='all')cachedYears=available;
+    else if(period.value==='custom')cachedYears=available.filter(y=>y>=customStart&&y<=customEnd);
+    else cachedYears=[latest];
+    return cachedYears;
   }
   function selectedYearLabel(){
     const yrs=selectedYears();
@@ -121,9 +129,15 @@
         Number.isFinite(years)&&years>=(pooled?Math.min(3,requested):1),
       coverage:years+'/'+requested};
   }
+  function unitStats(id) {
+    if(!sampleCache.has(id))sampleCache.set(id,sample(selectedRow(id)));
+    return sampleCache.get(id);
+  }
   function reliableCount() {
-    return Object.keys(history?.species?.[code()]||rows()||{})
-      .reduce((count,id)=>count+(sample(selectedRow(id))?.reliable?1:0),0);
+    const ids=new Set([...Object.keys(history?.species?.[code()]||{}),...Object.keys(rows()||{})]);
+    let count=0;
+    for(const id of ids)if(unitStats(id)?.reliable)count++;
+    return count;
   }
   function syncYearControls(){
     const years=availableYears(),chip=document.getElementById('hs-year-trigger');
@@ -169,7 +183,7 @@
     const opacity=Math.max(0,Math.min(1,context.getOpacity()));
     layer.setStyle(feature=>{
       const id=String(feature.getProperty('wmu_id')||feature.getProperty('WMUNIT_NUM')||'');
-      const record=sample(selectedRow(id)),ok=!!record?.reliable;
+      const record=unitStats(id),ok=!!record?.reliable;
       const colour=classes.find(x=>record?.rate<=x.max)?.color||'#c45145';
       return {fillColor:ok?colour:'#8c9494',
         fillOpacity:(ok?0.76:record?0.17:0.07)*opacity,
@@ -199,7 +213,7 @@
     const id=String(event.feature.getProperty('wmu_id')||event.feature.getProperty('WMUNIT_NUM')||'');
     selectedWmu=id;
     refreshStyle();
-    const rec=selectedRow(id),s=sample(rec);
+    const rec=selectedRow(id),s=unitStats(id);
     const card=document.getElementById('hs-wmu-card');
     if(!card)return;
     const write=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value;};
@@ -233,21 +247,29 @@
       }).finally(()=>{pendingOfficial=null;});
     return pendingOfficial;
   }
-  async function loadHistory(){
-    if(history)return;
-    if(!pendingHistory)pendingHistory=fetch(HISTORY_SOURCE)
-      .then(r=>{if(!r.ok)throw Error('Historical BC harvest data unavailable');return r.json();})
-      .then(data=>{
-        if(data?.meta?.publisher!=='Government of British Columbia'||
-           data?.meta?.source_sha256!==SOURCE_SHA||
-           data?.meta?.first_year!==1976||
-           data?.meta?.last_year!==2024||
-           !data?.species?.MOOS?.['3-27']?.['1985']||
-           !data?.species?.BEAG)
-          throw Error('Historical BC harvest data invalid');
-        history=data;
-      }).finally(()=>{pendingHistory=null;});
-    return pendingHistory;
+  async function loadHistory(selectedCode=code()){
+    if(!selectedCode)return;
+    if(historyByCode.has(selectedCode)){
+      history=historyByCode.get(selectedCode);
+      return;
+    }
+    if(!pendingHistoryByCode.has(selectedCode)){
+      const pending=fetch(HISTORY_SOURCE(selectedCode))
+        .then(r=>{if(!r.ok)throw Error('Historical BC harvest data unavailable');return r.json();})
+        .then(data=>{
+          if(data?.meta?.publisher!=='Government of British Columbia'||
+             data?.meta?.source_sha256!==SOURCE_SHA||
+             data?.meta?.first_year!==1976||
+             data?.meta?.last_year!==2024||
+             data?.code!==selectedCode||
+             !data?.species?.[selectedCode])
+            throw Error('Historical BC harvest data invalid');
+          historyByCode.set(selectedCode,data);
+        }).finally(()=>pendingHistoryByCode.delete(selectedCode));
+      pendingHistoryByCode.set(selectedCode,pending);
+    }
+    await pendingHistoryByCode.get(selectedCode);
+    if(code()===selectedCode)history=historyByCode.get(selectedCode);
   }
   async function loadAge(){
     if(sheepAge)return;
@@ -278,7 +300,7 @@
   }
   function summary(){
     const type=code(),n=reliableCount(),date=selectedYearLabel();
-    const caution=historicalYear()?
+    const caution=selectedYears().some(y=>y<2024)?
       ' Historical data shown on current WMU boundaries; regulations and reporting methods may have changed.':'';
     if(!type)return 'No comparable BC Government WMU hunter-success category for '+label()+'.';
     const closure=type==='BEAG'?' Grizzly bear hunting is closed in BC; these are historical records.':'';
@@ -293,17 +315,22 @@
     const generation=++renderSerial;
     setDetail('Loading official BC WMU harvest data…');
     try{
-      await loadOfficial();
-      if(generation!==renderSerial||!enabled||!active())return;
-      await loadHistory();
+      const targetCode=code();
+      if(!targetCode){
+        syncYearControls();setDetail(summary());return;
+      }
+      // Independent requests run simultaneously; none delays another.
+      // The optional ram-age detail must never hold up the coloured WMU map.
+      await Promise.all([loadOfficial(),loadHistory(targetCode),fetchBoundaries()]);
+      if(generation!==renderSerial||!enabled||!active()||code()!==targetCode)return;
+      resetStats();
       syncYearControls();
+      if(isSheep())void loadAge();
       if(generation!==renderSerial||!enabled||!active())return;
-      if(isSheep())await loadAge();
-      if(generation!==renderSerial||!enabled||!active())return;
-      if(!code()||!reliableCount()){
+      if(!reliableCount()){
         legend.hidden=true;setDetail(summary());return;
       }
-      const collection=await fetchBoundaries();
+      const collection=boundaries;
       if(generation!==renderSerial||!enabled||!active())return;
       layer=new google.maps.Data({map:context.getMap()});
       layer.addGeoJson(collection);
@@ -329,6 +356,8 @@
     }
     if(selectedSpecies!==key()){
       removeLayer();selectedSpecies=key();
+      history=historyByCode.get(code())||null;
+      resetStats();
     }
     updateButton();syncYearControls();
     if(enabled&&!layer)void draw();
@@ -351,7 +380,7 @@
     return context.onModeChange();
   });
   function changePeriod(){
-    selectedWmu=null;removeLayer();
+    selectedWmu=null;removeLayer();resetStats();
     storage()?.setItem('hs-success-period',period.value);
     syncYearControls();
     if(enabled)void draw();
@@ -381,7 +410,7 @@
   document.getElementById('hs-year-to')?.addEventListener('change',changeCustom);
   document.getElementById('layer-opacity')?.addEventListener('input',refreshStyle);
   window.HUNTSMART_BC_HARVEST_CODES=CODE_BY_KEY;
-  window.HUNTSMART_HARVEST_DATA_COVERAGE='Official BC WMU 1976–2024 (historical years load on demand)';
+  window.HUNTSMART_HARVEST_DATA_COVERAGE='Official BC WMU 1976–2024 (species history loads on demand)';
   window.HUNTSMART_SHEEP_OFFICIAL_DATA={harvest:OFFICIAL_SOURCE,ages:SHEEP_AGES};
   window.HUNTSMART_HARVEST_SUCCESS={
     attach(args){context=args;updateButton();

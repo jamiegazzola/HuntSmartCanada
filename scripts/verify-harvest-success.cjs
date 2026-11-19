@@ -33,7 +33,10 @@ function setup({fail=false,defer=false}={}){
     }}},
     fetch:async url=>({ok:true,json:async()=>
       url.includes('bc-sheep-age')?ages:
-      url.includes('bc-official-harvest-history')?history:official}),
+      url.includes('harvest-history-')?(()=>{
+        const selectedCode=url.match(/harvest-history-([a-z]+)\.json/)?.[1]?.toUpperCase();
+        return {meta:history.meta,code:selectedCode,species:{[selectedCode]:history.species[selectedCode]}};
+      })():official}),
     google:{maps:{Data,InfoWindow:class{close(){}setContent(c){popups.push(c)}setPosition(){}open(){}}}},
     console};
   vm.createContext(sandbox);
