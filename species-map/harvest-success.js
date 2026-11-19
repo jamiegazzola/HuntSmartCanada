@@ -127,7 +127,18 @@
   const historyByCode=new Map(),pendingHistoryByCode=new Map();
   let sampleCache=new Map(),cachedYears=null,cachedYearsKey=null;
   const resetStats=()=>{sampleCache.clear();cachedYears=null;cachedYearsKey=null;};
-  let selectedWmu=null;
+  let selectedWmu=null,pendingUnitRestore=null;
+  function restoreUnitAfterModeSwitch(){
+    if(!pendingUnitRestore)return;
+    const id=pendingUnitRestore;
+    pendingUnitRestore=null;
+    if(excludedForSpecies(id))return;
+    selectedWmu=id;
+    renderWmuCard(id);
+    chartYear=null;
+    drawTrend();
+    refreshStyle();
+  }
 
   let chartRange='all',chartYear=null;
   function chartRows(id){
@@ -394,6 +405,7 @@
     if(densityDescription)densityDescription.textContent=label()+' · '+selectedYearLabel()+
       (mapMetric==='density'?' · Hunter density':' · Hunter success');
     const caveats=[];
+    if(huntMode==='gos')caveats.push('No verified GOS-only WMU hunter or harvest estimates have been loaded. The combined provincial figures must not be represented as GOS success.');
     const source=document.getElementById('hs-wmu-source');
     if(source){source.href=huntMode==='leh'?LEH_CATALOGUE:BC_GOVERNMENT_HARVEST_DATA;
       source.textContent=huntMode==='leh'?'BC LEH Survey Estimates':'Government of BC harvest statistics';}
@@ -516,6 +528,7 @@
       if(huntMode==='gos'){
         syncYearControls();
         setDetail(summary());
+        restoreUnitAfterModeSwitch();
         return;
       }
       await Promise.all(huntMode==='leh'?
@@ -528,7 +541,9 @@
       if(isSheep())void loadAge();
       if(generation!==renderSerial||!enabled||!active())return;
       if(!reliableCount()){
-        legend.hidden=true;setDetail(summary());return;
+        legend.hidden=true;setDetail(summary());
+        restoreUnitAfterModeSwitch();
+        return;
       }
       const collection=boundaries;
       if(generation!==renderSerial||!enabled||!active())return;
@@ -537,6 +552,7 @@
       layer.addListener('click',displayPopup);
       refreshStyle();
       legend.hidden=false;updateMetricControls();setDetail(summary());
+      restoreUnitAfterModeSwitch();
     }catch(e){
       if(generation===renderSerial){
         enabled=false;updateButton();legend.hidden=true;period.hidden=true;
@@ -594,7 +610,9 @@
       huntMode=next;
       document.querySelectorAll('[data-hs-huntmode]').forEach(item=>
         item.setAttribute('aria-pressed',String(item.dataset.hsHuntmode===next)));
+      const clickedUnit=selectedWmu;
       removeLayer();resetStats();
+      pendingUnitRestore=clickedUnit;
       if(next==='leh'&&period.value==='current')period.value='ten';
       syncYearControls();
       if(enabled)void draw();
