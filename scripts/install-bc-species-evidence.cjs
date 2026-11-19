@@ -37,8 +37,9 @@ let app = fs.readFileSync(appFile, 'utf8');
 const displayLine = app.match(/^  const DISPLAYED_SPECIES = new Set\([^\n]+;\s*$/m);
 assert(displayLine && !app.includes('HUNTSMART_BC_EVIDENCE'),
   'production BC species filter missing or patch already installed');
-app = app.replace(displayLine[0], displayLine[0] +
-  '\n  for (const key of window.HUNTSMART_BC_EVIDENCE.keys) DISPLAYED_SPECIES.add(key);');
+// Preserve the official evidence renderer for existing deep links, but do not
+// advertise these five research-only species in the main dropdown.
+// The DISPLAYED_SPECIES allowlist is intentionally left unchanged.
 
 const opacityAnchor = '  function applyLayerOpacity() {';
 assert(app.includes(opacityAnchor), 'opacity controller missing');
