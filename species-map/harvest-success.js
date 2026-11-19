@@ -47,6 +47,70 @@
   let sampleCache=new Map(),cachedYears=null,cachedYearsKey=null;
   const resetStats=()=>{sampleCache.clear();cachedYears=null;cachedYearsKey=null;};
   let selectedWmu=null;
+
+  let chartRange='all',chartYear=null;
+  function chartRows(id){
+    const archive=history?.species?.[code()]?.[id]||{};
+    const available=availableYears(),last=available.at(-1)||2024;
+    const start=chartRange==='all'?-Infinity:last-(chartRange==='5'?4:9);
+    // Only reported observations, missing years stay gaps.
+    return available.filter(year=>year>=start).map(year=>{
+      const values=year===2024?(rows()?.[id]?.y||archive[year]):archive[year];
+      const ok=Array.isArray(values)&&Number.isFinite(values[0])&&values[0]>0&&Number.isFinite(values[1])&&values[1]>=0&&values[1]<=values[0];
+      return {year,hunters:ok?values[0]:null,harvest:ok?values[1]:null,rate:ok?100*values[1]/values[0]:null};
+    });
+  }
+  function drawTrend(){
+    const root=document.getElementById('hs-trend-chart'),readout=document.getElementById('hs-trend-readout');
+    if(!root||!readout||!selectedWmu)return;
+    document.querySelectorAll('[data-trend-range]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.trendRange===chartRange)));
+    const data=chartRows(selectedWmu),valid=data.filter(v=>v.rate!==null);
+    if(!valid.length){root.textContent='No comparable yearly figures for this unit.';readout.textContent='';return;}
+    const selected=valid.find(v=>v.year===chartYear)||valid.at(-1);
+    chartYear=selected.year;
+    const W=300,H=160,L=30,R=37,T=12,B=25;
+    const x=y=>L+(y-data[0].year)/Math.max(1,data.at(-1).year-data[0].year)*(W-L-R);
+    const rmax=Math.max(20,Math.ceil(Math.max(...valid.map(v=>v.rate))/10)*10);
+    const hmax=Math.max(10,Math.ceil(Math.max(...valid.map(v=>v.hunters))/10)*10);
+    const yr=v=>T+(H-T-B)*(1-v/rmax),yh=v=>T+(H-T-B)*(1-v/hmax);
+    const ns='http://www.w3.org/2000/svg';
+    const el=(tag,props={},text)=>{const n=document.createElementNS(ns,tag);Object.entries(props).forEach(([k,v])=>n.setAttribute(k,String(v)));if(text!==undefined)n.textContent=text;return n;};
+    const svg=el('svg',{viewBox:'0 0 '+W+' '+H,role:'img','aria-label':'Annual resident hunter success and participation for WMU '+selectedWmu});
+    for(let i=0;i<=4;i++){
+      const y=T+(H-T-B)*i/4;
+      svg.append(el('line',{x1:L,x2:W-R,y1:y,y2:y,class:'hs-trend-grid'}));
+      svg.append(el('text',{x:L-5,y:y+3,'text-anchor':'end',class:'hs-trend-axis'},Math.round(rmax*(1-i/4))+'%'));
+      svg.append(el('text',{x:W-R+5,y:y+3,class:'hs-trend-axis'},String(Math.round(hmax*(1-i/4)))));
+    }
+    const labels=[data[0].year,Math.round((data[0].year+data.at(-1).year)/2),data.at(-1).year];
+    [...new Set(labels)].forEach(y=>svg.append(el('text',{x:x(y),y:H-5,'text-anchor':'middle',class:'hs-trend-axis'},String(y))));
+    for(const [field,mapper,cls] of [['hunters',yh,'hs-trend-hunters-line'],['rate',yr,'hs-trend-success-line']]){
+      let d='',lastSeen=false;
+      for(const v of data){
+        if(v[field]===null){lastSeen=false;continue;}
+        d+=(lastSeen?' L':' M')+x(v.year).toFixed(1)+' '+mapper(v[field]).toFixed(1);
+        lastSeen=true;
+      }
+      svg.append(el('path',{d,fill:'none',class:cls}));
+    }
+    const inspect=year=>{chartYear=year;drawTrend();};
+    valid.forEach(v=>{
+      const dot=el('circle',{cx:x(v.year),cy:yr(v.rate),r:v.year===selected.year?4:3,tabindex:0,role:'button',class:'hs-trend-point','aria-label':v.year+': '+v.rate.toFixed(1)+'% success, '+v.hunters+' estimated hunters'});
+      dot.addEventListener('click',()=>inspect(v.year));
+      dot.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();inspect(v.year);}});
+      svg.append(dot);
+    });
+    svg.append(el('line',{x1:x(selected.year),x2:x(selected.year),y1:T,y2:H-B,class:'hs-trend-cursor'}));
+    root.replaceChildren(svg);
+    const chooser=document.createElement('select');
+    chooser.setAttribute('aria-label','Inspect season');
+    valid.forEach(v=>{const option=document.createElement('option');option.value=String(v.year);option.textContent=String(v.year);option.selected=v.year===selected.year;chooser.append(option);});
+    chooser.addEventListener('change',()=>inspect(Number(chooser.value)));
+    const text=document.createElement('span');
+    text.textContent=selected.rate.toFixed(1)+'% · '+selected.hunters.toLocaleString()+' hunters · '+selected.harvest.toLocaleString()+' harvested';
+    readout.replaceChildren(chooser,text);
+  }
+
   const storage=()=>{try{return window.localStorage}catch(_){return null}};
   const storedPeriod=storage()?.getItem('hs-success-period')||'ten';
   period.value=['current','average','ten','all','custom'].includes(storedPeriod)?storedPeriod:'ten';
@@ -232,6 +296,8 @@
     if(age)caveats.push(age);
     write('hs-wmu-caveats',caveats.join(' '));
     card.hidden=false;
+    chartYear=null;
+    drawTrend();
   }
   async function loadOfficial(){
     if(official)return;
@@ -388,6 +454,9 @@
     if(enabled)void draw();
   }
   period.addEventListener('change',changePeriod);
+  document.querySelectorAll('[data-trend-range]').forEach(button=>button.addEventListener('click',()=>{
+    chartRange=button.dataset.trendRange;chartYear=null;drawTrend();
+  }));
   document.getElementById('hs-year-trigger')?.addEventListener('click',()=>{
     control.classList.toggle('is-open');
   });

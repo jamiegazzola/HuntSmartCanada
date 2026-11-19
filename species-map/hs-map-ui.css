@@ -83,3 +83,31 @@ body.hunter-success-only .layer-note{display:none!important}
 body.hunter-success-only .hs-map-toolbar .era-control>button#hs-harvest-toggle{background:#527b56;color:#fff}
 
 .hs-map-toolbar .era-control>button[hidden]{display:none!important}
+
+.hs-trend-mode{display:flex;margin-top:12px;padding:3px;background:#28332b;border-radius:8px;gap:3px}
+.hs-trend-mode button{flex:1;min-height:29px;background:transparent;border:0;border-radius:6px;color:#dfebe1;font:600 11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.hs-trend-mode button[aria-pressed=true]{background:#527b56;color:white}
+.hs-trend-mode button:disabled{opacity:.38;cursor:not-allowed}
+.hs-trend{margin-top:13px;padding-top:11px;border-top:1px solid rgba(255,255,255,.12)}
+.hs-trend-header,.hs-trend-key,.hs-trend-readout{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.hs-trend-header strong{font-size:12px}
+.hs-trend-ranges{display:flex;gap:2px;padding:2px;background:#28332b;border-radius:7px}
+.hs-trend-ranges button{min-width:34px;min-height:27px;border:0;border-radius:5px;background:transparent;color:#c4d2c7;font-size:10px;cursor:pointer}
+.hs-trend-ranges button[aria-pressed=true]{background:#527b56;color:#fff}
+.hs-trend-key{justify-content:flex-start;gap:14px;margin-top:9px;color:#b9c8bb;font-size:10px}
+.hs-trend-success-key:before,.hs-trend-hunters-key:before{content:"";display:inline-block;width:13px;vertical-align:middle;margin-right:5px;border-top:2px solid #65b583}
+.hs-trend-hunters-key:before{border-top:2px dashed #a1aaa3}
+.hs-trend-chart{margin-top:6px;min-height:135px;font-size:11px}
+.hs-trend-chart svg{width:100%;height:auto;display:block}
+.hs-trend-grid{stroke:rgba(255,255,255,.12);stroke-width:.7}
+.hs-trend-axis{fill:#aebbaf;font-size:9px}
+.hs-trend-success-line{stroke:#65b583;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.hs-trend-hunters-line{stroke:#a1aaa3;stroke-width:1.6;stroke-dasharray:4 3}
+.hs-trend-point{fill:#65b583;stroke:#18211b;stroke-width:1;cursor:pointer}
+.hs-trend-point:focus{stroke:white;stroke-width:2;outline:none}
+.hs-trend-cursor{stroke:rgba(255,255,255,.25);stroke-dasharray:3 3;pointer-events:none}
+.hs-trend-readout{font-size:10px;color:#dbe7dd;margin-top:4px}
+.hs-trend-readout select{max-width:85px;border:1px solid rgba(255,255,255,.16);background:#28332b;color:#fff;border-radius:6px;padding:5px;font-size:11px}
+.hs-trend-readout span{text-align:right;font-variant-numeric:tabular-nums}
+.hs-trend-note{margin-top:8px;color:#9eafa2;font-size:10px;line-height:1.4}
+@media(max-width:700px){.hs-wmu-card{max-height:min(67vh,570px)}}
