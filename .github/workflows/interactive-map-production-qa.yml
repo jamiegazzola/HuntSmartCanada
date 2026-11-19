@@ -151,12 +151,13 @@ jobs:
               hunterModule.includes('current WMU shapes'),
               'Historical year layer, popup and boundary caution missing');
             // Small species-specific history files reduce first paint without changing source lineage.
-            const successGeometry=JSON.parse(await text('/species-map/data/bc-wmu-success-lite.geojson'));
+            const successManifest=JSON.parse(await text('/map-tiles/20261028-v3/manifest.json'));
+            const successGeometry=successManifest.bc.index;
             assert(successGeometry.type==='FeatureCollection' &&
               successGeometry.features.length===225 &&
               successGeometry.features.every(f=>f.geometry&&f.properties?.wmu_id),
               'Lightweight BC success boundary geometry missing or invalid');
-            assert(hunterModule.includes('bc-wmu-success-lite.geojson') &&
+            assert(hunterModule.includes('/map-tiles/20261028-v3/manifest.json') &&
               hunterModule.includes('HUNTSMART_HARVEST_RENDER_STATE'),
               'Optimized WMU overlay renderer and render probe missing');
             const sheepShard=JSON.parse(await text('/species-map/data/harvest-history-shee.json'));

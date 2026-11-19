@@ -283,19 +283,21 @@
   function fetchBoundaries(){
     if(boundaries)return Promise.resolve(boundaries);
     if(pendingBoundaries)return pendingBoundaries;
-    pendingBoundaries=new Promise((resolve,reject)=>{
-      const script=document.createElement('script');
-      script.src='/bc-wmu-geojson.js?v=harvest-wmu-20261113';
-      script.async=true;
-      script.onload=()=>{
-        if(typeof BC_WMU_GEOJSON==='undefined'||!Array.isArray(BC_WMU_GEOJSON.features)||
-           BC_WMU_GEOJSON.features.length!==225)
-          reject(Error('BC WMU boundaries are missing or incomplete.'));
-        else{boundaries=BC_WMU_GEOJSON;resolve(boundaries);}
-      };
-      script.onerror=()=>reject(Error('BC WMU boundaries could not load.'));
-      document.head.appendChild(script);
-    }).finally(()=>{pendingBoundaries=null;});
+    // The existing vector WMU index has all 225 polygons simplified for map
+    // display; using the full original JS adds unnecessary network and CPU cost.
+    pendingBoundaries=fetch('/map-tiles/20261028-v3/manifest.json')
+      .then(r=>{if(!r.ok)throw Error('BC WMU map index unavailable');return r.json();})
+      .then(manifest=>{
+        if(manifest?.version!=='2026-10-28-vector-v2')throw Error('BC WMU map version mismatch');
+        const collection=manifest?.bc?.index;
+        if(collection?.type!=='FeatureCollection'||
+           !Array.isArray(collection.features)||collection.features.length!==225||
+           !collection.features.every(f=>f.geometry &&
+             typeof (f.properties?.wmu_id||f.properties?.WMUNIT_NUM)==='string'))
+          throw Error('BC WMU index is missing or incomplete');
+        boundaries=collection;
+        return boundaries;
+      }).finally(()=>{pendingBoundaries=null;});
     return pendingBoundaries;
   }
   function summary(){

@@ -32,9 +32,9 @@ function setup({fail=false,defer=false}={}){
       if(defer)release=done;else done();
     }}},
     fetch:url=>{
-      if(url.includes('bc-wmu-success-lite.geojson')){
+      if(url.includes('/map-tiles/20261028-v3/manifest.json')){
         return new Promise(resolve=>{
-          const done=()=>resolve({ok:!fail,json:async()=>({type:'FeatureCollection',features})});
+          const done=()=>resolve({ok:!fail,json:async()=>({version:'2026-10-28-vector-v2',bc:{index:{type:'FeatureCollection',features}}})});
           if(defer)release=done;else done();
         });
       }

@@ -6,13 +6,6 @@ const assert=require('node:assert/strict');
 const root=path.join('site','species-map');
 const file=name=>path.join(root,name);
 const htmlFile=file('index.html'),appFile=file('app.js');
-const vectorManifest=JSON.parse(fs.readFileSync(path.join('site','map-tiles','20261028-v3','manifest.json'),'utf8'));
-const slim=vectorManifest.bc?.index;
-assert(slim?.type==='FeatureCollection'&&slim.features?.length===225 &&
-  slim.features.every(f=>f.geometry&&typeof (f.properties?.wmu_id||f.properties?.WMUNIT_NUM)==='string'),
-  'Simplified BC WMU geometry must preserve all 225 current management units');
-fs.writeFileSync(file('data/bc-wmu-success-lite.geojson'),JSON.stringify(slim));
-
 assert(fs.existsSync(file('hs-map-ui.js'))&&fs.existsSync(file('hs-map-ui.css')),
   'Compact HuntSmart UI assets must be copied into the generated site');
 let html=fs.readFileSync(htmlFile,'utf8');
