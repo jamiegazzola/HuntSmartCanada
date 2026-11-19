@@ -31,12 +31,20 @@ function setup({fail=false,defer=false}={}){
         if(fail)script.onerror();else script.onload()};
       if(defer)release=done;else done();
     }}},
-    fetch:async url=>({ok:true,json:async()=>
-      url.includes('bc-sheep-age')?ages:
-      url.includes('harvest-history-')?(()=>{
-        const selectedCode=url.match(/harvest-history-([a-z]+)\.json/)?.[1]?.toUpperCase();
-        return {meta:history.meta,code:selectedCode,species:{[selectedCode]:history.species[selectedCode]}};
-      })():official}),
+    fetch:url=>{
+      if(url.includes('bc-wmu-success-lite.geojson')){
+        return new Promise(resolve=>{
+          const done=()=>resolve({ok:!fail,json:async()=>({type:'FeatureCollection',features})});
+          if(defer)release=done;else done();
+        });
+      }
+      return Promise.resolve({ok:true,json:async()=>
+        url.includes('bc-sheep-age')?ages:
+        url.includes('harvest-history-')?(()=>{
+          const selectedCode=url.match(/harvest-history-([a-z]+)\.json/)?.[1]?.toUpperCase();
+          return {meta:history.meta,code:selectedCode,species:{[selectedCode]:history.species[selectedCode]}};
+        })():official});
+    },
     google:{maps:{Data,InfoWindow:class{close(){}setContent(c){popups.push(c)}setPosition(){}open(){}}}},
     console};
   vm.createContext(sandbox);

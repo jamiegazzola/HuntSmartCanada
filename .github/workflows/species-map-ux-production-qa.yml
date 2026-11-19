@@ -85,10 +85,13 @@ jobs:
                   url:x.name.split('?')[0],duration:Math.round(x.duration),
                   transferSize:x.transferSize,decodedBodySize:x.decodedBodySize})),
             }));
-            await page.waitForTimeout(7000);
-            console.log('SUCCESS_LAYER_DIAGNOSTIC',JSON.stringify({width,...await harvestStatus(),errs:errs.slice(0,10)}));
-            assert((await harvestStatus()).detail?.includes('WMUs with comparable'),
-              'No coloured WMU harvest overlay rendered: '+JSON.stringify(await harvestStatus()));
+            await page.waitForFunction(()=>window.HUNTSMART_HARVEST_RENDER_STATE?.()?.ready,
+              null,{timeout:45000}).catch(()=>{});
+            const painted=await page.evaluate(()=>window.HUNTSMART_HARVEST_RENDER_STATE?.()||null);
+            console.log('SUCCESS_LAYER_DIAGNOSTIC',JSON.stringify({width,painted,...await harvestStatus(),errs:errs.slice(0,10)}));
+            assert(painted?.ready && painted.features===225 &&
+              (await harvestStatus()).detail?.includes('WMUs with comparable'),
+              'No coloured WMU harvest overlay rendered: '+JSON.stringify({painted,...await harvestStatus()}));
             await page.locator('#hs-year-trigger').click();
             await page.locator('[data-hs-period="average"]').click();
             assert.equal(await page.locator('#hs-harvest-period').inputValue(),'average',

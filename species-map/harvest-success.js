@@ -414,6 +414,18 @@
   window.HUNTSMART_SHEEP_OFFICIAL_DATA={harvest:OFFICIAL_SOURCE,ages:SHEEP_AGES};
   window.HUNTSMART_HARVEST_SUCCESS={
     attach(args){context=args;updateButton();
-      return{sync,exitSuccess,isEnabled:()=>enabled&&active()};}
+      const instance={
+        sync,exitSuccess,isEnabled:()=>enabled&&active(),
+        // Production QA checks painted geometry rather than only rendered buttons.
+        getRenderState(){
+          let features=0;
+          if(layer?.forEach)layer.forEach(()=>{features++;});
+          return {enabled:enabled&&active(),features,ready:features===225,
+            message:detail.textContent,year:period.value,species:key()};
+        }
+      };
+      window.HUNTSMART_HARVEST_RENDER_STATE=()=>instance.getRenderState();
+      return instance;
+    }
   };
 })();
