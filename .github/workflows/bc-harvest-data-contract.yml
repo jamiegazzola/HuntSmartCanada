@@ -5,6 +5,8 @@ on:
     paths:
       - 'scripts/build-verified-bc-harvest.py'
       - 'scripts/install-harvest-success.cjs'
+      - 'scripts/verify-harvest-success.cjs'
+      - 'scripts/install-huntsmart-minimal-ui.cjs'
       - 'species-map/harvest-success.js'
       - 'species-map/data/bc-official-harvest-*.json'
       - 'species-map/data/harvest-history-*.json'
@@ -48,3 +50,4 @@ jobs:
         run: |
           node --check species-map/harvest-success.js
           node scripts/build-leh-history.cjs --self-test
+          node scripts/verify-harvest-success.cjs
