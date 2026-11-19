@@ -1,0 +1,88 @@
+name: HuntSmart Species Map UX Production QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/species-map-ux-production-qa.yml
+      - species-map/hs-map-ui.js
+      - species-map/hs-map-ui.css
+      - species-map/harvest-success.js
+      - scripts/install-huntsmart-minimal-ui.cjs
+
+permissions:
+  contents: read
+
+jobs:
+  species-map-ux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify live historical default, tabs, smart years, and mobile layout
+        env:
+          URL: https://huntsmartcanada.ca/species-map/
+        run: |
+          node <<'NODE'
+          const { chromium }=require('playwright');
+          const assert=require('node:assert/strict');
+          async function check(browser,width,height) {
+            const context=await browser.newContext({
+              viewport:{width,height},hasTouch:width<700,isMobile:width<700,
+              serviceWorkers:'block'
+            });
+            const page=await context.newPage();
+            const errs=[];
+            page.on('pageerror',error=>errs.push(error.message));
+            await page.goto(process.env.URL+'?ux-qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:30000});
+            await page.locator('.hs-map-toolbar').waitFor({state:'visible',timeout:30000});
+            assert.equal(await page.locator('#era-historical').getAttribute('aria-pressed'),'true',
+              'Historical must be the initial map mode');
+            assert.equal(await page.locator('.hs-map-toolbar #hs-harvest-toggle').count(),1,
+              'Success must be in compact toolbar');
+            const geometry=await page.locator('.hs-map-toolbar').evaluate(e=>{
+              const r=e.getBoundingClientRect();
+              return {left:r.left,right:r.right,bottom:r.bottom,width:innerWidth,height:innerHeight};
+            });
+            assert(geometry.left>=0&&geometry.right<=width+2,
+              'Toolbar exceeds the map viewport: '+JSON.stringify(geometry));
+            await page.locator('#hs-harvest-toggle').click();
+            await page.locator('#hs-year-trigger').waitFor({state:'visible',timeout:30000});
+            assert.equal(await page.locator('#hs-harvest-period').inputValue(),'ten',
+              'Success should default to the real ten-year preset');
+            await page.locator('#hs-year-trigger').click();
+            await page.locator('[data-hs-period="average"]').click();
+            assert.equal(await page.locator('#hs-harvest-period').inputValue(),'average',
+              'Five-year preset is not selectable');
+            await page.locator('[data-hs-period="all"]').click();
+            assert.equal(await page.locator('#hs-harvest-period').inputValue(),'all',
+              'All-years preset is not selectable');
+            await page.locator('[data-hs-period="custom"]').click();
+            assert.equal(await page.locator('#hs-harvest-period').inputValue(),'custom',
+              'Custom preset is not selectable');
+            await page.locator('#era-modern').click();
+            assert.equal(await page.locator('#era-modern').getAttribute('aria-pressed'),'true',
+              'Switching from success to Modern failed');
+            assert.equal(await page.locator('#hs-year-trigger').isVisible(),false,
+              'Year picker should hide outside Success');
+            // Page-origin errors originating from Google/Mapbox can be logged independently.
+            assert(!errs.some(s=>/controls missing|ReferenceError.*hs-map-ui|Cannot read properties of null.*appendChild/i.test(s)),
+              'HuntSmart control runtime failed: '+errs.join(' | '));
+            console.log('Species map UX passed at '+width+'px');
+            await context.close();
+          }
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            await check(browser,1280,900);
+            await check(browser,390,844);
+            await browser.close();
+          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          NODE
