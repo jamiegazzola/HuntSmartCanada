@@ -358,7 +358,7 @@
       if(button)button.setAttribute('aria-pressed',String(period.value===preset));
     }
   }
-  const setDetail=text=>{detail.textContent=text;};
+  const setDetail=text=>{detail.textContent=text;const status=document.getElementById('hs-recorded-status');if(status)status.textContent=text;};
   function updateButton(){
     btn.textContent='Success';
     btn.setAttribute('aria-pressed',String(enabled));
@@ -696,9 +696,10 @@
       const source=document.createElement('a');source.textContent='Inspection source';source.href='https://catalogue.data.gov.bc.ca/dataset/compulsory-inspection-data-1900-to-2023-24';source.target='_blank';source.rel='noopener';source.hidden=true;
       const modes=document.createElement('select');modes.setAttribute('aria-label','Recorded harvest hunt type');modes.hidden=true;
       modes.innerHTML='<option value="combined">Combined</option><option value="gos">GOS</option><option value="leh">LEH</option>';
-      control.append(chooser,years,modes,source);
+      const status=document.createElement('div');status.id='hs-recorded-status';status.setAttribute('role','status');status.hidden=true;
+      control.append(chooser,years,modes,source,status);
       modes.addEventListener('change',()=>{huntMode=modes.value;removeLayer();if(enabled)void draw();});
-      chooser.addEventListener('change',()=>{recorded=chooser.value==='records';years.hidden=!recorded;modes.hidden=!recorded;modes.value=huntMode;source.hidden=!recorded;removeLayer();resetStats();if(enabled)void draw();});
+      chooser.addEventListener('change',()=>{recorded=chooser.value==='records';control.classList.toggle('is-recorded',recorded);status.hidden=!recorded;years.hidden=!recorded;modes.hidden=!recorded;modes.value=huntMode;source.hidden=!recorded;removeLayer();resetStats();if(enabled)void draw();});
       years.addEventListener('change',()=>{recordedYear=years.value;removeLayer();if(enabled)void draw();});
       const instance={
         sync,exitSuccess,isEnabled:()=>enabled&&active(),

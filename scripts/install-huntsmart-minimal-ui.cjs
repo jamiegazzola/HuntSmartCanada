@@ -108,7 +108,7 @@ new Function(app);
 const appTag=html.match(/<script src="app\.js\?v=[^"]+"><\/script>/);
 assert(appTag,'app script missing');
 html=html.replace(appTag[0],appTag[0]+'\n  <script src="hs-map-ui.js?v=compact-20261118a"></script>');
-html=html.replace('</head>','  <link rel="stylesheet" href="hs-map-ui.css?v=compact-20261118a">\n</head>');
+html=html.replace('</head>','  <link rel="stylesheet" href="hs-map-ui.css?v=recorded-20261119b">\n</head>');
 html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=compact-20261118a');
 html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=compact-20261118a');
 assert(html.includes('hs-map-ui.js?v=')&&html.includes('hs-map-ui.css?v='),'UI assets not linked');

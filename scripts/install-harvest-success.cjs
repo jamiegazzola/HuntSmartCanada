@@ -68,7 +68,7 @@ html = insertUnique(html, '  <div id="error" ', `
   <div id="error" `, 'panel before errors');
 const appTag = html.match(/<script src="app\.js\?v=[^"]+"><\/script>/);
 assert(appTag,'species map app script tag missing');
-html = insertUnique(html,appTag[0],'<script src="harvest-success.js?v=bc-recorded-20261119"></script>\n  ' + appTag[0], 'load harvest module before viewer');
+html = insertUnique(html,appTag[0],'<script src="harvest-success.js?v=bc-recorded-20261119b"></script>\n  ' + appTag[0], 'load harvest module before viewer');
 app = insertUnique(app,'  let map = null;', `  let map = null;
   const harvestSuccess = window.HUNTSMART_HARVEST_SUCCESS.attach({
     getMap: () => map,
@@ -86,8 +86,8 @@ app = insertUnique(app,'} finally {terrainToggle.disabled=false;}',
   'keep 3D disabled in hunter-success view');
 const appRef = html.match(/app\.js\?v=[^"]+/);
 assert(appRef, 'map script asset reference');
-html=html.replace(appRef[0], 'app.js?v=bc-recorded-20261119');
-html=html.replace(/app\.css\?v=[^"]+/, 'app.css?v=bc-recorded-20261119');
+html=html.replace(appRef[0], 'app.js?v=bc-recorded-20261119b');
+html=html.replace(/app\.css\?v=[^"]+/, 'app.css?v=bc-recorded-20261119b');
 assert(app.includes('if (harvestSuccess.isEnabled()) {') &&
   app.includes('onModeChange: () => renderSelected()') &&
   app.includes('terrainToggle.disabled = harvestSuccess.isEnabled()'), 'exclusive mode bridge missing');

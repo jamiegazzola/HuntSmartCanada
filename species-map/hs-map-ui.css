@@ -141,3 +141,10 @@ body.hunter-success-only .hs-map-toolbar .era-control>button#hs-harvest-toggle{b
   .hs-harvest-panel{top:calc(env(safe-area-inset-top,0px) + 181px);left:9px;width:min(318px,calc(100vw - 18px));max-height:min(46vh,250px)}
   .hs-metric-legend{left:9px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);max-width:calc(100vw - 18px)}
 }
+
+/* Recorded inspections have their own licence-year controls and no rate metric. */
+.hs-harvest-panel.is-recorded .hs-metric-head,.hs-harvest-panel.is-recorded .hs-metric-switch,.hs-harvest-panel.is-recorded .hs-year-presets,.hs-harvest-panel.is-recorded .hs-custom-controls{display:none!important}
+.hs-harvest-panel{overflow:auto;max-height:60vh}
+.hs-harvest-panel>select{display:block;width:100%;min-height:36px;margin:8px 0;padding:6px;border:1px solid #526457;border-radius:6px;background:#28352d;color:#e4eee6;font:inherit}
+.hs-harvest-panel>select[hidden]{display:none}
+#hs-recorded-status{font-size:13px;line-height:1.5;margin-top:10px;color:#d1ded3}
