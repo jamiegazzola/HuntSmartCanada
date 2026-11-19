@@ -32,7 +32,68 @@
     'lynx','bobcat','cougar','wolf']);
   const classes=[{max:9,color:'#468f58'},{max:19,color:'#a3b950'},
     {max:29,color:'#dfcb58'},{max:39,color:'#e28d42'},
-    {max:100,color:'#c45145'}];
+    {max:Infinity,color:'#c45145'}];
+  const densityClasses=[{max:1,color:'#468f58'},{max:3,color:'#a3b950'},
+    {max:10,color:'#dfcb58'},{max:30,color:'#e28d42'},
+    {max:Infinity,color:'#c45145'}];
+  let mapMetric='success';
+  // Approximate spherical area of mapped WMU polygons, not accessible hunting land.
+  // Use original long/lat polygon edges where available, and do not count holes.
+  const EARTH_RADIUS_KM=6371.0088;
+  const radians=Math.PI/180;
+  function ringKm2(ring){
+    if(!Array.isArray(ring)||ring.length<4)return 0;
+    let sum=0;
+    for(let i=0;i<ring.length-1;i++){
+      const a=ring[i],b=ring[i+1];
+      if(!Array.isArray(a)||!Array.isArray(b))return 0;
+      sum+=(b[0]-a[0])*radians*(Math.sin(a[1]*radians)+Math.sin(b[1]*radians));
+    }
+    return Math.abs(sum)*EARTH_RADIUS_KM*EARTH_RADIUS_KM/2;
+  }
+  function areaKm2(geometry){
+    if(!geometry)return null;
+    const polygons=geometry.type==='Polygon'?[geometry.coordinates]:
+      geometry.type==='MultiPolygon'?geometry.coordinates:[];
+    const area=polygons.reduce((total,rings)=>{
+      if(!Array.isArray(rings)||!rings.length)return total;
+      const exterior=ringKm2(rings[0]);
+      const holes=rings.slice(1).reduce((n,ring)=>n+ringKm2(ring),0);
+      return total+Math.max(0,exterior-holes);
+    },0);
+    return Number.isFinite(area)&&area>0?area:null;
+  }
+  let areaByWmu=new Map();
+  function densityFor(id,record=unitStats(id)){
+    const area=areaByWmu.get(id);
+    // Pooled hunters are hunter-years. Convert to mean per reported year.
+    if(!record?.reliable||!Number.isFinite(area)||area<=0||
+      !Number.isFinite(record.years)||record.years<=0)return null;
+    return record.hunters/record.years/area*100;
+  }
+  function updateMetricControls(){
+    document.querySelectorAll?.('[data-hs-metric]')?.forEach(button=>
+      button.setAttribute('aria-pressed',String(button.dataset.hsMetric===mapMetric)));
+    const description=document.getElementById('hs-metric-description');
+    if(description)description.textContent=mapMetric==='success'?
+      'Estimated resident harvest success (%)':
+      'Mean annual estimated hunters per 100 km² of mapped WMU area';
+    const legendNode=document.getElementById('hs-metric-legend');
+    if(legendNode){
+      const labels=mapMetric==='success'?['0–9%','10–19%','20–29%','30–39%','40%+']:
+        ['0–1','1–3','3–10','10–30','30+'];
+      const scale=mapMetric==='success'?classes:densityClasses;
+      legendNode.replaceChildren();
+      labels.forEach((name,i)=>{
+        const span=document.createElement('span');
+        const swatch=document.createElement('i');
+        swatch.style.backgroundColor=scale[i].color;
+        span.append(swatch,document.createTextNode(name));
+        legendNode.append(span);
+      });
+      legendNode.setAttribute('aria-label',mapMetric==='success'?'Success rate legend':'Annual estimated hunters per 100 square kilometres legend');
+    }
+  }
   const btn=document.getElementById('hs-harvest-toggle');
   const control=document.getElementById('hs-harvest-panel');
   const period=document.getElementById('hs-harvest-period');
@@ -253,8 +314,11 @@
     layer.setStyle(feature=>{
       const id=String(feature.getProperty('wmu_id')||feature.getProperty('WMUNIT_NUM')||'');
       const excluded=excludedForSpecies(id);
-      const record=excluded?null:unitStats(id),ok=!!record?.reliable;
-      const colour=classes.find(x=>record?.rate<=x.max)?.color||'#c45145';
+      const record=excluded?null:unitStats(id);
+      const value=mapMetric==='success'?record?.rate:densityFor(id,record);
+      const ok=!!record?.reliable&&Number.isFinite(value);
+      const classScale=mapMetric==='success'?classes:densityClasses;
+      const colour=classScale.find(x=>value<=x.max)?.color||'#c45145';
       return {fillColor:ok?colour:'#8c9494',
         fillOpacity:(excluded?0:ok?0.76:record?0.17:0.07)*opacity,
         strokeColor:id===selectedWmu?'#fff':ok?'#e5e7da':'#a9aeae',
@@ -284,7 +348,12 @@
     if(excludedForSpecies(id))return;
     selectedWmu=id;
     refreshStyle();
-    const rec=selectedRow(id),s=unitStats(id);
+    renderWmuCard(id);
+    chartYear=null;
+    drawTrend();
+  }
+  function renderWmuCard(id){
+    const s=unitStats(id);
     const card=document.getElementById('hs-wmu-card');
     if(!card)return;
     const write=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value;};
@@ -293,19 +362,23 @@
     write('hs-wmu-rate',s?.reliable?s.rate.toFixed(1)+'%':'—');
     write('hs-wmu-harvest',s?s.kills.toLocaleString():'—');
     write('hs-wmu-hunters',s?s.hunters.toLocaleString():'—');
+    const density=densityFor(id,s);
+    write('hs-wmu-density',density===null?'—':density.toFixed(density<10?1:0));
+    const densityDescription=document.getElementById('hs-wmu-meta');
+    if(densityDescription)densityDescription.textContent=label()+' · '+selectedYearLabel()+
+      (mapMetric==='density'?' · Hunter density':' · Hunter success');
     const caveats=[];
     if(!s?.reliable)caveats.push(s?'Small or non-comparable sample; not mapped as a reliable rate.':'No comparable resident estimate for this period.');
     if(s?.coverage&&selectedYears().length>1)caveats.push('Reported years: '+s.coverage+'.');
     if(!EXACT.has(key()))caveats.push('BC category: '+(NAMES[code()]||'unavailable')+'; not subspecies-specific.');
     if(key()==='rocky_elk_kootenay')caveats.push('Regions 1 and 2 excluded: provincial elk figures combine Roosevelt and Rocky Mountain elk; other regions are not subspecies-verified.');
     caveats.push('All resident harvest; not GOS-only, LEH draw, legal-ram or trophy odds.');
+    caveats.push('Hunter density uses mean annual estimated hunters divided by approximate mapped WMU area; this is a relative pressure proxy, not actual hunter locations or accessible hunting area.');
     if(selectedYears().some(y=>y<2024))caveats.push('Historical years use current WMU shapes. Boundaries, regulations and reporting methods may differ.');
     const age=ageSummary(id);
     if(age)caveats.push(age);
     write('hs-wmu-caveats',caveats.join(' '));
     card.hidden=false;
-    chartYear=null;
-    drawTrend();
   }
   async function loadOfficial(){
     if(official)return;
@@ -370,6 +443,10 @@
              typeof (f.properties?.wmu_id||f.properties?.WMUNIT_NUM)==='string'))
           throw Error('BC WMU index is missing or incomplete');
         boundaries=collection;
+        areaByWmu=new Map(collection.features.map(feature=>{
+          const id=String(feature.properties?.wmu_id||feature.properties?.WMUNIT_NUM||'');
+          return [id,areaKm2(feature.geometry)];
+        }));
         return boundaries;
       }).finally(()=>{pendingBoundaries=null;});
     return pendingBoundaries;
@@ -402,6 +479,7 @@
       if(generation!==renderSerial||!enabled||!active()||code()!==targetCode)return;
       resetStats();
       syncYearControls();
+      updateMetricControls();
       if(isSheep())void loadAge();
       if(generation!==renderSerial||!enabled||!active())return;
       if(!reliableCount()){
@@ -463,6 +541,13 @@
     if(enabled)void draw();
   }
   period.addEventListener('change',changePeriod);
+  document.querySelectorAll?.('[data-hs-metric]')?.forEach(button=>button.addEventListener('click',()=>{
+    if(button.dataset.hsMetric===mapMetric)return;
+    mapMetric=button.dataset.hsMetric==='density'?'density':'success';
+    updateMetricControls();
+    refreshStyle();
+    if(selectedWmu)renderWmuCard(selectedWmu);
+  }));
   document.querySelectorAll('[data-trend-range]').forEach(button=>button.addEventListener('click',()=>{
     chartRange=button.dataset.trendRange;chartYear=null;drawTrend();
   }));

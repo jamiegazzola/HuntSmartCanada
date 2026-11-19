@@ -28,6 +28,13 @@ const periodPanel=html.indexOf('  <section id="hs-harvest-panel"');
 const periodEnd=html.indexOf('  </section>',periodPanel);
 assert(periodPanel>=0&&periodEnd>periodPanel,'year panel boundary missing');
 const yearMarkup=[
+'    <div class="hs-metric-head">Map metric</div>',
+'    <div class="hs-metric-switch" role="group" aria-label="Map shading metric">',
+'      <button type="button" data-hs-metric="success" aria-pressed="true">Hunter success</button>',
+'      <button type="button" data-hs-metric="density" aria-pressed="false">Hunter density</button>',
+'    </div>',
+'    <div id="hs-metric-description" class="hs-metric-description">Estimated resident harvest success (%)</div>',
+'    <div id="hs-metric-legend" class="hs-metric-legend" aria-label="Hunter success map legend"></div>',
 '    <div class="hs-year-header">',
 '      <span>Reporting years</span>',
 '      <button id="hs-year-close" class="hs-year-close" type="button" aria-label="Close year selector">×</button>',
@@ -47,7 +54,7 @@ const yearMarkup=[
 '      <label class="sr-only" for="hs-year-to">End year</label>',
 '      <select id="hs-year-to" aria-label="End year"><option value="2024">2024</option></select>',
 '    </div>',
-'    <p class="hs-year-help">Only reported years are selectable. Multi-year success uses pooled resident harvest and estimated hunters, with missing records excluded.</p>'
+'    <p class="hs-year-help">Only reported years are selectable. Multi-year success pools reported harvest and estimated hunters. Density uses annual mean estimated hunters per 100 km² of mapped WMU area. This does not measure actual hunter locations or huntable land; missing years are excluded.</p>'
 ].join('\n')+'\n';
 html=html.slice(0,periodEnd)+yearMarkup+html.slice(periodEnd);
 const extra=[
@@ -66,6 +73,7 @@ const extra=[
 '      <div><strong id="hs-wmu-rate">—</strong><span>Success</span></div>',
 '      <div><strong id="hs-wmu-harvest">—</strong><span>Harvest</span></div>',
 '      <div><strong id="hs-wmu-hunters">—</strong><span>Hunters</span></div>',
+'      <div><strong id="hs-wmu-density">—</strong><span>Est. annual hunters / 100 km²</span></div>',
 '    </div>',
 '    <section class="hs-trend" aria-label="Historical hunter success and participation">',
 '      <div class="hs-trend-header"><strong>Historical trends</strong><div class="hs-trend-ranges" role="group" aria-label="Chart date range"><button type="button" data-trend-range="5">5Y</button><button type="button" data-trend-range="10">10Y</button><button type="button" data-trend-range="all" aria-pressed="true">All</button></div></div>',
