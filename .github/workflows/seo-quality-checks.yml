@@ -64,7 +64,7 @@ jobs:
           assert guide.count("Looking for your next step?") == 1
           print("Synthetic SEO regression fixtures passed.")
           PY
-      - name: Build all generated public pages
+      - name: Build generated public SEO pages
         shell: bash
         run: |
           python3 - <<'PY'
@@ -73,8 +73,10 @@ jobs:
           from pathlib import Path
           with Path("netlify.toml").open("rb") as handle:
               command = tomllib.load(handle)["build"]["command"]
-          subprocess.run(["bash", "-lc", command], check=True)
-          print("Full HuntSmart static build passed.")
+          public_command = command.split(" && cp -R species-map site/species-map", 1)[0]
+          assert public_command != command, "Expected private map build boundary"
+          subprocess.run(["bash", "-lc", public_command], check=True)
+          print("Public SEO page generation passed; private species-map assembly is separate.")
           PY
           python3 - <<'PY'
           from pathlib import Path
