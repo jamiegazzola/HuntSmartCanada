@@ -50,6 +50,7 @@
 
   let chartRange='all',chartYear=null;
   function chartRows(id){
+    if(excludedForSpecies(id))return [];
     const archive=history?.species?.[code()]?.[id]||{};
     const available=availableYears(),last=available.at(-1)||2024;
     const start=chartRange==='all'?-Infinity:last-(chartRange==='5'?4:9);
@@ -120,6 +121,9 @@
   const key=()=>context?.getSpecies()||'';
   const code=()=>CODE_BY_KEY[key()]||null;
   const isSheep=()=>code()==='SHEE';
+  // The official ELK harvest category combines Roosevelt and Rocky Mountain elk.
+  // Region 1 and 2 elk records cannot be presented as Rocky Mountain elk success.
+  const excludedForSpecies=id=>key()==='rocky_elk_kootenay'&&/^[12]-\d+(?:\D|$)/.test(String(id));
   const active=()=>!!context&&context.getProvince()==='bc';
   const label=()=>(window.HUNTSMART_SPECIES||[]).find(item=>item.key===key())?.label||
     key().replace(/_/g,' ');
@@ -162,6 +166,7 @@
     return yrs.length===1?String(yrs[0]):yrs[0]+'–'+yrs[yrs.length-1]+' pooled';
   }
   function selectedRow(id){
+    if(excludedForSpecies(id))return null;
     const yrs=selectedYears();
     if(!yrs.length)return null;
     if(yrs.length===1){
@@ -200,7 +205,7 @@
   function reliableCount() {
     const ids=new Set([...Object.keys(history?.species?.[code()]||{}),...Object.keys(rows()||{})]);
     let count=0;
-    for(const id of ids)if(unitStats(id)?.reliable)count++;
+    for(const id of ids)if(!excludedForSpecies(id)&&unitStats(id)?.reliable)count++;
     return count;
   }
   function syncYearControls(){
@@ -247,13 +252,14 @@
     const opacity=Math.max(0,Math.min(1,context.getOpacity()));
     layer.setStyle(feature=>{
       const id=String(feature.getProperty('wmu_id')||feature.getProperty('WMUNIT_NUM')||'');
-      const record=unitStats(id),ok=!!record?.reliable;
+      const excluded=excludedForSpecies(id);
+      const record=excluded?null:unitStats(id),ok=!!record?.reliable;
       const colour=classes.find(x=>record?.rate<=x.max)?.color||'#c45145';
       return {fillColor:ok?colour:'#8c9494',
-        fillOpacity:(ok?0.76:record?0.17:0.07)*opacity,
+        fillOpacity:(excluded?0:ok?0.76:record?0.17:0.07)*opacity,
         strokeColor:id===selectedWmu?'#fff':ok?'#e5e7da':'#a9aeae',
-        strokeOpacity:(ok?0.85:0.28)*opacity,
-        strokeWeight:id===selectedWmu?2.6:ok?1.05:0.65,zIndex:id===selectedWmu?27:25,clickable:true};
+        strokeOpacity:(excluded?0:ok?0.85:0.28)*opacity,
+        strokeWeight:id===selectedWmu?2.6:ok?1.05:0.65,zIndex:id===selectedWmu?27:25,clickable:!excluded};
     });
   }
   function ageSummary(id){
@@ -275,6 +281,7 @@
   }
   function displayPopup(event){
     const id=String(event.feature.getProperty('wmu_id')||event.feature.getProperty('WMUNIT_NUM')||'');
+    if(excludedForSpecies(id))return;
     selectedWmu=id;
     refreshStyle();
     const rec=selectedRow(id),s=unitStats(id);
@@ -290,6 +297,7 @@
     if(!s?.reliable)caveats.push(s?'Small or non-comparable sample; not mapped as a reliable rate.':'No comparable resident estimate for this period.');
     if(s?.coverage&&selectedYears().length>1)caveats.push('Reported years: '+s.coverage+'.');
     if(!EXACT.has(key()))caveats.push('BC category: '+(NAMES[code()]||'unavailable')+'; not subspecies-specific.');
+    if(key()==='rocky_elk_kootenay')caveats.push('Regions 1 and 2 excluded: provincial elk figures combine Roosevelt and Rocky Mountain elk; other regions are not subspecies-verified.');
     caveats.push('All resident harvest; not GOS-only, LEH draw, legal-ram or trophy odds.');
     if(selectedYears().some(y=>y<2024))caveats.push('Historical years use current WMU shapes. Boundaries, regulations and reporting methods may differ.');
     const age=ageSummary(id);
@@ -372,11 +380,12 @@
       ' Historical data shown on current WMU boundaries; regulations and reporting methods may have changed.':'';
     if(!type)return 'No comparable BC Government WMU hunter-success category for '+label()+'.';
     const closure=type==='BEAG'?' Grizzly bear hunting is closed in BC; these are historical records.':'';
+    const elkWarning=key()==='rocky_elk_kootenay'?' Regions 1 and 2 excluded; remaining provincial ELK figures are not subspecies-specific.':'';
     if(!n)return 'No sufficiently reported '+date+' WMU hunter-success data for '+label()+'.'+caution;
     return n+' WMUs with comparable '+date+
       ' resident harvest estimates. Grey = missing/small sample. Tap a WMU for details.'+
       (EXACT.has(key())?'':' Provincial category: '+NAMES[type]+' (not subspecies-specific).')+
-      closure+caution;
+      closure+elkWarning+caution;
   }
   async function draw(){
     if(!enabled||!active()||!context.getMap()||layer)return;
