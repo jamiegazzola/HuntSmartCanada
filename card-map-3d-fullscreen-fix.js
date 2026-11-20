@@ -172,9 +172,8 @@
       const container = document.getElementById(containerId);
       if (container) container.dataset.tile = type;
 
-      const map = _cardMap(containerId);
-      if (map) map._lehCurrentTile = type;
-
+      // Do not mutate map._lehCurrentTile before invoking the original toggle:
+      // it short-circuits when it sees the requested style as already active.
       ['satellite', 'topo'].forEach(t => {
         document.querySelectorAll(`[id="${containerId}_btn_${t}"]`).forEach(btn => {
           btn.classList.toggle('active', t === type);
