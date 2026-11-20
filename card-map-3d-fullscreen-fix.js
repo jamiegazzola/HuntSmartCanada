@@ -31,7 +31,8 @@
       return card3DState[containerId] !== false;
     }
     const map = _cardMap(containerId);
-    return !(map && map._lehTerrain3D === false);
+    // Do not fetch DEM tiles for every expanded card. 3D is opt-in.
+    return !!(map && map._lehTerrain3D === true);
   }
 
   function _sync3DButtons(containerId, on) {
@@ -157,7 +158,7 @@
       const oldMap = _cardMap(containerId);
       const keep3D = Object.prototype.hasOwnProperty.call(card3DState, containerId)
         ? card3DState[containerId] !== false
-        : !(oldMap && oldMap._lehTerrain3D === false);
+        : !!(oldMap && oldMap._lehTerrain3D === true);
 
       card3DState[containerId] = keep3D;
       const result = originalInit.apply(this, arguments);
