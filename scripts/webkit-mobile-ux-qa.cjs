@@ -74,6 +74,16 @@ async function run(browser,w,h) {
     };
   });
   console.log('WEBKIT_HEADER_PAINT',w,JSON.stringify(headerPaint));
+  // Hit testing catches secondary sticky navigations covering the main profile
+  // even when the header and account look correctly positioned in screenshots.
+  const headerHit=await page.evaluate(()=>{
+    const button=document.getElementById('authNavBtn');
+    const r=button.getBoundingClientRect();
+    const top=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);
+    return {hit:!!(top && (top===button || button.contains(top))),
+      blocking:top?.outerHTML?.slice(0,220) || null};
+  });
+  assert(headerHit.hit,'Account button blocked by another navigation layer: '+JSON.stringify(headerHit));
   await page.screenshot({path:'mobile-qa-artifacts/'+w+'-webkit-home.png'});
   // Public authentication UX: modal opens, can switch between sign-in/up,
   // and closes without sending credentials or changing real user data.
