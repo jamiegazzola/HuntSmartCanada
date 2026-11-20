@@ -179,6 +179,14 @@
     max-height: 100% !important;
   }
 
+  /* #hsMobileTabbar is also a <nav>; undo the desktop sticky header's top:0.
+     Otherwise position:fixed plus top:0 pins the tab bar over the map. */
+  #hsMobileTabbar {
+    position: fixed !important;
+    top: auto !important;
+    bottom: 0 !important;
+  }
+
   html.hs-mobile-browser #hsMobileTabbar {
     bottom: 0;
     box-sizing: border-box;
