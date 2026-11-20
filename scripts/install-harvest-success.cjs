@@ -76,7 +76,7 @@ html = insertUnique(html, '  <div id="error" ', `
   <div id="error" `, 'panel before errors');
 const appTag = html.match(/<script src="app\.js\?v=[^"]+"><\/script>/);
 assert(appTag,'species map app script tag missing');
-html = insertUnique(html,appTag[0],'<script src="elk-species.js?v=elk-identity-20261119a"></script>\n  <script src="harvest-success.js?v=elk-identity-20261119a"></script>\n  ' + appTag[0], 'load shared species policy and harvest module before viewer');
+html = insertUnique(html,appTag[0],'<script src="elk-species.js?v=elk-coastal-20261119a"></script>\n  <script src="harvest-success.js?v=elk-identity-20261119a"></script>\n  ' + appTag[0], 'load shared species policy and harvest module before viewer');
 app = insertUnique(app,'  let map = null;', `  let map = null;
   const harvestSuccess = window.HUNTSMART_HARVEST_SUCCESS.attach({
     getMap: () => map,

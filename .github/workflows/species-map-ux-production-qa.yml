@@ -151,8 +151,11 @@ jobs:
               null,{timeout:45000});
             const rooseveltDetail=await page.locator('#hs-harvest-detail').textContent();
             assert(rooseveltDetail.includes('not subspecies-specific') &&
+              rooseveltDetail.includes('Coastal Regions 1 and 2 only') &&
               !rooseveltDetail.includes('Regions 1 and 2 excluded'),
-              'Roosevelt must use general elk methodology but not Rocky exclusions');
+              'Roosevelt must only show coastal all-elk WMUs, never the whole province');
+            assert((await page.locator('#hs-metric-legend').textContent()).includes('Coastal WMUs · all elk'),
+              'Subspecies limitation must be visible beside the map legend');
             await page.locator('#species').selectOption('moose');
             assert.equal(await page.locator('#era-modern').isVisible(),true);
             assert.equal(await page.locator('#era-historical').isVisible(),true);
