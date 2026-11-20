@@ -58,6 +58,16 @@ async function run(browser,w,h) {
     await page.evaluate(()=>document.querySelectorAll('[data-netlify-deploy-id]').forEach(x=>x.remove()));
   }
   await page.screenshot({path:'mobile-qa-artifacts/'+w+'-webkit-home.png'});
+  // Public authentication UX: modal opens, can switch between sign-in/up,
+  // and closes without sending credentials or changing real user data.
+  await page.locator('#authNavBtn').click();
+  await page.locator('#authModal').waitFor({state:'visible',timeout:12000});
+  assert(await page.locator('#authEmail').isVisible(),'Sign-in email field missing');
+  await page.locator('#tabSignUp').click();
+  assert(await page.locator('#authConfirm').isVisible(),'Account creation confirmation missing');
+  await page.locator('#authModal .auth-close').click();
+  await page.locator('#authModal').waitFor({state:'detached',timeout:10000});
+  console.log('WEBKIT_AUTH',w,'Sign In/Create Account modal accessible and dismissible');
   await page.locator('#hsMobileTabbar [data-tab="draws"]').click();
   await page.locator('#hsDrawsSheetBackdrop.open').waitFor({state:'visible',timeout:12000});
   await page.locator('#hsDrawsSheetBackdrop [data-draw-choice="bc"]').click();
