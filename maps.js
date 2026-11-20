@@ -2384,6 +2384,13 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
+  // Keep hunt identity on the card map itself. Satellite/Topo switching needs
+  // these values to reconstruct the correct LEH zone overlays after a style
+  // change; the card HTML alone does not provide data-mu/zone/species-type.
+  container.dataset.mu = String(mu || '');
+  container.dataset.zone = String(zone || '');
+  container.dataset.speciesType = String(speciesType || '');
+
   // Guard against CSS overrides: the card map must have a real pixel height
   // before Mapbox reads the container size.
   container.classList.add('leh-card-map');
