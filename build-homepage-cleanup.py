@@ -32,7 +32,7 @@ text, middle_removed = re.subn(
 # profile taps. Remove the whole block on Home, not just its links: those pages
 # remain discoverable from Resources and sitemap.xml.
 text, answer_nav_removed = re.subn(
-    r'<nav\\s+aria-label="BC hunting answer library"[^>]*>.*?</nav>',
+    r'<nav\s+aria-label="BC hunting answer library"[^>]*>.*?</nav>',
     '',
     text,
     flags=re.I | re.S,
