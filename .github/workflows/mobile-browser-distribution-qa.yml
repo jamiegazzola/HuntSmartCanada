@@ -18,6 +18,7 @@ on:
       - species-map/hs-map-ui.js
       - species-map/hs-app-nav.css
       - species-map/hs-app-nav.js
+      - scripts/install-species-app-nav.cjs
       - scripts/mobile-browser-preview-qa.cjs
       - scripts/webkit-mobile-ux-qa.cjs
       - .github/workflows/mobile-browser-distribution-qa.yml
@@ -38,6 +39,7 @@ on:
       - species-map/hs-map-ui.js
       - species-map/hs-app-nav.css
       - species-map/hs-app-nav.js
+      - scripts/install-species-app-nav.cjs
       - scripts/mobile-browser-preview-qa.cjs
       - scripts/webkit-mobile-ux-qa.cjs
 
@@ -88,8 +90,25 @@ jobs:
           node --check ab-filters.js
           node --check species-map/hs-map-ui.js
           node --check species-map/hs-app-nav.js
+          node --check scripts/install-species-app-nav.cjs
           grep -q 'hs-app-nav.js' site/species-map/index.html
           grep -q 'hs-app-nav.css' site/species-map/index.html
+          node <<'NODE'
+          const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),cp=require('node:child_process'),assert=require('node:assert/strict');
+          const directory=fs.mkdtempSync(path.join(os.tmpdir(),'hs-private-species-'));
+          try {
+            fs.writeFileSync(path.join(directory,'index.html'),'<html><head></head><body><div id="map"></div><script src="app.js?v=private"></script></body></html>');
+            for (const asset of ['hs-app-nav.css','hs-app-nav.js']) fs.writeFileSync(path.join(directory,asset),'/* fixture */');
+            for (let i=0;i<2;i++) cp.execFileSync(process.execPath,['scripts/install-species-app-nav.cjs'],{
+              env:{...process.env,HS_SPECIES_NAV_TARGET:directory},stdio:'inherit'
+            });
+            const html=fs.readFileSync(path.join(directory,'index.html'),'utf8');
+            assert.equal((html.match(/hs-app-nav\\.css/g)||[]).length,1);
+            assert.equal((html.match(/hs-app-nav\\.js/g)||[]).length,1);
+            assert(html.includes('app.js?v=private'),'Private map viewer app script must be preserved');
+            console.log('PASS: private viewer HTML replacement retains exactly one navigation stylesheet and runtime.');
+          } finally { fs.rmSync(directory,{recursive:true,force:true}); }
+          NODE
           node --check scripts/mobile-browser-preview-qa.cjs
           node --check scripts/webkit-mobile-ux-qa.cjs
           node --check scripts/install-species-preview-route.cjs
