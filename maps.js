@@ -2234,8 +2234,12 @@ const _LEH_SPECIES_PREFIX = {
 
 // ── LEH zones cache & fetch ──
 let _lehZonesCache = null;
+let _lehZonesPromise = null;
 function _lehGetZones() {
   if (_lehZonesCache) return Promise.resolve(_lehZonesCache);
+  // Multiple expanded cards must share the same 4.7 MB zone download and
+  // JSON parse. A failed attempt can retry on the next card.
+  if (_lehZonesPromise) return _lehZonesPromise;
   const urls = ['./leh_zones.json', '/leh_zones.json', 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/leh_zones.json'];
   let lastErr = null;
   const tryNext = (i) => {
@@ -2244,7 +2248,10 @@ function _lehGetZones() {
       .then(r => { if (!r.ok) throw new Error(`${urls[i]} HTTP ${r.status}`); return r.json(); })
       .catch(err => { lastErr = err; return tryNext(i + 1); });
   };
-  return tryNext(0).then(d => { _lehZonesCache = d; return d; });
+  _lehZonesPromise = tryNext(0)
+    .then(d => { _lehZonesCache = d; return d; })
+    .catch(error => { _lehZonesPromise = null; throw error; });
+  return _lehZonesPromise;
 }
 
 function _lehNormalizeSpecies(speciesType) {
@@ -2406,6 +2413,11 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
   // Mapbox token — use same token as full map
   const token = (typeof MAPBOX_TOKEN !== 'undefined') ? MAPBOX_TOKEN : '';
 
+  // Start fetching/decoding LEH polygons in parallel with Mapbox style and
+  // imagery; otherwise every card waits for Mapbox's first load before the
+  // large LEH-zone request even begins.
+  const zonesReady = _lehGetZones();
+
   function _doMapboxInit() {
     mapboxgl.accessToken = token;
 
@@ -2450,7 +2462,7 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
     map.on('load', () => {
       // Card maps start in flat 2D. Terrain can distort LEH zone reading in small cards.
 
-      _lehGetZones().then(data => {
+      zonesReady.then(data => {
         if (!_lehCardMaps[containerId]) return; // card closed
 
         const zones   = data.zones    || data;
