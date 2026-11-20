@@ -12,7 +12,7 @@
   const SOURCE_SHA='e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e';
 
   // Explicit WILD compulsory inspections are evidence of kills, not a hunter-success denominator.
-  const INSPECTION_SOURCE='/species-map/data/bc-recorded-harvests.json?v=ci-evidence-20261119a';
+  const INSPECTION_SOURCE='/species-map/data/bc-recorded-harvests.json?v=roosevelt-audit-20261119b';
   const INSPECTION_SHA='7b2c0eda9da6ac11baeda2989852d4746703ca85893fd320f2e07b9ddbc20514';
   const INSPECTION_YEARS=new Set(['2022/23','2023/24','2024/25']);
   const INSPECTION_SUBTYPES=Object.freeze({
@@ -46,19 +46,35 @@
           if(typeof species!=='string'||typeof subtype!=='string'||
             !/^[1-8]-[1-9][0-9]?$/.test(wmu)||!['gos','leh'].includes(mode)||
             !Number.isInteger(n)||n<=0)throw Error('Invalid inspection count');
-          add(species+'|*|'+wmu,n);
-          add(species+'|'+subtype+'|'+wmu,n);
+          // Store by licence year: never place modern kills on a historical year.
+          add(species+'|*|'+wmu+'|'+year,n);
+          add(species+'|'+subtype+'|'+wmu+'|'+year,n);
           units.add(wmu);
         }
         inspectionCounts=counts;inspectionUnits=units;
       }).finally(()=>{pendingInspections=null;});
     return pendingInspections;
   }
+  function inspectedSeasons(){
+    // Survey reports calendar hunt years; CI reports licence years (e.g. 2024/25).
+    // Match on licence-year start, but never treat the two measures as identical.
+    const selected=new Set(selectedYears());
+    return [...INSPECTION_YEARS].filter(year=>selected.has(Number(year.slice(0,4)))).sort();
+  }
+  function inspectedPeriodLabel(){
+    const years=inspectedSeasons();
+    if(!years.length)return '';
+    return years.length===1?years[0]:years[0]+'–'+years[years.length-1];
+  }
   function recordedKills(id){
     if(!inspectionCounts||!code()||excludedForSpecies(id)||UNRESOLVED_SUBTYPES.has(key()))return 0;
     const subtypes=INSPECTION_SUBTYPES[key()];
-    if(!subtypes)return inspectionCounts.get(code()+'|*|'+id)||0;
-    return subtypes.reduce((sum,name)=>sum+(inspectionCounts.get(code()+'|'+name+'|'+id)||0),0);
+    let total=0;
+    for(const year of inspectedSeasons()){
+      if(!subtypes)total+=inspectionCounts.get(code()+'|*|'+id+'|'+year)||0;
+      else for(const name of subtypes)total+=inspectionCounts.get(code()+'|'+name+'|'+id+'|'+year)||0;
+    }
+    return total;
   }
   function hasEstimatedHarvest(){
     const ids=new Set([...Object.keys(modeArchive()),...Object.keys(rows()||{})]);
@@ -177,10 +193,10 @@
         span.append(swatch,document.createTextNode(name));
         legendNode.append(span);
       });
-      if(documentedWithoutRate()>0){
+      if(mapMetric==='success'&&documentedWithoutRate()>0){
         const note=document.createElement('span');
         note.className='hs-elk-data-note';
-        note.textContent='Muted green = inspected harvest, success sample too small (2022/23–2024/25)';
+        note.textContent='Muted green = inspected harvest ('+inspectedPeriodLabel()+'); no comparable success estimate';
         legendNode.append(note);
       }
       if(elkPolicy.isElk(key())){
@@ -299,7 +315,8 @@
   const active=()=>!!context&&context.getProvince()==='bc';
   // The drop-down may say Rocky Mountain or Roosevelt; the source's success
   // denominator is the combined provincial ELK category, never subspecies.
-  const label=()=>elkPolicy.isElk(key())?elkPolicy.surveyLabel:
+  const label=()=>elkPolicy.isRoosevelt(key())?'Roosevelt elk · coastal elk survey':
+    elkPolicy.isRocky(key())?'Rocky Mountain elk · interior elk survey':
     (window.HUNTSMART_SPECIES||[]).find(item=>item.key===key())?.label||key().replace(/_/g,' ');
   const rows=()=>official?.species?.[code()]||null;
   const historicalYear=()=>/^\d{4}$/.test(period.value)&&Number(period.value)<2024;
@@ -444,7 +461,7 @@
       const excluded=excludedForSpecies(id);
       const record=excluded?null:unitStats(id);
       const value=mapMetric==='success'?record?.rate:densityFor(id,record);
-      const documented=recordedKills(id)>0;
+      const documented=mapMetric==='success'&&recordedKills(id)>0;
       const ok=!!record?.reliable&&Number.isFinite(value);
       const classScale=mapMetric==='success'?classes:densityClasses;
       const colour=classScale.find(x=>value<=x.max)?.color||'#c45145';
@@ -498,13 +515,17 @@
       (mapMetric==='density'?' · Hunter density':' · Hunter success');
     const inspected=recordedKills(id);
     const recordedNode=document.getElementById('hs-wmu-recorded');
+    const inspectionSource=document.getElementById('hs-wmu-inspection-source');
+    if(inspectionSource)inspectionSource.hidden=inspected===0;
     if(recordedNode){
       recordedNode.hidden=inspected===0;
+      const type=elkPolicy.isRoosevelt(key())?'Roosevelt elk ':elkPolicy.isRocky(key())?'Rocky Mountain elk ':'';
       recordedNode.textContent=inspected>0?
-        inspected.toLocaleString()+' inspected hunter kills documented (2022/23–2024/25 licence years). Not a success rate.':'';
+        inspected.toLocaleString()+' inspected '+type+'hunter kills · '+inspectedPeriodLabel()+
+        '. Licence-year records; not the same measure as estimated harvest.':'';
     }
     const caveats=[];
-    if(inspected>0)caveats.push('Compulsory-inspection records identify harvested animals, but inspection coverage is incomplete and they cannot establish hunter success.');
+    if(inspected>0)caveats.push('Compulsory inspections may not represent all harvested animals. Licence-year inspection counts and calendar-year resident estimates cannot be compared directly. Elk subspecies in WILD inspections can be assigned from reported kill location, not genetic testing.');
     if(huntMode==='gos')caveats.push('No verified GOS-only WMU hunter or harvest estimates have been loaded. The combined provincial figures must not be represented as GOS success.');
     const source=document.getElementById('hs-wmu-source');
     if(source){source.href=huntMode==='leh'?LEH_CATALOGUE:BC_GOVERNMENT_HARVEST_DATA;
@@ -616,7 +637,7 @@
           ' Coastal Regions 1 and 2 only; other BC regions excluded. WMUs are not a verified Roosevelt range.'):'';
     const lowSampleInspections=documentedWithoutRate();
     const inspectionNote=lowSampleInspections?
-      ' '+lowSampleInspections+' additional WMUs have documented inspected kills (2022/23–2024/25), shown muted, without a comparable hunter-success rate. Inspection coverage is incomplete.':'';
+      ' '+lowSampleInspections+' additional WMUs have inspected harvest records ('+inspectedPeriodLabel()+') but no comparable hunter-success rate. Muted green in Success mode; no inference of zero harvest elsewhere.':'';
     if(!n)return 'No sufficiently reported '+date+' WMU hunter-success data for '+label()+'.'+inspectionNote+caution;
     return n+' WMUs with comparable '+date+
       ' resident harvest estimates. Grey = missing/small sample. Tap a WMU for details.'+

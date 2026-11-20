@@ -81,6 +81,7 @@ const extra=[
 '    <details><summary>Source &amp; methodology</summary>',
 '      <p id="hs-wmu-caveats" class="hs-wmu-caveats"></p>',
 '      <a id="hs-wmu-source" href="https://catalogue.data.gov.bc.ca/dataset/big-game-harvest-statistics-1976-to-2024" target="_blank" rel="noopener noreferrer">Government of BC harvest statistics</a>',
+'      <a id="hs-wmu-inspection-source" href="https://catalogue.data.gov.bc.ca/dataset/compulsory-inspection-data-1900-to-2023-24" target="_blank" rel="noopener noreferrer" hidden>Compulsory inspection source</a>',
 '    </details>',
 '  </section>',
 ''].join('\n');
@@ -106,7 +107,7 @@ assert(appTag,'app script missing');
 html=html.replace(appTag[0],appTag[0]+'\n  <script src="hs-map-ui.js?v=compact-20261118a"></script>');
 html=html.replace('</head>','  <link rel="stylesheet" href="hs-map-ui.css?v=elk-coastal-20261119a">\n</head>');
 html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=elk-identity-20261119a');
-html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=ci-evidence-20261119a');
+html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=roosevelt-audit-20261119b');
 assert(html.includes('hs-map-ui.js?v=')&&html.includes('hs-map-ui.css?v='),'UI assets not linked');
 assert(!html.includes('data-hs-huntmode'),'Single Success view may not add hunt type controls');
 fs.writeFileSync(htmlFile,html);

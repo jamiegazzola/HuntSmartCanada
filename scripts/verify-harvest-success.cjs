@@ -25,7 +25,8 @@ function setup({fail=false,defer=false}={}){
       i===3?'1-10':i===4?'2-12':i===5?'4-24':'unused-'+i},
     geometry:{type:'Polygon',coordinates:[]}}));
   const w={HUNTSMART_SPECIES:catalogue};
-  const sandbox={window:w,document:{createElementNS:()=>el('svg-'+elements.size),createTextNode:t=>t,getElementById:el,querySelectorAll:()=>[],querySelector:()=>null,
+  const metricButtons=['success','density'].map(name=>{const button=el('metric-'+name);button.dataset.hsMetric=name;return button;});
+  const sandbox={window:w,document:{createElementNS:()=>el('svg-'+elements.size),createTextNode:t=>t,getElementById:el,querySelectorAll:s=>s==='[data-hs-metric]'?metricButtons:[],querySelector:()=>null,
     createElement(){return el('generated-'+elements.size)},
     head:{appendChild(script){
       const done=()=>{sandbox.BC_WMU_GEOJSON={type:'FeatureCollection',features};
@@ -131,8 +132,8 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   elkLayer.listener({feature:{getProperty:()=> '1-10'},latLng:{}});
   assert.equal(base.el('hs-wmu-card').hidden,true,'Excluded Rocky elk unit cannot open details');
   elkLayer.listener({feature:{getProperty:()=> '4-24'},latLng:{}});
-  assert(base.el('hs-wmu-meta').textContent.includes('Elk (all subspecies)'),
-    'Rocky distribution must not mislabel official all-elk statistics');
+  assert(base.el('hs-wmu-meta').textContent.includes('Rocky Mountain elk · interior elk survey'),
+    'Rocky view must identify all-elk survey, not assert subspecies-specific success');
   assert(base.el('hs-wmu-caveats').textContent.includes('not subspecies-specific'));
   assert(base.el('hs-harvest-detail').textContent.includes('Regions 1 and 2 excluded'));
   base.el('hs-harvest-period').value='1985';base.el('hs-harvest-period').change();await flush();
@@ -160,17 +161,29 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   coastLayer.listener({feature:{getProperty:()=> '1-10'},latLng:{}});
   assert(base.el('hs-wmu-caveats').textContent.includes('not subspecies-specific'));
   assert(base.el('hs-wmu-caveats').textContent.includes('Only coastal Regions 1 and 2'));
-  assert(base.el('hs-wmu-recorded').textContent.startsWith('136 inspected hunter kills'),
-    'Roosevelt 1-10 inspection kills shown without inventing a subspecies success rate');
+  assert.equal(base.el('hs-wmu-recorded').hidden,true,
+    '1985 Roosevelt success must not display modern 2022/23–2024/25 inspection kills');
+  assert.equal(base.el('hs-wmu-inspection-source').hidden,true);
+  base.el('hs-harvest-period').value='current';base.el('hs-harvest-period').change();await flush();
+  base.layers.at(-1).listener({feature:{getProperty:()=> '1-10'},latLng:{}});
+  assert(base.el('hs-wmu-recorded').textContent.startsWith('35 inspected Roosevelt elk hunter kills · 2024/25'),
+    '2024 estimate must pair only with 2024/25 licence-year inspections');
+  assert.equal(base.el('hs-wmu-inspection-source').hidden,false);
   base.el('hs-harvest-period').value='average';base.el('hs-harvest-period').change();await flush();
   const sparseCoast=base.layers.at(-1);
   assert.equal(sparseCoast.style({getProperty:()=> '1-5'}).fillColor,'#597a61',
     'Roosevelt 1-5 documented kills must remain visible with an insufficient success sample');
   sparseCoast.listener({feature:{getProperty:()=> '1-5'},latLng:{}});
   assert.equal(base.el('hs-wmu-rate').textContent,'—','No success probability from small sample');
-  assert(base.el('hs-wmu-recorded').textContent.startsWith('27 inspected hunter kills'),
+  assert(base.el('hs-wmu-recorded').textContent.startsWith('27 inspected Roosevelt elk hunter kills'),
     'Roosevelt 1-5 documented harvest still visible');
   assert.equal(sparseCoast.style({getProperty:()=> '1-5'}).clickable,true);
+  base.el('metric-density').click();
+  assert.equal(sparseCoast.style({getProperty:()=> '1-5'}).fillColor,'#8c9494',
+    'Recorded harvest cannot be shaded as hunter density without a density estimate');
+  base.el('metric-success').click();
+  assert.equal(sparseCoast.style({getProperty:()=> '1-5'}).fillColor,'#597a61',
+    'Inspection evidence shading returns only in success view');
   // Return to historical selection before checking cross-species persistence.
   base.el('hs-harvest-period').value='1985';base.el('hs-harvest-period').change();await flush();
   base.setSpecies('stone_sheep');await flush();
