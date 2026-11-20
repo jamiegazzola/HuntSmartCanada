@@ -58,6 +58,23 @@
   if (media.addEventListener) media.addEventListener('change', sync);
   else if (media.addListener) media.addListener(sync);
   window.__HS_SPECIES_APP_NAV__ = {version:'20261120-ux1', sync:sync};
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, {once:true});
-  else install();
+  // Load from the document head: nav must appear immediately, even when
+  // production-only wildlife scripts block DOMContentLoaded for many seconds.
+  if (document.body) install();
+  else if (document.documentElement) {
+    var readyObserver = new MutationObserver(function () {
+      if (!document.body) return;
+      readyObserver.disconnect();
+      install();
+    });
+    readyObserver.observe(document.documentElement, { childList:true });
+  }
+  // The map inspector is injected by production map-ui after this early script.
+  // Reconcile its visibility once all other UI initializers have finished.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      install();
+      watchInspector();
+    }, {once:true});
+  }
 })();
