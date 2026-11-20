@@ -204,7 +204,7 @@
       if(mapMetric==='success'&&documentedWithoutRate()>0){
         const note=document.createElement('span');
         note.className='hs-elk-data-note';
-        note.textContent='Muted green = inspected harvest ('+inspectedPeriodLabel()+'); no comparable success estimate';
+        note.textContent='Muted green = inspected harvest ('+inspectedPeriodLabel()+'); survey rate not shaded';
         legendNode.append(note);
       }
       if(elkPolicy.isElk(key())){
@@ -542,10 +542,10 @@
     const note=document.getElementById('hs-trend-note');
     if(note)note.textContent=huntMode==='leh'?
       'LEH survey estimates, 1984–2023. Only single-WMU hunts are mapped; sums across hunt codes represent hunter participations, not unique hunters.':
-      'Combined resident estimates. GOS-only WMU survey figures are not available in the loaded sources.';
+      'Combined resident estimates (LEH and GOS); original survey response counts are not supplied. Annual ratios may be volatile in low-volume units; not subspecies-specific.';
     const huntersLabel=document.getElementById('hs-wmu-hunters-label');
     if(huntersLabel)huntersLabel.textContent=huntMode==='leh'?'LEH hunter participations':'Hunters';
-    if(!s?.reliable)caveats.push(s?'Small or non-comparable sample; not mapped as a reliable rate.':'No comparable resident estimate for this period.');
+    if(!s?.reliable)caveats.push(s?'Low estimated hunter volume or non-comparable harvest/hunter ratio. This is a presentation rule, not a statistical confidence interval.':'No comparable resident estimate for this period.');
     if(!s?.reliable&&s?.kills>0)caveats.push('Estimated harvest is reported here even though this sample cannot support a comparable success rate. This does not mean zero harvest.');
     if(s?.coverage&&selectedYears().length>1)caveats.push('Reported years: '+s.coverage+'.');
     if(elkPolicy.isElk(key()))caveats.push('BC provincial ELK harvest statistics combine Roosevelt and Rocky Mountain elk; the success rate is not subspecies-specific.');
@@ -649,7 +649,7 @@
       ' '+lowSampleInspections+' additional WMUs have inspected harvest records ('+inspectedPeriodLabel()+') but no comparable hunter-success rate. Muted green in Success mode; no inference of zero harvest elsewhere.':'';
     if(!n)return 'No sufficiently reported '+date+' WMU hunter-success data for '+label()+'.'+inspectionNote+caution;
     return n+' WMUs with comparable '+date+
-      ' resident harvest estimates. Grey = missing/small sample. Tap a WMU for details.'+
+      ' resident harvest estimates. Grey = missing/low estimated hunter volume. Tap a WMU for details.'+
       (EXACT.has(key())||elkPolicy.isElk(key())?'':' Provincial category: '+NAMES[type]+' (not subspecies-specific).')+
       closure+elkWarning+inspectionNote+caution+(huntMode==='leh'?' LEH survey is reported by hunt code; mapped only for single-WMU hunt areas.':'');
   }
