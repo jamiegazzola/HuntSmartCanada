@@ -199,6 +199,22 @@ async function mobile(browser, w, h) {
       replacement: _lehCardMaps[id] !== window.__hsQaCardBefore
     }),cardId)));
     await image(page, '390-leh-card-topo');
+    await page.evaluate(id => window.bcCardMapToggleFullscreen(id),cardId);
+    await page.locator('.leh-card-fullscreen-overlay').waitFor({state:'visible',timeout:8000});
+    const fullscreen = await page.evaluate(() => {
+      const nav=document.getElementById('hsMobileTabbar').getBoundingClientRect();
+      const header=document.querySelector('body > nav:not(.hs-mobile-tabbar)').getBoundingClientRect();
+      const overlay=document.querySelector('.leh-card-fullscreen-overlay').getBoundingClientRect();
+      return {navTop:nav.top,overlayBottom:overlay.bottom,overlayTop:overlay.top,headerBottom:header.bottom};
+    });
+    assert(Math.abs(fullscreen.overlayBottom-fullscreen.navTop)<=4 &&
+      Math.abs(fullscreen.overlayTop-fullscreen.headerBottom)<=4,
+      'Expanded hunt card hides navigation: '+JSON.stringify(fullscreen));
+    await image(page,'390-leh-card-expanded');
+    await page.locator('#hsMobileTabbar [data-tab="home"]').click();
+    await page.locator('.leh-card-fullscreen-overlay').waitFor({state:'detached',timeout:6000});
+    assert(await page.locator('#homePage').isVisible(),'Navigating away from fullscreen map failed');
+    await page.evaluate(()=>window.showPage('draws'));
   }
 
   await show(page, 'saved', '#savedPage');
