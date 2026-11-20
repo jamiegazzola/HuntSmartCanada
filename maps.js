@@ -2417,6 +2417,9 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
   // imagery; otherwise every card waits for Mapbox's first load before the
   // large LEH-zone request even begins.
   const zonesReady = _lehGetZones();
+  // Handle early failures while Mapbox style loads; the map's own rejection
+  // handler below still reports the real problem to the user.
+  zonesReady.catch(() => {});
 
   function _doMapboxInit() {
     mapboxgl.accessToken = token;
