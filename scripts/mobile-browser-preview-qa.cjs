@@ -91,6 +91,41 @@ async function mobile(browser, w, h) {
   await inspect(page, w + ' BC filter');
   await image(page, w + '-filter');
 
+  if (w === 390) {
+    const started = Date.now();
+    await page.evaluate(() => fpBcToggleMap());
+    await page.locator('#fpBcMapPanel').waitFor({state:'visible'});
+    await page.waitForFunction(() =>
+      Boolean(document.querySelector('#fpBcLeafletMap .leaflet-overlay-pane path') &&
+        window.__HS_WMU_VECTOR_TILES__?.snapshot().bcFullGeometry),
+      null, {timeout:45000});
+    console.log('FILTER_BC', JSON.stringify({
+      initialized: await page.evaluate(() => fpBcMapInitialized),
+      polygonCount: await page.locator('#fpBcLeafletMap .leaflet-overlay-pane path').count(),
+      geometry: await page.evaluate(() => window.__HS_WMU_VECTOR_TILES__.snapshot().bcFullGeometry),
+      elapsedMs: Date.now() - started
+    }));
+    assert(await page.evaluate(() => fpBcMapInitialized), 'BC filter map did not initialize');
+    await image(page, '390-bc-filter-map');
+
+    await show(page, 'abFilter', '#abFilterPage');
+    const abStart = Date.now();
+    await page.evaluate(() => abFpToggleMap());
+    await page.locator('#abFpMapPanel').waitFor({state:'visible'});
+    await page.waitForFunction(() =>
+      Boolean(document.querySelector('#abFpLeafletMap .leaflet-overlay-pane path') &&
+        window.__HS_WMU_VECTOR_TILES__?.snapshot().abFullGeometry),
+      null, {timeout:60000});
+    console.log('FILTER_AB', JSON.stringify({
+      initialized: await page.evaluate(() => abFpMapInitialized),
+      polygonCount: await page.locator('#abFpLeafletMap .leaflet-overlay-pane path').count(),
+      geometry: await page.evaluate(() => window.__HS_WMU_VECTOR_TILES__.snapshot().abFullGeometry),
+      elapsedMs: Date.now() - abStart
+    }));
+    assert(await page.evaluate(() => abFpMapInitialized), 'Alberta filter map did not initialize');
+    await image(page, '390-ab-filter-map');
+  }
+
   await show(page, 'draws', '#drawsPage');
   await inspect(page, w + ' draw results');
   await image(page, w + '-draws');
