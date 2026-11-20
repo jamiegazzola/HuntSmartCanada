@@ -78,7 +78,9 @@
     bottom: calc(var(--hs-species-tab-height) + 70px) !important;
     max-height: min(21vh, 175px) !important;
   }
-  body.hs-species-has-tabs .hs-preview-species-back { display: none !important; }
+  /* The Maps tab replaces the duplicate back button on narrow screens. */
+  body.hs-species-has-tabs .hs-preview-species-back,
+  body.hs-species-has-tabs .hs-map-back { display: none !important; }
 }
 @media(max-width:350px) {
   #hsSpeciesTabbar .hs-species-tab { font-size: 8px; gap: 2px; }
