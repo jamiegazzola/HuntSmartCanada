@@ -125,6 +125,31 @@
         ...params
       });
     } catch (_) {}
+
+    // Forward only semantic, non-identifying product events to PostHog.
+    // PostHog records its own pageviews; don't duplicate them here.
+    const allowed = [
+      'app_section_view', 'blog_to_app_click', 'blog_map_started',
+      'blog_map_completed', 'blog_map_mode_select',
+      'blog_map_species_select', 'blog_map_free_explore', 'sign_up'
+    ];
+    const host = window.location.hostname.toLowerCase();
+    if (!allowed.includes(name) ||
+        (host !== 'huntsmartcanada.ca' && host !== 'www.huntsmartcanada.ca')) return;
+
+    const safe = { page_type: pageType() };
+    if (params.app_section) safe.app_section = clip(params.app_section, 40);
+    if (params.article_slug) safe.article_slug = clip(params.article_slug, 100);
+    if (params.map_mode) safe.map_mode = clip(params.map_mode, 30);
+    if (params.species) safe.species = clip(params.species, 60);
+    if (name === 'sign_up') safe.method = 'firebase_auth';
+
+    if (window.posthog && typeof window.posthog.capture === 'function') {
+      try { window.posthog.capture(name, safe); } catch (_) {}
+    } else {
+      const pending = window.__hsPosthogPending = window.__hsPosthogPending || [];
+      if (pending.length < 50) pending.push([name, safe]);
+    }
   }
 
   track('page_view', {
