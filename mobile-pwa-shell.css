@@ -306,3 +306,27 @@
   body.hs-mobile-map-active #mapPage,
   body.hs-mobile-map-active #bcOpenSeasonsPage { isolation: isolate; }
 }
+
+/* The Account tab already handles authentication on mobile.
+   Remove the redundant header Sign In button and center the HuntSmart wordmark. */
+@media (max-width:768px) {
+  body > nav:not(.hs-mobile-tabbar) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  body > nav:not(.hs-mobile-tabbar) #authNavBtn {
+    display: none !important;
+  }
+  body > nav:not(.hs-mobile-tabbar) .nav-brand {
+    display: inline-flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-inline: auto !important;
+    width: max-content;
+    max-width: calc(100% - 32px);
+    text-align: center;
+  }
+  body > nav:not(.hs-mobile-tabbar) .nav-brand-top { text-align: center; }
+}
