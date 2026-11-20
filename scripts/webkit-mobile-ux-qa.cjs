@@ -25,6 +25,21 @@ async function inspectTabs(page, name) {
 }
 async function run(browser,w,h) {
   const context=await browser.newContext({viewport:{width:w,height:h},screen:{width:w,height:h},deviceScaleFactor:2,isMobile:true,hasTouch:true,serviceWorkers:'block'});
+  // Netlify's preview-only feedback iframe intercepts clicks at the bottom of
+  // the viewport; production has no such overlay. Keep app navigation genuine.
+  if (base.includes('deploy-preview-')) {
+    await context.addInitScript(() => {
+      function removePreviewOverlay() {
+        document.querySelectorAll('[data-netlify-deploy-id]').forEach(el => el.remove());
+      }
+      const install = () => {
+        removePreviewOverlay();
+        new MutationObserver(removePreviewOverlay).observe(document.documentElement, {childList:true,subtree:true});
+      };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, {once:true});
+      else install();
+    });
+  }
   const page=await context.newPage();
   await page.goto(base+'/?webkit-ux='+w,{waitUntil:'domcontentloaded',timeout:35000});
   await page.waitForFunction(()=>!!window.__HS_MAP_DESTINATIONS__ && !!document.getElementById('hsMobileAccountTab'),null,{timeout:25000});
