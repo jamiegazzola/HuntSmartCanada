@@ -698,6 +698,38 @@ function fullMapSetProvince(prov) {
 
 // ── Entry point ──
 let _fullMapGateAttempts = 0;
+// One Mapbox GL script load for the main map and simultaneously expanded hunt cards.
+// Sharing the load avoids duplicate JS downloads and races on cold mobile browsers.
+let _hsMapboxGlPromise = null;
+function hsLoadMapboxGl() {
+  if (window.mapboxgl) return Promise.resolve(window.mapboxgl);
+  if (_hsMapboxGlPromise) return _hsMapboxGlPromise;
+
+  if (!document.querySelector('link[href*="mapbox-gl-js/v3.3.0/mapbox-gl.css"]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css';
+    document.head.appendChild(link);
+  }
+  _hsMapboxGlPromise = new Promise((resolve, reject) => {
+    const url = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
+    const existing = Array.from(document.scripts).find(s => s.src === url);
+    const script = existing || document.createElement('script');
+    const loaded = () => window.mapboxgl ? resolve(window.mapboxgl) : reject(new Error('Mapbox GL loaded without API'));
+    script.addEventListener('load', loaded, { once: true });
+    script.addEventListener('error', () => reject(new Error('Mapbox GL failed to load')), { once: true });
+    if (!existing) {
+      script.src = url;
+      document.head.appendChild(script);
+    } else if (window.mapboxgl) {
+      loaded();
+    }
+  }).catch(error => {
+    _hsMapboxGlPromise = null;
+    throw error;
+  });
+  return _hsMapboxGlPromise;
+}
 function fullMapInit() {
   if (fullMapInitialized[fullMapProvince]) {
     if (fullMapInstance) fullMapInstance.resize();
@@ -721,19 +753,9 @@ function fullMapInit() {
     else _fullMapInitAB();
   }
 
-  if (window.mapboxgl) {
-    doInit();
-  } else {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css';
-    document.head.appendChild(link);
-    const script = document.createElement('script');
-    script.src = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
-    script.onload = doInit;
-    script.onerror = () => { if (loading) loading.innerHTML = '<span style="color:#f87171;font-size:12px">Failed to load map.</span>'; };
-    document.head.appendChild(script);
-  }
+  hsLoadMapboxGl().then(doInit).catch(() => {
+    if (loading) loading.innerHTML = '<span style="color:#f87171;font-size:12px">Failed to load map.</span>';
+  });
 }
 
 // ── Build base Mapbox map ──
@@ -2649,25 +2671,13 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
     map.on('error', e => console.warn('[cardMap]', e.error?.message || e));
   }
 
-  // Load Mapbox GL JS if needed (may already be loaded by full map tab)
-  if (window.mapboxgl) {
-    _doMapboxInit();
-  } else {
-    if (!document.querySelector('link[href*="mapbox-gl"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css';
-      document.head.appendChild(link);
-    }
-    const script = document.createElement('script');
-    script.src = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
-    script.onload = _doMapboxInit;
-    script.onerror = () => {
-      const s = document.getElementById(containerId + '_status');
-      if (s) { s.textContent = 'Map unavailable'; s.style.color = '#f87171'; }
-    };
-    document.head.appendChild(script);
-  }
+  // Reuse the main map's Mapbox GL load; never duplicate scripts across cards.
+  hsLoadMapboxGl().then(() => {
+    if (document.getElementById(containerId) === container) _doMapboxInit();
+  }).catch(() => {
+    const s = document.getElementById(containerId + '_status');
+    if (s) { s.textContent = 'Map unavailable'; s.style.color = '#f87171'; }
+  });
 }
 
 
