@@ -159,13 +159,14 @@
       }
       var mobile = window.matchMedia('(max-width:768px)').matches;
       var buttonName = tab === 'maps' ? 'map' : tab;
-      if (mobile && tab === 'account' && !document.getElementById('hsMobileAccountTab')) {
-        if (++tries < 45) setTimeout(run, 100);
+      if (tab === 'account' && (typeof window.openAuthMenu !== 'function' ||
+          !document.getElementById('authNavBtn'))) {
+        if (++tries < 70) setTimeout(run, 100);
         return;
       }
       url.searchParams.delete('hsTab');
       window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
-      if (mobile && (tab === 'draws' || tab === 'maps' || tab === 'account')) {
+      if (mobile && (tab === 'draws' || tab === 'maps')) {
         document.querySelector('#hsMobileTabbar [data-tab="' + buttonName + '"]')?.click();
         return;
       }
