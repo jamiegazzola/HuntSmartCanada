@@ -8,6 +8,7 @@ on:
       - mobile-pwa-shell.js
       - map-destinations.js
       - map-vector-runtime.js
+      - maps.js
       - bc-filters.js
       - ab-filters.js
       - netlify.toml
@@ -22,6 +23,7 @@ on:
       - mobile-pwa-shell.js
       - map-destinations.js
       - map-vector-runtime.js
+      - maps.js
       - bc-filters.js
       - ab-filters.js
       - netlify.toml
@@ -68,6 +70,7 @@ jobs:
           node --check mobile-pwa-shell.js
           node --check map-destinations.js
           node --check map-vector-runtime.js
+          node --check maps.js
           node --check bc-filters.js
           node --check ab-filters.js
           node --check species-map/hs-map-ui.js
