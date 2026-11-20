@@ -57,6 +57,23 @@ async function run(browser,w,h) {
     await page.addStyleTag({content:'[data-netlify-deploy-id]{display:none!important;pointer-events:none!important}'});
     await page.evaluate(()=>document.querySelectorAll('[data-netlify-deploy-id]').forEach(x=>x.remove()));
   }
+  const headerPaint = await page.evaluate(() => {
+    const header=document.querySelector('body > nav:not(.hs-mobile-tabbar)');
+    const brand=header?.querySelector('.nav-brand-top');
+    const profile=document.getElementById('authNavBtn');
+    const r=brand?.getBoundingClientRect();
+    return {
+      navOpacity:getComputedStyle(header).opacity,
+      navFilter:getComputedStyle(header).filter,
+      brandColor:getComputedStyle(brand).color,
+      brandOpacity:getComputedStyle(brand).opacity,
+      profileColor:getComputedStyle(profile).color,
+      profileOpacity:getComputedStyle(profile).opacity,
+      profileBackground:getComputedStyle(profile).backgroundColor,
+      atop:r ? document.elementFromPoint(r.left+Math.min(30,r.width/2),r.top+Math.min(8,r.height/2))?.outerHTML.slice(0,170) : ''
+    };
+  });
+  console.log('WEBKIT_HEADER_PAINT',w,JSON.stringify(headerPaint));
   await page.screenshot({path:'mobile-qa-artifacts/'+w+'-webkit-home.png'});
   // Public authentication UX: modal opens, can switch between sign-in/up,
   // and closes without sending credentials or changing real user data.
