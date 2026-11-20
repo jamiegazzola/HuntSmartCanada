@@ -86,6 +86,13 @@ async function mobile(browser, w, h) {
   assert(await page.evaluate(() => document.documentElement.classList.contains('hs-mobile-browser')), 'Browser mode class missing');
   await inspect(page, w + ' home');
   await image(page, w + '-home');
+  if (w === 390) {
+    const heavy = await page.evaluate(() => performance.getEntriesByType('resource')
+      .filter(e => e.name.startsWith(location.origin))
+      .map(e => ({file:new URL(e.name).pathname, ms:Math.round(e.duration), kb:Math.round(e.transferSize/1024)}))
+      .sort((a,b) => b.ms-a.ms).slice(0,8));
+    console.log('HOME_RESOURCE_TIMINGS', JSON.stringify(heavy));
+  }
 
   await show(page, 'filter', '#filterPage');
   await inspect(page, w + ' BC filter');
@@ -138,6 +145,7 @@ async function mobile(browser, w, h) {
   await page.locator('#hsMapDestinationsBackdrop.open').waitFor({state:'visible',timeout:6000});
   assert(await page.locator('#hsMapDestinationsBackdrop [data-map-destination]').count() === 2, 'Map destination choices missing');
   await image(page, w + '-maps-choice');
+  const fullMapStarted = Date.now();
   await page.locator('#hsMapDestinationsBackdrop [data-map-destination="interactive"]').click();
   await page.waitForFunction(() => {
     const e=document.getElementById('mapPage');
@@ -160,7 +168,14 @@ async function mobile(browser, w, h) {
     w + ' map clipped by bottom navigation: ' + JSON.stringify(map));
   assert(map.h >= 180, w + ' map too short');
   await image(page, w + '-map-leh');
+  if (w === 390) {
+    const mapReady = await page.waitForFunction(() =>
+      typeof fullMapInstance !== 'undefined' && Boolean(fullMapInstance?.loaded?.()),
+      null, {timeout:20000}).then(() => true).catch(() => false);
+    console.log('FULL_MAP_FIRST_COMPLETE', JSON.stringify({ready:mapReady,elapsedMs:Date.now()-fullMapStarted}));
+  }
 
+  const gosStart = Date.now();
   await show(page, 'bcOpenSeasons', '#bcOpenSeasonsPage');
   const gos = await page.evaluate(() => {
     const e=document.querySelector('#bcOpenSeasonsPage .os-page').getBoundingClientRect();
@@ -170,6 +185,12 @@ async function mobile(browser, w, h) {
   console.log('GOS', w, JSON.stringify(gos));
   assert(Math.abs(gos.bottom - gos.tabTop) <= 8, w + ' GOS overlaps nav: ' + JSON.stringify(gos));
   await image(page, w + '-map-gos');
+  if (w === 390) {
+    const gosReady = await page.waitForFunction(() =>
+      typeof osMapInstance !== 'undefined' && Boolean(osMapInstance?.loaded?.()),
+      null, {timeout:20000}).then(() => true).catch(() => false);
+    console.log('GOS_MAP_FIRST_COMPLETE', JSON.stringify({ready:gosReady,elapsedMs:Date.now()-gosStart}));
+  }
   const fatalErrors = errors.filter(e => /SyntaxError|ReferenceError|TypeError/i.test(e));
   assert(fatalErrors.length === 0, w + ' mobile JavaScript errors: ' + fatalErrors.join(' | '));
   await context.close();
