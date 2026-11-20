@@ -84,7 +84,17 @@ jobs:
             const home = await page.evaluate(() => window.__HS_WMU_VECTOR_TILES__.snapshot());
             assert(home.version === expectedVector, `Wrong vector runtime ${JSON.stringify(home)}`);
             assert(!home.bcFullGeometry && !home.abFullGeometry, `Full WMU geometry loaded before opening Map ${JSON.stringify(home)}`);
-            assert(requests.filter(isVectorTile).length === 0, `Vector tiles requested before Map: ${JSON.stringify(requests.filter(isVectorTile))}`);
+            // The current map-prewarm-runtime intentionally fetches up to two
+            // tiny initial-view tiles on Home, improving map startup without
+            // loading province-scale WMU geometry.
+            const prewarmedTiles = requests.filter(isVectorTile);
+            const allowedWarmTiles = new Set([
+              `/map-tiles/${expectedTiles}/bc/4/2/5.pbf`,
+              `/map-tiles/${expectedTiles}/bc/5/4/10.pbf`
+            ]);
+            assert(prewarmedTiles.length <= 2 &&
+              prewarmedTiles.every(url => allowedWarmTiles.has(new URL(url).pathname)),
+              `Unexpected vector tile requests before Map: ${JSON.stringify(prewarmedTiles)}`);
             assert(requests.filter(isFullGeometry).length === 0, `Full geometry requested before Map: ${JSON.stringify(requests.filter(isFullGeometry))}`);
 
             const bcStarted = Date.now();
