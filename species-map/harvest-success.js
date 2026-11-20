@@ -60,6 +60,11 @@
     if(!subtypes)return inspectionCounts.get(code()+'|*|'+id)||0;
     return subtypes.reduce((sum,name)=>sum+(inspectionCounts.get(code()+'|'+name+'|'+id)||0),0);
   }
+  function hasEstimatedHarvest(){
+    const ids=new Set([...Object.keys(modeArchive()),...Object.keys(rows()||{})]);
+    for(const id of ids)if(!excludedForSpecies(id)&&unitStats(id)?.kills>0)return true;
+    return false;
+  }
   function documentedWithoutRate(){
     if(!inspectionUnits)return 0;
     let total=0;
@@ -511,6 +516,7 @@
     const huntersLabel=document.getElementById('hs-wmu-hunters-label');
     if(huntersLabel)huntersLabel.textContent=huntMode==='leh'?'LEH hunter participations':'Hunters';
     if(!s?.reliable)caveats.push(s?'Small or non-comparable sample; not mapped as a reliable rate.':'No comparable resident estimate for this period.');
+    if(!s?.reliable&&s?.kills>0)caveats.push('Estimated harvest is reported here even though this sample cannot support a comparable success rate. This does not mean zero harvest.');
     if(s?.coverage&&selectedYears().length>1)caveats.push('Reported years: '+s.coverage+'.');
     if(elkPolicy.isElk(key()))caveats.push('BC provincial ELK harvest statistics combine Roosevelt and Rocky Mountain elk; the success rate is not subspecies-specific.');
     else if(!EXACT.has(key()))caveats.push('BC category: '+(NAMES[code()]||'unavailable')+'; not subspecies-specific.');
@@ -643,7 +649,7 @@
       updateMetricControls();
       if(isSheep())void loadAge();
       if(generation!==renderSerial||!enabled||!active())return;
-      if(!reliableCount()&&!documentedWithoutRate()){
+      if(!reliableCount()&&!documentedWithoutRate()&&!hasEstimatedHarvest()){
         legend.hidden=true;setDetail(summary());
         restoreUnitAfterModeSwitch();
         return;
