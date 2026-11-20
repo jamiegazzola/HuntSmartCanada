@@ -139,6 +139,11 @@
   const classes=[{max:9,color:'#468f58'},{max:19,color:'#a3b950'},
     {max:29,color:'#dfcb58'},{max:39,color:'#e28d42'},
     {max:Infinity,color:'#c45145'}];
+  // The general 40%+ bin hides real variation among coastal elk WMUs.
+  // Fixed 20-point bins keep the high-success elk map comparable across years.
+  const elkSuccessClasses=[{max:19,color:'#468f58'},{max:39,color:'#a3b950'},
+    {max:59,color:'#dfcb58'},{max:79,color:'#e28d42'},
+    {max:Infinity,color:'#c45145'}];
   const densityClasses=[{max:1,color:'#468f58'},{max:3,color:'#a3b950'},
     {max:10,color:'#dfcb58'},{max:30,color:'#e28d42'},
     {max:Infinity,color:'#c45145'}];
@@ -182,9 +187,12 @@
       button.setAttribute('aria-pressed',String(button.dataset.hsMetric===mapMetric)));
     const legendNode=document.getElementById('hs-metric-legend');
     if(legendNode){
-      const labels=mapMetric==='success'?['0–9%','10–19%','20–29%','30–39%','40%+']:
+      const isElk=elkPolicy.isElk(key());
+      const labels=mapMetric==='success'?
+        (isElk?['0–19%','20–39%','40–59%','60–79%','80%+']:
+          ['0–9%','10–19%','20–29%','30–39%','40%+']):
         ['0–1','1–3','3–10','10–30','30+'];
-      const scale=mapMetric==='success'?classes:densityClasses;
+      const scale=mapMetric==='success'?(isElk?elkSuccessClasses:classes):densityClasses;
       legendNode.replaceChildren();
       labels.forEach((name,i)=>{
         const span=document.createElement('span');
@@ -463,7 +471,8 @@
       const value=mapMetric==='success'?record?.rate:densityFor(id,record);
       const documented=mapMetric==='success'&&recordedKills(id)>0;
       const ok=!!record?.reliable&&Number.isFinite(value);
-      const classScale=mapMetric==='success'?classes:densityClasses;
+      const classScale=mapMetric==='success'?
+        (elkPolicy.isElk(key())?elkSuccessClasses:classes):densityClasses;
       const colour=classScale.find(x=>value<=x.max)?.color||'#c45145';
       return {fillColor:ok?colour:documented?'#597a61':'#8c9494',
         fillOpacity:(excluded?0:ok?0.76:documented?0.28:record?0.17:0.07)*opacity,

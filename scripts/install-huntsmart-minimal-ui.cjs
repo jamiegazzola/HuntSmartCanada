@@ -107,7 +107,7 @@ assert(appTag,'app script missing');
 html=html.replace(appTag[0],appTag[0]+'\n  <script src="hs-map-ui.js?v=compact-20261118a"></script>');
 html=html.replace('</head>','  <link rel="stylesheet" href="hs-map-ui.css?v=elk-coastal-20261119a">\n</head>');
 html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=elk-identity-20261119a');
-html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=roosevelt-audit-20261119b');
+html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=roosevelt-audit-20261119c');
 assert(html.includes('hs-map-ui.js?v=')&&html.includes('hs-map-ui.css?v='),'UI assets not linked');
 assert(!html.includes('data-hs-huntmode'),'Single Success view may not add hunt type controls');
 fs.writeFileSync(htmlFile,html);

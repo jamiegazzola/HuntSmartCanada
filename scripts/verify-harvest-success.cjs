@@ -169,6 +169,14 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   assert(base.el('hs-wmu-recorded').textContent.startsWith('35 inspected Roosevelt elk hunter kills · 2024/25'),
     '2024 estimate must pair only with 2024/25 licence-year inspections');
   assert.equal(base.el('hs-wmu-inspection-source').hidden,false);
+  base.el('hs-harvest-period').value='ten';base.el('hs-harvest-period').change();await flush();
+  const scaleCoast=base.layers.at(-1);
+  assert.equal(scaleCoast.style({getProperty:()=> '1-6'}).fillColor,'#dfcb58',
+    '43.7% pooled coastal elk rate must be distinct from 80%+ elk units');
+  assert.equal(scaleCoast.style({getProperty:()=> '1-10'}).fillColor,'#e28d42',
+    '77.8% pooled coastal elk rate must shade in 60–79% bin');
+  assert.equal(scaleCoast.style({getProperty:()=> '1-11'}).fillColor,'#c45145',
+    '87.6% pooled coastal elk rate must shade in 80%+ bin');
   base.el('hs-harvest-period').value='average';base.el('hs-harvest-period').change();await flush();
   const sparseCoast=base.layers.at(-1);
   assert.equal(sparseCoast.style({getProperty:()=> '1-5'}).fillColor,'#597a61',
