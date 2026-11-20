@@ -67,6 +67,9 @@
     max-height: min(17vh, 130px);
     overflow-y: auto;
   }
+  /* The coordinate action otherwise sits over the WMU detail sheet. */
+  body.hs-species-inspector-open #coordinate-drop-pin,
+  body.hs-species-inspector-open .hs-metric-legend { display: none !important; }
   body.hs-species-has-tabs .hs-wmu-card {
     bottom: calc(var(--hs-species-tab-height) + 8px) !important;
     max-height: min(48vh, 430px) !important;

@@ -276,7 +276,8 @@
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    z-index: 12000 !important;
+    /* Beneath modal sheets (Draws 9600, Maps 12500), above map overlays. */
+    z-index: 9500 !important;
     display: grid !important;
     grid-template-columns: repeat(6,minmax(0,1fr)) !important;
     align-items: stretch !important;

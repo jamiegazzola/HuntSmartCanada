@@ -15,8 +15,18 @@
     if (!document.body) return;
     document.body.classList.toggle('hs-species-has-tabs', media.matches);
   }
+  function watchInspector() {
+    var card = document.getElementById('hs-wmu-card');
+    if (!card || card.dataset.hsNavObserved === '1') return;
+    card.dataset.hsNavObserved = '1';
+    function syncInspector() {
+      document.body.classList.toggle('hs-species-inspector-open', media.matches && !card.hidden);
+    }
+    new MutationObserver(syncInspector).observe(card, {attributes:true,attributeFilter:['hidden','class']});
+    syncInspector();
+  }
   function install() {
-    if (!document.body || document.getElementById('hsSpeciesTabbar')) { sync(); return; }
+    if (!document.body || document.getElementById('hsSpeciesTabbar')) { sync(); watchInspector(); return; }
     var nav = document.createElement('nav');
     nav.id = 'hsSpeciesTabbar';
     nav.className = 'hs-species-tabbar';
@@ -32,6 +42,7 @@
     }).join('');
     document.body.appendChild(nav);
     sync();
+    watchInspector();
   }
   if (media.addEventListener) media.addEventListener('change', sync);
   else if (media.addListener) media.addListener(sync);
