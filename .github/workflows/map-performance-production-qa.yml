@@ -89,6 +89,7 @@ jobs:
 
             const bcStarted = Date.now();
             await page.evaluate(() => document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click());
+            await page.locator('#hsMapDestinationsBackdrop [data-map-destination="interactive"]').click();
             await page.waitForFunction(() => {
               try {
                 if (typeof fullMapInstance === 'undefined' || !fullMapInstance) return false;
