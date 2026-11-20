@@ -27,6 +27,17 @@ text, middle_removed = re.subn(
     flags=re.I | re.S,
 )
 
+# Search-growth places a direct-child SEO nav (and separator dots) above the
+# consumer app footer. App navigation styles can make this nav sticky and block
+# profile taps. Remove the whole block on Home, not just its links: those pages
+# remain discoverable from Resources and sitemap.xml.
+text, answer_nav_removed = re.subn(
+    r'<nav\\s+aria-label="BC hunting answer library"[^>]*>.*?</nav>',
+    '',
+    text,
+    flags=re.I | re.S,
+)
+
 # Remove the older footer-style research nav when present.
 text, nav_removed = re.subn(
     r'<nav\s+aria-label="HuntSmart research links"[^>]*>.*?</nav>',
@@ -68,6 +79,8 @@ text = re.sub(
 home.write_text(text, encoding='utf-8')
 
 final = home.read_text(encoding='utf-8')
+if 'aria-label="BC hunting answer library"' in final:
+    raise SystemExit('Homepage cleanup failed: research nav still intercepts the app')
 if re.search(r'class=["\']hero-eyebrow["\']', final, flags=re.I):
     raise SystemExit('Homepage cleanup failed: hero eyebrow still present.')
 if re.search(r'class=["\'][^"\']*\bhiw-section\b', final, flags=re.I):
