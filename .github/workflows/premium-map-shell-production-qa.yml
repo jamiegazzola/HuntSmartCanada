@@ -145,7 +145,8 @@ jobs:
                   summary:!!document.querySelector('#fullMapResultsDrawer .hs-premium-inspector-summary'),
                   kicker:!!document.querySelector('#fullMapResultsDrawer .hs-premium-kicker'),
                   cards:document.querySelectorAll('#fullMapResultsDrawer .fm-card').length,
-                  title:(document.getElementById('fullMapResultsTitle')?.textContent || '').trim()
+                  title:(document.getElementById('fullMapResultsTitle')?.textContent || '').trim(),
+                  tabbarTop:document.getElementById('hsMobileTabbar')?.getBoundingClientRect().top ?? null
                 };
               }, { mobile:viewport.mobile });
 
@@ -176,7 +177,11 @@ jobs:
                 assert(/is-collapsed/.test(state.drawerClasses), 'Mobile inspector should open as a compact peek sheet.');
                 assert(state.drawer.width >= viewport.width - 2, `Mobile sheet is not full width: ${state.drawer.width}`);
                 assert(state.drawer.height >= 116 && state.drawer.height <= 140, `Mobile peek height is wrong: ${state.drawer.height}`);
-                assert(state.drawer.bottom >= viewport.height - 2, 'Mobile sheet is not anchored to the bottom.');
+                // The browser map now ends at the top of the fixed tab bar.
+                // A drawer reaching the physical screen bottom would cover navigation.
+                assert(Number.isFinite(state.tabbarTop) &&
+                  Math.abs(state.drawer.bottom - state.tabbarTop) <= 8,
+                  `Mobile sheet must meet navigation without overlap: ${JSON.stringify({drawer:state.drawer,tabbarTop:state.tabbarTop})}`);
                 assert(state.controls && state.controls.bottom <= state.drawer.top - 6, `Mobile 3D/+/- controls overlap sheet: ${JSON.stringify({ controls:state.controls, drawer:state.drawer })}`);
 
                 await page.evaluate(() => document.getElementById('fullMapResultsDrawer')?.classList.remove('is-collapsed'));
