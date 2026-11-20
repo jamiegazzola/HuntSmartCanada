@@ -90,10 +90,25 @@ async function mobile(browser, w, h) {
   await show(page, 'filter', '#filterPage');
   await inspect(page, w + ' BC filter');
   await image(page, w + '-filter');
+  if (w === 390) {
+    // Regress cold-open blank map from the actual iPhone recording.
+    await page.evaluate(() => window.fpBcToggleMap());
+    await page.waitForFunction(() => typeof fpBcGeoLayer !== 'undefined' &&
+      !!fpBcGeoLayer && fpBcGeoLayer.getLayers().length > 0, null, { timeout: 60000 });
+    await image(page, w + '-filter-map-loaded');
+    await page.evaluate(() => window.fpBcToggleMap());
+  }
 
   await show(page, 'draws', '#drawsPage');
   await inspect(page, w + ' draw results');
   await image(page, w + '-draws');
+  if (w === 390) {
+    await page.evaluate(() => window.bcToggleMap());
+    await page.waitForFunction(() => typeof bcWmuGeoLayer !== 'undefined' &&
+      !!bcWmuGeoLayer && bcWmuGeoLayer.getLayers().length > 0, null, { timeout: 60000 });
+    await image(page, w + '-draws-mini-map-loaded');
+    await page.evaluate(() => window.bcToggleMap());
+  }
 
   await show(page, 'saved', '#savedPage');
   await inspect(page, w + ' saved');

@@ -2234,8 +2234,11 @@ const _LEH_SPECIES_PREFIX = {
 
 // ── LEH zones cache & fetch ──
 let _lehZonesCache = null;
+let _lehZonesPromise = null;
 function _lehGetZones() {
   if (_lehZonesCache) return Promise.resolve(_lehZonesCache);
+  // All expanded cards share one in-flight zone fetch and JSON parse.
+  if (_lehZonesPromise) return _lehZonesPromise;
   const urls = ['./leh_zones.json', '/leh_zones.json', 'https://raw.githubusercontent.com/jamiegazzola/HuntSmartCanada/main/leh_zones.json'];
   let lastErr = null;
   const tryNext = (i) => {
@@ -2244,7 +2247,10 @@ function _lehGetZones() {
       .then(r => { if (!r.ok) throw new Error(`${urls[i]} HTTP ${r.status}`); return r.json(); })
       .catch(err => { lastErr = err; return tryNext(i + 1); });
   };
-  return tryNext(0).then(d => { _lehZonesCache = d; return d; });
+  _lehZonesPromise = tryNext(0)
+    .then(d => { _lehZonesCache = d; return d; })
+    .finally(() => { _lehZonesPromise = null; });
+  return _lehZonesPromise;
 }
 
 function _lehNormalizeSpecies(speciesType) {

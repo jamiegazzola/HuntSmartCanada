@@ -246,7 +246,27 @@
     window[name] = function () {
       const args = arguments;
       const context = this;
-      return ensureGeometry().then(() => original.apply(context, args)).catch(error => console.error(`[HuntSmart ${name}]`, error));
+      // Mini-map geometry must be ready before the filter map marks itself initialized.
+      const miniId = name === 'fpBcInitMap' ? 'fpBcLeafletMap' : name === 'abFpInitMap' ? 'abFpLeafletMap' : '';
+      const container = miniId ? document.getElementById(miniId) : null;
+      let loading = container?.querySelector('.hs-mini-map-loading');
+      if (container && !loading) {
+        loading = document.createElement('div');
+        loading.className = 'hs-mini-map-loading';
+        loading.setAttribute('role', 'status');
+        loading.style.cssText = 'position:absolute;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:#142019;color:#c9d3ca;font-size:12px;text-align:center;padding:12px';
+        container.appendChild(loading);
+      }
+      if (loading) loading.textContent = 'Loading management unit boundaries…';
+      return ensureGeometry()
+        .then(() => {
+          if (loading) loading.remove();
+          return original.apply(context, args);
+        })
+        .catch(error => {
+          if (loading) loading.textContent = 'Map unavailable. Close and reopen to retry.';
+          console.error(`[HuntSmart ${name}]`, error);
+        });
     };
   }
 
@@ -272,6 +292,8 @@
     wrapGOS();
     wrapLeaflet('bcInitLeafletMap', ensureBCFullGeometry);
     wrapLeaflet('abInitLeafletMap', ensureABFullGeometry);
+    wrapLeaflet('fpBcInitMap', ensureBCFullGeometry);
+    wrapLeaflet('abFpInitMap', ensureABFullGeometry);
     hookFullMapInitializers();
 
     window.__HS_WMU_VECTOR_TILES__ = {
