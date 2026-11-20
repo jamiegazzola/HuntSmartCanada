@@ -25,7 +25,14 @@ async function openFresh(page, path) {
       const good = path.startsWith('/species-map')
         ? (await page.locator('.hs-map-toolbar').count() > 0 || await page.locator('.hs-preview-species-back').count() > 0)
         : await page.evaluate(() => Boolean(window.__HS_MAP_DESTINATIONS__ && document.getElementById('hsMobileTabbar')));
-      if (result?.ok() && good) return;
+      if (result?.ok() && good) {
+        // Netlify's deploy-preview feedback drawer is injected outside the app.
+        // It floats over bottom nav controls and is absent in production.
+        if (base.includes('deploy-preview-')) {
+          await page.evaluate(() => document.querySelectorAll('[data-netlify-deploy-id]').forEach(el => el.remove()));
+        }
+        return;
+      }
       last = 'HTTP ' + result?.status() + ', app not ready';
     } catch (error) { last = String(error.message); }
     await pause(6000);
