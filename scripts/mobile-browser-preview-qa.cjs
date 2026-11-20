@@ -223,6 +223,19 @@ async function mobile(browser, w, h) {
       typeof osMapInstance !== 'undefined' && Boolean(osMapInstance?.loaded?.()),
       null, {timeout:20000}).then(() => true).catch(() => false);
     console.log('GOS_MAP_FIRST_COMPLETE', JSON.stringify({ready:gosReady,elapsedMs:Date.now()-gosStart}));
+    const status = await page.evaluate(() => {
+      const map = typeof osMapInstance === 'undefined' ? null : osMapInstance;
+      return {
+        created: !!map,
+        canvasWidth: map?.getCanvas?.()?.width || 0,
+        styleLoaded: !!map?.isStyleLoaded?.(),
+        tilesLoaded: !!map?.areTilesLoaded?.(),
+        regionLayer: typeof OS_REGION_FILL !== 'undefined' && !!map?.getLayer?.(OS_REGION_FILL),
+        wmuLayer: typeof OS_WMU_FILL !== 'undefined' && !!map?.getLayer?.(OS_WMU_FILL)
+      };
+    });
+    console.log('GOS_MAP_DIAGNOSTICS', JSON.stringify(status));
+    await image(page, '390-gos-after-wait');
   }
   const fatalErrors = errors.filter(e => /SyntaxError|ReferenceError|TypeError/i.test(e));
   assert(fatalErrors.length === 0, w + ' mobile JavaScript errors: ' + fatalErrors.join(' | '));
