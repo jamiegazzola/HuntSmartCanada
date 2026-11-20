@@ -137,6 +137,39 @@ async function mobile(browser, w, h) {
   await inspect(page, w + ' draw results');
   await image(page, w + '-draws');
 
+  if (w === 390) {
+    const cardIndex = await page.evaluate(() => filtered.findIndex(r => r && r.Code && r.MU && r.Zone));
+    assert(cardIndex >= 0, 'No BC LEH hunt card available to test its map');
+    const cardStarted = Date.now();
+    await page.locator('#expbtn-' + cardIndex).click();
+    const cardId = await page.locator('#exp-' + cardIndex + ' .leh-card-map').first().getAttribute('id')
+      .catch(() => page.locator('#exp-' + cardIndex + ' [id^="lehMap_"]').first().getAttribute('id'));
+    assert(cardId, 'Expanded LEH card map container missing');
+    await page.waitForFunction(id => Boolean(
+      typeof _lehCardMaps !== 'undefined' && _lehCardMaps[id] &&
+      _lehCardMaps[id].getCanvas && _lehCardMaps[id].getCanvas().width > 0 &&
+      document.getElementById(id + '_status')?.textContent !== 'Loading zone…'
+    ), cardId, {timeout:45000});
+    const cardStatus = await page.locator('#' + cardId + '_status').innerText();
+    assert(!/unavailable|failed/i.test(cardStatus), 'LEH card failed to show zone: ' + cardStatus);
+    console.log('LEH_CARD_FIRST_RENDER', JSON.stringify({elapsedMs:Date.now()-cardStarted,cardId,status:cardStatus}));
+    await image(page, '390-leh-card');
+
+    await page.evaluate(id => { window.__hsQaCardBefore = _lehCardMaps[id]; }, cardId);
+    await page.locator('#' + cardId + '_btn_topo').click();
+    await page.waitForFunction(id => Boolean(
+      _lehCardMaps[id] && _lehCardMaps[id] !== window.__hsQaCardBefore &&
+      _lehCardMaps[id]._lehCurrentTile === 'topo' &&
+      /outdoors/i.test(_lehCardMaps[id].getStyle()?.name || '')
+    ), cardId, {timeout:30000});
+    console.log('LEH_CARD_TOPO', JSON.stringify(await page.evaluate(id => ({
+      mode:_lehCardMaps[id]._lehCurrentTile,
+      style:_lehCardMaps[id].getStyle()?.name,
+      replacement: _lehCardMaps[id] !== window.__hsQaCardBefore
+    }),cardId)));
+    await image(page, '390-leh-card-topo');
+  }
+
   await show(page, 'saved', '#savedPage');
   await inspect(page, w + ' saved');
   await image(page, w + '-saved');
