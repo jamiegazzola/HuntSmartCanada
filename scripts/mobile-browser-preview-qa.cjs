@@ -130,6 +130,8 @@ async function mobile(browser, w, h) {
       elapsedMs: Date.now() - abStart
     }));
     assert(await page.evaluate(() => abFpMapInitialized), 'Alberta filter map did not initialize');
+    // Geometry paths can exist before their loading surface clears.
+    await page.locator('#abFpLeafletMap [data-hs-filter-load]').waitFor({state:'hidden',timeout:20000});
     await image(page, '390-ab-filter-map');
   }
 
@@ -152,6 +154,7 @@ async function mobile(browser, w, h) {
     ), cardId, {timeout:45000});
     const cardStatus = await page.locator('#' + cardId + '_status').innerText();
     assert(!/unavailable|failed/i.test(cardStatus), 'LEH card failed to show zone: ' + cardStatus);
+    await page.locator('#' + cardId + ' .hs-leh-card-loading').waitFor({state:'hidden',timeout:30000});
     console.log('LEH_CARD_FIRST_RENDER', JSON.stringify({elapsedMs:Date.now()-cardStarted,cardId,status:cardStatus}));
     await image(page, '390-leh-card');
 
@@ -165,6 +168,7 @@ async function mobile(browser, w, h) {
       try { return /outdoors/i.test(map.getStyle()?.name || ''); }
       catch (_) { return false; }
     }, cardId, {timeout:30000});
+    await page.locator('#' + cardId + ' .hs-leh-card-loading').waitFor({state:'hidden',timeout:30000});
     console.log('LEH_CARD_TOPO', JSON.stringify(await page.evaluate(id => ({
       mode:_lehCardMaps[id]._lehCurrentTile,
       style:_lehCardMaps[id].getStyle()?.name,
@@ -175,6 +179,7 @@ async function mobile(browser, w, h) {
 
   await show(page, 'saved', '#savedPage');
   await inspect(page, w + ' saved');
+  await image(page, w + '-saved');
   if (w === 390) {
     const navRect = await page.locator('#hsMobileTabbar').boundingBox();
     assert(navRect && navRect.height >= 55,'Bottom tabs missing on Saved');
@@ -187,7 +192,6 @@ async function mobile(browser, w, h) {
       null, {timeout:15000});
     assert(await page.locator('#hsMobileTabbar').isVisible(),'Bottom tabs missing on Home');
   }
-  await image(page, w + '-saved');
 
   await page.locator('#hsMobileTabbar [data-tab="map"]').click();
   await page.locator('#hsMapDestinationsBackdrop.open').waitFor({state:'visible',timeout:6000});
