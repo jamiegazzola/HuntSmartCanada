@@ -144,6 +144,7 @@
   const elkSuccessClasses=[{max:19,color:'#468f58'},{max:39,color:'#a3b950'},
     {max:59,color:'#dfcb58'},{max:79,color:'#e28d42'},
     {max:Infinity,color:'#c45145'}];
+  const INSPECTION_EVIDENCE_COLOR='#879bb2';
   const densityClasses=[{max:1,color:'#468f58'},{max:3,color:'#a3b950'},
     {max:10,color:'#dfcb58'},{max:30,color:'#e28d42'},
     {max:Infinity,color:'#c45145'}];
@@ -202,10 +203,14 @@
         legendNode.append(span);
       });
       if(mapMetric==='success'&&documentedWithoutRate()>0){
-        const note=document.createElement('span');
-        note.className='hs-elk-data-note';
-        note.textContent='Muted green = inspected harvest ('+inspectedPeriodLabel()+'); survey rate not shaded';
-        legendNode.append(note);
+        const item=document.createElement('span');
+        item.className='hs-inspected-legend';
+        const swatch=document.createElement('i');
+        swatch.style.backgroundColor=INSPECTION_EVIDENCE_COLOR;
+        swatch.style.border='1px solid rgba(255,255,255,.6)';
+        item.append(swatch,document.createTextNode(
+          'Inspected harvest · no comparable success rate ('+inspectedPeriodLabel()+')'));
+        legendNode.append(item);
       }
       if(elkPolicy.isElk(key())){
         const note=document.createElement('span');
@@ -474,11 +479,11 @@
       const classScale=mapMetric==='success'?
         (elkPolicy.isElk(key())?elkSuccessClasses:classes):densityClasses;
       const colour=classScale.find(x=>value<=x.max)?.color||'#c45145';
-      return {fillColor:ok?colour:documented?'#597a61':'#8c9494',
-        fillOpacity:(excluded?0:ok?0.76:documented?0.28:record?0.17:0.07)*opacity,
-        strokeColor:id===selectedWmu?'#fff':ok?'#e5e7da':documented?'#8baa8e':'#a9aeae',
-        strokeOpacity:(excluded?0:ok?0.85:documented?0.55:0.28)*opacity,
-        strokeWeight:id===selectedWmu?2.6:ok?1.05:0.65,zIndex:id===selectedWmu?27:25,clickable:!excluded};
+      return {fillColor:ok?colour:documented?INSPECTION_EVIDENCE_COLOR:'#8c9494',
+        fillOpacity:(excluded?0:ok?0.76:documented?0.38:record?0.17:0.07)*opacity,
+        strokeColor:id===selectedWmu?'#fff':ok?'#e5e7da':documented?'#c3d4e3':'#a9aeae',
+        strokeOpacity:(excluded?0:ok?0.85:documented?0.9:0.28)*opacity,
+        strokeWeight:id===selectedWmu?2.6:ok?1.05:documented?1.4:0.65,zIndex:id===selectedWmu?27:25,clickable:!excluded};
     });
   }
   function ageSummary(id){
@@ -646,7 +651,7 @@
           ' Coastal Regions 1 and 2 only; other BC regions excluded. WMUs are not a verified Roosevelt range.'):'';
     const lowSampleInspections=documentedWithoutRate();
     const inspectionNote=lowSampleInspections?
-      ' '+lowSampleInspections+' additional WMUs have inspected harvest records ('+inspectedPeriodLabel()+') but no comparable hunter-success rate. Muted green in Success mode; no inference of zero harvest elsewhere.':'';
+      ' '+lowSampleInspections+' additional WMUs have inspected harvest records ('+inspectedPeriodLabel()+') but no comparable hunter-success rate. Blue-grey in Success mode; no inference of zero harvest elsewhere.':'';
     if(!n)return 'No sufficiently reported '+date+' WMU hunter-success data for '+label()+'.'+inspectionNote+caution;
     return n+' WMUs with comparable '+date+
       ' resident harvest estimates. Grey = missing/low estimated hunter volume. Tap a WMU for details.'+

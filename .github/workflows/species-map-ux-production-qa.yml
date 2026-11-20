@@ -156,6 +156,17 @@ jobs:
               'Roosevelt must only show coastal all-elk WMUs, never the whole province');
             assert((await page.locator('#hs-metric-legend').textContent()).includes('Coastal WMUs · all elk'),
               'Subspecies limitation must be visible beside the map legend');
+            assert((await page.locator('#hs-metric-legend').textContent()).includes('Inspected harvest · no comparable success rate'),
+              'Documented low-sample harvest must not look like the 0–19% hunter-success class');
+            const overlap=await page.evaluate(()=>{
+              const a=document.getElementById('hs-metric-legend')?.getBoundingClientRect();
+              const b=document.getElementById('coordinate-drop-pin')?.getBoundingClientRect();
+              if(!a||!b)return {missing:true};
+              return {missing:false,intersects:a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top,
+                legendBottom:a.bottom,pinTop:b.top};
+            });
+            assert(!overlap.missing&&!overlap.intersects,
+              'Harvest legend overlaps coordinate pin: '+JSON.stringify(overlap));
             await page.locator('#species').selectOption('moose');
             assert.equal(await page.locator('#era-modern').isVisible(),true);
             assert.equal(await page.locator('#era-historical').isVisible(),true);

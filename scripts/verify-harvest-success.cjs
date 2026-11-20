@@ -179,18 +179,22 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
     '87.6% pooled coastal elk rate must shade in 80%+ bin');
   base.el('hs-harvest-period').value='average';base.el('hs-harvest-period').change();await flush();
   const sparseCoast=base.layers.at(-1);
-  assert.equal(sparseCoast.style({getProperty:()=> '1-5'}).fillColor,'#597a61',
+  assert.equal(sparseCoast.style({getProperty:()=> '1-5'}).fillColor,'#879bb2',
     'Roosevelt 1-5 documented kills must remain visible with an insufficient success sample');
   sparseCoast.listener({feature:{getProperty:()=> '1-5'},latLng:{}});
   assert.equal(base.el('hs-wmu-rate').textContent,'—','No success probability from small sample');
   assert(base.el('hs-wmu-recorded').textContent.startsWith('27 inspected Roosevelt elk hunter kills'),
     'Roosevelt 1-5 documented harvest still visible');
   assert.equal(sparseCoast.style({getProperty:()=> '1-5'}).clickable,true);
+  assert(sparseCoast.style({getProperty:()=> '1-5'}).fillOpacity>0.25,
+    'Documented elk harvest must be visible against forest imagery');
+  assert(sparseCoast.style({getProperty:()=> '1-5'}).strokeWeight>=1.4,
+    'Inspections have their own outline rather than low-success green');
   base.el('metric-density').click();
   assert.equal(sparseCoast.style({getProperty:()=> '1-5'}).fillColor,'#8c9494',
     'Recorded harvest cannot be shaded as hunter density without a density estimate');
   base.el('metric-success').click();
-  assert.equal(sparseCoast.style({getProperty:()=> '1-5'}).fillColor,'#597a61',
+  assert.equal(sparseCoast.style({getProperty:()=> '1-5'}).fillColor,'#879bb2',
     'Inspection evidence shading returns only in success view');
   // Return to historical selection before checking cross-species persistence.
   base.el('hs-harvest-period').value='1985';base.el('hs-harvest-period').change();await flush();
