@@ -215,6 +215,18 @@
         ? event.target.closest('#hsMobileTabbar [data-tab="map"], [data-hs-im-mode]')
         : null;
       if (target) scheduleNavigationSync();
+
+      // A card-map expand overlay must collapse before switching tabs;
+      // otherwise it covers the destination and leaves body scrolling locked.
+      var navigate = event.target && event.target.closest
+        ? event.target.closest('#hsMobileTabbar .hs-mobile-tab, body > nav:not(.hs-mobile-tabbar) .nav-brand')
+        : null;
+      if (navigate && typeof window.bcCardMapToggleFullscreen === 'function') {
+        document.querySelectorAll('.leh-card-fullscreen-overlay').forEach(function (overlay) {
+          var map = overlay.querySelector('.leh-card-map[id]');
+          if (map) window.bcCardMapToggleFullscreen(map.id);
+        });
+      }
     }, true);
 
     window.addEventListener('resize', scheduleSync, { passive: true });
