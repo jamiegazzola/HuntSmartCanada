@@ -132,11 +132,12 @@ jobs:
             const page=await browser.newPage({viewport:{width:size.width,height:size.height},hasTouch:true});
             const errors=[];page.on('pageerror',e=>errors.push(e.message));
             await gotoLive(page,size.name);
-            await page.waitForSelector('#hsMobileAccountTab',{state:'visible',timeout:10000});
+            await page.waitForSelector('#authNavBtn',{state:'visible',timeout:10000});
+            assert(await page.locator('#hsMobileAccountTab').count() === 0,`${size.name} duplicate bottom account tab`);
             await noOverflow(page,`${size.name} home`);
             await inside(page,'.hero-photo-content',`${size.name} hero`);
             const tabs=await page.$$eval('#hsMobileTabbar .hs-mobile-tab',els=>els.filter(el=>el.getClientRects().length&&getComputedStyle(el).display!=='none'&&getComputedStyle(el).visibility!=='hidden').map(el=>{const r=el.getBoundingClientRect();return{w:r.width,h:r.height};}));
-            assert(tabs.length>=6,`${size.name} mobile nav missing tabs ${JSON.stringify(tabs)}`);
+            assert(tabs.length===5,`${size.name} expected five primary navigation tabs ${JSON.stringify(tabs)}`);
             assert(tabs.every(t=>t.w>=40&&t.h>=44),`${size.name} mobile nav target too small ${JSON.stringify(tabs)}`);
             await page.screenshot({path:`mobile-home-${size.name}.png`,fullPage:true});
 
@@ -160,7 +161,7 @@ jobs:
             await inside(page,'.saved-wrap',`${size.name} saved`);
 
             await show(page,'home','#homePage');
-            await page.click('#hsMobileAccountTab');
+            await page.click('#authNavBtn');
             await page.waitForSelector('.auth-modal-overlay',{state:'visible',timeout:5000});
             const modal=await inside(page,'.auth-modal',`${size.name} auth modal`);
             assert(modal.width<=size.width+2,`${size.name} auth modal too wide`);
