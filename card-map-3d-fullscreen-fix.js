@@ -31,7 +31,8 @@
       return card3DState[containerId] !== false;
     }
     const map = _cardMap(containerId);
-    return !(map && map._lehTerrain3D === false);
+    // Do not fetch DEM tiles for every expanded card. 3D is opt-in.
+    return !!(map && map._lehTerrain3D === true);
   }
 
   function _sync3DButtons(containerId, on) {
@@ -157,7 +158,7 @@
       const oldMap = _cardMap(containerId);
       const keep3D = Object.prototype.hasOwnProperty.call(card3DState, containerId)
         ? card3DState[containerId] !== false
-        : !(oldMap && oldMap._lehTerrain3D === false);
+        : !!(oldMap && oldMap._lehTerrain3D === true);
 
       card3DState[containerId] = keep3D;
       const result = originalInit.apply(this, arguments);
@@ -172,9 +173,8 @@
       const container = document.getElementById(containerId);
       if (container) container.dataset.tile = type;
 
-      const map = _cardMap(containerId);
-      if (map) map._lehCurrentTile = type;
-
+      // Do not mutate map._lehCurrentTile before invoking the original toggle:
+      // it short-circuits when it sees the requested style as already active.
       ['satellite', 'topo'].forEach(t => {
         document.querySelectorAll(`[id="${containerId}_btn_${t}"]`).forEach(btn => {
           btn.classList.toggle('active', t === type);

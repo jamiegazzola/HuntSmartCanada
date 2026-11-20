@@ -86,14 +86,89 @@ async function mobile(browser, w, h) {
   assert(await page.evaluate(() => document.documentElement.classList.contains('hs-mobile-browser')), 'Browser mode class missing');
   await inspect(page, w + ' home');
   await image(page, w + '-home');
+  if (w === 390) {
+    const heavy = await page.evaluate(() => performance.getEntriesByType('resource')
+      .filter(e => e.name.startsWith(location.origin))
+      .map(e => ({file:new URL(e.name).pathname, ms:Math.round(e.duration), kb:Math.round(e.transferSize/1024)}))
+      .sort((a,b) => b.ms-a.ms).slice(0,8));
+    console.log('HOME_RESOURCE_TIMINGS', JSON.stringify(heavy));
+  }
 
   await show(page, 'filter', '#filterPage');
   await inspect(page, w + ' BC filter');
   await image(page, w + '-filter');
 
+  if (w === 390) {
+    const started = Date.now();
+    await page.evaluate(() => fpBcToggleMap());
+    await page.locator('#fpBcMapPanel').waitFor({state:'visible'});
+    await page.waitForFunction(() =>
+      Boolean(document.querySelector('#fpBcLeafletMap .leaflet-overlay-pane path') &&
+        window.__HS_WMU_VECTOR_TILES__?.snapshot().bcFullGeometry),
+      null, {timeout:45000});
+    console.log('FILTER_BC', JSON.stringify({
+      initialized: await page.evaluate(() => fpBcMapInitialized),
+      polygonCount: await page.locator('#fpBcLeafletMap .leaflet-overlay-pane path').count(),
+      geometry: await page.evaluate(() => window.__HS_WMU_VECTOR_TILES__.snapshot().bcFullGeometry),
+      elapsedMs: Date.now() - started
+    }));
+    assert(await page.evaluate(() => fpBcMapInitialized), 'BC filter map did not initialize');
+    await image(page, '390-bc-filter-map');
+
+    await show(page, 'abFilter', '#abFilterPage');
+    const abStart = Date.now();
+    await page.evaluate(() => abFpToggleMap());
+    await page.locator('#abFpMapPanel').waitFor({state:'visible'});
+    await page.waitForFunction(() =>
+      Boolean(document.querySelector('#abFpLeafletMap .leaflet-overlay-pane path') &&
+        window.__HS_WMU_VECTOR_TILES__?.snapshot().abFullGeometry),
+      null, {timeout:60000});
+    console.log('FILTER_AB', JSON.stringify({
+      initialized: await page.evaluate(() => abFpMapInitialized),
+      polygonCount: await page.locator('#abFpLeafletMap .leaflet-overlay-pane path').count(),
+      geometry: await page.evaluate(() => window.__HS_WMU_VECTOR_TILES__.snapshot().abFullGeometry),
+      elapsedMs: Date.now() - abStart
+    }));
+    assert(await page.evaluate(() => abFpMapInitialized), 'Alberta filter map did not initialize');
+    await image(page, '390-ab-filter-map');
+  }
+
   await show(page, 'draws', '#drawsPage');
   await inspect(page, w + ' draw results');
   await image(page, w + '-draws');
+
+  if (w === 390) {
+    const cardIndex = await page.evaluate(() => filtered.findIndex(r => r && r.Code && r.MU && r.Zone));
+    assert(cardIndex >= 0, 'No BC LEH hunt card available to test its map');
+    const cardStarted = Date.now();
+    await page.locator('#expbtn-' + cardIndex).click();
+    const cardId = await page.locator('#exp-' + cardIndex + ' .leh-card-map').first().getAttribute('id')
+      .catch(() => page.locator('#exp-' + cardIndex + ' [id^="lehMap_"]').first().getAttribute('id'));
+    assert(cardId, 'Expanded LEH card map container missing');
+    await page.waitForFunction(id => Boolean(
+      typeof _lehCardMaps !== 'undefined' && _lehCardMaps[id] &&
+      _lehCardMaps[id].getCanvas && _lehCardMaps[id].getCanvas().width > 0 &&
+      document.getElementById(id + '_status')?.textContent !== 'Loading zone…'
+    ), cardId, {timeout:45000});
+    const cardStatus = await page.locator('#' + cardId + '_status').innerText();
+    assert(!/unavailable|failed/i.test(cardStatus), 'LEH card failed to show zone: ' + cardStatus);
+    console.log('LEH_CARD_FIRST_RENDER', JSON.stringify({elapsedMs:Date.now()-cardStarted,cardId,status:cardStatus}));
+    await image(page, '390-leh-card');
+
+    await page.evaluate(id => { window.__hsQaCardBefore = _lehCardMaps[id]; }, cardId);
+    await page.locator('#' + cardId + '_btn_topo').click();
+    await page.waitForFunction(id => Boolean(
+      _lehCardMaps[id] && _lehCardMaps[id] !== window.__hsQaCardBefore &&
+      _lehCardMaps[id]._lehCurrentTile === 'topo' &&
+      /outdoors/i.test(_lehCardMaps[id].getStyle()?.name || '')
+    ), cardId, {timeout:30000});
+    console.log('LEH_CARD_TOPO', JSON.stringify(await page.evaluate(id => ({
+      mode:_lehCardMaps[id]._lehCurrentTile,
+      style:_lehCardMaps[id].getStyle()?.name,
+      replacement: _lehCardMaps[id] !== window.__hsQaCardBefore
+    }),cardId)));
+    await image(page, '390-leh-card-topo');
+  }
 
   await show(page, 'saved', '#savedPage');
   await inspect(page, w + ' saved');
@@ -103,6 +178,7 @@ async function mobile(browser, w, h) {
   await page.locator('#hsMapDestinationsBackdrop.open').waitFor({state:'visible',timeout:6000});
   assert(await page.locator('#hsMapDestinationsBackdrop [data-map-destination]').count() === 2, 'Map destination choices missing');
   await image(page, w + '-maps-choice');
+  const fullMapStarted = Date.now();
   await page.locator('#hsMapDestinationsBackdrop [data-map-destination="interactive"]').click();
   await page.waitForFunction(() => {
     const e=document.getElementById('mapPage');
@@ -125,7 +201,14 @@ async function mobile(browser, w, h) {
     w + ' map clipped by bottom navigation: ' + JSON.stringify(map));
   assert(map.h >= 180, w + ' map too short');
   await image(page, w + '-map-leh');
+  if (w === 390) {
+    const mapReady = await page.waitForFunction(() =>
+      typeof fullMapInstance !== 'undefined' && Boolean(fullMapInstance?.loaded?.()),
+      null, {timeout:20000}).then(() => true).catch(() => false);
+    console.log('FULL_MAP_FIRST_COMPLETE', JSON.stringify({ready:mapReady,elapsedMs:Date.now()-fullMapStarted}));
+  }
 
+  const gosStart = Date.now();
   await show(page, 'bcOpenSeasons', '#bcOpenSeasonsPage');
   const gos = await page.evaluate(() => {
     const e=document.querySelector('#bcOpenSeasonsPage .os-page').getBoundingClientRect();
@@ -135,6 +218,32 @@ async function mobile(browser, w, h) {
   console.log('GOS', w, JSON.stringify(gos));
   assert(Math.abs(gos.bottom - gos.tabTop) <= 8, w + ' GOS overlaps nav: ' + JSON.stringify(gos));
   await image(page, w + '-map-gos');
+  if (w === 390) {
+    // Mapbox's loaded()/isStyleLoaded() flags can remain false even after the
+    // GOS vector overlay and all visible viewport tiles are rendered. Test the
+    // actual usable map, not the SDK's stricter internal idle state.
+    const gosReady = await page.waitForFunction(() =>
+      typeof osMapInstance !== 'undefined' && osMapInstance &&
+      typeof OS_REGION_FILL !== 'undefined' &&
+      Boolean(osMapInstance.getLayer(OS_REGION_FILL)) &&
+      osMapInstance.areTilesLoaded(),
+      null, {timeout:20000}).then(() => true).catch(() => false);
+    console.log('GOS_MAP_OVERLAYS_READY', JSON.stringify({ready:gosReady,elapsedMs:Date.now()-gosStart}));
+    assert(gosReady, 'GOS map did not render its map boundaries and tiles within 20 seconds');
+    const status = await page.evaluate(() => {
+      const map = typeof osMapInstance === 'undefined' ? null : osMapInstance;
+      return {
+        created: !!map,
+        canvasWidth: map?.getCanvas?.()?.width || 0,
+        styleLoaded: !!map?.isStyleLoaded?.(),
+        tilesLoaded: !!map?.areTilesLoaded?.(),
+        regionLayer: typeof OS_REGION_FILL !== 'undefined' && !!map?.getLayer?.(OS_REGION_FILL),
+        wmuLayer: typeof OS_WMU_FILL !== 'undefined' && !!map?.getLayer?.(OS_WMU_FILL)
+      };
+    });
+    console.log('GOS_MAP_DIAGNOSTICS', JSON.stringify(status));
+    await image(page, '390-gos-after-wait');
+  }
   const fatalErrors = errors.filter(e => /SyntaxError|ReferenceError|TypeError/i.test(e));
   assert(fatalErrors.length === 0, w + ' mobile JavaScript errors: ' + fatalErrors.join(' | '));
   await context.close();

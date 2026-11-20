@@ -240,13 +240,89 @@
     return state.fullABPromise;
   }
 
+  function filterMapConfig(name) {
+    if (name === 'fpBcInitMap') return { container: 'fpBcLeafletMap', panel: 'fpBcMapPanel', province: 'BC' };
+    if (name === 'abFpInitMap') return { container: 'abFpLeafletMap', panel: 'abFpMapPanel', province: 'Alberta' };
+    return null;
+  }
+
+  function filterMapStatus(config, message, failed) {
+    const container = document.getElementById(config.container);
+    if (!container) return;
+    let indicator = container.querySelector('[data-hs-filter-load]');
+    if (!message) {
+      if (indicator) indicator.remove();
+      return;
+    }
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.dataset.hsFilterLoad = '1';
+      indicator.setAttribute('role', 'status');
+      indicator.setAttribute('aria-live', 'polite');
+      indicator.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:700;background:#101a16f0;padding:18px;text-align:center;font:500 12px/1.6 system-ui,sans-serif;color:#d0e2d5;pointer-events:none';
+      container.appendChild(indicator);
+    }
+    indicator.textContent = message;
+    indicator.style.color = failed ? '#fca5a5' : '#d0e2d5';
+  }
+
+  function watchFilterMapPaint(config) {
+    const container = document.getElementById(config.container);
+    if (!container) return;
+    const start = now();
+    const check = () => {
+      if (!container.isConnected) return;
+      const panel = document.getElementById(config.panel);
+      if (!panel || getComputedStyle(panel).display === 'none') {
+        filterMapStatus(config, '');
+        return;
+      }
+      // A Leaflet overlay draws independently of external imagery; do not hide
+      // the progress indicator until the map actually has geographic content.
+      if (container.querySelector('.leaflet-tile-loaded, .leaflet-overlay-pane path')) {
+        filterMapStatus(config, '');
+        return;
+      }
+      if (now() - start >= 16000) {
+        filterMapStatus(config, 'Map is taking longer than expected. Check your connection and reopen the map.', true);
+        return;
+      }
+      setTimeout(check, 200);
+    };
+    setTimeout(check, 200);
+  }
+
   function wrapLeaflet(name, ensureGeometry) {
     const original = unwrapPerformanceGate(window[name]);
     if (typeof original !== 'function') return;
+    const config = filterMapConfig(name);
+    let pending = null;
     window[name] = function () {
+      if (pending) return pending;
       const args = arguments;
       const context = this;
-      return ensureGeometry().then(() => original.apply(context, args)).catch(error => console.error(`[HuntSmart ${name}]`, error));
+      if (config) filterMapStatus(config, 'Loading ' + config.province + ' map boundaries…');
+      pending = ensureGeometry()
+        .then(() => {
+          // The user may close the map while geometry is loading. Do not
+          // initialize Leaflet in an invisible, zero-width container.
+          const panel = config && document.getElementById(config.panel);
+          if (panel && getComputedStyle(panel).display === 'none') {
+            if (config) filterMapStatus(config, '');
+            return;
+          }
+          if (config) {
+            filterMapStatus(config, 'Preparing map imagery…');
+            watchFilterMapPaint(config);
+          }
+          return original.apply(context, args);
+        })
+        .catch(error => {
+          console.error(`[HuntSmart ${name}]`, error);
+          if (config) filterMapStatus(config, 'Map could not load. Close and reopen to retry.', true);
+        })
+        .finally(() => { pending = null; });
+      return pending;
     };
   }
 
@@ -272,6 +348,10 @@
     wrapGOS();
     wrapLeaflet('bcInitLeafletMap', ensureBCFullGeometry);
     wrapLeaflet('abInitLeafletMap', ensureABFullGeometry);
+    // The dedicated BC/Alberta filter screens also use Leaflet. They must
+    // await full polygons after eager geometry scripts are removed at build.
+    wrapLeaflet('fpBcInitMap', ensureBCFullGeometry);
+    wrapLeaflet('abFpInitMap', ensureABFullGeometry);
     hookFullMapInitializers();
 
     window.__HS_WMU_VECTOR_TILES__ = {
