@@ -158,6 +158,8 @@ jobs:
 
             await show(page,'saved','#savedPage');
             await noOverflow(page,`${size.name} saved`);
+            // Wait for the saved content to render, not just the outer route.
+            await waitForVisibleRect(page,'.saved-wrap',20000);
             await inside(page,'.saved-wrap',`${size.name} saved`);
 
             await show(page,'home','#homePage');
