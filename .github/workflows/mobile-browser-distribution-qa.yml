@@ -35,6 +35,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install build dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run exact Netlify site generation for diagnosis
+        run: |
+          python3 - <<'PY'
+          import subprocess, tomllib
+          from pathlib import Path
+          with Path("netlify.toml").open("rb") as handle:
+              command=tomllib.load(handle)["build"]["command"]
+          subprocess.run(["bash","-lc",command],check=True)
+          assert Path("site/map-destinations.js").is_file() is False, "Map chooser should be bundled, not a separate asset"
+          bundle=Path("site/terrain-intelligence.js").read_text()
+          assert "__HS_MAP_DESTINATIONS__" in bundle
+          assert "hs-mobile-browser" in bundle
+          assert Path("site/species-map/hs-map-ui.js").is_file()
+          print("Build succeeded and mobile browser/species distribution integration is present.")
+          PY
       - name: Install Chromium
         run: |
           npm install --no-save playwright@1.55.0
