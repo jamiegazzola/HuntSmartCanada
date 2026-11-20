@@ -2408,7 +2408,7 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
 
   // ── Decide tile type from buttons (default satellite) ──
   const activeBtn = container.closest('.leh-card-map-wrap')?.querySelector('.leh-map-btn.active');
-  const tileType  = (activeBtn?.dataset?.tile) || 'satellite';
+  const tileType  = container.dataset.tile || (activeBtn?.dataset?.tile) || 'satellite';
 
   // Mapbox token — use same token as full map
   const token = (typeof MAPBOX_TOKEN !== 'undefined') ? MAPBOX_TOKEN : '';
@@ -2571,7 +2571,9 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
           map.fitBounds(fitBounds, {
             padding: 34,
             maxZoom: wmuBounds ? 9.8 : 11,
-            duration: 800
+            // Small card maps should jump straight to their actual hunt area.
+            // Animating across BC downloads unnecessary intermediate imagery.
+            duration: 0
           });
         }
 
