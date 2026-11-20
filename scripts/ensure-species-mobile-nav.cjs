@@ -1,0 +1,30 @@
+'use strict';
+/* Install the product navigation AFTER the private production viewer is copied
+   over site/species-map/index.html. Never modify private map or wildlife data. */
+const fs = require('node:fs');
+const path = require('node:path');
+const dir = path.join('site', 'species-map');
+const htmlPath = path.join(dir, 'index.html');
+for (const name of ['index.html', 'hs-app-nav.js', 'hs-app-nav.css']) {
+  if (!fs.existsSync(path.join(dir, name))) throw new Error('Missing species navigation asset: ' + name);
+}
+let html = fs.readFileSync(htmlPath, 'utf8');
+if (!html.includes('</head>') || !html.includes('</body>') ||
+    !html.includes('id="species"')) {
+  throw new Error('Production species viewer markup changed; cannot install navigation safely');
+}
+// Preview has the entrypoints already; production's private KMZ installer replaces
+// the whole HTML document. Normalize both to one early-loaded entrypoint.
+html = html.replace(/\s*<link\s+[^>]*href=["'](?:\.\/|\/species-map\/)?hs-app-nav\.css(?:\?[^"']*)?["'][^>]*>/g, '');
+html = html.replace(/\s*<script\s+[^>]*src=["'](?:\.\/|\/species-map\/)?hs-app-nav\.js(?:\?[^"']*)?["'][^>]*><\/script>/g, '');
+const block = [
+  '  <link rel="stylesheet" href="/species-map/hs-app-nav.css?v=20261120-ux3">',
+  '  <script async src="/species-map/hs-app-nav.js?v=20261120-ux3"></script>'
+].join('\n');
+html = html.replace('</head>', block + '\n</head>');
+if ((html.match(/hs-app-nav\.js/g) || []).length !== 1 ||
+    (html.match(/hs-app-nav\.css/g) || []).length !== 1) {
+  throw new Error('Species navigation must be installed exactly once');
+}
+fs.writeFileSync(htmlPath, html);
+console.log('Installed persistent Species Distribution navigation after the final map build.');
