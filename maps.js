@@ -2454,6 +2454,50 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
     // Store tile type on instance for toggle function
     map._lehCurrentTile = tileType;
 
+    // Keep unpainted Mapbox style backgrounds from masquerading as a ready map.
+    // Both the basemap tiles AND the hunt-zone overlay must be ready.
+    const mapLoading = document.createElement('div');
+    mapLoading.className = 'hs-leh-card-loading';
+    mapLoading.setAttribute('role', 'status');
+    mapLoading.setAttribute('aria-live', 'polite');
+    mapLoading.style.cssText =
+      'position:absolute;inset:0;z-index:15;display:flex;flex-direction:column;' +
+      'align-items:center;justify-content:center;gap:10px;padding:18px;' +
+      'background:#171e19;color:#d5e2d8;text-align:center;' +
+      'font:600 12px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
+    mapLoading.textContent = 'Loading map imagery and hunt zone…';
+    container.appendChild(mapLoading);
+    let zoneApplied = false;
+    let visibleReady = false;
+    let readyTimeout = null;
+    function finishWhenRendered() {
+      if (visibleReady || _lehCardMaps[containerId] !== map || !zoneApplied) return;
+      try {
+        if (!map.isStyleLoaded() || !map.areTilesLoaded() || map.isMoving()) return;
+        visibleReady = true;
+        if (readyTimeout) clearTimeout(readyTimeout);
+        map.off('idle', finishWhenRendered);
+        map.off('render', finishWhenRendered);
+        mapLoading.remove();
+      } catch (_) { /* Mapbox is still between style states. */ }
+    }
+    map.on('idle', finishWhenRendered);
+    map.on('render', finishWhenRendered);
+    readyTimeout = setTimeout(() => {
+      if (visibleReady || _lehCardMaps[containerId] !== map) return;
+      mapLoading.textContent = 'Map imagery is taking longer than expected.';
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.textContent = 'Retry map';
+      retry.style.cssText = 'min-height:44px;padding:0 18px;border-radius:9px;' +
+        'border:1px solid #548f62;background:#254832;color:#edf9f0;font:700 13px inherit;cursor:pointer';
+      retry.addEventListener('click', () => {
+        if (_lehCardMaps[containerId] !== map) return;
+        bcCardMapInit(containerId, mu, zone, speciesType);
+      });
+      mapLoading.appendChild(retry);
+    }, 16000);
+
     // Card map resize safety: expanded cards can finish animating after Mapbox
     // initializes, so force a few resize passes to prevent blank maps.
     setTimeout(() => { if (_lehCardMaps[containerId] === map) map.resize(); }, 50);
@@ -2588,8 +2632,11 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
         const resolvedZoneLetter = _lehZoneLetterFromId(resolvedId);
         const resolvedZoneDisplay = label;
         setStatus(resolvedZoneDisplay, true);
+        zoneApplied = true;
+        // A valid zone label does not mean imagery has painted.
+        // Keep the loading surface until Mapbox has fetched its viewport tiles.
+        requestAnimationFrame(finishWhenRendered);
 
-        
         // V9 card hover/tap highlight: draw a temporary darker outline over the zone
         // under the pointer, and keep it on tap for mobile users.
         function _cardSetHoverFeature(hit) {
@@ -2661,6 +2708,8 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
       }).catch(err => {
         console.error('[bcCardMapInit zone]', err);
         setStatus('Zone data unavailable', false);
+        zoneApplied = true;
+        requestAnimationFrame(finishWhenRendered);
       });
     });
 

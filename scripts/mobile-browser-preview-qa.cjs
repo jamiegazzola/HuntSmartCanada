@@ -82,9 +82,33 @@ async function mobile(browser, w, h) {
   await openFresh(page, '/');
   assert(await page.locator('#navDistribution').count(), 'Desktop species link missing');
   assert(await page.locator('#mNavDistribution').count(), 'Mobile species link missing');
-  assert(await page.locator('#hsMobileTabbar .hs-mobile-tab').count() === 6, 'Mobile must retain six tabs');
+  assert(await page.locator('#hsMobileTabbar .hs-mobile-tab').count() === 5, 'Mobile must retain five tabs');
+  assert.equal(await page.locator('#hsMobileAccountTab').count(),0,'Profile should not consume bottom nav');
+  assert(await page.locator('#authNavBtn').isVisible(),'Top-right profile is missing');
   assert(await page.evaluate(() => document.documentElement.classList.contains('hs-mobile-browser')), 'Browser mode class missing');
   await inspect(page, w + ' home');
+  if (w === 390) {
+    const layout=await page.evaluate(()=>{
+      const head=document.querySelector('body > nav:not(.hs-mobile-tabbar)').getBoundingClientRect();
+      const account=document.getElementById('authNavBtn').getBoundingClientRect();
+      const stats=Array.from(document.querySelectorAll('#homePage .home-stat')).map(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,cx:(r.left+r.right)/2};});
+      return {headTop:head.top,accountTop:account.top,accountRight:account.right,stats,width:innerWidth};
+    });
+    assert.equal(layout.stats.length,5,'Homepage has five statistics');
+    assert(Math.abs(layout.stats[4].cx-layout.width/2)<=5,'Fifth stat not centered '+JSON.stringify(layout));
+    assert(Math.abs(layout.stats[0].cx+layout.stats[1].cx-layout.width)<=6,'Two-column metrics uneven '+JSON.stringify(layout));
+    assert(layout.accountRight>=layout.width-30,'Profile not top-right '+JSON.stringify(layout));
+    await page.evaluate(()=>scrollTo(0,1200));
+    await page.waitForTimeout(150);
+    const sticky=await page.evaluate(()=>({
+      head:document.querySelector('body > nav:not(.hs-mobile-tabbar)').getBoundingClientRect().top,
+      account:document.getElementById('authNavBtn').getBoundingClientRect().top
+    }));
+    assert(Math.abs(sticky.head)<=3 && sticky.account>=0 && sticky.account<=56,
+      'Top-right profile disappears during scroll '+JSON.stringify(sticky));
+    console.log('HOME_CENTERED_PROFILE',JSON.stringify({layout,sticky}));
+    await page.evaluate(()=>scrollTo(0,0));
+  }
   await image(page, w + '-home');
   if (w === 390) {
     const heavy = await page.evaluate(() => performance.getEntriesByType('resource')
@@ -130,6 +154,8 @@ async function mobile(browser, w, h) {
       elapsedMs: Date.now() - abStart
     }));
     assert(await page.evaluate(() => abFpMapInitialized), 'Alberta filter map did not initialize');
+    // Geometry paths can exist before their loading surface clears.
+    await page.locator('#abFpLeafletMap [data-hs-filter-load]').waitFor({state:'hidden',timeout:20000});
     await image(page, '390-ab-filter-map');
   }
 
@@ -152,27 +178,60 @@ async function mobile(browser, w, h) {
     ), cardId, {timeout:45000});
     const cardStatus = await page.locator('#' + cardId + '_status').innerText();
     assert(!/unavailable|failed/i.test(cardStatus), 'LEH card failed to show zone: ' + cardStatus);
+    await page.locator('#' + cardId + ' .hs-leh-card-loading').waitFor({state:'hidden',timeout:30000});
     console.log('LEH_CARD_FIRST_RENDER', JSON.stringify({elapsedMs:Date.now()-cardStarted,cardId,status:cardStatus}));
     await image(page, '390-leh-card');
 
     await page.evaluate(id => { window.__hsQaCardBefore = _lehCardMaps[id]; }, cardId);
     await page.locator('#' + cardId + '_btn_topo').click();
-    await page.waitForFunction(id => Boolean(
-      _lehCardMaps[id] && _lehCardMaps[id] !== window.__hsQaCardBefore &&
-      _lehCardMaps[id]._lehCurrentTile === 'topo' &&
-      /outdoors/i.test(_lehCardMaps[id].getStyle()?.name || '')
-    ), cardId, {timeout:30000});
+    await page.waitForFunction(id => {
+      const map = _lehCardMaps[id];
+      if (!map || map === window.__hsQaCardBefore || map._lehCurrentTile !== 'topo') return false;
+      // Mapbox getStyle() throws while a newly replaced style is still loading.
+      if (!map.isStyleLoaded?.()) return false;
+      try { return /outdoors/i.test(map.getStyle()?.name || ''); }
+      catch (_) { return false; }
+    }, cardId, {timeout:30000});
+    await page.locator('#' + cardId + ' .hs-leh-card-loading').waitFor({state:'hidden',timeout:30000});
     console.log('LEH_CARD_TOPO', JSON.stringify(await page.evaluate(id => ({
       mode:_lehCardMaps[id]._lehCurrentTile,
       style:_lehCardMaps[id].getStyle()?.name,
       replacement: _lehCardMaps[id] !== window.__hsQaCardBefore
     }),cardId)));
     await image(page, '390-leh-card-topo');
+    await page.evaluate(id => window.bcCardMapToggleFullscreen(id),cardId);
+    await page.locator('.leh-card-fullscreen-overlay').waitFor({state:'visible',timeout:8000});
+    const fullscreen = await page.evaluate(() => {
+      const nav=document.getElementById('hsMobileTabbar').getBoundingClientRect();
+      const header=document.querySelector('body > nav:not(.hs-mobile-tabbar)').getBoundingClientRect();
+      const overlay=document.querySelector('.leh-card-fullscreen-overlay').getBoundingClientRect();
+      return {navTop:nav.top,overlayBottom:overlay.bottom,overlayTop:overlay.top,headerBottom:header.bottom};
+    });
+    assert(Math.abs(fullscreen.overlayBottom-fullscreen.navTop)<=4 &&
+      Math.abs(fullscreen.overlayTop-fullscreen.headerBottom)<=4,
+      'Expanded hunt card hides navigation: '+JSON.stringify(fullscreen));
+    await image(page,'390-leh-card-expanded');
+    await page.locator('#hsMobileTabbar [data-tab="home"]').click();
+    await page.locator('.leh-card-fullscreen-overlay').waitFor({state:'detached',timeout:6000});
+    assert(await page.locator('#homePage').isVisible(),'Navigating away from fullscreen map failed');
+    await page.evaluate(()=>window.showPage('draws'));
   }
 
   await show(page, 'saved', '#savedPage');
   await inspect(page, w + ' saved');
   await image(page, w + '-saved');
+  if (w === 390) {
+    const navRect = await page.locator('#hsMobileTabbar').boundingBox();
+    assert(navRect && navRect.height >= 55,'Bottom tabs missing on Saved');
+    await page.locator('#hsMobileTabbar [data-tab="seasons"]').click();
+    await page.waitForFunction(() => !!document.getElementById('bcOpenSeasonsPage')?.getClientRects().length,
+      null, {timeout:15000});
+    assert(await page.locator('#hsMobileTabbar').isVisible(),'Bottom tabs missing on GOS');
+    await page.locator('#hsMobileTabbar [data-tab="home"]').click();
+    await page.waitForFunction(() => !!document.getElementById('homePage')?.getClientRects().length,
+      null, {timeout:15000});
+    assert(await page.locator('#hsMobileTabbar').isVisible(),'Bottom tabs missing on Home');
+  }
 
   await page.locator('#hsMobileTabbar [data-tab="map"]').click();
   await page.locator('#hsMapDestinationsBackdrop.open').waitFor({state:'visible',timeout:6000});
@@ -255,7 +314,25 @@ async function species(browser, w, h) {
   await openFresh(page,'/species-map/');
   const fullViewer = await page.locator('.hs-map-toolbar').count() > 0;
   const backSelector = fullViewer ? '.hs-map-back' : '.hs-preview-species-back';
-  await page.locator(backSelector).waitFor({state:'visible',timeout:15000});
+  if (w < 700) {
+    await page.locator('#hsSpeciesTabbar').waitFor({state:'visible',timeout:15000});
+    assert.equal(await page.locator('#hsSpeciesTabbar [data-tab]').count(),5,'Species map must retain five tabs');
+    assert(await page.locator('#hsSpeciesAccount').isVisible(),'Species map top-right profile missing');
+    assert.equal(await page.locator('#hsSpeciesTabbar [aria-current="page"]').count(),1,'Species map active tab missing');
+    const nav = await page.evaluate(() => {
+      const r=document.getElementById('hsSpeciesTabbar').getBoundingClientRect();
+      const map=document.getElementById('map').getBoundingClientRect();
+      const nodes=Array.from(document.querySelectorAll('#hsSpeciesTabbar [data-tab]'));
+      return {top:r.top,bottom:r.bottom,innerH:innerHeight,
+        mapBottom:map.bottom,tabSizes:nodes.map(n=>({w:n.getBoundingClientRect().width,h:n.getBoundingClientRect().height}))};
+    });
+    assert(nav.top >= 0 && nav.bottom <= nav.innerH + 3,'Distribution tabs offscreen: '+JSON.stringify(nav));
+    assert(Math.abs(nav.mapBottom-nav.top) <= 4,'Distribution map overlaps tabs: '+JSON.stringify(nav));
+    assert(nav.tabSizes.every(b=>b.w >= 39 && b.h >= 42),'Distribution tabs too small: '+JSON.stringify(nav));
+    console.log('SPECIES_NAV',w,JSON.stringify(nav));
+  } else {
+    await page.locator(backSelector).waitFor({state:'visible',timeout:15000});
+  }
   const r=await page.evaluate(() => {
     const a=document.querySelector('.hs-map-toolbar, .species-control').getBoundingClientRect();
     const b=document.querySelector('.hs-map-back, .hs-preview-species-back').getBoundingClientRect();
@@ -273,7 +350,14 @@ async function species(browser, w, h) {
     assert(await page.locator('#terrain-toggle').count() === 1, 'Preview distribution display controls absent');
     assert(await page.locator('#era-control').count() === 1, 'Preview distribution period controls absent');
   }
-  assert.equal(await page.locator(backSelector).getAttribute('href'),'/?map=interactive');
+  if (fullViewer) assert.equal(await page.locator(backSelector).getAttribute('href'),'/?map=interactive');
+  if (w === 390) {
+    assert.equal(await page.locator('#hsSpeciesTabbar [data-tab="draws"]').getAttribute('href'),'/?hsTab=draws');
+    await page.locator('#hsSpeciesTabbar [data-tab="draws"]').click();
+    await page.locator('#hsDrawsSheetBackdrop.open').waitFor({state:'visible',timeout:30000});
+    assert(await page.locator('#hsMobileTabbar').isVisible(),'Main navigation missing after returning from species map');
+    await image(page,w+'-distribution-return-draws');
+  }
   await context.close();
 }
 async function desktop(browser) {
@@ -283,8 +367,21 @@ async function desktop(browser) {
   assert(!(await page.evaluate(() => document.documentElement.classList.contains('hs-mobile-browser'))), 'Desktop affected by browser-only mode');
   await inspect(page,'desktop');
   await image(page,'desktop-home');
-  await show(page,'map','#mapPage');
-  await image(page,'desktop-map');
+  // Full-width navigation audit: verify every primary desktop surface.
+  for (const [route,id,slug] of [
+    ['filter','#filterPage','bc-filter'],
+    ['draws','#drawsPage','bc-results'],
+    ['saved','#savedPage','saved'],
+    ['abFilter','#abFilterPage','ab-filter'],
+    ['abDraws','#abDrawsPage','ab-results'],
+    ['bcOpenSeasons','#bcOpenSeasonsPage','open-seasons'],
+    ['map','#mapPage','interactive-map']
+  ]) {
+    await show(page,route,id);
+    await inspect(page,'desktop '+slug);
+    await image(page,'desktop-'+slug);
+    assert(await page.locator('#navDistribution').isVisible(),'Species map top navigation disappeared on '+slug);
+  }
   await page.close();
 }
 async function standalone(browser) {

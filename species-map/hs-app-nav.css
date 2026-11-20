@@ -1,0 +1,115 @@
+/* HuntSmart species viewer uses the same five destinations as the main mobile app.
+   These rules are last-resort scoped overrides over legacy map patches. */
+.hs-species-tabbar { display: none; }
+@media(max-width:768px) {
+  :root { --hs-species-tab-height: calc(62px + env(safe-area-inset-bottom, 0px)); }
+  body.hs-species-has-tabs #map {
+    bottom: var(--hs-species-tab-height) !important;
+    height: auto !important;
+  }
+  #hsSpeciesTabbar {
+    position: fixed !important;
+    z-index: 12000 !important;
+    inset: auto 0 0 !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: var(--hs-species-tab-height) !important;
+    display: grid !important;
+    grid-template-columns: repeat(5,minmax(0,1fr)) !important;
+    gap: 2px;
+    align-items: stretch;
+    padding: 7px max(6px,env(safe-area-inset-right,0px))
+      calc(6px + env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px));
+    background: rgba(10,12,12,.96);
+    border-top: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 -6px 22px rgba(0,0,0,.16);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  #hsSpeciesTabbar .hs-species-tab {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 44px;
+    padding: 3px 1px;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border-radius: 10px;
+    text-decoration: none;
+    text-align: center;
+    color: #838f87;
+    background: transparent;
+    font: 700 10px/1.15 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #hsSpeciesTabbar .hs-species-tab.active {
+    color: #69cf7b;
+    background: rgba(87,200,107,.065);
+  }
+  #hsSpeciesTabbar svg {
+    width: 19px; height: 19px; flex: 0 0 auto;
+  }
+  #hsSpeciesTabbar .hs-species-tab:focus-visible {
+    outline: 2px solid #a1e8aa;
+    outline-offset: -2px;
+  }
+  /* Controls remain visible above navigation and never overlap it. */
+  body.hs-species-has-tabs #coordinate-drop-pin {
+    bottom: calc(var(--hs-species-tab-height) + 10px) !important;
+  }
+  body.hs-species-has-tabs #coordinate-copy-toast {
+    bottom: calc(var(--hs-species-tab-height) + 16px) !important;
+  }
+  body.hs-species-has-tabs .hs-metric-legend {
+    bottom: calc(var(--hs-species-tab-height) + 78px) !important;
+    max-height: min(17vh, 130px);
+    overflow-y: auto;
+  }
+  /* The coordinate action otherwise sits over the WMU detail sheet. */
+  body.hs-species-inspector-open #coordinate-drop-pin,
+  body.hs-species-inspector-open .hs-metric-legend { display: none !important; }
+  body.hs-species-has-tabs .hs-wmu-card {
+    bottom: calc(var(--hs-species-tab-height) + 8px) !important;
+    max-height: min(48vh, 430px) !important;
+  }
+  body.hs-species-has-tabs .layer-note:not([hidden]) {
+    bottom: calc(var(--hs-species-tab-height) + 70px) !important;
+    max-height: min(21vh, 175px) !important;
+  }
+  /* The Maps tab replaces the duplicate back button on narrow screens. */
+  body.hs-species-has-tabs .hs-preview-species-back,
+  body.hs-species-has-tabs .hs-map-back { display: none !important; }
+}
+@media(max-width:350px) {
+  #hsSpeciesTabbar .hs-species-tab { font-size: 8px; gap: 2px; }
+  #hsSpeciesTabbar svg { width: 18px; height: 18px; }
+}
+
+/* Profile is a separate top-right action, matching HuntSmart's main header. */
+.hs-species-account{display:none}
+@media(max-width:768px){
+  .hs-species-account{
+    position:relative;z-index:31;box-sizing:border-box;flex:0 0 43px;
+    width:43px;height:43px;display:inline-flex;
+    align-items:center;justify-content:center;
+    border:1px solid rgba(255,255,255,.14);border-radius:12px;
+    background:#252d28;color:#e1ebe3;text-decoration:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .hs-species-account svg{width:21px;height:21px}
+  .hs-species-account:focus-visible{outline:2px solid #a1e8aa;outline-offset:2px}
+  body>.hs-species-account{
+    position:fixed;
+    top:calc(env(safe-area-inset-top,0px) + 10px);
+    right:max(9px,env(safe-area-inset-right,0px));
+    z-index:32;
+  }
+  body:has(>.hs-species-account) .species-control{
+    width:calc(100vw - 90px)!important;
+    max-width:calc(100vw - 90px)!important;
+  }
+  .hs-map-toolbar .hs-toolbar-header .species-control{min-width:80px}
+  .hs-map-toolbar .hs-toolbar-header{justify-content:space-between}
+}

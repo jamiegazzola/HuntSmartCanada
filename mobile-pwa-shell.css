@@ -267,3 +267,208 @@
     outline: 2px solid #a1e8aa; outline-offset: 2px;
   }
 }
+
+/* Consistent five-tab product chrome: the map never owns or hides navigation. */
+@media (max-width: 768px) {
+  #hsMobileTabbar {
+    position: fixed !important;
+    top: auto !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    /* Beneath modal sheets (Draws 9600, Maps 12500), above map overlays. */
+    z-index: 9500 !important;
+    display: grid !important;
+    grid-template-columns: repeat(5,minmax(0,1fr)) !important;
+    align-items: stretch !important;
+    box-sizing: border-box !important;
+    height: calc(62px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 7px max(6px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px)) !important;
+    pointer-events: auto !important;
+  }
+  #hsMobileTabbar .hs-mobile-tab {
+    min-width: 0 !important;
+    min-height: 44px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    gap: 3px !important;
+    padding: 3px 1px !important;
+    font-size: 10px !important;
+    line-height: 1.15 !important;
+  }
+  #hsMobileTabbar .hs-mobile-tab svg { flex: 0 0 auto; }
+  .hs-map-destinations-sheet,
+  .hs-install-sheet,
+  .hs-draws-sheet { box-sizing: border-box; margin-inline: auto; }
+  body.hs-mobile-map-active #mapPage,
+  body.hs-mobile-map-active #bcOpenSeasonsPage { isolation: isolate; }
+}
+
+/* The Account tab already handles authentication on mobile.
+   Remove the redundant header Sign In button and center the HuntSmart wordmark. */
+@media (max-width:768px) {
+  body > nav:has(#authNavBtn) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  body > nav:has(#authNavBtn) #authNavBtn {
+    display: none !important;
+  }
+  body > nav:has(#authNavBtn) .nav-brand {
+    display: inline-flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-inline: auto !important;
+    width: max-content;
+    max-width: calc(100% - 32px);
+    text-align: center;
+  }
+  body > nav:has(#authNavBtn) .nav-brand-top { text-align: center; }
+}
+
+/* One persistent top-right account entry, and a centered homepage on mobile. */
+@media (max-width:768px) {
+  /* Override the previous prototype's centered-wordmark/hidden-auth rule. */
+  body > nav:has(#authNavBtn) {
+    display:flex!important;
+    justify-content:space-between!important;
+    align-items:center!important;
+    gap:10px!important;
+  }
+  body > nav:has(#authNavBtn) .nav-brand {
+    flex:0 1 auto!important;
+    min-width:0!important;
+    width:auto!important;
+    max-width:calc(100% - 88px)!important;
+    margin:0!important;
+    align-items:flex-start!important;
+    text-align:left!important;
+  }
+  body > nav:has(#authNavBtn) .nav-brand-top { text-align:left!important; }
+  body > nav:has(#authNavBtn) #authNavBtn {
+    box-sizing:border-box!important;
+    display:inline-flex!important;
+    flex:0 0 auto!important;
+    align-items:center!important;
+    justify-content:center!important;
+    margin-left:auto!important;
+    min-width:72px!important;
+    width:auto!important;
+    height:44px!important;
+    min-height:44px!important;
+    padding:0 10px!important;
+    border:1px solid rgba(255,255,255,.16)!important;
+    border-radius:12px!important;
+    background:rgba(23,31,25,.92)!important;
+    color:#e3efe5!important;
+    font-size:12px!important;
+    font-weight:700!important;
+    line-height:1!important;
+    cursor:pointer;
+    white-space:nowrap!important;
+  }
+  body > nav:has(#authNavBtn) #authNavBtn[data-auth-state="signed-in"] {
+    min-width:44px!important;
+    width:44px!important;
+    padding:0!important;
+  }
+  body > nav:has(#authNavBtn) #authNavBtn .auth-avatar {
+    display:grid!important;
+    place-items:center!important;
+    min-width:32px!important;
+    width:32px!important;
+    height:32px!important;
+    margin:0!important;
+    border-radius:50%!important;
+    background:rgba(101,213,118,.18)!important;
+    color:#9beaab!important;
+    font-size:14px!important;
+  }
+  /* The old flex-wrap/overflow strip produced a lonely left-aligned fifth metric.
+     A 2+2+1 grid is symmetric and readable at 320–430px. */
+  #homePage .home-stats-inner {
+    box-sizing:border-box!important;
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    flex-wrap:nowrap!important;
+    justify-items:center!important;
+    align-items:start!important;
+    justify-content:center!important;
+    gap:22px 12px!important;
+    max-width:450px!important;
+    width:100%!important;
+    margin-inline:auto!important;
+    padding:30px 18px 32px!important;
+    overflow:visible!important;
+    scroll-snap-type:none!important;
+  }
+  #homePage .home-stats-inner .home-stat {
+    box-sizing:border-box!important;
+    min-width:0!important;
+    width:100%!important;
+    max-width:none!important;
+    flex:none!important;
+    margin:0!important;
+    text-align:center!important;
+    scroll-snap-align:none!important;
+  }
+  #homePage .home-stats-inner .home-stat:last-child {
+    grid-column:1 / -1!important;
+    justify-self:center!important;
+    min-width:132px!important;
+    width:50%!important;
+  }
+  #homePage .home-stats-inner .home-stat-divider { display:none!important; }
+  #homePage .home-stats-inner .home-stat-num {
+    font-size:clamp(31px,8vw,39px)!important;
+    line-height:1.08!important;
+    margin-bottom:8px!important;
+  }
+  #homePage .home-stats-inner .home-stat-label {
+    margin-inline:auto!important;
+    max-width:170px!important;
+    color:#9aaf9a!important;
+    font-size:10.5px!important;
+    letter-spacing:.065em!important;
+    line-height:1.4!important;
+    overflow-wrap:break-word;
+  }
+}
+/* Safari's body overflow-x:hidden prevents the header from sticking on scroll.
+   Keep the product header visible with its profile control at all scroll positions. */
+@media (max-width:768px) {
+  html.hs-mobile-browser body { padding-top:56px!important; }
+  html.hs-mobile-browser body > nav:has(#authNavBtn) {
+    position:fixed!important;
+    top:0!important;left:0!important;right:0!important;
+    width:100%!important;height:56px!important;min-height:56px!important;
+    z-index:9400!important;
+  }
+}
+
+/* Expanded hunt-card maps remain inside the app viewport, preserving persistent
+   top profile and bottom navigation instead of obscuring them. */
+@media (max-width:768px) {
+  body .leh-card-fullscreen-overlay {
+    position: fixed !important;
+    top: var(--hs-live-header-h, 56px) !important;
+    bottom: var(--hs-live-nav-h, 62px) !important;
+    height: calc(var(--hs-visual-vh, 100dvh) - var(--hs-live-header-h, 56px) - var(--hs-live-nav-h, 62px)) !important;
+    max-height: none !important;
+    z-index: 9400 !important;
+  }
+  body .leh-card-fullscreen-overlay > div:first-child {
+    flex-wrap: wrap;
+    justify-content: center !important;
+    gap: 6px !important;
+  }
+  body .leh-card-fullscreen-overlay .leh-card-map {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+  }
+}

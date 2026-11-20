@@ -6,6 +6,8 @@ on:
     paths:
       - mobile-pwa-shell.css
       - mobile-pwa-shell.js
+      - ux-polish.js
+      - mobile-account-nav.js
       - map-destinations.js
       - map-vector-runtime.js
       - maps.js
@@ -14,13 +16,18 @@ on:
       - netlify.toml
       - species-map/hs-map-ui.css
       - species-map/hs-map-ui.js
+      - species-map/hs-app-nav.css
+      - species-map/hs-app-nav.js
       - scripts/mobile-browser-preview-qa.cjs
+      - scripts/webkit-mobile-ux-qa.cjs
       - .github/workflows/mobile-browser-distribution-qa.yml
   push:
     branches: [main]
     paths:
       - mobile-pwa-shell.css
       - mobile-pwa-shell.js
+      - ux-polish.js
+      - mobile-account-nav.js
       - map-destinations.js
       - map-vector-runtime.js
       - maps.js
@@ -29,7 +36,10 @@ on:
       - netlify.toml
       - species-map/hs-map-ui.css
       - species-map/hs-map-ui.js
+      - species-map/hs-app-nav.css
+      - species-map/hs-app-nav.js
       - scripts/mobile-browser-preview-qa.cjs
+      - scripts/webkit-mobile-ux-qa.cjs
 
 permissions:
   contents: read
@@ -65,21 +75,32 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+          npx playwright install --with-deps webkit
       - name: Static syntax checks
         run: |
           node --check mobile-pwa-shell.js
+          node --check ux-polish.js
+          node --check mobile-account-nav.js
           node --check map-destinations.js
           node --check map-vector-runtime.js
           node --check maps.js
           node --check bc-filters.js
           node --check ab-filters.js
           node --check species-map/hs-map-ui.js
+          node --check species-map/hs-app-nav.js
+          grep -q 'hs-app-nav.js' site/species-map/index.html
+          grep -q 'hs-app-nav.css' site/species-map/index.html
           node --check scripts/mobile-browser-preview-qa.cjs
+          node --check scripts/webkit-mobile-ux-qa.cjs
           node --check scripts/install-species-preview-route.cjs
       - name: Responsive browser and standalone regression
         env:
           URL: ${{ github.event_name == 'pull_request' && format('https://deploy-preview-{0}--huntsmartcanada.netlify.app', github.event.pull_request.number) || 'https://huntsmartcanada.ca' }}
         run: node scripts/mobile-browser-preview-qa.cjs
+      - name: iOS WebKit mobile user-journey regression
+        env:
+          URL: ${{ github.event_name == 'pull_request' && format('https://deploy-preview-{0}--huntsmartcanada.netlify.app', github.event.pull_request.number) || 'https://huntsmartcanada.ca' }}
+        run: node scripts/webkit-mobile-ux-qa.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
