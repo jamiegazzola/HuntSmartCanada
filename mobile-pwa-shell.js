@@ -96,7 +96,9 @@
     var topH = headerH + trialH;
     root.style.setProperty('--hs-live-nav-h', navH + 'px');
     root.style.setProperty('--hs-live-header-h', topH + 'px');
-    root.style.setProperty('--hs-map-page-h', Math.max(0, visualH - navH - topH) + 'px');
+    root.style.setProperty('--hs-map-page-h', (browserMode
+      ? Math.max(0, visualH - navH - topH)
+      : Math.max(320, visualH - navH)) + 'px');
 
     if (mapActive) {
       requestAnimationFrame(resizeMapInstances);
