@@ -157,11 +157,14 @@ async function mobile(browser, w, h) {
 
     await page.evaluate(id => { window.__hsQaCardBefore = _lehCardMaps[id]; }, cardId);
     await page.locator('#' + cardId + '_btn_topo').click();
-    await page.waitForFunction(id => Boolean(
-      _lehCardMaps[id] && _lehCardMaps[id] !== window.__hsQaCardBefore &&
-      _lehCardMaps[id]._lehCurrentTile === 'topo' &&
-      /outdoors/i.test(_lehCardMaps[id].getStyle()?.name || '')
-    ), cardId, {timeout:30000});
+    await page.waitForFunction(id => {
+      const map = _lehCardMaps[id];
+      if (!map || map === window.__hsQaCardBefore || map._lehCurrentTile !== 'topo') return false;
+      // Mapbox getStyle() throws while a newly replaced style is still loading.
+      if (!map.isStyleLoaded?.()) return false;
+      try { return /outdoors/i.test(map.getStyle()?.name || ''); }
+      catch (_) { return false; }
+    }, cardId, {timeout:30000});
     console.log('LEH_CARD_TOPO', JSON.stringify(await page.evaluate(id => ({
       mode:_lehCardMaps[id]._lehCurrentTile,
       style:_lehCardMaps[id].getStyle()?.name,
