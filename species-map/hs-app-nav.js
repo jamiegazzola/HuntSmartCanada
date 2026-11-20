@@ -25,7 +25,15 @@
     syncInspector();
   }
   function installAccount() {
-    if (document.getElementById('hsSpeciesAccount')) return;
+    var existing = document.getElementById('hsSpeciesAccount');
+    var currentHeader = document.querySelector('.hs-map-toolbar .hs-toolbar-header');
+    if (existing) {
+      // Navigation mounts before the private map's heavy scripts finish. Once
+      // the compact toolbar is ready, move the profile into its own header row
+      // rather than leaving it floating over the province selector.
+      if (currentHeader && existing.parentElement !== currentHeader) currentHeader.appendChild(existing);
+      return;
+    }
     var link=document.createElement('a');
     link.id='hsSpeciesAccount';
     link.className='hs-species-account';
@@ -58,6 +66,23 @@
   if (media.addEventListener) media.addEventListener('change', sync);
   else if (media.addListener) media.addListener(sync);
   window.__HS_SPECIES_APP_NAV__ = {version:'20261120-ux1', sync:sync};
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, {once:true});
-  else install();
+  // Load from the document head: nav must appear immediately, even when
+  // production-only wildlife scripts block DOMContentLoaded for many seconds.
+  if (document.body) install();
+  else if (document.documentElement) {
+    var readyObserver = new MutationObserver(function () {
+      if (!document.body) return;
+      readyObserver.disconnect();
+      install();
+    });
+    readyObserver.observe(document.documentElement, { childList:true });
+  }
+  // The map inspector is injected by production map-ui after this early script.
+  // Reconcile its visibility once all other UI initializers have finished.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      install();
+      watchInspector();
+    }, {once:true});
+  }
 })();

@@ -18,6 +18,7 @@ on:
       - species-map/hs-map-ui.js
       - species-map/hs-app-nav.css
       - species-map/hs-app-nav.js
+      - scripts/ensure-species-mobile-nav.cjs
       - scripts/mobile-browser-preview-qa.cjs
       - scripts/webkit-mobile-ux-qa.cjs
       - .github/workflows/mobile-browser-distribution-qa.yml
@@ -38,6 +39,7 @@ on:
       - species-map/hs-map-ui.js
       - species-map/hs-app-nav.css
       - species-map/hs-app-nav.js
+      - scripts/ensure-species-mobile-nav.cjs
       - scripts/mobile-browser-preview-qa.cjs
       - scripts/webkit-mobile-ux-qa.cjs
 
@@ -88,6 +90,7 @@ jobs:
           node --check ab-filters.js
           node --check species-map/hs-map-ui.js
           node --check species-map/hs-app-nav.js
+          node --check scripts/ensure-species-mobile-nav.cjs
           grep -q 'hs-app-nav.js' site/species-map/index.html
           grep -q 'hs-app-nav.css' site/species-map/index.html
           node --check scripts/mobile-browser-preview-qa.cjs
