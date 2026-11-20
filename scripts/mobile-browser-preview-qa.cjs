@@ -219,10 +219,17 @@ async function mobile(browser, w, h) {
   assert(Math.abs(gos.bottom - gos.tabTop) <= 8, w + ' GOS overlaps nav: ' + JSON.stringify(gos));
   await image(page, w + '-map-gos');
   if (w === 390) {
+    // Mapbox's loaded()/isStyleLoaded() flags can remain false even after the
+    // GOS vector overlay and all visible viewport tiles are rendered. Test the
+    // actual usable map, not the SDK's stricter internal idle state.
     const gosReady = await page.waitForFunction(() =>
-      typeof osMapInstance !== 'undefined' && Boolean(osMapInstance?.loaded?.()),
+      typeof osMapInstance !== 'undefined' && osMapInstance &&
+      typeof OS_REGION_FILL !== 'undefined' &&
+      Boolean(osMapInstance.getLayer(OS_REGION_FILL)) &&
+      osMapInstance.areTilesLoaded(),
       null, {timeout:20000}).then(() => true).catch(() => false);
-    console.log('GOS_MAP_FIRST_COMPLETE', JSON.stringify({ready:gosReady,elapsedMs:Date.now()-gosStart}));
+    console.log('GOS_MAP_OVERLAYS_READY', JSON.stringify({ready:gosReady,elapsedMs:Date.now()-gosStart}));
+    assert(gosReady, 'GOS map did not render its map boundaries and tiles within 20 seconds');
     const status = await page.evaluate(() => {
       const map = typeof osMapInstance === 'undefined' ? null : osMapInstance;
       return {
