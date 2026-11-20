@@ -25,8 +25,9 @@ if (!/\bhs-app-nav\.js(?:\?|["'])/.test(html)) {
   if (!/<\/body\s*>/i.test(html)) throw new Error('Species viewer has no </body> injection anchor');
   html = html.replace(/<\/body\s*>/i, '  ' + scriptTag + '\n</body>');
 }
-const matches = (name) => (html.match(new RegExp('(?:href|src)=["\\\'][^"\\\']*' + name + '(?:\\?[^"\\\']*)?["\\\']','g')) || []).length;
-if (matches('hs-app-nav\\.css') !== 1 || matches('hs-app-nav\\.js') !== 1) {
+const cssReferences = html.match(/\b(?:href|src)=["'][^"']*hs-app-nav\.css(?:\?[^"']*)?["']/g) || [];
+const scriptReferences = html.match(/\b(?:href|src)=["'][^"']*hs-app-nav\.js(?:\?[^"']*)?["']/g) || [];
+if (cssReferences.length !== 1 || scriptReferences.length !== 1) {
   throw new Error('Species viewer navigation references missing or duplicated');
 }
 fs.writeFileSync(htmlPath,html);

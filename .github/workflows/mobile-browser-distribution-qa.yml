@@ -103,8 +103,8 @@ jobs:
               env:{...process.env,HS_SPECIES_NAV_TARGET:directory},stdio:'inherit'
             });
             const html=fs.readFileSync(path.join(directory,'index.html'),'utf8');
-            assert.equal((html.match(/hs-app-nav\\.css/g)||[]).length,1);
-            assert.equal((html.match(/hs-app-nav\\.js/g)||[]).length,1);
+            assert.equal((html.match(/hs-app-nav\.css/g)||[]).length,1);
+            assert.equal((html.match(/hs-app-nav\.js/g)||[]).length,1);
             assert(html.includes('app.js?v=private'),'Private map viewer app script must be preserved');
             console.log('PASS: private viewer HTML replacement retains exactly one navigation stylesheet and runtime.');
           } finally { fs.rmSync(directory,{recursive:true,force:true}); }
