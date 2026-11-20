@@ -68,6 +68,10 @@
     var standalone = isStandalone();
     root.classList.toggle('hs-standalone', standalone);
     body.classList.toggle('hs-standalone', standalone);
+    // Browser chrome changes the visual viewport. Keep the installed PWA distinct.
+    var browserMode = mobileMq.matches && !standalone;
+    root.classList.toggle('hs-mobile-browser', browserMode);
+    body.classList.toggle('hs-mobile-browser', browserMode);
 
     var mapPage = mobileMq.matches ? activeMapPage() : null;
     var mapActive = !!mapPage;
@@ -75,9 +79,26 @@
     body.classList.toggle('hs-mobile-map-active', mapActive);
 
     var nav = mobileMq.matches ? visibleNav() : null;
-    var navH = nav ? Math.max(0, Math.round(nav.getBoundingClientRect().height)) : 0;
+    var header = document.querySelector('body > nav:not(.hs-mobile-tabbar)');
+    var trial = document.getElementById('hsTrialBar');
+    var headerH = mobileMq.matches && isVisible(header)
+      ? Math.max(0, Math.round(header.getBoundingClientRect().height)) : 0;
+    var trialH = mobileMq.matches && isVisible(trial)
+      ? Math.max(0, Math.round(trial.getBoundingClientRect().height)) : 0;
+    var focused = document.activeElement;
+    var isEditing = !!(focused && focused.matches && focused.matches('input, textarea, select, [contenteditable="true"]'));
+    var keyboardOpen = browserMode && isEditing && vv && window.innerHeight - visualH > 120;
+    body.classList.toggle('hs-mobile-keyboard-open', !!keyboardOpen);
+    // The bottom tab bar is not part of normal flow; subtract it and the top header.
+    // Do not subtract the top nav twice before the tab bar has been created.
+    var navH = nav && nav !== header && !keyboardOpen
+      ? Math.max(0, Math.round(nav.getBoundingClientRect().height)) : 0;
+    var topH = headerH + trialH;
     root.style.setProperty('--hs-live-nav-h', navH + 'px');
-    root.style.setProperty('--hs-map-page-h', Math.max(320, visualH - navH) + 'px');
+    root.style.setProperty('--hs-live-header-h', topH + 'px');
+    root.style.setProperty('--hs-map-page-h', (browserMode
+      ? Math.max(0, visualH - navH - topH)
+      : Math.max(320, visualH - navH)) + 'px');
 
     if (mapActive) {
       requestAnimationFrame(resizeMapInstances);
@@ -197,6 +218,8 @@
     }, true);
 
     window.addEventListener('resize', scheduleSync, { passive: true });
+    document.addEventListener('focusin', scheduleSync, true);
+    document.addEventListener('focusout', scheduleSync, true);
     window.addEventListener('orientationchange', function () { setTimeout(scheduleSync, 80); });
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', scheduleSync, { passive: true });

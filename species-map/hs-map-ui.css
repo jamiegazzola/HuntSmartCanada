@@ -152,3 +152,37 @@ body.hunter-success-only .hs-map-toolbar .era-control>button#hs-harvest-toggle{b
 .hs-metric-legend .hs-elk-data-note,.hs-metric-legend .hs-inspected-legend{flex-basis:100%;white-space:normal;font-size:10px;line-height:1.4}
 .hs-metric-legend .hs-inspected-legend{color:#d6e0ea}
 @media(max-width:700px){.hs-metric-legend{bottom:calc(env(safe-area-inset-bottom,0px) + 84px);max-width:calc(100vw - 18px);font-size:10px}}
+
+
+/* Keep the standalone distribution viewer a distinct map with a clear return path.
+   The existing species/period/settings controls retain their own behavior. */
+.hs-map-back {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 43px;
+  padding: 0 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  background: #252d28;
+  color: #d5e6d9;
+  font: 650 11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.hs-map-back:focus-visible { outline: 2px solid #a1e8aa; outline-offset: 2px; }
+.hs-map-toolbar .hs-toolbar-header .species-control {
+  min-width: 110px;
+  flex: 1 1 0;
+}
+@media (max-width: 700px) {
+  .hs-map-back { min-height: 42px; padding-inline: 8px; }
+  .hs-map-toolbar .hs-toolbar-header { gap: 5px; }
+}
+@media (max-width: 350px) {
+  .hs-map-back { padding-inline: 6px; font-size: 10px; }
+  .hs-map-toolbar .hs-toolbar-header .species-control { min-width: 90px; }
+  .hs-map-toolbar .species-control select { padding-left: 8px; font-size: 12px; }
+}

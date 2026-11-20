@@ -31,7 +31,10 @@
   province.hidden=true;
   province.style.display='none';
   provinceWrap.append(provinceToggle);
-  header.append(species,provinceWrap);
+  const backToMaps=node('a','hs-map-back','← Maps');
+  backToMaps.href='/?map=interactive';
+  backToMaps.setAttribute('aria-label','Return to HuntSmart hunting map');
+  header.append(backToMaps,species,provinceWrap);
 
   const settingsWrap=node('div','hs-settings-wrap');
   const settingsToggle=node('button','hs-settings-toggle');
@@ -76,7 +79,7 @@
     const expanded=settings.hidden;
     settings.hidden=!expanded;
     settingsToggle.setAttribute('aria-expanded',String(expanded));
-    closeProvince();
+    // The province control is a direct toggle; no province menu exists to close.
   });
   document.addEventListener('pointerdown',event=>{
     if(!settingsWrap.contains(event.target)){

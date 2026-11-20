@@ -1,0 +1,77 @@
+name: HuntSmart Mobile Browser and Distribution QA
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - mobile-pwa-shell.css
+      - mobile-pwa-shell.js
+      - map-destinations.js
+      - netlify.toml
+      - species-map/hs-map-ui.css
+      - species-map/hs-map-ui.js
+      - scripts/mobile-browser-preview-qa.cjs
+      - .github/workflows/mobile-browser-distribution-qa.yml
+  push:
+    branches: [main]
+    paths:
+      - mobile-pwa-shell.css
+      - mobile-pwa-shell.js
+      - map-destinations.js
+      - netlify.toml
+      - species-map/hs-map-ui.css
+      - species-map/hs-map-ui.js
+      - scripts/mobile-browser-preview-qa.cjs
+
+permissions:
+  contents: read
+
+jobs:
+  responsive-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install build dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run exact Netlify site generation for diagnosis
+        run: |
+          python3 - <<'PY'
+          import subprocess, tomllib
+          from pathlib import Path
+          with Path("netlify.toml").open("rb") as handle:
+              command=tomllib.load(handle)["build"]["command"]
+          subprocess.run(["bash","-lc",command],check=True)
+          assert Path("site/map-destinations.js").is_file() is False, "Map chooser should be bundled, not a separate asset"
+          bundle=Path("site/terrain-intelligence.js").read_text()
+          assert "__HS_MAP_DESTINATIONS__" in bundle
+          assert "hs-mobile-browser" in bundle
+          assert Path("site/species-map/hs-map-ui.js").is_file()
+          assert 'hs-preview-species-back' in Path('site/species-map/index.html').read_text(), 'Preview species map route missing'
+          print("Build succeeded and mobile browser/species distribution integration is present.")
+          PY
+      - name: Install Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Static syntax checks
+        run: |
+          node --check mobile-pwa-shell.js
+          node --check map-destinations.js
+          node --check species-map/hs-map-ui.js
+          node --check scripts/mobile-browser-preview-qa.cjs
+          node --check scripts/install-species-preview-route.cjs
+      - name: Responsive browser and standalone regression
+        env:
+          URL: ${{ github.event_name == 'pull_request' && format('https://deploy-preview-{0}--huntsmartcanada.netlify.app', github.event.pull_request.number) || 'https://huntsmartcanada.ca' }}
+        run: node scripts/mobile-browser-preview-qa.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-browser-distribution-${{ github.run_number }}
+          path: mobile-qa-artifacts/*.png
+          if-no-files-found: warn
+          retention-days: 14

@@ -107,6 +107,7 @@ jobs:
 
             await page.waitForSelector('#hsMobileTabbar', { state: 'visible', timeout: 10000 });
             await page.evaluate(() => document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click());
+            await page.locator('#hsMapDestinationsBackdrop [data-map-destination="interactive"]').click();
             await page.waitForFunction(() => {
               const el = document.getElementById('mapPage');
               return !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none');
@@ -124,6 +125,7 @@ jobs:
                 visualH,
                 map: { top: mapRect.top, bottom: mapRect.bottom, height: mapRect.height },
                 nav: { top: navRect.top, bottom: navRect.bottom, height: navRect.height },
+                headerHeight: document.querySelector('body > nav:not(.hs-mobile-tabbar)')?.getBoundingClientRect().height || 0,
                 scrollHeight: document.documentElement.scrollHeight,
                 innerHeight,
                 mapHeightVar: getComputedStyle(document.documentElement).getPropertyValue('--hs-map-page-h').trim(),
@@ -131,9 +133,9 @@ jobs:
               };
             });
 
-            assert(metrics.map.height >= metrics.visualH - metrics.nav.height - 4,
+            assert(metrics.map.height >= metrics.visualH - metrics.nav.height - metrics.headerHeight - 4,
               `map not filling live viewport: ${JSON.stringify(metrics)}`);
-            assert(metrics.map.bottom <= metrics.visualH + 4,
+            assert(metrics.map.bottom <= metrics.nav.top + 4,
               `map extends below live viewport: ${JSON.stringify(metrics)}`);
             assert(metrics.mapHeightVar.endsWith('px'), `live map height var missing: ${JSON.stringify(metrics)}`);
             assert(metrics.installButton, 'Install HuntSmart menu action missing in browser mode');
