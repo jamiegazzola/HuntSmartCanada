@@ -160,6 +160,17 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   coastLayer.listener({feature:{getProperty:()=> '1-10'},latLng:{}});
   assert(base.el('hs-wmu-caveats').textContent.includes('not subspecies-specific'));
   assert(base.el('hs-wmu-caveats').textContent.includes('Only coastal Regions 1 and 2'));
+  assert(base.el('hs-wmu-recorded').textContent.startsWith('136 inspected hunter kills'),
+    'Roosevelt 1-10 inspection kills shown without inventing a subspecies success rate');
+  base.el('hs-harvest-period').value='average';base.el('hs-harvest-period').change();await flush();
+  const sparseCoast=base.layers.at(-1);
+  assert.equal(sparseCoast.style({getProperty:()=> '1-5'}).fillColor,'#597a61',
+    'Roosevelt 1-5 documented kills must remain visible with an insufficient success sample');
+  sparseCoast.listener({feature:{getProperty:()=> '1-5'},latLng:{}});
+  assert.equal(base.el('hs-wmu-rate').textContent,'—','No success probability from small sample');
+  assert(base.el('hs-wmu-recorded').textContent.startsWith('27 inspected hunter kills'),
+    'Roosevelt 1-5 documented harvest still visible');
+  assert.equal(sparseCoast.style({getProperty:()=> '1-5'}).clickable,true);
   base.setSpecies('stone_sheep');await flush();
   assert.equal(base.el('hs-harvest-period').value,'1985');
   base.layers.at(-1).listener({feature:{getProperty:()=> '7-50'},latLng:{}});

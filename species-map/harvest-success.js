@@ -10,6 +10,63 @@
   // the entire ~916 KB provincial archive whenever Success is opened.
   const HISTORY_SOURCE=code=>'/species-map/data/verified/harvest-history-'+code.toLowerCase()+'.json?v=validated-20261119';
   const SOURCE_SHA='e433ed8fc5a9af0db38b190ee068cb48495d9a4a201613c86db13d63a3ade45e';
+
+  // Explicit WILD compulsory inspections are evidence of kills, not a hunter-success denominator.
+  const INSPECTION_SOURCE='/species-map/data/bc-recorded-harvests.json?v=ci-evidence-20261119a';
+  const INSPECTION_SHA='7b2c0eda9da6ac11baeda2989852d4746703ca85893fd320f2e07b9ddbc20514';
+  const INSPECTION_YEARS=new Set(['2022/23','2023/24','2024/25']);
+  const INSPECTION_SUBTYPES=Object.freeze({
+    elk:['Rocky Mountain'],rocky_elk_kootenay:['Rocky Mountain'],roosevelt_elk:['Roosevelt'],
+    bighorn_sheep:['California Bighorn','Rocky Mtn Bighorn'],
+    rocky_bighorn_kootenay:['Rocky Mtn Bighorn'],
+    california_bighorn_boundary:['California Bighorn'],
+    thinhorn_sheep:['Dall Sheep','Stone Sheep'],
+    dall_tatshenshini:['Dall Sheep'],stone_sheep:['Stone Sheep']
+  });
+  const UNRESOLVED_SUBTYPES=new Set([
+    'northwestern_moose_ne','alaskan_moose_nw','shiras_moose_flathead',
+    'caribou_northern','caribou_mountain','caribou_boreal',
+    'nw_whitetail_kootenay','dakota_whitetail_peace','grizzly_bear'
+  ]);
+  let inspectionCounts=null,inspectionUnits=null,pendingInspections=null;
+  async function loadInspections(){
+    if(inspectionCounts)return;
+    if(!pendingInspections)pendingInspections=fetch(INSPECTION_SOURCE)
+      .then(r=>{if(!r.ok)throw Error('Inspection records unavailable');return r.json();})
+      .then(data=>{
+        if(data?.meta?.publisher!=='Government of British Columbia'||
+          data?.meta?.sha256!==INSPECTION_SHA||!Array.isArray(data.rows))
+          throw Error('Inspection source failed integrity checks');
+        const counts=new Map(),units=new Set();
+        const add=(k,n)=>counts.set(k,(counts.get(k)||0)+n);
+        for(const row of data.rows){
+          if(!Array.isArray(row)||row.length!==6)throw Error('Malformed inspection row');
+          const [species,subtype,wmu,year,mode,n]=row;
+          if(!INSPECTION_YEARS.has(year))continue;
+          if(typeof species!=='string'||typeof subtype!=='string'||
+            !/^[1-8]-[1-9][0-9]?$/.test(wmu)||!['gos','leh'].includes(mode)||
+            !Number.isInteger(n)||n<=0)throw Error('Invalid inspection count');
+          add(species+'|*|'+wmu,n);
+          add(species+'|'+subtype+'|'+wmu,n);
+          units.add(wmu);
+        }
+        inspectionCounts=counts;inspectionUnits=units;
+      }).finally(()=>{pendingInspections=null;});
+    return pendingInspections;
+  }
+  function recordedKills(id){
+    if(!inspectionCounts||!code()||excludedForSpecies(id)||UNRESOLVED_SUBTYPES.has(key()))return 0;
+    const subtypes=INSPECTION_SUBTYPES[key()];
+    if(!subtypes)return inspectionCounts.get(code()+'|*|'+id)||0;
+    return subtypes.reduce((sum,name)=>sum+(inspectionCounts.get(code()+'|'+name+'|'+id)||0),0);
+  }
+  function documentedWithoutRate(){
+    if(!inspectionUnits)return 0;
+    let total=0;
+    for(const id of inspectionUnits)
+      if(recordedKills(id)>0&&!unitStats(id)?.reliable)total++;
+    return total;
+  }
   const SHEEP_AGES='/species-map/data/bc-sheep-age-ci-2022-2025.json?v=20261113f';
   const LEH_SOURCE='/species-map/data/bc-leh-single-wmu-1984-2023.json?v=20261119a';
   const LEH_CATALOGUE='https://catalogue.data.gov.bc.ca/dataset/limited-entry-hunting-survey-estimates-1984-to-2023';
@@ -115,6 +172,12 @@
         span.append(swatch,document.createTextNode(name));
         legendNode.append(span);
       });
+      if(documentedWithoutRate()>0){
+        const note=document.createElement('span');
+        note.className='hs-elk-data-note';
+        note.textContent='Muted green = inspected harvest, success sample too small (2022/23–2024/25)';
+        legendNode.append(note);
+      }
       if(elkPolicy.isElk(key())){
         const note=document.createElement('span');
         note.className='hs-elk-data-note';
@@ -376,13 +439,14 @@
       const excluded=excludedForSpecies(id);
       const record=excluded?null:unitStats(id);
       const value=mapMetric==='success'?record?.rate:densityFor(id,record);
+      const documented=recordedKills(id)>0;
       const ok=!!record?.reliable&&Number.isFinite(value);
       const classScale=mapMetric==='success'?classes:densityClasses;
       const colour=classScale.find(x=>value<=x.max)?.color||'#c45145';
-      return {fillColor:ok?colour:'#8c9494',
-        fillOpacity:(excluded?0:ok?0.76:record?0.17:0.07)*opacity,
-        strokeColor:id===selectedWmu?'#fff':ok?'#e5e7da':'#a9aeae',
-        strokeOpacity:(excluded?0:ok?0.85:0.28)*opacity,
+      return {fillColor:ok?colour:documented?'#597a61':'#8c9494',
+        fillOpacity:(excluded?0:ok?0.76:documented?0.28:record?0.17:0.07)*opacity,
+        strokeColor:id===selectedWmu?'#fff':ok?'#e5e7da':documented?'#8baa8e':'#a9aeae',
+        strokeOpacity:(excluded?0:ok?0.85:documented?0.55:0.28)*opacity,
         strokeWeight:id===selectedWmu?2.6:ok?1.05:0.65,zIndex:id===selectedWmu?27:25,clickable:!excluded};
     });
   }
@@ -427,7 +491,15 @@
     const densityDescription=document.getElementById('hs-wmu-meta');
     if(densityDescription)densityDescription.textContent=label()+' · '+selectedYearLabel()+
       (mapMetric==='density'?' · Hunter density':' · Hunter success');
+    const inspected=recordedKills(id);
+    const recordedNode=document.getElementById('hs-wmu-recorded');
+    if(recordedNode){
+      recordedNode.hidden=inspected===0;
+      recordedNode.textContent=inspected>0?
+        inspected.toLocaleString()+' inspected hunter kills documented (2022/23–2024/25 licence years). Not a success rate.':'';
+    }
     const caveats=[];
+    if(inspected>0)caveats.push('Compulsory-inspection records identify harvested animals, but inspection coverage is incomplete and they cannot establish hunter success.');
     if(huntMode==='gos')caveats.push('No verified GOS-only WMU hunter or harvest estimates have been loaded. The combined provincial figures must not be represented as GOS success.');
     const source=document.getElementById('hs-wmu-source');
     if(source){source.href=huntMode==='leh'?LEH_CATALOGUE:BC_GOVERNMENT_HARVEST_DATA;
@@ -536,11 +608,14 @@
       ' Provincial ELK records combine Roosevelt and Rocky Mountain elk; not subspecies-specific success.'+
         (elkPolicy.isRocky(key())?' Regions 1 and 2 excluded for Rocky Mountain elk.':
           ' Coastal Regions 1 and 2 only; other BC regions excluded. WMUs are not a verified Roosevelt range.'):'';
-    if(!n)return 'No sufficiently reported '+date+' WMU hunter-success data for '+label()+'.'+caution;
+    const lowSampleInspections=documentedWithoutRate();
+    const inspectionNote=lowSampleInspections?
+      ' '+lowSampleInspections+' additional WMUs have documented inspected kills (2022/23–2024/25), shown muted, without a comparable hunter-success rate. Inspection coverage is incomplete.':'';
+    if(!n)return 'No sufficiently reported '+date+' WMU hunter-success data for '+label()+'.'+inspectionNote+caution;
     return n+' WMUs with comparable '+date+
       ' resident harvest estimates. Grey = missing/small sample. Tap a WMU for details.'+
       (EXACT.has(key())||elkPolicy.isElk(key())?'':' Provincial category: '+NAMES[type]+' (not subspecies-specific).')+
-      closure+elkWarning+caution+(huntMode==='leh'?' LEH survey is reported by hunt code; mapped only for single-WMU hunt areas.':'');
+      closure+elkWarning+inspectionNote+caution+(huntMode==='leh'?' LEH survey is reported by hunt code; mapped only for single-WMU hunt areas.':'');
   }
   async function draw(){
     if(!enabled||!active()||!context.getMap()||layer)return;
@@ -561,14 +636,14 @@
       }
       await Promise.all(huntMode==='leh'?
         [loadLeh(),fetchBoundaries()]:
-        [loadOfficial(),loadHistory(targetCode),fetchBoundaries()]);
+        [loadOfficial(),loadHistory(targetCode),fetchBoundaries(),loadInspections().catch(e=>console.warn('Optional inspection evidence unavailable',e))]);
       if(generation!==renderSerial||!enabled||!active()||code()!==targetCode)return;
       resetStats();
       syncYearControls();
       updateMetricControls();
       if(isSheep())void loadAge();
       if(generation!==renderSerial||!enabled||!active())return;
-      if(!reliableCount()){
+      if(!reliableCount()&&!documentedWithoutRate()){
         legend.hidden=true;setDetail(summary());
         restoreUnitAfterModeSwitch();
         return;

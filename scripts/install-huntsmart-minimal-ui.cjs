@@ -66,10 +66,11 @@ const extra=[
 '    </div>',
 '    <div class="hs-wmu-stats">',
 '      <div><strong id="hs-wmu-rate">—</strong><span>Success</span></div>',
-'      <div><strong id="hs-wmu-harvest">—</strong><span>Harvest</span></div>',
+'      <div><strong id="hs-wmu-harvest">—</strong><span>Est. harvest</span></div>',
 '      <div><strong id="hs-wmu-hunters">—</strong><span id="hs-wmu-hunters-label">Hunters</span></div>',
 '      <div><strong id="hs-wmu-density">—</strong><span>Est. annual hunters / 100 km²</span></div>',
 '    </div>',
+'    <div id="hs-wmu-recorded" class="hs-wmu-recorded" hidden></div>',
 '    <section class="hs-trend" aria-label="Historical hunter success and participation">',
 '      <div class="hs-trend-header"><strong>Historical trends</strong><div class="hs-trend-ranges" role="group" aria-label="Chart date range"><button type="button" data-trend-range="5">5Y</button><button type="button" data-trend-range="10">10Y</button><button type="button" data-trend-range="all" aria-pressed="true">All</button></div></div>',
 '      <div class="hs-trend-key"><span class="hs-trend-success-key">Success (%)</span><span class="hs-trend-hunters-key">Est. hunters</span></div>',
@@ -105,7 +106,7 @@ assert(appTag,'app script missing');
 html=html.replace(appTag[0],appTag[0]+'\n  <script src="hs-map-ui.js?v=compact-20261118a"></script>');
 html=html.replace('</head>','  <link rel="stylesheet" href="hs-map-ui.css?v=elk-coastal-20261119a">\n</head>');
 html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=elk-identity-20261119a');
-html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=elk-coastal-20261119a');
+html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=ci-evidence-20261119a');
 assert(html.includes('hs-map-ui.js?v=')&&html.includes('hs-map-ui.css?v='),'UI assets not linked');
 assert(!html.includes('data-hs-huntmode'),'Single Success view may not add hunt type controls');
 fs.writeFileSync(htmlFile,html);
