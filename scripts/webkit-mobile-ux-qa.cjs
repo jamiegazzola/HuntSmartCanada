@@ -16,7 +16,7 @@ async function inspectTabs(page, name) {
       tabs:tabs.map(el=>{const x=el.getBoundingClientRect();return{w:x.width,h:x.height,center:x.left+x.width/2,visible:getComputedStyle(el).visibility!=='hidden'};}),
       doc:document.documentElement.scrollWidth};
   });
-  assert(r.nav && r.tabs.length===6, name+' six tabs missing '+JSON.stringify(r));
+  assert(r.nav && r.tabs.length===5, name+' five tabs missing '+JSON.stringify(r));
   assert(r.nav.top>0 && r.nav.bottom<=r.vh+4, name+' nav offscreen '+JSON.stringify(r));
   assert(r.nav.left>=-2 && r.nav.right<=r.vw+2, name+' nav not centered '+JSON.stringify(r));
   assert(r.tabs.every(x=>x.h>=42 && x.w>=39 && x.visible),name+' inaccessible tabs '+JSON.stringify(r));
@@ -42,8 +42,21 @@ async function run(browser,w,h) {
   }
   const page=await context.newPage();
   await page.goto(base+'/?webkit-ux='+w,{waitUntil:'domcontentloaded',timeout:35000});
-  await page.waitForFunction(()=>!!window.__HS_MAP_DESTINATIONS__ && !!document.getElementById('hsMobileAccountTab'),null,{timeout:25000});
+  await page.waitForFunction(()=>!!window.__HS_MAP_DESTINATIONS__ && !!document.getElementById('hsMobileTabbar') && !!document.getElementById('authNavBtn'),null,{timeout:25000});
   await inspectTabs(page,w+'-home');
+  assert(await page.locator('#authNavBtn').isVisible(),'Top-right account missing');
+  assert.equal(await page.locator('#hsMobileAccountTab').count(),0,'Duplicate bottom account tab exists');
+  await page.evaluate(()=>window.scrollTo(0,1200));
+  await page.waitForTimeout(200);
+  const top=await page.evaluate(()=>document.querySelector('body > nav:not(.hs-mobile-tabbar)').getBoundingClientRect().top);
+  assert(Math.abs(top)<=3,'Top header not pinned on scroll: '+top);
+  await page.evaluate(()=>window.scrollTo(0,0));
+  // The Netlify deploy-preview feedback iframe is not part of production.
+  // Suppress it for real app interaction checks rather than force-clicking through it.
+  if (base.includes('deploy-preview-')) {
+    await page.addStyleTag({content:'[data-netlify-deploy-id]{display:none!important;pointer-events:none!important}'});
+    await page.evaluate(()=>document.querySelectorAll('[data-netlify-deploy-id]').forEach(x=>x.remove()));
+  }
   await page.screenshot({path:'mobile-qa-artifacts/'+w+'-webkit-home.png'});
   await page.locator('#hsMobileTabbar [data-tab="draws"]').click();
   await page.locator('#hsDrawsSheetBackdrop.open').waitFor({state:'visible',timeout:12000});
@@ -68,6 +81,7 @@ async function run(browser,w,h) {
   await page.goto(base+'/species-map/?webkit-ux='+w,{waitUntil:'domcontentloaded',timeout:35000});
   await page.locator('#hsSpeciesTabbar').waitFor({state:'visible',timeout:20000});
   await inspectTabs(page,w+'-species');
+  assert(await page.locator('#hsSpeciesAccount').isVisible(),'Profile missing on distribution map');
   const mapAndBar=await page.evaluate(()=>({map:document.getElementById('map').getBoundingClientRect().bottom,tab:document.getElementById('hsSpeciesTabbar').getBoundingClientRect().top}));
   assert(Math.abs(mapAndBar.map-mapAndBar.tab)<=4,'Species map/bar overlap '+JSON.stringify(mapAndBar));
   await page.screenshot({path:'mobile-qa-artifacts/'+w+'-webkit-species.png'});
