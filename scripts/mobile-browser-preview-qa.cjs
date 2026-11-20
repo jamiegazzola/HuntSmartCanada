@@ -82,9 +82,33 @@ async function mobile(browser, w, h) {
   await openFresh(page, '/');
   assert(await page.locator('#navDistribution').count(), 'Desktop species link missing');
   assert(await page.locator('#mNavDistribution').count(), 'Mobile species link missing');
-  assert(await page.locator('#hsMobileTabbar .hs-mobile-tab').count() === 6, 'Mobile must retain six tabs');
+  assert(await page.locator('#hsMobileTabbar .hs-mobile-tab').count() === 5, 'Mobile must retain five tabs');
+  assert.equal(await page.locator('#hsMobileAccountTab').count(),0,'Profile should not consume bottom nav');
+  assert(await page.locator('#authNavBtn').isVisible(),'Top-right profile is missing');
   assert(await page.evaluate(() => document.documentElement.classList.contains('hs-mobile-browser')), 'Browser mode class missing');
   await inspect(page, w + ' home');
+  if (w === 390) {
+    const layout=await page.evaluate(()=>{
+      const head=document.querySelector('body > nav:not(.hs-mobile-tabbar)').getBoundingClientRect();
+      const account=document.getElementById('authNavBtn').getBoundingClientRect();
+      const stats=Array.from(document.querySelectorAll('#homePage .home-stat')).map(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,cx:(r.left+r.right)/2};});
+      return {headTop:head.top,accountTop:account.top,accountRight:account.right,stats,width:innerWidth};
+    });
+    assert.equal(layout.stats.length,5,'Homepage has five statistics');
+    assert(Math.abs(layout.stats[4].cx-layout.width/2)<=5,'Fifth stat not centered '+JSON.stringify(layout));
+    assert(Math.abs(layout.stats[0].cx+layout.stats[1].cx-layout.width)<=6,'Two-column metrics uneven '+JSON.stringify(layout));
+    assert(layout.accountRight>=layout.width-30,'Profile not top-right '+JSON.stringify(layout));
+    await page.evaluate(()=>scrollTo(0,1200));
+    await page.waitForTimeout(150);
+    const sticky=await page.evaluate(()=>({
+      head:document.querySelector('body > nav:not(.hs-mobile-tabbar)').getBoundingClientRect().top,
+      account:document.getElementById('authNavBtn').getBoundingClientRect().top
+    }));
+    assert(Math.abs(sticky.head)<=3 && sticky.account>=0 && sticky.account<=56,
+      'Top-right profile disappears during scroll '+JSON.stringify(sticky));
+    console.log('HOME_CENTERED_PROFILE',JSON.stringify({layout,sticky}));
+    await page.evaluate(()=>scrollTo(0,0));
+  }
   await image(page, w + '-home');
   if (w === 390) {
     const heavy = await page.evaluate(() => performance.getEntriesByType('resource')
@@ -276,7 +300,8 @@ async function species(browser, w, h) {
   const backSelector = fullViewer ? '.hs-map-back' : '.hs-preview-species-back';
   if (w < 700) {
     await page.locator('#hsSpeciesTabbar').waitFor({state:'visible',timeout:15000});
-    assert.equal(await page.locator('#hsSpeciesTabbar [data-tab]').count(),6,'Species map must retain six product tabs');
+    assert.equal(await page.locator('#hsSpeciesTabbar [data-tab]').count(),5,'Species map must retain five tabs');
+    assert(await page.locator('#hsSpeciesAccount').isVisible(),'Species map top-right profile missing');
     assert.equal(await page.locator('#hsSpeciesTabbar [aria-current="page"]').count(),1,'Species map active tab missing');
     const nav = await page.evaluate(() => {
       const r=document.getElementById('hsSpeciesTabbar').getBoundingClientRect();
