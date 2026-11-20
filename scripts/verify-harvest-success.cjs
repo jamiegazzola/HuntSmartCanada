@@ -171,6 +171,8 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   assert(base.el('hs-wmu-recorded').textContent.startsWith('27 inspected hunter kills'),
     'Roosevelt 1-5 documented harvest still visible');
   assert.equal(sparseCoast.style({getProperty:()=> '1-5'}).clickable,true);
+  // Return to historical selection before checking cross-species persistence.
+  base.el('hs-harvest-period').value='1985';base.el('hs-harvest-period').change();await flush();
   base.setSpecies('stone_sheep');await flush();
   assert.equal(base.el('hs-harvest-period').value,'1985');
   base.layers.at(-1).listener({feature:{getProperty:()=> '7-50'},latLng:{}});
