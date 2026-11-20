@@ -2841,7 +2841,7 @@ function bcCardMapToggleFullscreen(containerId) {
   const closeBtn = document.createElement('button');
   closeBtn.innerHTML = '✕&nbsp;&nbsp;Collapse';
   closeBtn.className = 'leh-map-btn';
-  closeBtn.style.cssText = 'font-size:12px;padding:5px 16px;margin-left:auto;font-weight:600;';
+  closeBtn.style.cssText = 'font-size:12px;padding:9px 14px;margin-left:auto;font-weight:700;min-height:44px;border-radius:9px;border:1px solid rgba(255,255,255,.20);background:rgba(255,255,255,.09);color:#e9f3ec;cursor:pointer';
   closeBtn.title = 'Exit fullscreen (Esc)';
   closeBtn.onclick = () => bcCardMapToggleFullscreen(containerId);
   bar.appendChild(closeBtn);
