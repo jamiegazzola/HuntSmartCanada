@@ -115,6 +115,14 @@
         span.append(swatch,document.createTextNode(name));
         legendNode.append(span);
       });
+      if(elkPolicy.isElk(key())){
+        const note=document.createElement('span');
+        note.className='hs-elk-data-note';
+        note.textContent=elkPolicy.isRoosevelt(key())?
+          'Coastal WMUs · all elk, not Roosevelt-only':
+          'Interior WMUs · all elk, not Rocky-only';
+        legendNode.append(note);
+      }
       legendNode.setAttribute('aria-label',mapMetric==='success'?'Success rate legend':'Annual estimated hunters per 100 square kilometres legend');
       legendNode.hidden=!enabled||!active();
     }
@@ -231,22 +239,26 @@
   function availableYears() {
     const archive=modeArchive();
     const cacheToken=huntMode==='leh'?lehData:huntMode==='combined'?history:null;
-    if(yearsMemoCode===code()+'|'+huntMode&&yearsMemoHistory===cacheToken&&yearsMemoOfficial===official)return yearsMemo;
+    const scopeKey=code()+'|'+key()+'|'+huntMode;
+    if(yearsMemoCode===scopeKey&&yearsMemoHistory===cacheToken&&yearsMemoOfficial===official)return yearsMemo;
     const found=new Set();
-    for(const unit of Object.values(archive)){
+    // The selector must reflect the selected species' eligible geography,
+    // rather than all years reported for elk elsewhere in BC.
+    for(const [id,unit] of Object.entries(archive)){
+      if(excludedForSpecies(id))continue;
       for(const [year,v] of Object.entries(unit)){
         if(/^\d{4}$/.test(year)&&Array.isArray(v)&&Number.isFinite(v[0])&&v[0]>0&&Number.isFinite(v[1])&&v[1]>=0)
           found.add(Number(year));
       }
     }
-    if(huntMode==='combined'&&Object.values(rows()||{}).some(r=>Array.isArray(r.y)&&r.y[0]>0&&r.y[1]>=0))found.add(2024);
+    if(huntMode==='combined'&&Object.entries(rows()||{}).some(([id,r])=>!excludedForSpecies(id)&&Array.isArray(r.y)&&r.y[0]>0&&r.y[1]>=0))found.add(2024);
     yearsMemo=[...found].sort((a,b)=>a-b);
-    yearsMemoCode=code()+'|'+huntMode;yearsMemoHistory=cacheToken;yearsMemoOfficial=official;
+    yearsMemoCode=scopeKey;yearsMemoHistory=cacheToken;yearsMemoOfficial=official;
     return yearsMemo;
   }
   function selectedYears(){
     if(historicalYear())return [Number(period.value)];
-    const cacheKey=code()+'|'+huntMode+'|'+period.value+'|'+customStart+'|'+customEnd+'|'+(huntMode==='leh'?(lehData?'ready':'pending'):(history?.species?.[code()]?'ready':'pending'));
+    const cacheKey=code()+'|'+key()+'|'+huntMode+'|'+period.value+'|'+customStart+'|'+customEnd+'|'+(huntMode==='leh'?(lehData?'ready':'pending'):(history?.species?.[code()]?'ready':'pending'));
     if(cachedYearsKey===cacheKey)return cachedYears;
     cachedYearsKey=cacheKey;
     const available=availableYears();
@@ -430,7 +442,8 @@
     if(s?.coverage&&selectedYears().length>1)caveats.push('Reported years: '+s.coverage+'.');
     if(elkPolicy.isElk(key()))caveats.push('BC provincial ELK harvest statistics combine Roosevelt and Rocky Mountain elk; the success rate is not subspecies-specific.');
     else if(!EXACT.has(key()))caveats.push('BC category: '+(NAMES[code()]||'unavailable')+'; not subspecies-specific.');
-    if(elkPolicy.isRocky(key()))caveats.push('Regions 1 and 2 are excluded from the Rocky Mountain elk success layer.');
+    if(elkPolicy.isRocky(key()))caveats.push('Regions 1 and 2 are excluded from the Rocky Mountain elk view. Interior all-elk figures are not confirmed Rocky Mountain elk success.');
+    if(elkPolicy.isRoosevelt(key()))caveats.push('Only coastal Regions 1 and 2 are displayed. These are geographically screened all-elk records, not a Roosevelt-specific success rate or proof of presence in every WMU.');
     caveats.push(huntMode==='leh'?
       'LEH estimates are by hunt code, aggregated only where each record refers to one WMU and has complete survey estimates. Hunter participation may count a person more than once across hunt codes.':
       'Combined resident harvest; not GOS-only, LEH draw, legal-ram or trophy odds.');
@@ -521,7 +534,8 @@
     if(huntMode==='gos')return 'GOS-only WMU success is not available in the published datasets. The Hunter Sample Survey includes GOS and LEH; subtracting separate LEH survey counts would not be statistically valid. Switch to LEH or Combined.';
     const elkWarning=elkPolicy.isElk(key())?
       ' Provincial ELK records combine Roosevelt and Rocky Mountain elk; not subspecies-specific success.'+
-        (elkPolicy.isRocky(key())?' Regions 1 and 2 excluded for Rocky Mountain elk.':''):'';
+        (elkPolicy.isRocky(key())?' Regions 1 and 2 excluded for Rocky Mountain elk.':
+          ' Coastal Regions 1 and 2 only; other BC regions excluded. WMUs are not a verified Roosevelt range.'):'';
     if(!n)return 'No sufficiently reported '+date+' WMU hunter-success data for '+label()+'.'+caution;
     return n+' WMUs with comparable '+date+
       ' resident harvest estimates. Grey = missing/small sample. Tap a WMU for details.'+

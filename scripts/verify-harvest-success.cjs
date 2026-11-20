@@ -117,6 +117,8 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   const policy=base.w.HUNTSMART_ELK_POLICY;
   assert(policy.isRocky('elk')&&policy.isRocky('rocky_elk_kootenay'));
   assert(policy.isRoosevelt('roosevelt_elk')&&!policy.isRocky('roosevelt_elk'));
+  assert(policy.coastalWmu('1-10')&&policy.coastalWmu('2-12'));
+  assert(!policy.coastalWmu('4-24')&&!policy.coastalWmu('6-9'));
   for(const id of ['1-10','2-12']) {
     assert(policy.excludesFromSuccess('elk',id));
     const style=base.layers.at(-1).style({getProperty:()=>id});
@@ -137,14 +139,27 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   assert(base.el('hs-harvest-detail').textContent.includes('1985'),
     '1985 elk harvest data must be available');
   base.setSpecies('roosevelt_elk');await flush();
-  assert.equal(base.layers.at(-1).style({getProperty:()=> '1-10'}).clickable,true,
-    'Roosevelt selection should not inherit Rocky Mountain elk region exclusions');
-  assert(!base.el('hs-harvest-detail').textContent.includes('Regions 1 and 2 excluded'),
-    'Roosevelt view must not inherit Rocky exclusion note');
+  const coastLayer=base.layers.at(-1);
+  assert.equal(coastLayer.style({getProperty:()=> '1-10'}).clickable,true,
+    'Vancouver Island all-elk data must remain selectable');
+  assert.equal(coastLayer.style({getProperty:()=> '2-12'}).clickable,true,
+    'South Coast all-elk data must remain selectable');
+  for(const id of ['4-24','6-9','3-27']){
+    assert(policy.excludesFromSuccess('roosevelt_elk',id),'Noncoastal WMU must be excluded: '+id);
+    assert.equal(coastLayer.style({getProperty:()=>id}).fillOpacity,0,
+      'Roosevelt must not shade a noncoastal WMU: '+id);
+    assert.equal(coastLayer.style({getProperty:()=>id}).clickable,false,
+      'Roosevelt must not allow selection outside coastal scope: '+id);
+  }
+  assert(base.el('hs-harvest-detail').textContent.includes('Coastal Regions 1 and 2 only'),
+    'Roosevelt map must disclose its geographic scope');
   assert.equal(base.el('hs-harvest-period').value,'1985',
     'Historical year selection persists across species');
-  base.layers.at(-1).listener({feature:{getProperty:()=> '3-27'},latLng:{}});
+  coastLayer.listener({feature:{getProperty:()=> '4-24'},latLng:{}});
+  assert.equal(base.el('hs-wmu-card').hidden,true,'Excluded regions cannot open Roosevelt details');
+  coastLayer.listener({feature:{getProperty:()=> '1-10'},latLng:{}});
   assert(base.el('hs-wmu-caveats').textContent.includes('not subspecies-specific'));
+  assert(base.el('hs-wmu-caveats').textContent.includes('Only coastal Regions 1 and 2'));
   base.setSpecies('stone_sheep');await flush();
   assert.equal(base.el('hs-harvest-period').value,'1985');
   base.layers.at(-1).listener({feature:{getProperty:()=> '7-50'},latLng:{}});
