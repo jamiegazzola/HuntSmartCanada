@@ -147,3 +147,115 @@
     font-weight: 750;
   }
 }
+
+/* Mobile browser only: Safari/Chrome toolbars reduce the visible map area.
+   The installed fullscreen PWA and desktop are deliberately unaffected. */
+@media (max-width: 768px) {
+  html.hs-mobile-browser body.hs-mobile-map-active {
+    box-sizing: border-box !important;
+    height: var(--hs-visual-vh, 100dvh) !important;
+    min-height: 0 !important;
+    max-height: var(--hs-visual-vh, 100dvh) !important;
+    padding-bottom: 0 !important;
+    overflow: hidden !important;
+  }
+
+  html.hs-mobile-browser body.hs-mobile-map-active #mapPage,
+  html.hs-mobile-browser body.hs-mobile-map-active #bcOpenSeasonsPage,
+  html.hs-mobile-browser body.hs-mobile-map-active #bcOpenSeasonsPage > .os-page {
+    box-sizing: border-box !important;
+    height: var(--hs-map-page-h) !important;
+    min-height: 0 !important;
+    max-height: var(--hs-map-page-h) !important;
+    overflow: hidden !important;
+  }
+
+  html.hs-mobile-browser body.hs-mobile-map-active #mapPage .fullmap-page,
+  html.hs-mobile-browser body.hs-mobile-map-active #mapPage .fullmap-body,
+  html.hs-mobile-browser body.hs-mobile-map-active #mapPage .fullmap-container,
+  html.hs-mobile-browser body.hs-mobile-map-active #bcOpenSeasonsPage .os-body,
+  html.hs-mobile-browser body.hs-mobile-map-active #bcOpenSeasonsPage .os-map-wrap {
+    min-height: 0 !important;
+    max-height: 100% !important;
+  }
+
+  html.hs-mobile-browser #hsMobileTabbar {
+    bottom: 0;
+    box-sizing: border-box;
+    padding-bottom: max(6px, env(safe-area-inset-bottom, 0px));
+  }
+
+  html.hs-mobile-browser body.hs-mobile-keyboard-open #hsMobileTabbar {
+    display: none !important;
+  }
+
+  html.hs-mobile-browser #mapPage .fullmap-results-drawer,
+  html.hs-mobile-browser #bcOpenSeasonsPage .os-panel {
+    max-height: min(56%, 460px) !important;
+  }
+
+  html.hs-mobile-browser #mapPage .fullmap-results-grid,
+  html.hs-mobile-browser #bcOpenSeasonsPage .os-results-panel {
+    max-height: min(42dvh, 360px);
+    overscroll-behavior: contain;
+  }
+}
+
+/* A compact map-destination chooser uses the existing six-tab mobile navigation,
+   rather than squeezing a seventh tab onto 320–390px screens. */
+#hsMapDestinationsBackdrop { display: none; }
+@media (max-width: 768px) {
+  #hsMapDestinationsBackdrop.open {
+    position: fixed;
+    inset: 0;
+    z-index: 12500;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0 max(10px, env(safe-area-inset-right, 0px))
+      max(10px, env(safe-area-inset-bottom, 0px))
+      max(10px, env(safe-area-inset-left, 0px));
+    background: rgba(0,0,0,.64);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  .hs-map-destinations-sheet {
+    width: min(100%, 480px);
+    max-height: min(75dvh, 570px);
+    overflow-y: auto;
+    padding: 18px 14px 16px;
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 18px;
+    background: #171d19;
+    box-shadow: 0 20px 65px rgba(0,0,0,.58);
+    color: #ecf2ed;
+  }
+  .hs-map-destinations-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin: 0 2px 12px;
+  }
+  .hs-map-destinations-title { font-size: 17px; font-weight: 750; letter-spacing: -.02em; }
+  .hs-map-destinations-close {
+    flex: 0 0 44px; width: 44px; height: 44px;
+    border: 0; border-radius: 10px;
+    background: rgba(255,255,255,.07); color: #dce8dd; font-size: 20px;
+  }
+  .hs-map-destination {
+    display: flex; width: 100%; min-height: 70px;
+    align-items: center; justify-content: space-between; gap: 12px;
+    margin-top: 8px; padding: 13px 14px;
+    border: 1px solid rgba(255,255,255,.11); border-radius: 12px;
+    background: #222c25; color: #edf5ee;
+    font: inherit; text-align: left; cursor: pointer;
+  }
+  .hs-map-destination:active { background: #2a3a2e; }
+  .hs-map-destination strong { display: block; font-size: 14px; font-weight: 750; }
+  .hs-map-destination small { display: block; margin-top: 4px; color: #acbfb0; font-size: 11px; line-height: 1.45; }
+  .hs-map-destination .hs-map-destination-arrow { flex: 0 0 auto; font-size: 18px; color: #86c995; }
+  .hs-map-destination:focus-visible, .hs-map-destinations-close:focus-visible {
+    outline: 2px solid #a1e8aa; outline-offset: 2px;
+  }
+}
