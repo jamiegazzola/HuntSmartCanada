@@ -450,3 +450,25 @@
     z-index:9400!important;
   }
 }
+
+/* Expanded hunt-card maps remain inside the app viewport, preserving persistent
+   top profile and bottom navigation instead of obscuring them. */
+@media (max-width:768px) {
+  body .leh-card-fullscreen-overlay {
+    position: fixed !important;
+    top: var(--hs-live-header-h, 56px) !important;
+    bottom: var(--hs-live-nav-h, 62px) !important;
+    height: calc(var(--hs-visual-vh, 100dvh) - var(--hs-live-header-h, 56px) - var(--hs-live-nav-h, 62px)) !important;
+    max-height: none !important;
+    z-index: 9400 !important;
+  }
+  body .leh-card-fullscreen-overlay > div:first-child {
+    flex-wrap: wrap;
+    justify-content: center !important;
+    gap: 6px !important;
+  }
+  body .leh-card-fullscreen-overlay .leh-card-map {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+  }
+}
