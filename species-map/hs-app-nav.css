@@ -1,4 +1,4 @@
-/* HuntSmart species viewer uses the same six destinations as the main mobile app.
+/* HuntSmart species viewer uses the same five destinations as the main mobile app.
    These rules are last-resort scoped overrides over legacy map patches. */
 .hs-species-tabbar { display: none; }
 @media(max-width:768px) {
@@ -15,7 +15,7 @@
     width: 100% !important;
     height: var(--hs-species-tab-height) !important;
     display: grid !important;
-    grid-template-columns: repeat(6,minmax(0,1fr)) !important;
+    grid-template-columns: repeat(5,minmax(0,1fr)) !important;
     gap: 2px;
     align-items: stretch;
     padding: 7px max(6px,env(safe-area-inset-right,0px))
@@ -85,4 +85,31 @@
 @media(max-width:350px) {
   #hsSpeciesTabbar .hs-species-tab { font-size: 8px; gap: 2px; }
   #hsSpeciesTabbar svg { width: 18px; height: 18px; }
+}
+
+/* Profile is a separate top-right action, matching HuntSmart's main header. */
+.hs-species-account{display:none}
+@media(max-width:768px){
+  .hs-species-account{
+    position:relative;z-index:31;box-sizing:border-box;flex:0 0 43px;
+    width:43px;height:43px;display:inline-flex;
+    align-items:center;justify-content:center;
+    border:1px solid rgba(255,255,255,.14);border-radius:12px;
+    background:#252d28;color:#e1ebe3;text-decoration:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .hs-species-account svg{width:21px;height:21px}
+  .hs-species-account:focus-visible{outline:2px solid #a1e8aa;outline-offset:2px}
+  body>.hs-species-account{
+    position:fixed;
+    top:calc(env(safe-area-inset-top,0px) + 10px);
+    right:max(9px,env(safe-area-inset-right,0px));
+    z-index:32;
+  }
+  body:has(>.hs-species-account) .species-control{
+    width:calc(100vw - 90px)!important;
+    max-width:calc(100vw - 90px)!important;
+  }
+  .hs-map-toolbar .hs-toolbar-header .species-control{min-width:80px}
+  .hs-map-toolbar .hs-toolbar-header{justify-content:space-between}
 }
