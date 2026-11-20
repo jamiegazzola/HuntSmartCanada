@@ -295,6 +295,8 @@
     text-align: center !important;
     gap: 3px !important;
     padding: 3px 1px !important;
+    font-size: 10px !important;
+    line-height: 1.15 !important;
   }
   #hsMobileTabbar .hs-mobile-tab svg { flex: 0 0 auto; }
   .hs-map-destinations-sheet,

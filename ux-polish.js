@@ -60,7 +60,10 @@
     page = page || pageNameFromVisibleId(visiblePageId());
     var active = activeTabForPage(page);
     bar.querySelectorAll('.hs-mobile-tab').forEach(function (btn) {
-      btn.classList.toggle('active', btn.dataset.tab === active);
+      var selected = btn.dataset.tab === active;
+      btn.classList.toggle('active', selected);
+      if (selected) btn.setAttribute('aria-current', 'page');
+      else btn.removeAttribute('aria-current');
     });
   }
 
@@ -92,8 +95,33 @@
       '</div>';
     document.body.appendChild(backdrop);
 
-    function closeSheet() { backdrop.classList.remove('open'); }
-    function openSheet() { backdrop.classList.add('open'); }
+    var drawTrigger = null;
+    backdrop.setAttribute('aria-hidden', 'true');
+    function closeSheet() {
+      backdrop.classList.remove('open');
+      backdrop.setAttribute('aria-hidden', 'true');
+      if (drawTrigger && drawTrigger.isConnected) drawTrigger.focus({preventScroll:true});
+    }
+    function openSheet() {
+      drawTrigger = document.activeElement;
+      backdrop.classList.add('open');
+      backdrop.setAttribute('aria-hidden', 'false');
+      backdrop.querySelector('[data-draw-choice]')?.focus({preventScroll:true});
+    }
+    document.addEventListener('keydown', function (event) {
+      if (!backdrop.classList.contains('open')) return;
+      if (event.key === 'Escape') {
+        event.preventDefault(); closeSheet(); return;
+      }
+      if (event.key !== 'Tab') return;
+      var buttons = Array.from(backdrop.querySelectorAll('[data-draw-choice]'));
+      var first = buttons[0], last = buttons[buttons.length-1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus();
+      }
+    });
 
     backdrop.addEventListener('click', function (e) {
       if (e.target === backdrop) closeSheet();

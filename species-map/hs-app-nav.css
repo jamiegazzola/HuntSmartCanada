@@ -41,7 +41,7 @@
     text-align: center;
     color: #838f87;
     background: transparent;
-    font: 700 9px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font: 700 10px/1.15 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
   #hsSpeciesTabbar .hs-species-tab.active {

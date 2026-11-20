@@ -6,6 +6,7 @@ on:
     paths:
       - mobile-pwa-shell.css
       - mobile-pwa-shell.js
+      - ux-polish.js
       - map-destinations.js
       - map-vector-runtime.js
       - maps.js
@@ -24,6 +25,7 @@ on:
     paths:
       - mobile-pwa-shell.css
       - mobile-pwa-shell.js
+      - ux-polish.js
       - map-destinations.js
       - map-vector-runtime.js
       - maps.js
@@ -75,6 +77,7 @@ jobs:
       - name: Static syntax checks
         run: |
           node --check mobile-pwa-shell.js
+          node --check ux-polish.js
           node --check map-destinations.js
           node --check map-vector-runtime.js
           node --check maps.js
