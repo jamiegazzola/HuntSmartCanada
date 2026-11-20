@@ -143,6 +143,42 @@
     navigate();
   }
 
+  // The standalone species viewer navigates back to the existing app.
+  // Deep links should restore the requested tab instead of resetting to Home.
+  function restoreIncomingTab() {
+    var url = new URL(window.location.href);
+    var tab = url.searchParams.get('hsTab');
+    if (!['home', 'draws', 'seasons', 'maps', 'saved', 'account'].includes(tab)) return;
+    var tries = 0;
+    function run() {
+      if (typeof window.showPage !== 'function' ||
+          (window.matchMedia('(max-width:768px)').matches &&
+            !document.querySelector('#hsMobileTabbar [data-tab="home"]'))) {
+        if (++tries < 45) setTimeout(run, 100);
+        return;
+      }
+      var mobile = window.matchMedia('(max-width:768px)').matches;
+      var buttonName = tab === 'maps' ? 'map' : tab;
+      if (mobile && tab === 'account' && !document.getElementById('hsMobileAccountTab')) {
+        if (++tries < 45) setTimeout(run, 100);
+        return;
+      }
+      url.searchParams.delete('hsTab');
+      window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+      if (mobile && (tab === 'draws' || tab === 'maps' || tab === 'account')) {
+        document.querySelector('#hsMobileTabbar [data-tab="' + buttonName + '"]')?.click();
+        return;
+      }
+      if (tab === 'account') {
+        document.getElementById('authNavBtn')?.click();
+        return;
+      }
+      var page = {home:'home', draws:'filter', seasons:'bcOpenSeasons', maps:'map', saved:'saved'}[tab];
+      if (page) window.showPage(page);
+    }
+    run();
+  }
+
   function boot() {
     installNavLinks();
     installSheet();
@@ -153,6 +189,7 @@
       observer.observe(document.body, { childList: true, subtree: true });
     }
     returnToInteractiveMap();
+    restoreIncomingTab();
   }
 
   if (document.readyState === 'loading') {

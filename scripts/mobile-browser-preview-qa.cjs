@@ -172,6 +172,18 @@ async function mobile(browser, w, h) {
 
   await show(page, 'saved', '#savedPage');
   await inspect(page, w + ' saved');
+  if (w === 390) {
+    const navRect = await page.locator('#hsMobileTabbar').boundingBox();
+    assert(navRect && navRect.height >= 55,'Bottom tabs missing on Saved');
+    await page.locator('#hsMobileTabbar [data-tab="seasons"]').click();
+    await page.waitForFunction(() => !!document.getElementById('bcOpenSeasonsPage')?.getClientRects().length,
+      null, {timeout:15000});
+    assert(await page.locator('#hsMobileTabbar').isVisible(),'Bottom tabs missing on GOS');
+    await page.locator('#hsMobileTabbar [data-tab="home"]').click();
+    await page.waitForFunction(() => !!document.getElementById('homePage')?.getClientRects().length,
+      null, {timeout:15000});
+    assert(await page.locator('#hsMobileTabbar').isVisible(),'Bottom tabs missing on Home');
+  }
   await image(page, w + '-saved');
 
   await page.locator('#hsMobileTabbar [data-tab="map"]').click();
@@ -255,7 +267,24 @@ async function species(browser, w, h) {
   await openFresh(page,'/species-map/');
   const fullViewer = await page.locator('.hs-map-toolbar').count() > 0;
   const backSelector = fullViewer ? '.hs-map-back' : '.hs-preview-species-back';
-  await page.locator(backSelector).waitFor({state:'visible',timeout:15000});
+  if (w < 700) {
+    await page.locator('#hsSpeciesTabbar').waitFor({state:'visible',timeout:15000});
+    assert.equal(await page.locator('#hsSpeciesTabbar [data-tab]').count(),6,'Species map must retain six product tabs');
+    assert.equal(await page.locator('#hsSpeciesTabbar [aria-current="page"]').count(),1,'Species map active tab missing');
+    const nav = await page.evaluate(() => {
+      const r=document.getElementById('hsSpeciesTabbar').getBoundingClientRect();
+      const map=document.getElementById('map').getBoundingClientRect();
+      const nodes=Array.from(document.querySelectorAll('#hsSpeciesTabbar [data-tab]'));
+      return {top:r.top,bottom:r.bottom,innerH:innerHeight,
+        mapBottom:map.bottom,tabSizes:nodes.map(n=>({w:n.getBoundingClientRect().width,h:n.getBoundingClientRect().height}))};
+    });
+    assert(nav.top >= 0 && nav.bottom <= nav.innerH + 3,'Distribution tabs offscreen: '+JSON.stringify(nav));
+    assert(Math.abs(nav.mapBottom-nav.top) <= 4,'Distribution map overlaps tabs: '+JSON.stringify(nav));
+    assert(nav.tabSizes.every(b=>b.w >= 39 && b.h >= 42),'Distribution tabs too small: '+JSON.stringify(nav));
+    console.log('SPECIES_NAV',w,JSON.stringify(nav));
+  } else {
+    await page.locator(backSelector).waitFor({state:'visible',timeout:15000});
+  }
   const r=await page.evaluate(() => {
     const a=document.querySelector('.hs-map-toolbar, .species-control').getBoundingClientRect();
     const b=document.querySelector('.hs-map-back, .hs-preview-species-back').getBoundingClientRect();
@@ -273,7 +302,14 @@ async function species(browser, w, h) {
     assert(await page.locator('#terrain-toggle').count() === 1, 'Preview distribution display controls absent');
     assert(await page.locator('#era-control').count() === 1, 'Preview distribution period controls absent');
   }
-  assert.equal(await page.locator(backSelector).getAttribute('href'),'/?map=interactive');
+  if (fullViewer) assert.equal(await page.locator(backSelector).getAttribute('href'),'/?map=interactive');
+  if (w === 390) {
+    assert.equal(await page.locator('#hsSpeciesTabbar [data-tab="draws"]').getAttribute('href'),'/?hsTab=draws');
+    await page.locator('#hsSpeciesTabbar [data-tab="draws"]').click();
+    await page.locator('#hsDrawsSheetBackdrop.open').waitFor({state:'visible',timeout:30000});
+    assert(await page.locator('#hsMobileTabbar').isVisible(),'Main navigation missing after returning from species map');
+    await image(page,w+'-distribution-return-draws');
+  }
   await context.close();
 }
 async function desktop(browser) {
