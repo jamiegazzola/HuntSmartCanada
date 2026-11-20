@@ -7,6 +7,9 @@ on:
       - mobile-pwa-shell.css
       - mobile-pwa-shell.js
       - map-destinations.js
+      - map-vector-runtime.js
+      - bc-filters.js
+      - ab-filters.js
       - netlify.toml
       - species-map/hs-map-ui.css
       - species-map/hs-map-ui.js
@@ -18,6 +21,9 @@ on:
       - mobile-pwa-shell.css
       - mobile-pwa-shell.js
       - map-destinations.js
+      - map-vector-runtime.js
+      - bc-filters.js
+      - ab-filters.js
       - netlify.toml
       - species-map/hs-map-ui.css
       - species-map/hs-map-ui.js
@@ -61,6 +67,9 @@ jobs:
         run: |
           node --check mobile-pwa-shell.js
           node --check map-destinations.js
+          node --check map-vector-runtime.js
+          node --check bc-filters.js
+          node --check ab-filters.js
           node --check species-map/hs-map-ui.js
           node --check scripts/mobile-browser-preview-qa.cjs
           node --check scripts/install-species-preview-route.cjs
