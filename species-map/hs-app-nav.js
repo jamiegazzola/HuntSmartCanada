@@ -25,7 +25,15 @@
     syncInspector();
   }
   function installAccount() {
-    if (document.getElementById('hsSpeciesAccount')) return;
+    var existing = document.getElementById('hsSpeciesAccount');
+    var currentHeader = document.querySelector('.hs-map-toolbar .hs-toolbar-header');
+    if (existing) {
+      // Navigation mounts before the private map's heavy scripts finish. Once
+      // the compact toolbar is ready, move the profile into its own header row
+      // rather than leaving it floating over the province selector.
+      if (currentHeader && existing.parentElement !== currentHeader) currentHeader.appendChild(existing);
+      return;
+    }
     var link=document.createElement('a');
     link.id='hsSpeciesAccount';
     link.className='hs-species-account';
