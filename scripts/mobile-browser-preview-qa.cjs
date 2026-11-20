@@ -23,7 +23,7 @@ async function openFresh(page, path) {
         waitUntil: 'domcontentloaded', timeout: 30000
       });
       const good = path.startsWith('/species-map')
-        ? await page.locator('.hs-map-toolbar').count() > 0
+        ? (await page.locator('.hs-map-toolbar').count() > 0 || await page.locator('.hs-preview-species-back').count() > 0)
         : await page.evaluate(() => Boolean(window.__HS_MAP_DESTINATIONS__ && document.getElementById('hsMobileTabbar')));
       if (result?.ok() && good) return;
       last = 'HTTP ' + result?.status() + ', app not ready';
@@ -137,20 +137,27 @@ async function species(browser, w, h) {
   const context=await browser.newContext({viewport:{width:w,height:h},isMobile:w<700,hasTouch:w<700,serviceWorkers:'block'});
   const page=await context.newPage();
   await openFresh(page,'/species-map/');
-  await page.locator('.hs-map-back').waitFor({state:'visible',timeout:15000});
+  const fullViewer = await page.locator('.hs-map-toolbar').count() > 0;
+  const backSelector = fullViewer ? '.hs-map-back' : '.hs-preview-species-back';
+  await page.locator(backSelector).waitFor({state:'visible',timeout:15000});
   const r=await page.evaluate(() => {
-    const a=document.querySelector('.hs-map-toolbar').getBoundingClientRect();
-    const b=document.querySelector('.hs-map-back').getBoundingClientRect();
+    const a=document.querySelector('.hs-map-toolbar, .species-control').getBoundingClientRect();
+    const b=document.querySelector('.hs-map-back, .hs-preview-species-back').getBoundingClientRect();
     const c=document.querySelector('.species-control').getBoundingClientRect();
     return {vw:document.documentElement.clientWidth, left:a.left,right:a.right,backW:b.width,speciesW:c.width};
   });
   console.log('SPECIES',w,JSON.stringify(r));
   assert(r.left>=0 && r.right<=r.vw+3 && r.speciesW>=90, 'Species controls overflow: '+JSON.stringify(r));
   await image(page,w+'-distribution');
-  await page.locator('.hs-settings-toggle').click();
-  assert(await page.locator('.hs-settings-panel').isVisible(), 'Distribution settings failed to open');
-  await image(page,w+'-distribution-settings');
-  assert.equal(await page.locator('.hs-map-back').getAttribute('href'),'/?map=interactive');
+  if (fullViewer) {
+    await page.locator('.hs-settings-toggle').click();
+    assert(await page.locator('.hs-settings-panel').isVisible(), 'Distribution settings failed to open');
+    await image(page,w+'-distribution-settings');
+  } else {
+    assert(await page.locator('#terrain-toggle').count() === 1, 'Preview distribution display controls absent');
+    assert(await page.locator('#era-control').count() === 1, 'Preview distribution period controls absent');
+  }
+  assert.equal(await page.locator(backSelector).getAttribute('href'),'/?map=interactive');
   await context.close();
 }
 async function desktop(browser) {
