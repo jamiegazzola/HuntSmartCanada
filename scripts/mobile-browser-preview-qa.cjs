@@ -322,8 +322,21 @@ async function desktop(browser) {
   assert(!(await page.evaluate(() => document.documentElement.classList.contains('hs-mobile-browser'))), 'Desktop affected by browser-only mode');
   await inspect(page,'desktop');
   await image(page,'desktop-home');
-  await show(page,'map','#mapPage');
-  await image(page,'desktop-map');
+  // Full-width navigation audit: verify every primary desktop surface.
+  for (const [route,id,slug] of [
+    ['filter','#filterPage','bc-filter'],
+    ['draws','#drawsPage','bc-results'],
+    ['saved','#savedPage','saved'],
+    ['abFilter','#abFilterPage','ab-filter'],
+    ['abDraws','#abDrawsPage','ab-results'],
+    ['bcOpenSeasons','#bcOpenSeasonsPage','open-seasons'],
+    ['map','#mapPage','interactive-map']
+  ]) {
+    await show(page,route,id);
+    await inspect(page,'desktop '+slug);
+    await image(page,'desktop-'+slug);
+    assert(await page.locator('#navDistribution').isVisible(),'Species map top navigation disappeared on '+slug);
+  }
   await page.close();
 }
 async function standalone(browser) {
