@@ -240,17 +240,18 @@ async function mobile(browser, w, h) {
     assert(await page.locator('#hsMobileTabbar').isVisible(),'Bottom tabs missing on Home');
   }
 
-  await page.locator('#hsMobileTabbar [data-tab="map"]').click();
-  await page.locator('#hsMapDestinationsBackdrop.open').waitFor({state:'visible',timeout:6000});
-  assert(await page.locator('#hsMapDestinationsBackdrop [data-map-destination]').count() === 2, 'Map destination choices missing');
-  await image(page, w + '-maps-choice');
   const fullMapStarted = Date.now();
-  await page.locator('#hsMapDestinationsBackdrop [data-map-destination="interactive"]').click();
+  await page.locator('#hsMobileTabbar [data-tab="map"]').click();
+  assert.equal(await page.locator('#hsMapDestinationsBackdrop').count(),0,
+    'Obsolete full-screen map chooser still mounted');
   await page.waitForFunction(() => {
     const e=document.getElementById('mapPage');
     return Boolean(e && e.getClientRects().length && getComputedStyle(e).display !== 'none'
       && document.body.classList.contains('hs-mobile-map-active'));
   }, null, { timeout:30000 });
+  await page.locator('#mapPage > .hs-map-crosslink').waitFor({state:'visible',timeout:12000});
+  assert.equal(await page.locator('#mapPage > .hs-map-crosslink').getAttribute('href'),'/species-map/',
+    'Hunting map cross-link is missing or incorrect');
   await page.waitForTimeout(350);
   const map = await page.evaluate(() => {
     const e=document.getElementById('mapPage').getBoundingClientRect();
@@ -328,6 +329,9 @@ async function species(browser, w, h) {
      assert(await page.locator('#terrain-toggle').isHidden(),'Species 3D control must be hidden');
      assert.equal(await page.locator('.hs-species-recovery').count(),1,'Species loading recovery is missing');
     assert.equal(await page.locator('#hsSpeciesTabbar [aria-current="page"]').count(),1,'Species map active tab missing');
+    await page.locator('#hsHuntingMapLink').waitFor({state:'visible',timeout:12000});
+    assert.equal(await page.locator('#hsHuntingMapLink').getAttribute('href'),'/?map=interactive',
+      'Species map route back to hunting is missing');
     const nav = await page.evaluate(() => {
       const r=document.getElementById('hsSpeciesTabbar').getBoundingClientRect();
       const map=document.getElementById('map').getBoundingClientRect();
