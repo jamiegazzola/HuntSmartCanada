@@ -80,6 +80,13 @@ async function mobile(browser, w, h) {
   const errors = [];
   page.on('pageerror', err => errors.push(err.message));
   await openFresh(page, '/');
+  const billingAsset=await page.request.get(base+'/billing-config.js', {timeout:18000});
+  assert(billingAsset.ok(),'Billing module HTTP '+billingAsset.status());
+  assert(/(?:javascript|ecmascript)/i.test(billingAsset.headers()['content-type']||''),
+    'Billing module was served as HTML: '+billingAsset.headers()['content-type']);
+  await page.waitForFunction(()=>Boolean(window.HS?.billing?.state),null,{timeout:20000});
+  assert.equal(await page.evaluate(()=>window.HS.billing.state.checkoutEnabled),false,
+    'Existing preview-safe billing mode changed unexpectedly');
   assert(await page.locator('#navDistribution').count(), 'Desktop species link missing');
   assert(await page.locator('#mNavDistribution').count(), 'Mobile species link missing');
   assert(await page.locator('#hsMobileTabbar .hs-mobile-tab').count() === 5, 'Mobile must retain five tabs');
