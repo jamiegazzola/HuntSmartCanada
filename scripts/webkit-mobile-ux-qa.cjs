@@ -126,12 +126,13 @@ async function run(browser,w,h) {
   await page.waitForFunction(()=>document.getElementById('bcOpenSeasonsPage')?.getClientRects().length>0,null,{timeout:12000});
   await inspectTabs(page,w+'-gos');
   await page.locator('#hsMobileTabbar [data-tab="map"]').click();
-  await page.locator('#hsMapDestinationsBackdrop.open').waitFor({state:'visible',timeout:12000});
-  await page.locator('#hsMapDestinationsBackdrop [data-map-destination="interactive"]').click();
   await page.waitForFunction(()=>document.getElementById('mapPage')?.getClientRects().length>0,null,{timeout:15000});
+  assert.equal(await page.locator('#hsMapDestinationsBackdrop').count(),0,'Map chooser should not interrupt navigation');
+  await page.locator('#mapPage > .hs-map-crosslink').waitFor({state:'visible',timeout:15000});
   await inspectTabs(page,w+'-leh');
-  await page.screenshot({path:'mobile-qa-artifacts/'+w+'-webkit-hunting-map.png'});
-  await page.goto(base+'/species-map/?webkit-ux='+w,{waitUntil:'domcontentloaded',timeout:35000});
+  await page.screenshot({path:'mobile-qa-artifacts/'+w+'-webkit-hunting-map.png',animations:'disabled'});
+  await page.locator('#mapPage > .hs-map-crosslink').click();
+  await page.waitForURL(url=>new URL(url).pathname.startsWith('/species-map/'),{timeout:35000});
   await page.locator('#hsSpeciesTabbar').waitFor({state:'visible',timeout:20000});
   await inspectTabs(page,w+'-species');
   assert.equal(await page.locator('#hsSpeciesAccount').count(),0,'Person icon remains in species map');
