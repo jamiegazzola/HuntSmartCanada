@@ -24,6 +24,32 @@ async function shot(page,name) {
   try { await page.screenshot({path:'map-qa-artifacts/'+name+'.png',animations:'disabled',timeout:12000}); }
   catch(error){console.log('SCREENSHOT_UNAVAILABLE',name,error.message);}
 }
+async function sampledMapPaint(page) {
+  // Screenshot pixels, not a Google Maps DOM element, prove that the geographic
+  // canvas has actually painted. Use an interior crop away from toolbars.
+  const picture=await page.locator('#map').screenshot({animations:'disabled',timeout:15000});
+  return page.evaluate(async b64=>{
+    const image=new Image();
+    image.src='data:image/png;base64,'+b64;
+    await image.decode();
+    const canvas=document.createElement('canvas');
+    canvas.width=100; canvas.height=100;
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(image,0,0,100,100);
+    const pixels=ctx.getImageData(0,0,100,100).data;
+    const buckets=new Set();
+    let n=0,sum=0,sumSq=0;
+    for(let y=32;y<84;y+=3)for(let x=14;x<86;x+=3){
+      const k=(y*100+x)*4;
+      const lum=0.2126*pixels[k]+0.7152*pixels[k+1]+0.0722*pixels[k+2];
+      sum+=lum;sumSq+=lum*lum;n++;
+      buckets.add((pixels[k]>>4)+'-'+(pixels[k+1]>>4)+'-'+(pixels[k+2]>>4));
+    }
+    const mean=sum/n;
+    return {colors:buckets.size,brightness:Math.round(mean),
+      contrast:Math.round(Math.sqrt(Math.max(0,sumSq/n-mean*mean))*10)/10};
+  },picture.toString('base64'));
+}
 async function open(page,path='/') {
   const response=await page.goto(ROOT+path+(path.includes('?')?'&':'?')+'audit='+stamp(),{waitUntil:'domcontentloaded',timeout:45000});
   assert(response?.ok(), 'HTTP '+response?.status()+' on '+path);
@@ -106,8 +132,16 @@ async function mainApp(browser,engine,width,height) {
   await step(label+' BC hunting map tiles and zones',async()=>{
     await wait(page,()=>typeof fullMapInstance!=='undefined' && fullMapInstance &&
       fullMapInstance.getCanvas()?.width>200 && !!fullMapInstance.getStyle()?.layers?.length,40000);
-    await wait(page,()=>typeof fullMapInstance!=='undefined' && fullMapInstance &&
-      fullMapInstance.areTilesLoaded?.(),30000);
+    // Mapbox may report loaded tiles before the asynchronous WMU source/layer
+    // exists, particularly on WebKit. Require actual rendered MVT features.
+    await wait(page,()=>{
+      try {
+        const map=fullMapInstance;
+        return !!map?.getLayer('wmu-fill') &&
+          map.getStyle()?.sources?.['wmu-src']?.type==='vector' &&
+          map.querySourceFeatures('wmu-src',{sourceLayer:'wmus'}).length>0;
+      }catch(_){return false;}
+    },45000);
     const stat=await page.evaluate(()=>({
       province:typeof fullMapProvince!=='undefined'?fullMapProvince:null,
       tileReady:fullMapInstance.areTilesLoaded(),
@@ -125,7 +159,14 @@ async function mainApp(browser,engine,width,height) {
     await wait(page,()=>typeof fullMapProvince!=='undefined' && fullMapProvince==='AB' &&
       typeof fullMapInstance!=='undefined' && fullMapInstance &&
       fullMapInstance.getCanvas()?.width>200,35000);
-    await wait(page,()=>fullMapInstance.areTilesLoaded?.(),25000);
+    await wait(page,()=>{
+      try{
+        const map=fullMapInstance;
+        return fullMapProvince==='AB' && !!map?.getLayer('wmu-fill') &&
+          map.getStyle()?.sources?.['wmu-src']?.type==='vector' &&
+          map.querySourceFeatures('wmu-src',{sourceLayer:'wmus'}).length>0;
+      }catch(_){return false;}
+    },45000);
     const stat=await page.evaluate(()=>({
       province:fullMapProvince,
       ready:fullMapInstance.areTilesLoaded(),
@@ -234,8 +275,18 @@ async function species(browser,engine,width,height) {
     }));
     assert(stat.childCount>0,'Google map has no rendered children');
     assert(!stat.retryShown,'Species map is in recovery/error state');
+    // Google's map object can exist while the satellite/terrain view remains
+    // a single dark colour. Retry sampling while its first image tiles arrive.
+    let paint=null;
+    for(let attempt=0;attempt<9;attempt++){
+      paint=await sampledMapPaint(page);
+      if(paint.colors>=14 && paint.contrast>=9)break;
+      await pause(1400);
+    }
+    assert(paint.colors>=14 && paint.contrast>=9,
+      'Species basemap appears blank: '+JSON.stringify(paint));
     await shot(page,label+'-species-base-imagery');
-    return stat;
+    return {...stat,paint};
   });
   if(accessible){
     await step(label+' species Modern layer',async()=>{
@@ -275,8 +326,13 @@ async function species(browser,engine,width,height) {
       const success=page.locator('#hs-harvest-toggle');
       await success.waitFor({state:'attached',timeout:15000});
       await success.click({timeout:12000});
-      await wait(page,()=>document.body.classList.contains('hunter-success-only') &&
-        !document.querySelector('.species-control')?.classList.contains('loading'),35000);
+      await wait(page,()=>{
+        const detail=document.getElementById('hs-harvest-detail')?.textContent||'';
+        return document.body.classList.contains('hunter-success-only') &&
+          detail.length>25 &&
+          !/loading official|loading (success|data|map)/i.test(detail) &&
+          !document.querySelector('.species-control')?.classList.contains('loading');
+      },45000);
       const stat=await page.evaluate(()=>({
         successMode:document.body.classList.contains('hunter-success-only'),
         detail:document.getElementById('hs-harvest-detail')?.textContent?.slice(0,200)||'',
