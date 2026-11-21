@@ -317,7 +317,9 @@ async function species(browser, w, h) {
   if (w < 700) {
     await page.locator('#hsSpeciesTabbar').waitFor({state:'visible',timeout:15000});
     assert.equal(await page.locator('#hsSpeciesTabbar [data-tab]').count(),5,'Species map must retain five tabs');
-    assert(await page.locator('#hsSpeciesAccount').isVisible(),'Species map top-right profile missing');
+    assert.equal(await page.locator('#hsSpeciesAccount').count(),0,'Redundant person icon in species viewer');
+     assert(await page.locator('#terrain-toggle').isHidden(),'Species 3D control must be hidden');
+     assert.equal(await page.locator('.hs-species-recovery').count(),1,'Species loading recovery is missing');
     assert.equal(await page.locator('#hsSpeciesTabbar [aria-current="page"]').count(),1,'Species map active tab missing');
     const nav = await page.evaluate(() => {
       const r=document.getElementById('hsSpeciesTabbar').getBoundingClientRect();
@@ -347,7 +349,7 @@ async function species(browser, w, h) {
     assert(await page.locator('.hs-settings-panel').isVisible(), 'Distribution settings failed to open');
     await image(page,w+'-distribution-settings');
   } else {
-    assert(await page.locator('#terrain-toggle').count() === 1, 'Preview distribution display controls absent');
+    assert(await page.locator('#terrain-toggle').isHidden(), 'Species 3D control visible');
     assert(await page.locator('#era-control').count() === 1, 'Preview distribution period controls absent');
   }
   if (fullViewer) assert.equal(await page.locator(backSelector).getAttribute('href'),'/?map=interactive');
