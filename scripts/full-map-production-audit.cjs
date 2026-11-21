@@ -115,7 +115,8 @@ async function mainApp(browser,engine,width,height) {
       await page.locator('#mapPage > .hs-map-crosslink').waitFor({state:'visible',timeout:12000});
     } else {
       assert(await page.locator('#navDistribution').isVisible(),'Desktop species map link missing');
-      await page.evaluate(()=>window.showPage('map'));
+      await page.locator('#navMap').waitFor({state:'visible',timeout:20000});
+      await page.locator('#navMap').click({timeout:20000});
     }
     await wait(page,()=>!!document.getElementById('mapPage')?.getClientRects().length,15000);
     if(mobile){
