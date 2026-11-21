@@ -2,7 +2,7 @@ name: QA Only — Live Direct Map Navigation
 on:
   pull_request:
     branches: [main]
-    paths: [.github/workflows/verify-live-map-switch.yml]
+    paths: [.github/workflows/verify-live-map-switch.yml, scripts/full-map-production-audit.cjs]
 permissions:
   contents: read
 jobs:
