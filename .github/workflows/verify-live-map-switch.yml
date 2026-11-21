@@ -1,0 +1,41 @@
+name: QA Only — Live Direct Map Navigation
+on:
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/verify-live-map-switch.yml]
+permissions:
+  contents: read
+jobs:
+  verify-live:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser runtimes
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium webkit
+      - name: Verify live mobile and standalone navigation
+        env:
+          URL: https://huntsmartcanada.ca
+        run: |
+          node scripts/mobile-browser-preview-qa.cjs
+          node scripts/webkit-mobile-ux-qa.cjs
+      - name: Verify live map rendering and species overlays
+        env:
+          URL: https://huntsmartcanada.ca
+        run: node scripts/full-map-production-audit.cjs
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-map-ux-regression
+          path: |
+            mobile-qa-artifacts/
+            map-qa-artifacts/
+          if-no-files-found: warn
+          retention-days: 7
