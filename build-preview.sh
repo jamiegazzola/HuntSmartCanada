@@ -128,7 +128,7 @@ if 'href="/blog/">Resources</a>' not in html and footer_saved in html:
 for tag in [
     '<link href="./world-class-map.css?v=20260909" rel="stylesheet"/>',
     '<link href="./imagery-lab.css?v=20260909" rel="stylesheet"/>',
-    '<link href="./terrain-intelligence.css?v=20261120-mobile4" rel="stylesheet"/>',
+    '<link href="./terrain-intelligence.css?v=20261120-mobile5" rel="stylesheet"/>',
 ]:
     if tag not in html:
         html = html.replace('</head>', tag + '\n</head>', 1)
@@ -157,7 +157,7 @@ if imagery_js not in html:
     else:
         html = html.replace('</body>', imagery_js + '\n</body>', 1)
 
-terrain_js = '<script defer src="./terrain-intelligence.js?v=20261120-mobile4"></script>'
+terrain_js = '<script defer src="./terrain-intelligence.js?v=20261120-mobile5"></script>'
 if terrain_js not in html:
     if imagery_js in html:
         html = html.replace(imagery_js, imagery_js + '\n' + terrain_js, 1)
