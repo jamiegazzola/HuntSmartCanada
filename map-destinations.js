@@ -63,16 +63,23 @@
     backdrop.id = 'hsMapDestinationsBackdrop';
     backdrop.setAttribute('aria-hidden', 'true');
     backdrop.innerHTML =
-      '<section class="hs-map-destinations-sheet" role="dialog" aria-modal="true" aria-label="Choose a map">' +
-        '<div class="hs-map-destinations-head"><strong class="hs-map-destinations-title">Choose a map</strong>' +
+      '<section class="hs-map-destinations-sheet" role="dialog" aria-modal="true" aria-label="Maps">' +
+        '<div class="hs-map-sheet-handle" aria-hidden="true"></div>' +
+        '<div class="hs-map-destinations-head"><div class="hs-map-destinations-heading">' +
+          '<span class="hs-map-destinations-eyebrow">HUNTSMART CANADA</span>' +
+          '<strong class="hs-map-destinations-title">Maps</strong>' +
+          '<span class="hs-map-destinations-subtitle">Choose your view</span></div>' +
           '<button type="button" class="hs-map-destinations-close" aria-label="Close map chooser">×</button></div>' +
+        '<div class="hs-map-destinations-options">' +
         '<button class="hs-map-destination" type="button" data-map-destination="interactive">' +
-          '<span><strong>Hunting Map</strong><small>BC LEH, general open seasons and Alberta draw areas</small></span>' +
+          '<span class="hs-map-destination-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/></svg></span>' +
+          '<span class="hs-map-destination-copy"><strong>Hunting Map</strong><small>Draw units, LEH &amp; open seasons</small></span>' +
           '<span class="hs-map-destination-arrow" aria-hidden="true">›</span></button>' +
         '<button class="hs-map-destination" type="button" data-map-destination="distribution">' +
-          '<span><strong>Species Distribution</strong><small>Wildlife ranges, historical layers and hunter-success data</small></span>' +
+          '<span class="hs-map-destination-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18c4-2 4-10 8-12 4 2 4 10 8 12M5 14h14M8 10h8M3 21h18"/></svg></span>' +
+          '<span class="hs-map-destination-copy"><strong>Species Distribution</strong><small>Wildlife range &amp; hunter success</small></span>' +
           '<span class="hs-map-destination-arrow" aria-hidden="true">›</span></button>' +
-      '</section>';
+        '</div></section>';
     backdrop.addEventListener('click', function (event) {
       if (event.target === backdrop || event.target.closest('.hs-map-destinations-close')) {
         closeSheet(); return;
