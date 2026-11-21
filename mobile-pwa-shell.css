@@ -505,3 +505,81 @@
     padding: 14px 16px !important;
   }
 }
+
+/* Premium map chooser: two clear destinations, native-sheet proportions,
+   restrained typography and no overlapping cards. Mobile only. */
+@media (max-width: 768px) {
+  #hsMapDestinationsBackdrop.open {
+    padding: 0 !important;
+    background: rgba(2,7,4,.70) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+  #hsMapDestinationsBackdrop .hs-map-destinations-sheet {
+    width:100% !important;
+    max-width: 520px !important;
+    max-height: min(78dvh, 470px) !important;
+    border: 1px solid rgba(160,194,166,.19) !important;
+    border-bottom:0 !important;
+    border-radius: 24px 24px 0 0 !important;
+    background: #111914 !important;
+    padding: 8px 20px calc(22px + env(safe-area-inset-bottom,0px)) !important;
+    box-shadow: 0 -18px 64px rgba(0,0,0,.42) !important;
+  }
+  #hsMapDestinationsBackdrop .hs-map-sheet-handle{
+    width: 34px; height:4px; border-radius:9px;
+    background:rgba(224,236,225,.23);margin:0 auto 20px;
+  }
+  #hsMapDestinationsBackdrop .hs-map-destinations-head{
+    align-items:flex-start; margin:0 0 18px; gap:16px;
+  }
+  #hsMapDestinationsBackdrop .hs-map-destinations-heading{
+    display:flex;flex-direction:column;gap:3px;
+  }
+  #hsMapDestinationsBackdrop .hs-map-destinations-eyebrow{
+    font-size:10px;letter-spacing:.17em;font-weight:750;color:#85ab8d;
+  }
+  #hsMapDestinationsBackdrop .hs-map-destinations-title{
+    display:block;font-family:'Cormorant Garamond',Georgia,serif;
+    font-size:34px;line-height:1.03;letter-spacing:-.025em;font-weight:700;color:#e2f2dd;
+  }
+  #hsMapDestinationsBackdrop .hs-map-destinations-subtitle{
+    font-size:12px;color:#9db1a3;line-height:1.4;
+  }
+  #hsMapDestinationsBackdrop .hs-map-destinations-close{
+    flex:0 0 38px;width:38px;height:38px;min-height:38px;
+    background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.07);
+    border-radius:50%;font-size:22px;color:#b0c1b4;
+  }
+  #hsMapDestinationsBackdrop .hs-map-destinations-options{
+    border:1px solid rgba(202,229,202,.12);border-radius:16px;overflow:hidden;
+  }
+  #hsMapDestinationsBackdrop .hs-map-destination{
+    display:flex;align-items:center;gap:14px;
+    min-height:82px; margin:0; padding:14px 14px;
+    width:100%;border:0 !important;border-radius:0 !important;
+    background:transparent !important; box-shadow:none !important;
+  }
+  #hsMapDestinationsBackdrop .hs-map-destination + .hs-map-destination{
+    border-top:1px solid rgba(202,229,202,.12) !important;
+  }
+  #hsMapDestinationsBackdrop .hs-map-destination:active{
+    background:#223027 !important;
+  }
+  #hsMapDestinationsBackdrop .hs-map-destination-icon{
+    flex:0 0 46px;display:grid;place-items:center;width:46px;height:46px;
+    border-radius:12px;background:rgba(95,158,109,.10);color:#8ac89a;
+    border:1px solid rgba(122,177,131,.12);
+  }
+  #hsMapDestinationsBackdrop .hs-map-destination-icon svg{width:23px;height:23px}
+  #hsMapDestinationsBackdrop .hs-map-destination-copy{flex:1 1 auto;min-width:0}
+  #hsMapDestinationsBackdrop .hs-map-destination-copy strong{
+    display:block;color:#e6f0e7;font-size:15px;letter-spacing:-.015em;font-weight:700;
+  }
+  #hsMapDestinationsBackdrop .hs-map-destination-copy small{
+    display:block;margin-top:4px;color:#96a99c;font-size:12px;line-height:1.35;
+  }
+  #hsMapDestinationsBackdrop .hs-map-destination-arrow{
+    color:#83c993;font-size:24px;font-weight:400;
+  }
+}
