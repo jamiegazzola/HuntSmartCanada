@@ -138,6 +138,7 @@ async function run(browser,w,h) {
   assert.equal(await page.locator('#hsSpeciesAccount').count(),0,'Person icon remains in species map');
   assert(await page.locator('#terrain-toggle').isHidden(),'Species 3D control still visible');
   assert.equal(await page.locator('.hs-species-recovery').count(),1,'Species recovery UI missing');
+  await page.locator('#hsHuntingMapLink').waitFor({state:'visible',timeout:15000});
   const mapAndBar=await page.evaluate(()=>({map:document.getElementById('map').getBoundingClientRect().bottom,mapHeight:document.getElementById('map').getBoundingClientRect().height,tab:document.getElementById('hsSpeciesTabbar').getBoundingClientRect().top}));
   assert(Math.abs(mapAndBar.map-mapAndBar.tab)<=4,'Species map/bar overlap '+JSON.stringify(mapAndBar));
   assert(mapAndBar.mapHeight>=250,'Species map has zero usable height '+JSON.stringify(mapAndBar));
