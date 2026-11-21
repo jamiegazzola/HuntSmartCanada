@@ -21,7 +21,7 @@ jobs:
   audit-live-maps:
     # PR previews validate CSS before merge. The full live audit runs only
     # after main is published, avoiding a known old-production false failure.
-    if: github.event_name != 'pull_request'
+    if: true # One-off live-production verification; branch will not be merged
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
