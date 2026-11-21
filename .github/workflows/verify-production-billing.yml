@@ -1,0 +1,26 @@
+name: QA Only Live Safari Billing Module
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/verify-production-billing.yml
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install read-only WebKit browser test dependencies
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps webkit
+      - name: Verify production billing module and mobile Safari journeys
+        env:
+          URL: https://huntsmartcanada.ca
+        run: node scripts/webkit-mobile-ux-qa.cjs
