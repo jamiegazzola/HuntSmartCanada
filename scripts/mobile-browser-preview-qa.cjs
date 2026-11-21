@@ -326,10 +326,12 @@ async function species(browser, w, h) {
       const map=document.getElementById('map').getBoundingClientRect();
       const nodes=Array.from(document.querySelectorAll('#hsSpeciesTabbar [data-tab]'));
       return {top:r.top,bottom:r.bottom,innerH:innerHeight,
-        mapBottom:map.bottom,tabSizes:nodes.map(n=>({w:n.getBoundingClientRect().width,h:n.getBoundingClientRect().height}))};
+        mapBottom:map.bottom,mapHeight:map.height,mapPosition:getComputedStyle(document.getElementById('map')).position,
+        tabSizes:nodes.map(n=>({w:n.getBoundingClientRect().width,h:n.getBoundingClientRect().height}))};
     });
     assert(nav.top >= 0 && nav.bottom <= nav.innerH + 3,'Distribution tabs offscreen: '+JSON.stringify(nav));
     assert(Math.abs(nav.mapBottom-nav.top) <= 4,'Distribution map overlaps tabs: '+JSON.stringify(nav));
+    assert(nav.mapHeight>=250,'Species map collapsed behind tabbar: '+JSON.stringify(nav));
     assert(nav.tabSizes.every(b=>b.w >= 39 && b.h >= 42),'Distribution tabs too small: '+JSON.stringify(nav));
     console.log('SPECIES_NAV',w,JSON.stringify(nav));
   } else {
