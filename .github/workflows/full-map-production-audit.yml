@@ -1,0 +1,40 @@
+name: HuntSmart Full Live Map QA
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - scripts/full-map-production-audit.cjs
+      - .github/workflows/full-map-production-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-live-maps:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install QA browser runtime
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium webkit
+      - name: Check audit syntax
+        run: node --check scripts/full-map-production-audit.cjs
+      - name: Test live BC, Alberta, GOS, hunt-card and species maps
+        env:
+          URL: https://huntsmartcanada.ca
+        run: node scripts/full-map-production-audit.cjs
+      - name: Preserve diagnostics and browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-full-map-audit-${{ github.run_number }}
+          path: map-qa-artifacts/
+          retention-days: 14
+          if-no-files-found: warn
