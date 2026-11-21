@@ -118,7 +118,9 @@ async function run(browser,w,h) {
   await page.goto(base+'/species-map/?webkit-ux='+w,{waitUntil:'domcontentloaded',timeout:35000});
   await page.locator('#hsSpeciesTabbar').waitFor({state:'visible',timeout:20000});
   await inspectTabs(page,w+'-species');
-  assert(await page.locator('#hsSpeciesAccount').isVisible(),'Profile missing on distribution map');
+  assert.equal(await page.locator('#hsSpeciesAccount').count(),0,'Person icon remains in species map');
+  assert(await page.locator('#terrain-toggle').isHidden(),'Species 3D control still visible');
+  assert.equal(await page.locator('.hs-species-recovery').count(),1,'Species recovery UI missing');
   const mapAndBar=await page.evaluate(()=>({map:document.getElementById('map').getBoundingClientRect().bottom,tab:document.getElementById('hsSpeciesTabbar').getBoundingClientRect().top}));
   assert(Math.abs(mapAndBar.map-mapAndBar.tab)<=4,'Species map/bar overlap '+JSON.stringify(mapAndBar));
   await page.screenshot({path:'mobile-qa-artifacts/'+w+'-webkit-species.png'});
