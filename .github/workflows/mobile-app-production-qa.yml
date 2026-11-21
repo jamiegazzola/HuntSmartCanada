@@ -175,8 +175,11 @@ jobs:
           }
 
           async function enterLeh(page) {
-            await page.evaluate(()=>document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click());
-            await page.waitForFunction(() => !!document.getElementById('mapPage')?.getClientRects().length, null, {timeout:15000});
+            // The direct Maps handler is added after the shared mobile shell. Use a
+            // visible user click only after that handler is installed.
+            await page.waitForFunction(()=>!!window.__HS_MAP_DESTINATIONS__,null,{timeout:20000});
+            await page.locator('#hsMobileTabbar [data-tab="map"]').waitFor({state:'visible',timeout:20000});
+            await page.locator('#hsMobileTabbar [data-tab="map"]').click({timeout:20000});
             await page.waitForFunction(()=>{const el=document.getElementById('mapPage');return !!(el&&el.getClientRects().length&&getComputedStyle(el).display!=='none');},null,{timeout:30000});
             await page.waitForFunction(()=>typeof fullMapInstance!=='undefined'&&!!fullMapInstance,null,{timeout:30000});
             await waitForVisibleRect(page,'#mapPage > .hs-im-shellbar',30000);
