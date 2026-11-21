@@ -113,3 +113,40 @@
   .hs-map-toolbar .hs-toolbar-header .species-control{min-width:80px}
   .hs-map-toolbar .hs-toolbar-header{justify-content:space-between}
 }
+
+/* User-requested map chrome reduction: leave the species viewer as a clean
+   2D research surface. No 3D control, Street View person or duplicate account. */
+#terrain-toggle,
+.terrain-toggle,
+#terrain3d,
+.terrain-exaggeration,
+.gm-svpc,
+.hs-species-account {
+  display:none !important;
+}
+@media(max-width:768px) {
+  body:has(>.hs-species-account) .species-control {
+    width:calc(100vw - 24px)!important;
+    max-width:calc(100vw - 24px)!important;
+  }
+}
+
+/* Clear recoverable failure state when Google Maps or a layer stalls. */
+.hs-species-recovery {
+  position:fixed;z-index:11000;
+  left:12px;right:12px;bottom:calc(80px + env(safe-area-inset-bottom,0px));
+  width:min(400px,calc(100% - 24px));margin-inline:auto;
+  display:flex;gap:14px;align-items:center;justify-content:space-between;
+  padding:12px 13px;border-radius:12px;
+  color:#e7efe9;background:rgba(20,29,23,.97);
+  border:1px solid rgba(149,192,155,.35);
+  box-shadow:0 12px 38px rgba(0,0,0,.3);
+  font:600 12px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+.hs-species-recovery[hidden]{display:none!important}
+.hs-species-recovery button {
+  flex:0 0 auto;min-height:42px;padding:0 12px;
+  border-radius:8px;border:1px solid #5b9566;
+  color:#ebf8ed;background:#2e5636;font:700 12px inherit;cursor:pointer;
+}
+@media(min-width:769px){.hs-species-recovery{bottom:16px}}
