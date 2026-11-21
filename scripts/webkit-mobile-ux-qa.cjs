@@ -41,7 +41,23 @@ async function run(browser,w,h) {
     });
   }
   const page=await context.newPage();
+  const mimeErrors=[];
+  page.on('pageerror',error=>{
+    if (/not a valid JavaScript MIME type|expected a JavaScript module/i.test(error.message)) {
+      mimeErrors.push(error.message);
+    }
+  });
+  const billingResponse=page.waitForResponse(response=>
+    new URL(response.url()).pathname==='/billing-config.js', {timeout:25000});
   await page.goto(base+'/?webkit-ux='+w,{waitUntil:'domcontentloaded',timeout:35000});
+  const billingAsset=await billingResponse;
+  assert(billingAsset.ok(),'Billing module unavailable: HTTP '+billingAsset.status());
+  assert(/(?:javascript|ecmascript)/i.test(billingAsset.headers()['content-type']||''),
+    'Billing import returned non-JavaScript content: '+billingAsset.headers()['content-type']);
+  await page.waitForFunction(()=>Boolean(window.HS?.billing?.state),null,{timeout:25000});
+  assert.equal(await page.evaluate(()=>window.HS.billing.state.checkoutEnabled),false,
+    'This fix must preserve existing preview-safe, non-transactional billing');
+  assert.deepEqual(mimeErrors,[],'JavaScript module MIME failure: '+mimeErrors.join(' | '));
   await page.waitForFunction(()=>!!window.__HS_MAP_DESTINATIONS__ && !!document.getElementById('hsMobileTabbar') && !!document.getElementById('authNavBtn'),null,{timeout:25000});
   await inspectTabs(page,w+'-home');
   assert(await page.locator('#authNavBtn').isVisible(),'Top-right account missing');
