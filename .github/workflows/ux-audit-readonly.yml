@@ -1,0 +1,33 @@
+name: QA Only — HuntSmart UX Accessibility Scan
+on:
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/ux-audit-readonly.yml, scripts/ux-audit-readonly.cjs]
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install read-only browser QA
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install --no-save playwright@1.55.0 axe-core@4.10.3
+          npx playwright install --with-deps chromium
+      - name: Audit live public UX and accessibility
+        env:
+          URL: https://huntsmartcanada.ca
+        run: node scripts/ux-audit-readonly.cjs
+      - name: Preserve audit output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: huntsmart-ux-accessibility-scan
+          path: ux-audit-artifacts/
+          retention-days: 5
+          if-no-files-found: warn
