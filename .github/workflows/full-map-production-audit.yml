@@ -4,6 +4,13 @@ on:
     branches: [main]
     paths:
       - scripts/full-map-production-audit.cjs
+      - species-map/hs-app-nav.css
+      - .github/workflows/full-map-production-audit.yml
+  push:
+    branches: [main]
+    paths:
+      - scripts/full-map-production-audit.cjs
+      - species-map/hs-app-nav.css
       - .github/workflows/full-map-production-audit.yml
   workflow_dispatch:
 
@@ -12,6 +19,9 @@ permissions:
 
 jobs:
   audit-live-maps:
+    # PR previews validate CSS before merge. The full live audit runs only
+    # after main is published, avoiding a known old-production false failure.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
