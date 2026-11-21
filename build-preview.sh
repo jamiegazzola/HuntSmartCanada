@@ -16,6 +16,7 @@ FILES=(
   "stripe-styles.css"
   "auth.js"
   "stripe.js"
+  "billing-config.js"
   "hunting-partners.js"
   "config.js"
   "data.js"
@@ -370,6 +371,8 @@ node --check site/bc-filters.js >/dev/null
 node --check site/ab-filters.js >/dev/null
 node --check site/blog.js >/dev/null
 node --check site/blog-map-demo.js >/dev/null
+node --input-type=module --check < site/billing-config.js >/dev/null
+node scripts/verify-public-modules.cjs
 
 grep -q 'mapbox-gl-js/v3.30.0/' site/index.html
 grep -q 'mapbox://styles/mapbox/standard-satellite' site/maps.js
