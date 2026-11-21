@@ -110,12 +110,9 @@ async function mainApp(browser,engine,width,height) {
       assert(await page.locator('#hsMobileTabbar [data-tab]').count()===5,'Five navigation tabs not present');
       assert(headline.top < headline.viewport*.44,'Homepage text remains too low: '+JSON.stringify(headline));
       await page.locator('#hsMobileTabbar [data-tab="map"]').click();
-      await page.locator('#hsMapDestinationsBackdrop.open').waitFor({state:'visible',timeout:10000});
-      assert.equal(await page.locator('#hsMapDestinationsBackdrop [data-map-destination]').count(),2,
-        'Expected two map destinations');
-      assert(await page.locator('.hs-map-destinations-title').isVisible(),'Map chooser title missing');
-      await shot(page,label+'-map-chooser');
-      await page.locator('#hsMapDestinationsBackdrop [data-map-destination="interactive"]').click();
+      assert.equal(await page.locator('#hsMapDestinationsBackdrop').count(),0,
+        'Obsolete map chooser mounted');
+      await page.locator('#mapPage > .hs-map-crosslink').waitFor({state:'visible',timeout:12000});
     } else {
       assert(await page.locator('#navDistribution').isVisible(),'Desktop species map link missing');
       await page.evaluate(()=>window.showPage('map'));
@@ -256,6 +253,7 @@ async function species(browser,engine,width,height) {
     assert(await page.locator('.hs-species-recovery').count()===1,'No loading recovery');
     if(mobile){
       assert.equal(await page.locator('#hsSpeciesTabbar [data-tab]').count(),5,'Distribution nav missing');
+      await page.locator('#hsHuntingMapLink').waitFor({state:'visible',timeout:15000});
       const shell=await inspectShell(page,'#map','#hsSpeciesTabbar');
       assert(Math.abs(shell.target.bottom-shell.nav.top)<=8,'Distribution map overlaps bottom tabs: '+JSON.stringify(shell));
     }
