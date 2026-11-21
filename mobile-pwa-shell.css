@@ -472,3 +472,36 @@
     min-height: 0 !important;
   }
 }
+
+
+/* Mobile Safari homepage: flow the hero from the top of the image rather than
+   pinning the copy to the bottom of a 86vh photo. In Safari's expanded-toolbar
+   state that fixed-height alignment hid the province choices below the fold.
+   Restrict to browser mode: the installed PWA and desktop keep their layout. */
+@media (max-width: 768px) {
+  html.hs-mobile-browser #homePage .hero-photo {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    align-items: flex-start !important;
+  }
+  html.hs-mobile-browser #homePage .hero-photo-content {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    padding: clamp(30px, 6svh, 52px) 18px 34px !important;
+  }
+  html.hs-mobile-browser #homePage .hero-title {
+    margin-bottom: 14px !important;
+  }
+  html.hs-mobile-browser #homePage .hero-body {
+    margin-bottom: 18px !important;
+  }
+  html.hs-mobile-browser #homePage .province-cards {
+    gap: 10px !important;
+    margin-top: 0 !important;
+  }
+  html.hs-mobile-browser #homePage .province-card {
+    padding: 14px 16px !important;
+  }
+}
