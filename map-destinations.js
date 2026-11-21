@@ -1,20 +1,18 @@
-/* HuntSmart map destinations: preserve the existing interactive LEH/GOS engine
-   and open the species viewer as its own independent map route. */
+/* HuntSmart map routing. The Maps tab opens the hunting map directly.
+   Wildlife distribution remains a separate route, reached from a small,
+   in-map switch rather than an intermediate modal. */
 (function () {
   'use strict';
   if (window.__HS_MAP_DESTINATIONS__) return;
   window.__HS_MAP_DESTINATIONS__ = true;
 
-  var lastFocused = null;
-  var backdrop = null;
-
-  function createLink(id, text) {
-    var a = document.createElement('a');
-    a.id = id;
-    a.href = '/species-map/';
-    a.className = 'nav-link';
-    a.textContent = text;
-    a.setAttribute('aria-label', 'Open species distribution map');
+  function createLink(id,text) {
+    var a=document.createElement('a');
+    a.id=id;
+    a.href='/species-map/';
+    a.className='nav-link';
+    a.textContent=text;
+    a.setAttribute('aria-label','Open species distribution map');
     return a;
   }
 
@@ -39,99 +37,39 @@
     }
   }
 
-  function closeSheet() {
-    if (!backdrop) return;
-    backdrop.classList.remove('open');
-    backdrop.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('hs-map-destinations-open');
-    if (lastFocused && lastFocused.isConnected) lastFocused.focus({ preventScroll: true });
-  }
 
-  function openSheet() {
-    if (!backdrop) return;
-    lastFocused = document.activeElement;
-    backdrop.classList.add('open');
-    backdrop.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('hs-map-destinations-open');
-    var close = backdrop.querySelector('.hs-map-destinations-close');
-    if (close) close.focus({ preventScroll: true });
-  }
+  function installDirectMapTab() {
+    var tabbar=document.getElementById('hsMobileTabbar');
+    if(!tabbar || tabbar.dataset.hsMapDirect==='1')return !!tabbar;
+    var button=tabbar.querySelector('[data-tab="map"]');
+    if(!button)return false;
+    tabbar.dataset.hsMapDirect='1';
+    button.setAttribute('aria-label','Open hunting map');
+    var label=button.querySelector('span');
+    if(label)label.textContent='Maps';
 
-  function installSheet() {
-    if (backdrop) return;
-    backdrop = document.createElement('div');
-    backdrop.id = 'hsMapDestinationsBackdrop';
-    backdrop.setAttribute('aria-hidden', 'true');
-    backdrop.innerHTML =
-      '<section class="hs-map-destinations-sheet" role="dialog" aria-modal="true" aria-label="Maps">' +
-        '<div class="hs-map-sheet-handle" aria-hidden="true"></div>' +
-        '<div class="hs-map-destinations-head"><div class="hs-map-destinations-heading">' +
-          '<span class="hs-map-destinations-eyebrow">HUNTSMART CANADA</span>' +
-          '<strong class="hs-map-destinations-title">Maps</strong>' +
-          '<span class="hs-map-destinations-subtitle">Choose your view</span></div>' +
-          '<button type="button" class="hs-map-destinations-close" aria-label="Close map chooser">×</button></div>' +
-        '<div class="hs-map-destinations-options">' +
-        '<button class="hs-map-destination" type="button" data-map-destination="interactive">' +
-          '<span class="hs-map-destination-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/></svg></span>' +
-          '<span class="hs-map-destination-copy"><strong>Hunting Map</strong><small>Draw units, LEH &amp; open seasons</small></span>' +
-          '<span class="hs-map-destination-arrow" aria-hidden="true">›</span></button>' +
-        '<button class="hs-map-destination" type="button" data-map-destination="distribution">' +
-          '<span class="hs-map-destination-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18c4-2 4-10 8-12 4 2 4 10 8 12M5 14h14M8 10h8M3 21h18"/></svg></span>' +
-          '<span class="hs-map-destination-copy"><strong>Species Distribution</strong><small>Wildlife range &amp; hunter success</small></span>' +
-          '<span class="hs-map-destination-arrow" aria-hidden="true">›</span></button>' +
-        '</div></section>';
-    backdrop.addEventListener('click', function (event) {
-      if (event.target === backdrop || event.target.closest('.hs-map-destinations-close')) {
-        closeSheet(); return;
-      }
-      var choice = event.target.closest('[data-map-destination]');
-      if (!choice) return;
-      var destination = choice.dataset.mapDestination;
-      closeSheet();
-      if (destination === 'distribution') {
-        window.location.assign('/species-map/');
-      } else if (typeof window.showPage === 'function') {
-        window.showPage('map');
-      }
-    });
-    document.body.appendChild(backdrop);
-    document.addEventListener('keydown', function (event) {
-      if (!backdrop.classList.contains('open')) return;
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeSheet();
-      } else if (event.key === 'Tab') {
-        var focusable = Array.from(backdrop.querySelectorAll('button'));
-        var first = focusable[0], last = focusable[focusable.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault(); last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault(); first.focus();
-        }
-      }
-    });
-  }
-
-  function installMobileMapChoice() {
-    var tabbar = document.getElementById('hsMobileTabbar');
-    if (!tabbar || tabbar.dataset.hsMapChooser === '1') return !!tabbar;
-    var map = tabbar.querySelector('[data-tab="map"]');
-    if (!map) return false;
-    tabbar.dataset.hsMapChooser = '1';
-    map.setAttribute('aria-label', 'Choose a map');
-    var label = map.querySelector('span');
-    if (label) label.textContent = 'Maps';
-
-    // Capture before the legacy tab handler so a map choice never accidentally
-    // launches the LEH viewer behind the selection sheet.
-    tabbar.addEventListener('click', function (event) {
-      var target = event.target.closest('[data-tab="map"]');
-      if (!target) return;
+    // Capture before legacy click handlers to avoid a double navigation.
+    tabbar.addEventListener('click',function(event){
+      var target=event.target.closest('[data-tab="map"]');
+      if(!target)return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      openSheet();
-    }, true);
+      if(typeof window.showPage==='function')window.showPage('map');
+    },true);
     return true;
+  }
+
+  function installCrossLinks() {
+    ['mapPage','bcOpenSeasonsPage'].forEach(function(id){
+      var page=document.getElementById(id);
+      if(!page || page.querySelector('.hs-map-crosslink'))return;
+      var link=document.createElement('a');
+      link.href='/species-map/';
+      link.className='hs-map-crosslink';
+      link.setAttribute('aria-label','Switch to species distribution map');
+      link.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l5-9 4 6 3-4 4 7M3 20h18"/></svg><span>Species map</span><span aria-hidden="true">›</span>';
+      page.appendChild(link);
+    });
   }
 
   function returnToInteractiveMap() {
@@ -187,20 +125,21 @@
     run();
   }
 
+
   function boot() {
     installNavLinks();
-    installSheet();
-    if (!installMobileMapChoice()) {
-      var observer = new MutationObserver(function () {
-        if (installMobileMapChoice()) observer.disconnect();
+    installCrossLinks();
+    if(!installDirectMapTab()){
+      var observer=new MutationObserver(function(){
+        if(installDirectMapTab())observer.disconnect();
       });
-      observer.observe(document.body, { childList: true, subtree: true });
+      observer.observe(document.body,{childList:true,subtree:true});
     }
     returnToInteractiveMap();
     restoreIncomingTab();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot, { once: true });
-  } else boot();
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',boot,{once:true});
+  }else boot();
 })();
