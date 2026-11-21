@@ -67,7 +67,12 @@
       link.href='/species-map/';
       link.className='hs-map-crosslink';
       link.setAttribute('aria-label','Switch to species distribution map');
-      link.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l5-9 4 6 3-4 4 7M3 20h18"/></svg><span>Species map</span><span aria-hidden="true">›</span>';
+      link.textContent='Distribution';
+      var current=document.createElement('span');
+      current.className='hs-map-current';
+      current.setAttribute('aria-current','page');
+      current.textContent='Hunting';
+      page.appendChild(current);
       page.appendChild(link);
     });
   }

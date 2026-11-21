@@ -352,3 +352,16 @@ nav {
   .dd-lbl { font-size: 10.5px !important; }
   .dd-val { font-size: 11.5px !important; text-align: right; }
 }
+
+/* Live QA readability pass. Retain the existing HuntSmart visual language. */
+.nav-brand-sub {color:#a6b5ad !important}
+.home-footer-tagline,.saved-empty-sub {color:#abb9ae !important}
+.home-footer-link {color:#adbbb4 !important}
+.sort-label,.draws-sub,.legend-item,#savedSubtitle,.saved-empty-title,#savedBtnAB,#abViewToggleBtn {color:#a5b2b9 !important}
+#fpCtaLabel,#abFpCtaLabel,.hero-cta {color:#fff !important}
+#abDrawsPage button[onclick="showPage('abProfile')"] {color:#89d39b !important}
+@media(max-width:980px) {
+ .star-btn {min-width:44px !important;min-height:44px !important;display:grid;place-items:center}
+ #abDrawsPage .legend {overscroll-behavior-x:contain}
+}
+:where(.nav-link,.home-footer-link,.sort-btn,.star-btn,.hs-map-crosslink):focus-visible {outline:2px solid #a2e8ad !important;outline-offset:2px}

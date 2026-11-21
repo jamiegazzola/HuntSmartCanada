@@ -107,7 +107,7 @@ jobs:
 
             await page.waitForSelector('#hsMobileTabbar', { state: 'visible', timeout: 10000 });
             await page.evaluate(() => document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click());
-            await page.locator('#hsMapDestinationsBackdrop [data-map-destination="interactive"]').click();
+            await page.waitForFunction(() => !!document.getElementById('mapPage')?.getClientRects().length, null, {timeout:15000});
             await page.waitForFunction(() => {
               const el = document.getElementById('mapPage');
               return !!(el && el.getClientRects().length && getComputedStyle(el).display !== 'none');

@@ -176,7 +176,7 @@ jobs:
 
           async function enterLeh(page) {
             await page.evaluate(()=>document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click());
-            await page.locator('#hsMapDestinationsBackdrop [data-map-destination="interactive"]').click();
+            await page.waitForFunction(() => !!document.getElementById('mapPage')?.getClientRects().length, null, {timeout:15000});
             await page.waitForFunction(()=>{const el=document.getElementById('mapPage');return !!(el&&el.getClientRects().length&&getComputedStyle(el).display!=='none');},null,{timeout:30000});
             await page.waitForFunction(()=>typeof fullMapInstance!=='undefined'&&!!fullMapInstance,null,{timeout:30000});
             await waitForVisibleRect(page,'#mapPage > .hs-im-shellbar',30000);

@@ -45,7 +45,12 @@
     crosslink.className='hs-map-crosslink';
     crosslink.href='/?map=interactive';
     crosslink.setAttribute('aria-label','Switch to hunting map');
-    crosslink.innerHTML='<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/></svg><span>Hunting map</span><span aria-hidden="true">›</span>';
+    crosslink.textContent='Hunting';
+    var active=document.createElement('span');
+    active.id='hsMapActiveLabel';
+    active.setAttribute('aria-current','page');
+    active.textContent='Distribution';
+    document.body.appendChild(active);
     document.body.appendChild(crosslink);
     sync();
     watchInspector();

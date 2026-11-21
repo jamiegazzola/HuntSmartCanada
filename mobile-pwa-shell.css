@@ -626,3 +626,29 @@
     display:none;
   }
 }
+
+/* Native two-state map switching replaces the former intermediate chooser. */
+.hs-map-current{display:none}
+@media(max-width:768px){
+ #hsMobileTabbar .hs-mobile-tab:not(.active),#hsMobileTabbar .hs-mobile-tab:not(.active) span{color:#a9b9af !important}
+ #mapPage > .hs-map-current,#bcOpenSeasonsPage > .hs-map-current{
+   position:fixed;z-index:9150;right:calc(max(12px,env(safe-area-inset-right,0px)) + 110px);
+   bottom:calc(76px + env(safe-area-inset-bottom,0px));
+   box-sizing:border-box;display:flex;align-items:center;justify-content:center;
+   width:110px;min-height:44px;padding:0 9px;
+   border:1px solid rgba(188,215,191,.22);border-right:0;border-radius:12px 0 0 12px;
+   color:#ecf8ec;background:rgba(49,83,55,.96);
+   font:700 12px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+   box-shadow:0 5px 18px rgba(0,0,0,.22);pointer-events:none;
+ }
+ #mapPage > .hs-map-crosslink,#bcOpenSeasonsPage > .hs-map-crosslink{
+   width:110px !important;min-height:44px !important;
+   right:max(12px,env(safe-area-inset-right,0px)) !important;
+   padding:0 9px !important;border-radius:0 12px 12px 0 !important;
+   box-shadow:0 5px 18px rgba(0,0,0,.22) !important;font-size:12px !important;
+ }
+ #mapPage > .hs-map-crosslink:hover,#bcOpenSeasonsPage > .hs-map-crosslink:hover{background:rgba(40,58,44,.98) !important}
+ body.hs-premium-results-open #mapPage > .hs-map-current,
+ #mapPage:has(#fullMapResultsDrawer.hs-drawer-open) > .hs-map-current,
+ #bcOpenSeasonsPage:has(.os-panel:not([hidden])) > .hs-map-current{display:none}
+}

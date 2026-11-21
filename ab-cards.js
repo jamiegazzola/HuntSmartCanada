@@ -612,7 +612,7 @@ function abBuildWMUList() {
       </div>
     </div>`;
 
-  list.innerHTML = mapPanelHtml + `<select onchange="abSelectWMU(this.value)"
+  list.innerHTML = mapPanelHtml + `<select aria-label="Alberta wildlife management unit" onchange="abSelectWMU(this.value)"
     style="width:100%;padding:8px 10px;background:var(--bg-primary);border:1.5px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:13px;cursor:pointer;margin-top:4px">
     <option value="">All WMUs</option>
     ${wmus.map(w=>`<option value="${w}" ${w===sel?'selected':''}>${w}</option>`).join('')}

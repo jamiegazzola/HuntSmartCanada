@@ -9,6 +9,8 @@ for (const name of ['index.html', 'hs-app-nav.js', 'hs-app-nav.css', 'hs-map-rec
   if (!fs.existsSync(path.join(dir, name))) throw new Error('Missing species navigation asset: ' + name);
 }
 let html = fs.readFileSync(htmlPath, 'utf8');
+// The production map can replace the public document. Keep the display controls accessible.
+html = html.replace(/class=["']map-tools["']\s+aria-label=/, 'class="map-tools" role="group" aria-label=');
 if (!html.includes('</head>') || !html.includes('</body>') ||
     !html.includes('id="species"')) {
   throw new Error('Production species viewer markup changed; cannot install navigation safely');
