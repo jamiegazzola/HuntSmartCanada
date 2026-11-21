@@ -34,18 +34,25 @@
       var active = tab.id === 'maps';
       return '<a class="hs-species-tab' + (active ? ' active' : '') + '"' +
         ' data-tab="' + tab.id + '" href="/?hsTab=' + tab.id + '"' +
-        ' aria-label="' + (tab.id === 'maps' ? 'Choose a map' : tab.label) + '"' +
+        ' aria-label="' + (tab.id === 'maps' ? 'Open hunting map' : tab.label) + '"' +
         (active ? ' aria-current="page"' : '') + '>' +
         '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
         tab.icon + '</svg><span>' + tab.label + '</span></a>';
     }).join('');
     document.body.appendChild(nav);
+    var crosslink=document.createElement('a');
+    crosslink.id='hsHuntingMapLink';
+    crosslink.className='hs-map-crosslink';
+    crosslink.href='/?map=interactive';
+    crosslink.setAttribute('aria-label','Switch to hunting map');
+    crosslink.innerHTML='<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/></svg><span>Hunting map</span><span aria-hidden="true">›</span>';
+    document.body.appendChild(crosslink);
     sync();
     watchInspector();
   }
   if (media.addEventListener) media.addEventListener('change', sync);
   else if (media.addListener) media.addListener(sync);
-  window.__HS_SPECIES_APP_NAV__ = {version:'20261120-clean-map', sync:sync};
+  window.__HS_SPECIES_APP_NAV__ = {version:'20261120-direct-map', sync:sync};
   // Load from the document head: nav must appear immediately, even when
   // production-only wildlife scripts block DOMContentLoaded for many seconds.
   if (document.body) install();
