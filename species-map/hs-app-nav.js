@@ -24,27 +24,8 @@
     new MutationObserver(syncInspector).observe(card, {attributes:true,attributeFilter:['hidden','class']});
     syncInspector();
   }
-  function installAccount() {
-    var existing = document.getElementById('hsSpeciesAccount');
-    var currentHeader = document.querySelector('.hs-map-toolbar .hs-toolbar-header');
-    if (existing) {
-      // Navigation mounts before the private map's heavy scripts finish. Once
-      // the compact toolbar is ready, move the profile into its own header row
-      // rather than leaving it floating over the province selector.
-      if (currentHeader && existing.parentElement !== currentHeader) currentHeader.appendChild(existing);
-      return;
-    }
-    var link=document.createElement('a');
-    link.id='hsSpeciesAccount';
-    link.className='hs-species-account';
-    link.href='/?hsTab=account';
-    link.setAttribute('aria-label','Open HuntSmart account');
-    link.innerHTML='<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>';
-    var header=document.querySelector('.hs-map-toolbar .hs-toolbar-header');
-    (header || document.body).appendChild(link);
-  }
   function install() {
-    if (!document.body || document.getElementById('hsSpeciesTabbar')) { installAccount(); sync(); watchInspector(); return; }
+    if (!document.body || document.getElementById('hsSpeciesTabbar')) { sync(); watchInspector(); return; }
     var nav = document.createElement('nav');
     nav.id = 'hsSpeciesTabbar';
     nav.className = 'hs-species-tabbar';
@@ -59,13 +40,12 @@
         tab.icon + '</svg><span>' + tab.label + '</span></a>';
     }).join('');
     document.body.appendChild(nav);
-    installAccount();
     sync();
     watchInspector();
   }
   if (media.addEventListener) media.addEventListener('change', sync);
   else if (media.addListener) media.addListener(sync);
-  window.__HS_SPECIES_APP_NAV__ = {version:'20261120-ux1', sync:sync};
+  window.__HS_SPECIES_APP_NAV__ = {version:'20261120-clean-map', sync:sync};
   // Load from the document head: nav must appear immediately, even when
   // production-only wildlife scripts block DOMContentLoaded for many seconds.
   if (document.body) install();
