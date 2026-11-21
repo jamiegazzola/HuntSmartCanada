@@ -20,7 +20,44 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps webkit
-      - name: Verify production billing module and mobile Safari journeys
+      - name: Verify live billing MIME, module init and account modal on WebKit
         env:
           URL: https://huntsmartcanada.ca
-        run: node scripts/webkit-mobile-ux-qa.cjs
+        run: |
+          node <<'NODE'
+          'use strict';
+          const {webkit}=require('playwright');
+          const assert=require('node:assert/strict');
+          (async()=>{
+            const browser=await webkit.launch({headless:true});
+            try {
+              const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:'block'});
+              const page=await context.newPage(),mimeErrors=[];
+              page.on('pageerror',error=>{
+                if(/not a valid JavaScript MIME type|expected a JavaScript module/i.test(error.message))mimeErrors.push(error.message);
+              });
+              const imported=page.waitForResponse(response=>new URL(response.url()).pathname==='/billing-config.js',{timeout:30000});
+              const document=await page.goto(process.env.URL+'/?billing-live-qa=1',{waitUntil:'domcontentloaded',timeout:40000});
+              assert(document.ok(),'Homepage HTTP '+document.status());
+              const response=await imported;
+              assert(response.ok(),'Billing module HTTP '+response.status());
+              const mime=response.headers()['content-type']||'';
+              assert(/(?:javascript|ecmascript)/i.test(mime),'Billing JS delivered with invalid MIME: '+mime);
+              const body=await response.text();
+              assert(body.includes('export const BILLING_CONFIG'),'Wrong content served as billing module');
+              await page.waitForFunction(()=>!!window.HS?.billing?.state && typeof window.hasAccess==='function',null,{timeout:30000});
+              const state=await page.evaluate(()=>({mode:window.HS.billing.state.mode,checkout:window.HS.billing.state.checkoutEnabled}));
+              assert.equal(state.mode,'preview','Unexpected billing mode');
+              assert.equal(state.checkout,false,'Checkout unexpectedly enabled');
+              assert.deepEqual(mimeErrors,[],'JS module MIME failures');
+              await page.locator('#authNavBtn').click();
+              await page.locator('#authModal').waitFor({state:'visible',timeout:15000});
+              await page.locator('#tabSignUp').click();
+              assert(await page.locator('#authConfirm').isVisible(),'Sign-up UI is missing');
+              await page.locator('#authModal .auth-close').click();
+              await page.locator('#authModal').waitFor({state:'detached',timeout:10000});
+              console.log('PASS LIVE SAFARI BILLING',JSON.stringify({mime,mode:state.mode,checkoutEnabled:state.checkout,authModal:'ok',mimeErrors:0}));
+              await context.close();
+            } finally {await browser.close();}
+          })().catch(error=>{console.error(error.stack||error);process.exitCode=1;});
+          NODE
