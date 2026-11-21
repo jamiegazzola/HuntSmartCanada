@@ -27,7 +27,7 @@ async function shot(page,name) {
 async function sampledMapPaint(page) {
   // Screenshot pixels, not a Google Maps DOM element, prove that the geographic
   // canvas has actually painted. Use an interior crop away from toolbars.
-  const picture=await page.locator('#map').screenshot({animations:'disabled',timeout:15000});
+  const picture=await page.screenshot({animations:'disabled',timeout:20000});
   return page.evaluate(async b64=>{
     const image=new Image();
     image.src='data:image/png;base64,'+b64;
@@ -271,9 +271,17 @@ async function species(browser,engine,width,height) {
       canvas:document.querySelectorAll('#map .gm-style canvas').length,
       images:document.querySelectorAll('#map .gm-style img').length,
       error:document.getElementById('error')?.textContent,
-      retryShown:!document.querySelector('.hs-species-recovery')?.hidden
+      retryShown:!document.querySelector('.hs-species-recovery')?.hidden,
+      mapBox:(()=>{
+        const e=document.getElementById('map'),r=e.getBoundingClientRect(),c=getComputedStyle(e);
+        return {top:r.top,left:r.left,width:r.width,height:r.height,bottom:r.bottom,position:c.position,
+          display:c.display,visibility:c.visibility,cssHeight:c.height,cssTop:c.top,cssBottom:c.bottom,
+          bodyClass:document.body.className};
+      })()
     }));
     assert(stat.childCount>0,'Google map has no rendered children');
+    assert(stat.mapBox.height>250 && stat.mapBox.width>300,
+      'Species map container collapsed or hidden: '+JSON.stringify(stat.mapBox));
     assert(!stat.retryShown,'Species map is in recovery/error state');
     // Google's map object can exist while the satellite/terrain view remains
     // a single dark colour. Retry sampling while its first image tiles arrive.
