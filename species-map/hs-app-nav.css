@@ -3,9 +3,19 @@
 .hs-species-tabbar { display: none; }
 @media(max-width:768px) {
   :root { --hs-species-tab-height: calc(62px + env(safe-area-inset-bottom, 0px)); }
+  /* Google Maps assigns position:relative to its root on WebKit. An auto
+     height therefore collapses to zero and leaves a black map even when
+     wildlife requests succeed. Give the map an explicit mobile viewport
+     height, reserving exactly the persistent navigation area below it.
+     Keep Google Maps' own position/overflow styles intact. */
   body.hs-species-has-tabs #map {
-    bottom: var(--hs-species-tab-height) !important;
-    height: auto !important;
+    box-sizing: border-box !important;
+    top: 0 !important;
+    bottom: auto !important;
+    height: calc(100vh - var(--hs-species-tab-height)) !important;
+    height: calc(100dvh - var(--hs-species-tab-height)) !important;
+    min-height: 0 !important;
+    width: 100% !important;
   }
   #hsSpeciesTabbar {
     position: fixed !important;
