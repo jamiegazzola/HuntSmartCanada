@@ -619,7 +619,7 @@
     if(pendingBoundaries)return pendingBoundaries;
     // The existing vector WMU index has all 225 polygons simplified for map
     // display; using the full original JS adds unnecessary network and CPU cost.
-    pendingBoundaries=fetch('/map-tiles/20261028-v3/manifest.json')
+    pendingBoundaries=fetch('/map-tiles/bc-success-boundaries.json', {cache:'no-cache'})
       .then(r=>{if(!r.ok)throw Error('BC WMU map index unavailable');return r.json();})
       .then(manifest=>{
         if(manifest?.version!=='2026-10-28-vector-v2')throw Error('BC WMU map version mismatch');

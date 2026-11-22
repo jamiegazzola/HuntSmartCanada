@@ -44,6 +44,13 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+# The Success map's version-independent boundary index changes with a deploy.
+# Override immutable tile caching so mobile browsers never retain stale geometry.
+[[headers]]
+  for = "/map-tiles/bc-success-boundaries.json"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+
 # Full polygon fallbacks are only used by the legacy embedded Leaflet filter maps.
 [[headers]]
   for = "/bc-wmu-geojson.js"
