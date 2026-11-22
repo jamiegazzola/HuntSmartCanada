@@ -104,9 +104,9 @@ app=app.replace(priorEra,
 new Function(app);
 const appTag=html.match(/<script src="app\.js\?v=[^"]+"><\/script>/);
 assert(appTag,'app script missing');
-html=html.replace(appTag[0],appTag[0]+'\n  <script src="hs-map-ui.js?v=compact-20261118a"></script>');
-html=html.replace('</head>','  <link rel="stylesheet" href="hs-map-ui.css?v=roosevelt-legend-20261119e">\n</head>');
-html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=elk-identity-20261119a');
+html=html.replace(appTag[0],appTag[0]+'\n  <script src="hs-map-ui.js?v=compact-back-20261122b"></script>');
+html=html.replace('</head>','  <link rel="stylesheet" href="hs-map-ui.css?v=compact-back-20261122b">\n</head>');
+html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=map-chrome-20261122b');
 html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=roosevelt-legend-20261119e');
 assert(html.includes('hs-map-ui.js?v=')&&html.includes('hs-map-ui.css?v='),'UI assets not linked');
 assert(!html.includes('data-hs-huntmode'),'Single Success view may not add hunt type controls');
