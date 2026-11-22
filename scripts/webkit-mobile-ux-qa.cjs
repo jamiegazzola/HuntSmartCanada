@@ -143,6 +143,48 @@ async function run(browser,w,h) {
   assert(Math.abs(mapAndBar.map-mapAndBar.tab)<=4,'Species map/bar overlap '+JSON.stringify(mapAndBar));
   assert(mapAndBar.mapHeight>=250,'Species map has zero usable height '+JSON.stringify(mapAndBar));
   await page.screenshot({path:'mobile-qa-artifacts/'+w+'-webkit-species.png'});
+
+  // Regression: asynchronous draw-data initialization must never undo the
+  // Distribution -> Hunting destination, even on a slow mobile connection.
+  await page.route('**/draws.json', async route => {
+    await new Promise(resolve => setTimeout(resolve, 2400));
+    await route.continue();
+  });
+  await page.locator('#hsHuntingMapLink').click();
+  await page.waitForURL(url => new URL(url).pathname === '/', {timeout:35000});
+  await page.waitForFunction(() =>
+    window.__HUNTSMART_MAIN_APP_READY__ === true &&
+    getComputedStyle(document.getElementById('mapPage')).display !== 'none' &&
+    getComputedStyle(document.getElementById('homePage')).display === 'none',
+    null, {timeout:45000});
+  await page.waitForTimeout(1500);
+  const returned = await page.evaluate(() => ({
+    map:getComputedStyle(document.getElementById('mapPage')).display,
+    home:getComputedStyle(document.getElementById('homePage')).display,
+    pending:document.documentElement.classList.contains('hs-map-route-pending'),
+    url:location.pathname+location.search
+  }));
+  assert(returned.map !== 'none' && returned.home === 'none' && !returned.pending,
+    'Distribution -> Hunting unexpectedly landed on Home: '+JSON.stringify(returned));
+  await inspectTabs(page,w+'-species-to-hunting');
+  await page.screenshot({path:'mobile-qa-artifacts/'+w+'-webkit-return-hunting.png'});
+
+  // The persistent Maps tab in Distribution must use the same direct route.
+  await page.locator('#mapPage > .hs-map-crosslink').click();
+  await page.waitForURL(url => new URL(url).pathname.startsWith('/species-map/'),{timeout:35000});
+  await page.locator('#hsSpeciesTabbar [data-tab="maps"]').waitFor({state:'visible',timeout:20000});
+  await page.locator('#hsSpeciesTabbar [data-tab="maps"]').click();
+  await page.waitForURL(url => new URL(url).pathname === '/',{timeout:35000});
+  await page.waitForFunction(() =>
+    window.__HUNTSMART_MAIN_APP_READY__ === true &&
+    getComputedStyle(document.getElementById('mapPage')).display !== 'none' &&
+    getComputedStyle(document.getElementById('homePage')).display === 'none',
+    null,{timeout:45000});
+  await page.waitForTimeout(1500);
+  assert(await page.locator('#mapPage').isVisible(), 'Species Maps tab did not open Hunting Map');
+  await page.locator('#mapPage > .hs-map-crosslink').click();
+  await page.waitForURL(url => new URL(url).pathname.startsWith('/species-map/'),{timeout:35000});
+  await page.locator('#hsSpeciesTabbar [data-tab="saved"]').waitFor({state:'visible',timeout:20000});
   await page.locator('#hsSpeciesTabbar [data-tab="saved"]').click();
   await page.waitForFunction(()=>document.getElementById('savedPage')?.getClientRects().length>0,null,{timeout:30000});
   await inspectTabs(page,w+'-species-to-saved');
