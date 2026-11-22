@@ -158,15 +158,10 @@ jobs:
               'Subspecies limitation must be visible beside the map legend');
             assert((await page.locator('#hs-metric-legend').textContent()).includes('Inspected harvest · no comparable success rate'),
               'Documented low-sample harvest must not look like the 0–19% hunter-success class');
-            const overlap=await page.evaluate(()=>{
-              const a=document.getElementById('hs-metric-legend')?.getBoundingClientRect();
-              const b=document.getElementById('coordinate-drop-pin')?.getBoundingClientRect();
-              if(!a||!b)return {missing:true};
-              return {missing:false,intersects:a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top,
-                legendBottom:a.bottom,pinTop:b.top};
-            });
-            assert(!overlap.missing&&!overlap.intersects,
-              'Harvest legend overlaps coordinate pin: '+JSON.stringify(overlap));
+            assert.equal(await page.locator('#coordinate-drop-pin').count(),0,
+              'The redundant coordinate pin must not be mounted');
+            assert.equal((await page.locator('.hs-map-back').textContent()).trim(),'← Back',
+              'Return navigation should say Back');
             await page.locator('#species').selectOption('moose');
             assert.equal(await page.locator('#era-modern').isVisible(),true);
             assert.equal(await page.locator('#era-historical').isVisible(),true);
