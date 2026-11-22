@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 import shutil
 
-VERSION = "2026-10-29-pwa-v2"
+VERSION = "2026-11-21-pwa-v3"
 SITE = Path("site")
 INDEX = SITE / "index.html"
 MANIFEST_SOURCE = Path("site.webmanifest")
