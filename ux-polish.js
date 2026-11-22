@@ -246,3 +246,152 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();
 })();
+
+/* HuntSmart V4 visual enhancement: retains BC draw computations and handlers. */
+(function () {
+  'use strict';
+  if (window.__hsV4Draws) return;
+  window.__hsV4Draws = true;
+  const page = document.getElementById('drawsPage');
+  const grid = document.getElementById('cardsGrid');
+  if (!page || !grid) return;
+  const q = (root,sel) => root.querySelector(sel);
+  function lookupRecord(index) {
+    try { return typeof filtered !== 'undefined' && filtered[index] ? filtered[index] : null; }
+    catch (_) { return null; }
+  }
+  function enhanceCard(card) {
+    if (card.classList.contains('hs-v4-ready')) return;
+    const header = q(card,'.card-header > div:first-child');
+    const info = q(card,'.card-info');
+    if (!header || !info) return;
+    const area = q(info,'.ci-val.hl');
+    if (area && !q(header,'.hs-v4-hunt-area')) {
+      const title=document.createElement('div');
+      title.className='hs-v4-hunt-area';
+      title.textContent=area.textContent.trim();
+      const species=q(header,'.card-species');
+      if (species) species.insertAdjacentElement('afterend',title);
+      area.parentElement.classList.add('hs-v4-area-source');
+    }
+    const badge=q(header,'.fill-badge');
+    if (badge) {
+      const field=document.createElement('div');
+      field.className='ci ci-harvest';
+      const lbl=document.createElement('div');
+      lbl.className='ci-label'; lbl.textContent='Harvest success';
+      field.append(lbl,badge);
+      info.append(field);
+    }
+    const oddsYear=q(card,'.odds-ratio');
+    if (oddsYear && /^\d{4}$/.test(oddsYear.textContent.trim())) oddsYear.textContent=oddsYear.textContent.trim()+' DRAW ODDS';
+    const expand=q(card,'.expand-toggle');
+    if (expand) {
+      expand.textContent=expand.textContent.replace(/[▾▴]/g,'').trim();
+      expand.setAttribute('aria-expanded',String(!!q(card,'.card-expand.open')));
+      const panel=q(card,'.card-expand');
+      if (panel?.id) expand.setAttribute('aria-controls',panel.id);
+    }
+    const save=q(card,'.star-btn');
+    if (save) { save.setAttribute('aria-label',save.classList.contains('starred')?'Remove saved hunt':'Save hunt'); save.setAttribute('aria-pressed',String(save.classList.contains('starred'))); }
+    const code = [...card.querySelectorAll('.card-expand .ei')].find(el=>q(el,'.ei-label')?.textContent.trim().toLowerCase()==='draw code');
+    const codeValue=code ? q(code,'.ei-val')?.textContent.trim() : '';
+    if (codeValue) {
+      const label=document.createElement('span');
+      label.className='hs-v4-card-code';
+      label.textContent='BC LEH · '+codeValue;
+      card.append(label);
+    }
+    card.classList.add('hs-v4-ready');
+  }
+  function afterExpanded(card) {
+    const panel=q(card,'.card-expand');
+    if (!panel) return;
+    const open=panel.classList.contains('open');
+    card.classList.toggle('hs-v4-open',open);
+    const toggle=q(card,'.expand-toggle');
+    if (toggle) { toggle.textContent=open?'Hide details':'Show details'; toggle.setAttribute('aria-expanded',String(open)); }
+    if (!open || panel.classList.contains('hs-v4-detail-ready')) return;
+    const index=Number((panel.id||'').replace(/^exp-/,''));
+    const r=Number.isInteger(index)?lookupRecord(index):null;
+    const chartBlocks=Array.from(panel.children).filter(node=>node.tagName==='DIV' && node!==q(panel,'.expand-grid') && (node.querySelector('.chart-toggle-wrap') || node.querySelector('.chart-label')));
+    chartBlocks.forEach((node,i)=>{
+      node.classList.add('hs-v4-chart-card');
+      const label=document.createElement('div');
+      label.className='hs-v4-chart-title';
+      label.textContent=(i===0?'Draw odds by year':'Harvest success by year');
+      node.prepend(label);
+    });
+    if (r) {
+      const history=Object.entries(r.yearly_draw_odds||{}).filter(([year,value])=>Number(year)<=2025 && Number.isFinite(Number(value)) && Number(value)>=0);
+      if (history.length===1) {
+        const placeholder=[...panel.querySelectorAll('.chart-label')].find(n=>/no data available/i.test(n.textContent));
+        if (placeholder) {
+          const [year,value]=history[0];
+          placeholder.textContent='Recorded draw odds';
+          const valueRow=document.createElement('div');
+          valueRow.className='hs-v4-single-year';
+          const big=document.createElement('strong');
+          big.textContent=Number(value).toLocaleString('en-CA',{maximumFractionDigits:1})+'%';
+          const yearLabel=document.createElement('span');
+          yearLabel.textContent=year;
+          const note=document.createElement('small');
+          note.textContent='Only one recorded year. No historical trend can be inferred.';
+          valueRow.append(big,yearLabel,note);
+          placeholder.after(valueRow);
+        }
+      }
+      const harvest=Object.entries(r.yearly_fill_rates||{}).filter(([y,v])=>Number(y)<2025 && Number.isFinite(Number(v)));
+      if (harvest.length===1 && !panel.querySelector('.hs-v4-harvest-single')) {
+        const item=document.createElement('div');item.className='hs-v4-chart-card hs-v4-harvest-single';
+        const heading=document.createElement('div');heading.className='hs-v4-chart-title';heading.textContent='Harvest success by year';
+        const row=document.createElement('div');row.className='hs-v4-single-year';
+        const strong=document.createElement('strong');strong.textContent=(Number(harvest[0][1])*100).toLocaleString('en-CA',{maximumFractionDigits:1})+'%';
+        const span=document.createElement('span');span.textContent=harvest[0][0];
+        const small=document.createElement('small');small.textContent='One recorded year; this is not a long-term average.';
+        row.append(strong,span,small);item.append(heading,row);
+        const oddsBlock=chartBlocks[0];
+        if (oddsBlock) oddsBlock.after(item); else panel.querySelector('.expand-grid')?.after(item);
+      }
+    }
+    const provenance=document.createElement('p');provenance.className='hs-v4-data-note';
+    provenance.textContent='Historical draw odds and harvest success are different measures. Charts use HuntSmart’s existing recorded values; missing years are not estimated. Verify current BC regulations for zone boundaries, eligibility and season restrictions.';
+    panel.append(provenance);
+    panel.classList.add('hs-v4-detail-ready');
+  }
+  function decorate(root) {
+    if (!root) return;
+    if (root.matches?.('.card')) enhanceCard(root);
+    else root.querySelectorAll('.card:not(.hs-v4-ready)').forEach(enhanceCard);
+  }
+  decorate(grid);
+  const observer=new MutationObserver(mutations=>{
+    for(const m of mutations){
+      if(m.type==='childList') for(const node of m.addedNodes) if(node.nodeType===1) decorate(node);
+      if(m.type==='attributes' && m.target.classList.contains('card-expand')) afterExpanded(m.target.closest('.card'));
+    }
+  });
+  observer.observe(grid,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+  grid.addEventListener('click',event=>{
+    const btn=event.target.closest('.expand-toggle,.star-btn');
+    if (!btn) return;
+    const card=btn.closest('.card');
+    if (!card) return;
+    if(btn.classList.contains('expand-toggle')) queueMicrotask(()=>afterExpanded(card));
+    else queueMicrotask(()=>{btn.setAttribute('aria-pressed',String(btn.classList.contains('starred')));btn.setAttribute('aria-label',btn.classList.contains('starred')?'Remove saved hunt':'Save hunt');});
+  });
+  const sheet=document.getElementById('sidebarInner');
+  if(sheet && !sheet.querySelector('.hs-v4-mobile-apply')) {
+    const header=document.createElement('div');header.className='hs-v4-sheet-bar';
+    const title=document.createElement('strong');title.textContent='Filter hunts';
+    const close=document.createElement('button');close.type='button';close.textContent='×';close.setAttribute('aria-label','Close filters');
+    close.addEventListener('click',()=>{if(sheet.classList.contains('open') && typeof toggleSidebar==='function') toggleSidebar();});
+    header.append(title,close);sheet.prepend(header);
+    const footer=document.createElement('div');footer.className='hs-v4-mobile-apply';
+    const apply=document.createElement('button');apply.type='button';apply.textContent='Show draws';
+    apply.addEventListener('click',()=>{if(sheet.classList.contains('open') && typeof toggleSidebar==='function') toggleSidebar();});
+    footer.append(apply);sheet.append(footer);
+    const count=document.getElementById('countDisplay');
+    if(count){const update=()=>{apply.textContent='Show '+count.textContent.trim()+' draws';};update();new MutationObserver(update).observe(count,{childList:true,subtree:true,characterData:true});}
+  }
+})();
