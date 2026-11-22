@@ -731,11 +731,9 @@
   }
   btn.addEventListener('click',()=>{
     if(!active()||btn.disabled)return;
-    if(enabled){
-      const panel=document.getElementById('hs-harvest-panel');
-      if(panel)panel.classList.toggle('is-open');
-      return;
-    }
+    // The active mode tab should remain a mode tab; reporting years have their
+    // own visible control and should not open when Success is clicked again.
+    if(enabled)return;
     enabled=true;updateButton();syncYearControls();
     period.hidden=false;legend.hidden=false;
     return context.onModeChange();

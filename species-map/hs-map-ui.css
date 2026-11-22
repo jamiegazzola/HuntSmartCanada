@@ -186,3 +186,70 @@ body.hunter-success-only .hs-map-toolbar .era-control>button#hs-harvest-toggle{b
   .hs-map-toolbar .hs-toolbar-header .species-control { min-width: 90px; }
   .hs-map-toolbar .species-control select { padding-left: 8px; font-size: 12px; }
 }
+
+/* Unified hunter-success controls · 2026-11-22
+   One third row only while Success is active; keep the map and legend clear. */
+.hs-map-toolbar .hs-success-tools{
+  display:none;
+  align-items:stretch;
+  gap:7px;
+  margin-top:8px;
+  min-width:0;
+}
+body.hunter-success-only .hs-map-toolbar .hs-success-tools{display:flex}
+.hs-map-toolbar .hs-success-tools .hs-metric-switch{
+  display:flex;
+  align-items:center;
+  flex:1 1 auto;
+  min-width:0;
+  margin:0;
+  padding:3px;
+  border-radius:9px;
+}
+.hs-map-toolbar .hs-success-tools .hs-metric-switch button{
+  min-width:0;
+  min-height:35px;
+  padding:5px 4px;
+  font-size:11px;
+}
+.hs-map-toolbar .hs-success-tools .hs-year-trigger{
+  position:static;
+  display:flex;
+  flex:0 0 auto;
+  align-items:center;
+  justify-content:center;
+  min-width:88px;
+  max-width:36%;
+  height:auto;
+  min-height:41px;
+  padding:0 9px;
+  margin:0;
+  border:0;
+  border-radius:9px;
+  background:#2a352e;
+  font-size:11px;
+  font-variant-numeric:tabular-nums;
+  box-shadow:none;
+}
+.hs-map-toolbar .hs-success-tools .hs-year-trigger[aria-expanded="true"]{background:#527b56}
+.hs-map-toolbar .hs-success-tools .hs-year-trigger[hidden]{display:none!important}
+.hs-harvest-panel{
+  top:calc(env(safe-area-inset-top,0px) + 181px);
+  left:12px;
+  width:min(376px,calc(100vw - 24px));
+  padding:13px;
+  max-height:min(50vh,300px);
+}
+.hs-harvest-panel .hs-year-header{padding-top:0;border-top:0}
+.hs-metric-legend{background:rgba(20,27,22,.82);padding:7px 10px}
+@media(max-width:700px){
+  .hs-map-toolbar .hs-success-tools{gap:6px}
+  .hs-map-toolbar .hs-success-tools .hs-metric-switch button{font-size:10.5px;padding-inline:3px}
+  .hs-map-toolbar .hs-success-tools .hs-year-trigger{min-width:82px;padding-inline:6px;font-size:10px}
+  .hs-harvest-panel{
+    top:calc(env(safe-area-inset-top,0px) + 176px);
+    left:9px;
+    width:calc(100vw - 18px);
+    max-height:min(44vh,310px);
+  }
+}
