@@ -32,3 +32,25 @@
 .hs-traffic-error{color:var(--red);font-size:12px;border:1px solid var(--border);padding:16px}
 @media(max-width:1050px){.hs-traffic-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.hs-traffic-panels{grid-template-columns:1fr}}
 @media(max-width:640px){.hs-traffic-head{align-items:flex-start;flex-direction:column}.hs-traffic-title{font-size:1.8rem}.hs-traffic-kpi{padding:13px}.hs-traffic-kpi-value{font-size:1.75rem}.hs-traffic-panel{padding:14px}.hs-traffic-bar-row{grid-template-columns:33px minmax(0,1fr) 30px;gap:7px}.hs-traffic-freshness{white-space:normal}}
+/* Analytics archive controls. Inherit HuntSmart Admin's colours and type. */
+.hs-traffic-head-actions{display:flex;flex-direction:column;align-items:flex-end;gap:9px}
+.hs-traffic-live{display:inline-flex;align-items:center;justify-content:space-between;gap:20px;padding:10px 13px;border:1px solid var(--gold-dim);text-decoration:none;color:var(--gold);background:rgba(201,168,76,.06);font:600 11px var(--mono)}
+.hs-traffic-live:hover,.hs-traffic-live:focus-visible{background:rgba(201,168,76,.13);outline-offset:2px}
+.hs-traffic-freshness.stale{color:var(--yellow);border-color:rgba(255,209,102,.4)}
+.hs-traffic-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.hs-traffic-switch{display:flex;align-items:center;gap:5px}
+.hs-traffic-switch-label{font:10px var(--mono);color:var(--muted);margin-right:9px}
+.hs-traffic-switch button,.hs-traffic-chart-actions button,.hs-traffic-chart-footer button{background:transparent;color:var(--muted);border:1px solid var(--border);padding:7px 11px;font:10px var(--mono);cursor:pointer}
+.hs-traffic-switch button.active,.hs-traffic-chart-actions button.active{background:rgba(201,168,76,.1);color:var(--gold);border-color:var(--gold-dim)}
+.hs-traffic-switch button:hover,.hs-traffic-chart-actions button:hover,.hs-traffic-chart-footer button:hover{border-color:var(--gold-dim);color:var(--gold)}
+.hs-traffic-source{font:10px var(--mono);color:var(--muted)}
+.hs-traffic-source-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--forest);margin-right:3px}
+.hs-traffic-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+.hs-traffic-panel-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.hs-traffic-chart-actions{display:flex;gap:4px;flex:0 0 auto}
+.hs-traffic-chart-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;font:9px var(--mono);color:var(--muted)}
+.hs-traffic-chart-footer button{border:0;border-bottom:1px solid var(--border);padding:5px 1px}
+.hs-traffic-notes{padding-bottom:4px}
+.hs-traffic-actions{margin-top:18px}
+@media(max-width:850px){.hs-traffic-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.hs-traffic-head-actions{width:100%;align-items:flex-start}.hs-traffic-live{width:100%}.hs-traffic-toolbar{align-items:flex-start}.hs-traffic-source{width:100%}.hs-traffic-panel-title{flex-direction:column;align-items:stretch}.hs-traffic-chart-actions{align-self:flex-start}.hs-traffic-chart-footer{flex-direction:column;align-items:flex-start}}
