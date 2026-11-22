@@ -4,6 +4,16 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
 <title>HuntSmart Canada — Know Your Draw Odds</title>
+<!-- Don't flash the Home screen while restoring an incoming Hunting Map link. -->
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('map') === 'interactive' || params.get('hsTab') === 'maps') {
+    document.documentElement.classList.add('hs-map-route-pending');
+  }
+})();
+</script>
+<style>html.hs-map-route-pending #homePage { visibility: hidden !important; }</style>
 <meta property="og:title" content="HuntSmart Canada — Know Your Draw Odds">
 <meta property="og:description" content="Draw odds, harvest success rates, and an interactive WMU map for every BC and Alberta LEH draw. Built by a BC backcountry hunter.">
 <meta property="og:image" content="https://huntsmartcanada.netlify.app/preview.jpg">

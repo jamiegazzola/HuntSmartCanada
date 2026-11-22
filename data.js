@@ -263,8 +263,23 @@ async function startApp() {
     buildMUList();
     buildClassChips();
     applyFilters();
-    showPage('home');
+    // On a return from Species Distribution, start directly in the hunting map.
+    // Routing must happen AFTER draw data is ready: an unconditional Home reset
+    // here previously overrode the destination selected during page loading.
+    const initialRoute = new URLSearchParams(window.location.search);
+    const requestedHuntingMap = initialRoute.get('map') === 'interactive' || initialRoute.get('hsTab') === 'maps';
+    const userAlreadyNavigated = [
+      'filterPage', 'drawsPage', 'savedPage', 'mapPage', 'abProfilePage',
+      'abFilterPage', 'abDrawsPage', 'drawDetailPage', 'bcOpenSeasonsPage'
+    ].some(function (id) {
+      const el = document.getElementById(id);
+      return el && el.style.display === 'block';
+    });
+    // Also preserve taps on Draws, Maps, or Saved made before data finishes.
+    if (!userAlreadyNavigated) showPage(requestedHuntingMap ? 'map' : 'home');
     updateSavedBadge();
+    window.__HUNTSMART_MAIN_APP_READY__ = true;
+    window.dispatchEvent(new Event('huntsmart:main-app-ready'));
     // ── BACKGROUND PREFETCH ─────────────────────────────────────
     // After the UI is painted, silently load everything so that
     // switching to Alberta or opening the map feels instant.
