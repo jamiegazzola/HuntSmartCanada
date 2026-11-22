@@ -557,7 +557,7 @@ td.mono { font-family: var(--mono); font-size: 12px; }
     <!-- STAT CARDS -->
     <div class="stats-grid">
       <div class="stat-card accent">
-        <div class="stat-label">Total Users</div>
+        <div class="stat-label">Registered Accounts</div>
         <div class="stat-value" id="s-total">—</div>
       </div>
       <div class="stat-card">
@@ -574,27 +574,27 @@ td.mono { font-family: var(--mono); font-size: 12px; }
         <div class="stat-value" id="s-free">—</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Total Searches</div>
+        <div class="stat-label">Account Searches</div>
         <div class="stat-value" id="s-searches">—</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">High Churn Risk</div>
+        <div class="stat-label">No Login 14d+</div>
         <div class="stat-value" id="s-churn" style="color:var(--red)">—</div>
-        <div class="stat-sub">inactive 14+ days</div>
+        <div class="stat-sub">account login inactivity</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Active Today</div>
+        <div class="stat-label">Logged In Today</div>
         <div class="stat-value" id="s-today">—</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Site Visitors (3d)</div>
+        <div class="stat-label">Recorded Visits (3d)</div>
         <div class="stat-value" id="s-visitors">—</div>
-        <div class="stat-sub">unique anonymous visitors</div>
+        <div class="stat-sub">Firestore events, not unique users</div>
       </div>
       <div class="stat-card accent">
-        <div class="stat-label">Signup Conversion</div>
+        <div class="stat-label">New Registrations (3d)</div>
         <div class="stat-value" id="s-conversion">—</div>
-        <div class="stat-sub" id="s-conversion-sub">visitors → accounts</div>
+        <div class="stat-sub" id="s-conversion-sub">Firebase accounts · last 3 days</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Auth Errors (3d)</div>
@@ -865,7 +865,7 @@ async function loadUsers() {
       } catch(e) {}
     }));
 
-    // Load site visitors (last 7 days from visit_counters)
+    // Load visit counter events (last 3 days; not deduplicated visitors)
     try {
       const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 3);
       const visitSnap = await getDocs(collection(db, 'visit_counters'));
@@ -878,7 +878,7 @@ async function loadUsers() {
       });
     } catch(e) { console.warn('[admin] visit_counters load failed', e); }
 
-    // Load auth errors (last 7 days)
+    // Load auth errors (last 3 days)
     try {
       const authErrSnap = await getDocs(collection(db, 'auth_errors'));
       authErrors3d = 0; authErrorBreakdown = {};
@@ -931,16 +931,16 @@ function updateStats() {
   set('s-searches',  totalS.toLocaleString());
   set('s-today',     todayN);
 
-  // Visitor tracking & conversion
-  const newUsersLast7 = users.filter(u => {
+  // Legacy Firestore counters are visit events, not unique visitors. New accounts
+  // are a separate Firebase count; no invalid visitor-to-account conversion is shown.
+  const newRegistrations3d = allUsers.filter(u => {
     if (!u.createdAt) return false;
     const d = u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt);
     return (Date.now() - d.getTime()) < 3 * 86400000;
   }).length;
   set('s-visitors', siteVisitors3d.toLocaleString());
-  const convPct = siteVisitors3d > 0 ? Math.round(newUsersLast7 / siteVisitors3d * 100) : 0;
-  set('s-conversion', convPct + '%');
-  set('s-conversion-sub', newUsersLast7 + ' signups / ' + siteVisitors3d + ' visitors (3d)');
+  set('s-conversion', newRegistrations3d.toLocaleString());
+  set('s-conversion-sub', 'registered Firebase accounts · last 3 days');
 
   // Auth errors
   set('s-autherrors', authErrors3d);

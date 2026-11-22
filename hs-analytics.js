@@ -4,6 +4,10 @@
 (() => {
   'use strict';
 
+  // Prevent Netlify previews, staging and local tests from inflating GA4.
+  const analyticsHost = window.location.hostname.toLowerCase();
+  if (analyticsHost !== 'huntsmartcanada.ca' && analyticsHost !== 'www.huntsmartcanada.ca') return;
+
   const MEASUREMENT_ID = 'G-VK3HNNDEW2';
   const FIRST_KEY = 'hs_first_touch_v1';
   const LAST_KEY = 'hs_last_touch_v1';

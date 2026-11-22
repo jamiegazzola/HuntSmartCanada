@@ -148,7 +148,7 @@ function mount() {
     <div class="hs-growth-status">
       <div class="hs-growth-status-card"><i class="hs-growth-status-dot"></i><div><strong>GA4 event tracking active</strong><span>G-VK3HNNDEW2 · page views, blog views, blog→app clicks and interactive-map engagement are collected for anonymous traffic.</span></div></div>
       <div class="hs-growth-status-card"><i class="hs-growth-status-dot"></i><div><strong>First-touch attribution active</strong><span>Source, campaign and landing page persist across blog→app navigation and are saved when a user creates an account.</span></div></div>
-      <div class="hs-growth-status-card"><i class="hs-growth-status-dot pending"></i><div><strong>Google Search Console</strong><span>Sitemap is ready. Search queries, impressions, clicks and ranking position will appear once the .ca property is verified and connected through Search Console/Windsor.</span></div></div>
+      <div class="hs-growth-status-card"><i class="hs-growth-status-dot pending"></i><div><strong>Google Search Console verified</strong><span>Recovered legacy Netlify search history and current .ca performance are summarized above. Open Search Console for current query and position data.</span></div></div>
     </div>
   `;
 

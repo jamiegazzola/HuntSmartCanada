@@ -1,0 +1,76 @@
+{
+  "reportVersion": "2026-11-22",
+  "sources": {
+    "searchConsole": {
+      "label": "Google Search Console",
+      "range": "2026-06-21 to 2026-11-18",
+      "clicks": 124,
+      "impressions": 1467,
+      "legacyClicks": 116,
+      "currentClicks": 8,
+      "months": [
+        {
+          "month": "Jun",
+          "legacy": 50,
+          "current": 0,
+          "impressions": 114,
+          "partial": true
+        },
+        {
+          "month": "Jul",
+          "legacy": 23,
+          "current": 0,
+          "impressions": 159
+        },
+        {
+          "month": "Aug",
+          "legacy": 13,
+          "current": 0,
+          "impressions": 251
+        },
+        {
+          "month": "Sep",
+          "legacy": 10,
+          "current": 0,
+          "impressions": 236
+        },
+        {
+          "month": "Oct",
+          "legacy": 20,
+          "current": 1,
+          "impressions": 443
+        },
+        {
+          "month": "Nov",
+          "legacy": 0,
+          "current": 7,
+          "impressions": 264,
+          "partial": true
+        }
+      ]
+    },
+    "ga4": {
+      "label": "Google Analytics 4",
+      "range": "2026-10-26 to 2026-11-21",
+      "host": "huntsmartcanada.ca",
+      "pagePath": "/",
+      "homepageActiveUsers": 246,
+      "homepageViews": 494,
+      "homepageEngagedSeconds": 4690
+    },
+    "posthog": {
+      "label": "PostHog",
+      "range": "2026-11-19 to 2026-11-21",
+      "visitors": 25,
+      "sessions": 29,
+      "views": 41,
+      "averageSessionSeconds": 188.79310344827587,
+      "bounceRate": 0.793103448275862
+    }
+  },
+  "links": {
+    "posthog": "https://us.posthog.com/project/753105/web",
+    "searchConsole": "https://search.google.com/search-console",
+    "ga4": "https://analytics.google.com/"
+  }
+}
