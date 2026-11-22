@@ -36,10 +36,10 @@ if ((html.match(/hs-app-nav\.js/g) || []).length !== 1 ||
 // Keep on-demand loading; desktop may prewarm when idle.
 const appPath = path.join(dir, 'app.js');
 let app = fs.readFileSync(appPath, 'utf8');
-const preload = '      scheduleBackgroundKmzPreload();';
+const preload = '      renderSelected();\n      scheduleBackgroundKmzPreload();';
 if (app.includes(preload)) {
   app = app.replace(preload,
-    "      if (!window.matchMedia('(max-width:768px)').matches) scheduleBackgroundKmzPreload();");
+    "      renderSelected().finally(() => { if (!window.matchMedia('(max-width:768px)').matches && navigator.connection?.downlink >= 10 && !navigator.connection?.saveData) setTimeout(scheduleBackgroundKmzPreload, 5000); });");
   fs.writeFileSync(appPath, app);
 } else if (process.env.CONTEXT === 'production') {
   throw new Error('Expected production species preload hook is missing');

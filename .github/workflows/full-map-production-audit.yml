@@ -3,12 +3,14 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - scripts/build-map-startup.cjs
       - scripts/full-map-production-audit.cjs
       - species-map/hs-app-nav.css
       - .github/workflows/full-map-production-audit.yml
   push:
     branches: [main]
     paths:
+      - scripts/build-map-startup.cjs
       - scripts/full-map-production-audit.cjs
       - species-map/hs-app-nav.css
       - .github/workflows/full-map-production-audit.yml
@@ -36,6 +38,25 @@ jobs:
           npx playwright install --with-deps chromium webkit
       - name: Check audit syntax
         run: node --check scripts/full-map-production-audit.cjs
+      - name: Wait for this production deployment
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: |
+          python3 - <<'PYTHON'
+          import os, time, urllib.request
+          for attempt in range(90):
+              try:
+                  text = urllib.request.urlopen('https://huntsmartcanada.ca/?startup-qa=' + str(time.time()), timeout=20).read().decode()
+                  if 'content="' + os.environ['EXPECTED_COMMIT'] + '"' in text:
+                      break
+              except Exception:
+                  pass
+              time.sleep(10)
+          else:
+              raise SystemExit('Expected production commit did not deploy')
+          PYTHON
+      - name: Measure mobile and desktop map startup
+        run: node scripts/measure-map-startup.cjs
       - name: Test live BC, Alberta, GOS, hunt-card and species maps
         env:
           URL: https://huntsmartcanada.ca

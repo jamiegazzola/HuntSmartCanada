@@ -48,7 +48,13 @@ async function loadAppData() {
   DATA = await response.json();
 }
 
-async function loadABData() {
+let abDataPromise = null;
+function loadABData() {
+  if (AB_DATA.length > 0) return Promise.resolve();
+  if (!abDataPromise) abDataPromise = fetchABData().finally(() => { abDataPromise = null; });
+  return abDataPromise;
+}
+async function fetchABData() {
   if (AB_DATA.length > 0) return;
   const response = await fetch(AB_DATA_URL);
   if (!response.ok) throw new Error(`Failed to load Alberta data: ${response.status}`);
@@ -280,33 +286,11 @@ async function startApp() {
     updateSavedBadge();
     window.__HUNTSMART_MAIN_APP_READY__ = true;
     window.dispatchEvent(new Event('huntsmart:main-app-ready'));
-    // ── BACKGROUND PREFETCH ─────────────────────────────────────
-    // After the UI is painted, silently load everything so that
-    // switching to Alberta or opening the map feels instant.
-    setTimeout(() => {
-      // 1. Leaflet JS + CSS — so the map script is parsed and ready
-      if (typeof L === 'undefined') {
-        const css = document.createElement('link');
-        css.rel = 'stylesheet';
-        css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
-        document.head.appendChild(css);
-        const js = document.createElement('script');
-        js.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
-        document.head.appendChild(js);
-      }
-      // 2. All Alberta data files — parallel, silent
-      loadABData();
-      loadABHarvest();
-      loadABElkHistory();
-      loadABMooseHistory();
-      loadABMuleDeerHistory();
-      loadABAntelopeHistory();
-      loadABWTDeerHistory();
-      loadABBisonHistory();
-      // 3. BC writeups + AB terrain
-      loadWriteups();
-      loadABTerrain();
-    }, 100); // start prefetch almost immediately — writeups must be ready before user hits Show Results
+    // Demand-load Alberta records on its existing navigation paths. Only the
+    // small descriptions are warmed after startup; no 11 MB province prefetch.
+    const warmDescriptions = () => { void loadWriteups().catch(() => {}); };
+    if ('requestIdleCallback' in window) requestIdleCallback(warmDescriptions, { timeout:5000 });
+    else setTimeout(warmDescriptions, 3000);
   } catch (error) {
     console.error(error);
     document.body.innerHTML = '<div style="padding:24px;font-family:DM Sans, sans-serif;color:#f0f2f4;background:#111214;min-height:100vh">Failed to load app data.</div>';

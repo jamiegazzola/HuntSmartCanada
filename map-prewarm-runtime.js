@@ -75,7 +75,7 @@
     const province = currentProvince();
     const started = now();
     const urls = candidateTiles(province).map(tile =>
-      `/map-tiles/${encodeURIComponent(tileVersion)}/${province.toLowerCase()}/${tile.z}/${tile.x}/${tile.y}.pbf`
+      `/map-tiles/${encodeURIComponent(tileVersion)}/${province.toLowerCase()}/${tile.z}/${tile.x}/${tile.y}.pbf?v=${snapshot.version}`
     );
 
     await Promise.all(urls.map(url => fetch(url, {

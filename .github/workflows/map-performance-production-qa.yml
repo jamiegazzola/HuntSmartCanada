@@ -34,7 +34,7 @@ jobs:
         env:
           URL: https://huntsmartcanada.ca/
           EXPECTED_VECTOR_VERSION: 2026-10-28-vector-v2
-          EXPECTED_TILE_VERSION: 20261028-v3
+          EXPECTED_TILE_VERSION: 20261122-v4
         run: |
           node <<'NODE'
           const { chromium } = require('playwright');

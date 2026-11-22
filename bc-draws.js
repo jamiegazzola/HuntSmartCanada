@@ -162,12 +162,12 @@ function showPage(page) {
   if (page==='map') { fullMapInit(); setTimeout(() => checkMobile(), 50); _trackBCSearch('map_main'); }
   if (page==='abProfile') renderAbProfilePage();
   if (page==='abFilter') {
-    Promise.all([loadABData(),loadABHarvest(),loadABElkHistory(),loadABMooseHistory(),loadABMuleDeerHistory(),loadABAntelopeHistory(),loadABWTDeerHistory(),loadABBisonHistory()]).then(()=>{
+    Promise.all([loadABTerrain(),loadABData(),loadABHarvest(),loadABElkHistory(),loadABMooseHistory(),loadABMuleDeerHistory(),loadABAntelopeHistory(),loadABWTDeerHistory(),loadABBisonHistory()]).then(()=>{
       abFpBuildChips(); abFpBuildClassChips(); abFpBuildWMU(); abFpUpdateCount();
     });
   }
   if (page==='abDraws') {
-    Promise.all([loadABData(),loadABHarvest(),loadABElkHistory(),loadABMooseHistory(),loadABMuleDeerHistory(),loadABAntelopeHistory(),loadABWTDeerHistory(),loadABBisonHistory()]).then(()=>{
+    Promise.all([loadABTerrain(),loadABData(),loadABHarvest(),loadABElkHistory(),loadABMooseHistory(),loadABMuleDeerHistory(),loadABAntelopeHistory(),loadABWTDeerHistory(),loadABBisonHistory()]).then(()=>{
       abApplyFilters();
       const _s = typeof abSelSpecies !== 'undefined' && abSelSpecies.size === 1 ? [...abSelSpecies][0] : 'All';
       if (window.HS && window.HS.trackSearch) window.HS.trackSearch('AB', _s, 'map_ab');
@@ -180,7 +180,7 @@ function showPage(page) {
 }
 
 function goToAlberta() {
-  Promise.all([loadABData(),loadABHarvest(),loadABElkHistory(),loadABMooseHistory(),loadABMuleDeerHistory(),loadABAntelopeHistory(),loadABWTDeerHistory(),loadABBisonHistory()]).then(() => {
+  Promise.all([loadABTerrain(),loadABData(),loadABHarvest(),loadABElkHistory(),loadABMooseHistory(),loadABMuleDeerHistory(),loadABAntelopeHistory(),loadABWTDeerHistory(),loadABBisonHistory()]).then(() => {
     showPage(abProfile ? 'abFilter' : 'abProfile');
   });
 }

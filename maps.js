@@ -700,7 +700,11 @@ function fullMapSetProvince(prov) {
 let _fullMapGateAttempts = 0;
 function fullMapInit() {
   if (fullMapInitialized[fullMapProvince]) {
-    if (fullMapInstance) fullMapInstance.resize();
+    if (fullMapInstance) {
+      fullMapInstance.resize();
+      const loading = document.getElementById('fullMapLoading');
+      if (loading && fullMapInstance.loaded()) loading.style.display = 'none';
+    }
     return;
   }
 
@@ -746,6 +750,8 @@ function _fullMapBuild(center, zoom) {
     container: 'fullMapLeaflet',
     style: _MB_STYLES[_fullMapStyle] || _MB_STYLES.satellite,
     center, zoom,
+    bounds: fullMapProvince === 'AB' ? [[-120.2, 48.8], [-109.6, 60.2]] : [[-139.3, 48.1], [-113.8, 60.2]],
+    fitBoundsOptions: { padding:28, duration:0 },
     minZoom: 3, maxZoom: 20,
     projection: 'mercator',
     // 512px tiles = sharper imagery at same zoom (Mapbox GL default)
@@ -777,10 +783,10 @@ function _fullMapFitProvinceOverview(prov) {
 
 // ── BC init ──
 function _fullMapInitBC() {
-  fullMapInitialized['BC'] = true;
   const map = _fullMapBuild([-126.3, 54.4], 4.15);
   if (!map) return;
   fullMapInstance = map;
+  fullMapInitialized['BC'] = true;
 
   map.on('load', () => {
     const loading = document.getElementById('fullMapLoading');
@@ -878,13 +884,25 @@ function _fullMapInitBC() {
 
 // ── AB init ──
 function _fullMapInitAB() {
-  fullMapInitialized['AB'] = true;
+  const dataReady = Promise.all([loadABData(), loadABHarvest()]);
+  dataReady.catch(() => {});
   const map = _fullMapBuild([-115.0, 54.3], 4.35);
   if (!map) return;
   fullMapInstance = map;
+  fullMapInitialized['AB'] = true;
 
   map.on('load', async () => {
-    await Promise.all([loadABData(), loadABHarvest()]);
+    try { await dataReady; } catch (error) {
+      if (fullMapInstance !== map) return;
+      map.remove();
+      fullMapInstance = null;
+      fullMapInitialized.AB = false;
+      const text = document.getElementById('fullMapLoadingText');
+      if (text) text.textContent = 'Alberta data could not load. Reopen the map to retry.';
+      console.error('[HuntSmart Alberta map]', error);
+      return;
+    }
+    if (fullMapInstance !== map) return;
     const loading = document.getElementById('fullMapLoading');
     if (loading) loading.style.display = 'none';
     fullMapBuildSelectors();

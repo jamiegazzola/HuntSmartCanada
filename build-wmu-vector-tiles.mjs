@@ -9,7 +9,7 @@ const ROOT = __dirname;
 const SITE = path.join(ROOT, 'site');
 const INDEX = path.join(SITE, 'index.html');
 const RUNTIME = path.join(ROOT, 'map-vector-runtime.js');
-const TILE_VERSION = '20261028-v3';
+const TILE_VERSION = '20261122-v4';
 const RUNTIME_VERSION = '2026-10-28-vector-v2';
 const MIN_ZOOM = 3;
 const MAX_ZOOM = 9;
@@ -104,6 +104,10 @@ function prepareCollection(collection, province) {
   return { type:'FeatureCollection', features };
 }
 
+function roundCoordinates(value) {
+  return Array.isArray(value) ? value.map(roundCoordinates) : Math.round(value * 100000) / 100000;
+}
+
 function makeIndex(collection, province) {
   const tolerance = province === 'BC' ? 0.0025 : 0.0020;
   return {
@@ -114,7 +118,7 @@ function makeIndex(collection, province) {
       type:'Feature',
       id:feature.id,
       properties:feature.properties,
-      geometry:simplifyGeometry(feature.geometry, tolerance)
+      geometry:(() => { const geometry = simplifyGeometry(feature.geometry, tolerance); return { ...geometry, coordinates:roundCoordinates(geometry.coordinates) }; })()
     }))
   };
 }

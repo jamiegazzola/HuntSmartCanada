@@ -1,5 +1,5 @@
 /* HuntSmart offline-lite cache: current app shell + conservative offline fallback. */
-const HS_CACHE = 'huntsmart-offline-lite-v82';
+const HS_CACHE = 'huntsmart-offline-lite-v83';
 const HS_CORE = [
   './', './index.html', './site.webmanifest', './style.css', './terrain-intelligence.css',
   './maps.js', './terrain-intelligence.js', './bc-open-seasons.js', './data.js',
@@ -56,7 +56,7 @@ self.addEventListener('fetch', event => {
       url.pathname === '/.netlify/functions/species-data') return;
 
   // Do not turn provincial vector tiles or large geometry into an unbounded browser cache.
-  if (url.pathname.startsWith('/map-tiles/') || /\.(?:pbf|pmtiles|geojson)$/i.test(url.pathname)) return;
+  if (url.pathname.startsWith('/map-tiles/') || url.pathname.startsWith('/app-data/') || /\.(?:pbf|pmtiles|geojson)$/i.test(url.pathname)) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request).then(response => response || caches.match('./index.html')));

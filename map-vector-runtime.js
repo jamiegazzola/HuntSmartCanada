@@ -6,7 +6,7 @@
   'use strict';
 
   const VERSION = '2026-10-28-vector-v2';
-  const TILE_VERSION = '20261028-v3';
+  const TILE_VERSION = '20261122-v4';
   const BASE = `/map-tiles/${TILE_VERSION}`;
   const BOUNDS = {
     BC: [-139.3, 48.1, -113.8, 60.2],
@@ -171,6 +171,9 @@
       const args = arguments;
       const context = this;
       const loading = document.getElementById('fullMapLoading');
+      try {
+        if (fullMapInstance && fullMapInitialized[fullMapProvince]) return original.apply(context, args);
+      } catch (_) {}
       if (loading) loading.style.display = 'flex';
       return loadManifest().then(() => {
         let province = 'BC';
@@ -229,9 +232,7 @@
     } catch (_) {}
     if (state.fullABPromise) return state.fullABPromise;
     state.fullABPromise = (async () => {
-      await loadScript(`./ab-wmu-geojson-1.js?v=${TILE_VERSION}`);
-      await loadScript(`./ab-wmu-geojson-2.js?v=${TILE_VERSION}`);
-      await loadScript(`./ab-wmu-geojson-3.js?v=${TILE_VERSION}`);
+      await Promise.all([1,2,3].map(part => loadScript(`./ab-wmu-geojson-${part}.js?v=${TILE_VERSION}`)));
       await loadScript(`./ab-wmu-geojson.js?v=${TILE_VERSION}`);
       if (typeof AB_WMU_GEOJSON === 'undefined' || !AB_WMU_GEOJSON?.features) throw new Error('Alberta full geometry did not initialize');
       window.__HS_FULL_AB_WMU_GEOMETRY__ = true;
