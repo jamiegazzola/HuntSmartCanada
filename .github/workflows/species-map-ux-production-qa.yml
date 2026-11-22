@@ -11,6 +11,9 @@ on:
       - species-map/harvest-success.js
       - species-map/elk-species.js
       - scripts/patch-rocky-elk-only.cjs
+      - scripts/patch-species-map-coordinate-copy.cjs
+      - species-map/hs-app-nav.css
+      - netlify.toml
       - scripts/install-alberta-species.cjs
       - scripts/install-harvest-success.cjs
       - scripts/install-huntsmart-minimal-ui.cjs
@@ -158,8 +161,23 @@ jobs:
               'Subspecies limitation must be visible beside the map legend');
             assert((await page.locator('#hs-metric-legend').textContent()).includes('Inspected harvest · no comparable success rate'),
               'Documented low-sample harvest must not look like the 0–19% hunter-success class');
-            assert.equal(await page.locator('#coordinate-drop-pin').count(),0,
-              'The redundant coordinate pin must not be mounted');
+            assert.equal(await page.locator('#coordinate-drop-pin').count(),1,
+              'Coordinate copy action must be present');
+            const coordinatePin=page.locator('#coordinate-drop-pin');
+            assert(await coordinatePin.isVisible(),'Coordinate copy action must be visible');
+            await coordinatePin.click();
+            assert.equal(await coordinatePin.getAttribute('aria-pressed'),'true',
+              'Coordinate copy action must arm map selection');
+            await coordinatePin.click();
+            assert.equal(await coordinatePin.getAttribute('aria-pressed'),'false',
+              'Coordinate copy action must be cancellable');
+            const overlap=await page.evaluate(()=>{
+              const a=document.getElementById('hs-metric-legend')?.getBoundingClientRect();
+              const b=document.getElementById('coordinate-drop-pin')?.getBoundingClientRect();
+              if(!a||!b)return false;
+              return a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
+            });
+            assert(!overlap,'Coordinate button must not overlap hunter-success legend');
             assert.equal((await page.locator('.hs-map-back').textContent()).trim(),'← Back',
               'Return navigation should say Back');
             await page.locator('#species').selectOption('moose');
