@@ -101,7 +101,7 @@
 [[headers]]
   for = "/species-map/*"
   [headers.values]
-    X-Robots-Tag = "noindex, nofollow, noarchive"
+    X-Robots-Tag = "noindex, noarchive"
 
 # The species viewer HTML must be revalidated on every navigation; its
 # versioned JS/CSS references are updated with the deployed app shell.
