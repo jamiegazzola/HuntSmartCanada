@@ -468,17 +468,28 @@ nav {
 /* BC LEH V4.1 — expanded hunt details: contain the zone map and use space efficiently.
    Scoped to the BC results page; leaves existing Mapbox handlers/data unchanged. */
 @media (min-width: 981px) {
-  /* When a terrain writeup exists, put it alongside the map, not above it. */
+  /* Both sections use the full results width. A closed terrain accordion
+     must not reserve half a row beside the LEH map. */
+  #drawsPage .card-expand.open > div:has(> .tc-toggle-btn),
+  #drawsPage .card-expand.open > div:has([id^="lehMap_"]) {
+    grid-column: 1 / -1;
+    align-self: stretch;
+    margin-top: 0 !important;
+  }
   #drawsPage .card-expand.open > div:has(> .tc-toggle-btn) {
-    grid-column: 1;
-    align-self: start;
-    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: 0 !important;
   }
-  #drawsPage .card-expand.open:has(> div > .tc-toggle-btn) > div:has([id^="lehMap_"]) {
-    grid-column: 2;
-    align-self: start;
-    margin-top: 0 !important;
-  }
+}
+#drawsPage .card-expand.open .tc-toggle-btn:focus:not(:focus-visible) {
+  outline: none;
+}
+#drawsPage .card-expand.open .tc-toggle-btn:focus-visible {
+  outline: 2px solid #8bdfa0;
+  outline-offset: 2px;
+}
+#drawsPage .card-expand.open .writeup-body.tc-card .tc-body {
+  max-width: 84ch;
 }
 /* The shared LEH map CSS otherwise imposes a 1:1 aspect ratio. On a
    full-width expanded card that produces a map over 1,000 px tall. */
