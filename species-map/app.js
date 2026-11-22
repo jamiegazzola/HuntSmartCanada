@@ -918,6 +918,7 @@
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
+        cameraControl: false,
         zoomControl: false,
         gestureHandling: 'greedy',
         clickableIcons: false,
