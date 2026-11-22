@@ -77,20 +77,31 @@
     });
   }
 
+  // The main app fetches draw records asynchronously and selects its initial
+  // page only after that load. A fixed retry timer raced that initialization
+  // and could leave a Species -> Hunting return on the Home screen.
+  function whenMainAppReady(callback) {
+    if (window.__HUNTSMART_MAIN_APP_READY__ === true) callback();
+    else window.addEventListener('huntsmart:main-app-ready', callback, {once:true});
+  }
+
+  function revealHuntingMap() {
+    var mapPage = document.getElementById('mapPage');
+    if (mapPage && getComputedStyle(mapPage).display === 'none' &&
+        typeof window.showPage === 'function') {
+      window.showPage('map');
+    }
+    document.documentElement.classList.remove('hs-map-route-pending');
+  }
+
   function returnToInteractiveMap() {
     var url = new URL(window.location.href);
     if (url.searchParams.get('map') !== 'interactive') return;
-    var tries = 0;
-    function navigate() {
-      if (typeof window.showPage !== 'function') {
-        if (++tries < 20) window.setTimeout(navigate, 100);
-        return;
-      }
-      window.showPage('map');
+    whenMainAppReady(function () {
+      revealHuntingMap();
       url.searchParams.delete('map');
       window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
-    }
-    navigate();
+    });
   }
 
   // The standalone species viewer navigates back to the existing app.
@@ -116,7 +127,12 @@
       }
       url.searchParams.delete('hsTab');
       window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
-      if (mobile && (tab === 'draws' || tab === 'maps')) {
+      if (tab === 'maps') {
+        // Startup has already restored this route; do not initialize Mapbox twice.
+        revealHuntingMap();
+        return;
+      }
+      if (mobile && tab === 'draws') {
         document.querySelector('#hsMobileTabbar [data-tab="' + buttonName + '"]')?.click();
         return;
       }
@@ -127,7 +143,7 @@
       var page = {home:'home', draws:'filter', seasons:'bcOpenSeasons', maps:'map', saved:'saved'}[tab];
       if (page) window.showPage(page);
     }
-    run();
+    whenMainAppReady(run);
   }
 
 
