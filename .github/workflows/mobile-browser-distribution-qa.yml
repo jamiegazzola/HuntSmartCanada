@@ -9,6 +9,8 @@ on:
       - ux-polish.js
       - mobile-account-nav.js
       - map-destinations.js
+      - data.js
+      - index.html
       - map-vector-runtime.js
       - maps.js
       - bc-filters.js
@@ -32,6 +34,8 @@ on:
       - ux-polish.js
       - mobile-account-nav.js
       - map-destinations.js
+      - data.js
+      - index.html
       - map-vector-runtime.js
       - maps.js
       - bc-filters.js
@@ -72,6 +76,9 @@ jobs:
           assert Path("site/map-destinations.js").is_file() is False, "Map chooser should be bundled, not a separate asset"
           bundle=Path("site/terrain-intelligence.js").read_text()
           assert "__HS_MAP_DESTINATIONS__" in bundle
+          assert "huntsmart:main-app-ready" in bundle
+          assert "hs-map-route-pending" in Path("site/index.html").read_text()
+          assert "__HUNTSMART_MAIN_APP_READY__" in Path("site/data.js").read_text()
           assert "hs-mobile-browser" in bundle
           assert Path("site/species-map/hs-map-ui.js").is_file()
           assert 'hs-preview-species-back' in Path('site/species-map/index.html').read_text(), 'Preview species map route missing'
