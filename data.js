@@ -268,7 +268,15 @@ async function startApp() {
     // here previously overrode the destination selected during page loading.
     const initialRoute = new URLSearchParams(window.location.search);
     const requestedHuntingMap = initialRoute.get('map') === 'interactive' || initialRoute.get('hsTab') === 'maps';
-    showPage(requestedHuntingMap ? 'map' : 'home');
+    const userAlreadyNavigated = [
+      'filterPage', 'drawsPage', 'savedPage', 'mapPage', 'abProfilePage',
+      'abFilterPage', 'abDrawsPage', 'drawDetailPage', 'bcOpenSeasonsPage'
+    ].some(function (id) {
+      const el = document.getElementById(id);
+      return el && el.style.display === 'block';
+    });
+    // Also preserve taps on Draws, Maps, or Saved made before data finishes.
+    if (!userAlreadyNavigated) showPage(requestedHuntingMap ? 'map' : 'home');
     updateSavedBadge();
     window.__HUNTSMART_MAIN_APP_READY__ = true;
     window.dispatchEvent(new Event('huntsmart:main-app-ready'));
