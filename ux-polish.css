@@ -512,3 +512,82 @@ nav {
     max-height: 290px !important;
   }
 }
+
+/* BC hunt-result Terrain & Access readability pass — presentation only. */
+#drawsPage .card-expand.open .tc-toggle-btn {
+  min-height: 46px;
+  padding: 11px 15px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: .005em;
+}
+#drawsPage .card-expand.open .writeup-body.tc-card {
+  margin-top: 12px !important;
+  border-radius: 10px;
+}
+#drawsPage .card-expand.open .writeup-body.tc-card .tc-section {
+  min-width: 0;
+  padding: 19px 21px 21px;
+}
+#drawsPage .card-expand.open .writeup-body.tc-card .tc-section-label {
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 700;
+  letter-spacing: .105em;
+  color: #a8baae;
+  margin-bottom: 10px;
+  gap: 8px;
+}
+#drawsPage .card-expand.open .writeup-body.tc-card .tc-section-label svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  opacity: .8;
+}
+#drawsPage .card-expand.open .writeup-body.tc-card .tc-body {
+  font-size: 15px;
+  line-height: 1.68;
+  letter-spacing: .003em;
+  color: #d3ded6;
+  max-width: 68ch;
+  overflow-wrap: break-word;
+}
+#drawsPage .card-expand.open .writeup-body.tc-card .tc-warn {
+  padding: 12px 13px;
+}
+#drawsPage .card-expand.open .writeup-body.tc-card .tc-warn span {
+  font-size: 13px;
+  line-height: 1.6;
+}
+@media (min-width: 1200px) {
+  /* Only override the toggle's inline display:block state, never display:none. */
+  #drawsPage .card-expand.open .writeup-body.tc-card[style*="display: block"] {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #drawsPage .card-expand.open .writeup-body.tc-card[style*="display: block"] > .tc-section {
+    border-bottom: 0;
+  }
+  #drawsPage .card-expand.open .writeup-body.tc-card[style*="display: block"] > .tc-section + .tc-section {
+    border-left: 1px solid var(--v4-line, #35423b);
+  }
+}
+@media (max-width: 1199px) {
+  #drawsPage .card-expand.open .writeup-body.tc-card .tc-body {
+    max-width: 72ch;
+  }
+}
+@media (max-width: 600px) {
+  #drawsPage .card-expand.open .writeup-body.tc-card .tc-section {
+    padding: 16px 15px 18px;
+  }
+  #drawsPage .card-expand.open .writeup-body.tc-card .tc-body {
+    font-size: 14.5px;
+    line-height: 1.65;
+  }
+  #drawsPage .card-expand.open .writeup-body.tc-card .tc-section-label {
+    font-size: 10.5px;
+    margin-bottom: 9px;
+  }
+}
