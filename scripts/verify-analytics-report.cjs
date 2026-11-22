@@ -18,6 +18,12 @@ assert.equal(sum('legacy'), gsc.legacyClicks, 'Legacy clicks mismatch');
 assert.equal(sum('current'), gsc.currentClicks, 'Current-domain clicks mismatch');
 assert.equal(sum('legacy') + sum('current'), gsc.clicks, 'Combined clicks mismatch');
 assert.equal(sum('impressions'), gsc.impressions, 'Search impressions mismatch');
+assert.equal(sum('legacyImpressions'), gsc.legacyImpressions, 'Legacy impressions mismatch');
+assert.equal(sum('currentImpressions'), gsc.currentImpressions, 'Current impressions mismatch');
+for (const row of gsc.months) {
+  assert.equal(row.legacyImpressions + row.currentImpressions, row.impressions,
+    'Month impressions do not reconcile: ' + row.month);
+}
 for (const [window, stats] of Object.entries(ph.windows || {})) {
   assert(['7d','30d'].includes(window), 'Unknown PostHog report window');
   for (const key of ['visitors','sessions','views','averageSessionSeconds','bounceRate']) {

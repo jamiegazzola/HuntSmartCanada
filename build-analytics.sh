@@ -16,7 +16,7 @@ ATTRIBUTION = '<script type="module" src="/hs-auth-attribution.js?v=20261026a"><
 ADMIN_CSS = '<link rel="stylesheet" href="/admin-growth.css?v=20261026a">'
 ADMIN_JS = '<script type="module" src="/admin-growth.js?v=20261026a"></script>'
 TRAFFIC_CSS = '<link rel="stylesheet" href="/admin-traffic.css?v=20261122b">'
-TRAFFIC_JS = '<script defer src="/admin-traffic.js?v=20261122b"></script>'
+TRAFFIC_JS = '<script defer src="/admin-traffic.js?v=20261122c"></script>'
 BLOG_CARD_CSS = '<link rel="stylesheet" href="/blog-card-visuals.css?v=20261026a">'
 
 
