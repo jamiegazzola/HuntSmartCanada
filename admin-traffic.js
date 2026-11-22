@@ -137,20 +137,15 @@
       month.textContent = m.month + (m.partial ? '*' : '');
       const track = document.createElement('div');
       track.className = 'hs-traffic-bar-track';
-      if (impressions) {
-        const segment = document.createElement('span');
-        segment.className = 'hs-traffic-bar-new';
-        segment.style.width = (100 * values[i] / peak) + '%';
-        track.appendChild(segment);
-      } else {
-        const old = document.createElement('span');
-        const fresh = document.createElement('span');
-        old.className = 'hs-traffic-bar-old';
-        fresh.className = 'hs-traffic-bar-new';
-        old.style.width = (100 * m.legacy / peak) + '%';
-        fresh.style.width = (100 * m.current / peak) + '%';
-        track.append(old, fresh);
-      }
+      const legacyAmount = impressions ? m.legacyImpressions : m.legacy;
+      const currentAmount = impressions ? m.currentImpressions : m.current;
+      const old = document.createElement('span');
+      const fresh = document.createElement('span');
+      old.className = 'hs-traffic-bar-old';
+      fresh.className = 'hs-traffic-bar-new';
+      old.style.width = (100 * legacyAmount / peak) + '%';
+      fresh.style.width = (100 * currentAmount / peak) + '%';
+      track.append(old, fresh);
       const number = document.createElement('span');
       number.className = 'hs-traffic-bar-number';
       number.textContent = formatNumber(values[i]);
@@ -160,8 +155,7 @@
 
     const legend = section.querySelector('#hsTrafficLegend');
     legend.replaceChildren();
-    const entries = impressions ? [['Current + legacy combined', 'var(--gold)']] :
-      [['Legacy Netlify', 'var(--forest)'], ['Current .ca', 'var(--gold)']];
+    const entries = [['Legacy Netlify', 'var(--forest)'], ['Current .ca', 'var(--gold)']];
     entries.forEach(([label, colour]) => {
       const el = document.createElement('span');
       const swatch = document.createElement('i');
@@ -200,9 +194,11 @@
   }
   function exportCsv() {
     if (!data) return;
-    const rows = [['Month', 'Legacy Netlify clicks', 'Current .ca clicks', 'Combined clicks', 'Search impressions']];
+    const rows = [['Month', 'Legacy Netlify clicks', 'Current .ca clicks', 'Combined clicks',
+      'Legacy impressions', 'Current impressions', 'Combined impressions']];
     data.sources.searchConsole.months.forEach(m => rows.push(
-      [m.month, m.legacy, m.current, m.legacy + m.current, m.impressions]
+      [m.month, m.legacy, m.current, m.legacy + m.current,
+        m.legacyImpressions, m.currentImpressions, m.impressions]
     ));
     const csv = rows.map(row => row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\r\n') + '\r\n';
     const url = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
