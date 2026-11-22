@@ -7,6 +7,12 @@ const ages=JSON.parse(fs.readFileSync(path.join(__dirname,'../species-map/data/b
 const names=fs.readFileSync(path.join(__dirname,'../species-map/species-catalog.js'),'utf8');
 let catalogue;{const w={};vm.runInNewContext(names,{window:w});catalogue=w.HUNTSMART_SPECIES;}
 const extra=['lynx','bobcat','cougar','wolf','wolverine'];
+// Protect the mobile Success boundary contract against future vector tile version bumps.
+const successSource=fs.readFileSync(path.join(__dirname,'../species-map/harvest-success.js'),'utf8');
+const vectorBuilder=fs.readFileSync(path.join(__dirname,'../build-wmu-vector-tiles.mjs'),'utf8');
+assert(successSource.includes("fetch('/map-tiles/bc-success-boundaries.json'"),'Success map must fetch the stable boundary index');
+assert(vectorBuilder.includes("'bc-success-boundaries.json'"),'Vector build must publish the stable Success boundary index');
+assert(!successSource.includes("20261028-v3/manifest.json"),'Success map may not pin a retired tile version');
 function setup({fail=false,defer=false}={}){
   const elements=new Map(),layers=[],popups=[],map={};let release;
   let species='mule_deer',province='bc',distribution=true;
@@ -34,7 +40,7 @@ function setup({fail=false,defer=false}={}){
       if(defer)release=done;else done();
     }}},
     fetch:url=>{
-      if(url.includes('/map-tiles/20261028-v3/manifest.json')){
+      if(url.includes('/map-tiles/bc-success-boundaries.json')){
         return new Promise(resolve=>{
           const done=()=>resolve({ok:!fail,json:async()=>({version:'2026-10-28-vector-v2',bc:{index:{type:'FeatureCollection',features}}})});
           if(defer)release=done;else done();

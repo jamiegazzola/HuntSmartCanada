@@ -190,6 +190,10 @@ function main() {
     ab:{ featureCount:ab.features.length, index:makeIndex(ab, 'AB'), ...abStats }
   };
   fs.writeFileSync(path.join(outputRoot, 'manifest.json'), JSON.stringify(manifest));
+  // Stable, BC-only Success map boundary index. Rebuild it from the exact
+  // production vector geometry so version bumps cannot break mobile Success.
+  fs.writeFileSync(path.join(SITE, 'map-tiles', 'bc-success-boundaries.json'),
+    JSON.stringify({version:RUNTIME_VERSION,bc:{index:manifest.bc.index}}));
   injectRuntime();
   console.log('WMU vector tile build complete:', JSON.stringify({
     version:RUNTIME_VERSION,
