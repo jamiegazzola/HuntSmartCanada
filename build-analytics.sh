@@ -11,12 +11,12 @@ done
 python3 - <<'PY'
 from pathlib import Path
 
-ANALYTICS = '<script type="module" src="/hs-analytics.js?v=20261026a"></script>'
+ANALYTICS = '<script type="module" src="/hs-analytics.js?v=20261122c"></script>'
 ATTRIBUTION = '<script type="module" src="/hs-auth-attribution.js?v=20261026a"></script>'
 ADMIN_CSS = '<link rel="stylesheet" href="/admin-growth.css?v=20261026a">'
 ADMIN_JS = '<script type="module" src="/admin-growth.js?v=20261026a"></script>'
-TRAFFIC_CSS = '<link rel="stylesheet" href="/admin-traffic.css?v=20261122a">'
-TRAFFIC_JS = '<script defer src="/admin-traffic.js?v=20261122a"></script>'
+TRAFFIC_CSS = '<link rel="stylesheet" href="/admin-traffic.css?v=20261122b">'
+TRAFFIC_JS = '<script defer src="/admin-traffic.js?v=20261122b"></script>'
 BLOG_CARD_CSS = '<link rel="stylesheet" href="/blog-card-visuals.css?v=20261026a">'
 
 
@@ -101,6 +101,7 @@ grep -q 'admin-growth.css' site/admin/index.html
 grep -q 'admin-growth.js' site/admin/index.html
 grep -q 'admin-traffic.js' site/admin/index.html
 grep -q 'admin-traffic.css' site/admin/index.html
+node scripts/verify-analytics-report.cjs
 test -s site/admin-traffic-data.json
 grep -q 'Growth & Content Intelligence' site/admin-growth.js
 

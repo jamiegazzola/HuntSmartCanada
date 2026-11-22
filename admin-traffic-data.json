@@ -60,17 +60,39 @@
     },
     "posthog": {
       "label": "PostHog",
-      "range": "2026-11-19 to 2026-11-21",
-      "visitors": 25,
-      "sessions": 29,
-      "views": 41,
-      "averageSessionSeconds": 188.79310344827587,
-      "bounceRate": 0.793103448275862
+      "firstTracked": "2026-11-19",
+      "asOf": "2026-11-22",
+      "testingCaveat": "Filtering uses PostHog test-account configuration; owner/developer activity may still be present.",
+      "windows": {
+        "7d": {
+          "visitors": 26,
+          "sessions": 30,
+          "views": 43,
+          "averageSessionSeconds": 183.16666666666666,
+          "bounceRate": 0.7666666666666667,
+          "range": "Rolling 7 days to 2026-11-22"
+        },
+        "30d": {
+          "visitors": 26,
+          "sessions": 30,
+          "views": 43,
+          "averageSessionSeconds": 183.16666666666666,
+          "bounceRate": 0.7666666666666667,
+          "range": "Rolling 30 days to 2026-11-22"
+        }
+      }
     }
   },
   "links": {
     "posthog": "https://us.posthog.com/project/753105/web",
     "searchConsole": "https://search.google.com/search-console",
     "ga4": "https://analytics.google.com/"
+  },
+  "lastUpdated": "2026-11-22T18:59:00Z",
+  "refreshPolicy": {
+    "type": "periodic-snapshot",
+    "frequency": "daily",
+    "timeZone": "America/Vancouver",
+    "note": "Static source-preserving archive; live PostHog reports update independently."
   }
 }

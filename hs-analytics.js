@@ -135,7 +135,9 @@
     const allowed = [
       'app_section_view', 'blog_to_app_click', 'blog_map_started',
       'blog_map_completed', 'blog_map_mode_select',
-      'blog_map_species_select', 'blog_map_free_explore', 'sign_up'
+      'blog_map_species_select', 'blog_map_free_explore', 'sign_up',
+      'hunt_detail_view', 'map_tool_used', 'species_filter_used',
+      'draw_save_click', 'plans_view'
     ];
     const host = window.location.hostname.toLowerCase();
     if (!allowed.includes(name) ||
@@ -146,6 +148,8 @@
     if (params.article_slug) safe.article_slug = clip(params.article_slug, 100);
     if (params.map_mode) safe.map_mode = clip(params.map_mode, 30);
     if (params.species) safe.species = clip(params.species, 60);
+    if (params.tool) safe.tool = clip(params.tool, 35);
+    if (params.source_section) safe.source_section = clip(params.source_section, 20);
     if (name === 'sign_up') safe.method = 'firebase_auth';
 
     if (window.posthog && typeof window.posthog.capture === 'function') {
@@ -216,11 +220,59 @@
     }
   }
 
+  // Track a few high-signal, deliberate product actions, never raw search strings,
+  // exact coordinates, account identifiers, or personally identifying content.
+  // Autocapture is intentionally disabled in PostHog.
+  if (pageType() === 'app') {
+    const mapActionLabels = {
+      hsRailLayers: 'map_layers',
+      hsRailSearch: 'map_search_open',
+      hsRailCards: 'map_cards',
+      hsRailLEH: 'leh_layer',
+      fullMapExpandBtn: 'fullscreen',
+      fullMapTile_satellite: 'satellite_basemap',
+      fullMapTile_topo: 'topographic_basemap',
+      fullMapGotoBtn: 'map_to_draws',
+      osFilterBtn: 'gos_filters',
+      osLayersBtn: 'gos_layers',
+      gosRbLayers: 'gos_layers',
+      gosRbFilters: 'gos_filters',
+      abFpMapBtn: 'ab_map_filter'
+    };
+    document.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!target || typeof target.closest !== 'function') return;
+      if (target.closest('.dd-save-star')) {
+        track('draw_save_click', { source_section: 'draw_detail' });
+        return;
+      }
+
+      const button = target.closest('button[id]');
+      if (button && Object.prototype.hasOwnProperty.call(mapActionLabels, button.id)) {
+        track('map_tool_used', { tool: mapActionLabels[button.id] });
+      }
+      const speciesChoice = target.closest('#fpSpeciesChips .fp-chip, #abFpSpeciesChips .fp-chip, .hs-species-row');
+      if (speciesChoice) {
+        const source = speciesChoice.closest('#abFpSpeciesChips') ? 'ab' :
+          speciesChoice.closest('#fpSpeciesChips') ? 'bc' : 'map';
+        track('species_filter_used', { source_section: source });
+      }
+    }, true);
+    document.addEventListener('change', (event) => {
+      const el = event.target;
+      if (el && (el.id === 'fullMapLEHSpecies' || el.id === 'savedSpeciesFilter')) {
+        track('species_filter_used', { source_section: el.id === 'fullMapLEHSpecies' ? 'map' : 'saved' });
+      }
+    }, true);
+  }
+
   if (pageType() === 'app' && typeof window.showPage === 'function' && !window.showPage.__hsAnalyticsWrapped) {
     const originalShowPage = window.showPage;
     const wrapped = function (page) {
       const result = originalShowPage.apply(this, arguments);
       track('app_section_view', { app_section: clip(page, 40) });
+      if (page === 'drawDetail') track('hunt_detail_view', { source_section: 'draws' });
+      if (page === 'paywall') track('plans_view', { source_section: 'app' });
       return result;
     };
     wrapped.__hsAnalyticsWrapped = true;
