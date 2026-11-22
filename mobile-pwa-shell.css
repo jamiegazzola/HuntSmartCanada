@@ -486,14 +486,25 @@
     min-height: calc(100vh - var(--hs-live-header-h, 56px) - var(--hs-live-nav-h, 62px)) !important;
     min-height: calc(100svh - var(--hs-live-header-h, 56px) - var(--hs-live-nav-h, 62px)) !important;
     max-height: none !important;
-    align-items: flex-start !important;
+    /* Stretch the content to the screen height, leaving the photo behind it. */
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch !important;
   }
   html.hs-mobile-browser #homePage .hero-photo-content,
   html.hs-standalone #homePage .hero-photo-content {
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     width: 100%;
     max-width: 100%;
-    padding: clamp(30px, 6svh, 52px) 18px 34px !important;
+    padding: clamp(30px, 6svh, 52px) 18px 46px !important;
+  }
+  html.hs-mobile-browser #homePage .hero-actions,
+  html.hs-standalone #homePage .hero-actions {
+    /* Keep the headline in place and anchor the province choices near the bottom. */
+    margin-top: auto !important;
   }
   html.hs-mobile-browser #homePage .hero-title {
     margin-bottom: 14px !important;
@@ -501,8 +512,9 @@
   html.hs-mobile-browser #homePage .hero-body {
     margin-bottom: 18px !important;
   }
-  html.hs-mobile-browser #homePage .province-cards {
-    gap: 10px !important;
+  html.hs-mobile-browser #homePage .province-cards,
+  html.hs-standalone #homePage .province-cards {
+    gap: 16px !important;
     margin-top: 0 !important;
   }
   html.hs-mobile-browser #homePage .province-card {
