@@ -14,40 +14,56 @@
           "legacy": 50,
           "current": 0,
           "impressions": 114,
-          "partial": true
+          "partial": true,
+          "legacyImpressions": 114,
+          "currentImpressions": 0
         },
         {
           "month": "Jul",
           "legacy": 23,
           "current": 0,
-          "impressions": 159
+          "impressions": 159,
+          "legacyImpressions": 159,
+          "currentImpressions": 0
         },
         {
           "month": "Aug",
           "legacy": 13,
           "current": 0,
-          "impressions": 251
+          "impressions": 251,
+          "legacyImpressions": 251,
+          "currentImpressions": 0
         },
         {
           "month": "Sep",
           "legacy": 10,
           "current": 0,
-          "impressions": 236
+          "impressions": 236,
+          "legacyImpressions": 236,
+          "currentImpressions": 0
         },
         {
           "month": "Oct",
           "legacy": 20,
           "current": 1,
-          "impressions": 443
+          "impressions": 443,
+          "legacyImpressions": 346,
+          "currentImpressions": 97
         },
         {
           "month": "Nov",
           "legacy": 0,
           "current": 7,
           "impressions": 264,
-          "partial": true
+          "partial": true,
+          "legacyImpressions": 3,
+          "currentImpressions": 261
         }
-      ]
+      ],
+      "legacyImpressions": 1109,
+      "currentImpressions": 358,
+      "legacyAsOf": "2026-11-18",
+      "currentAsOf": "2026-11-18"
     },
     "ga4": {
       "label": "Google Analytics 4",
