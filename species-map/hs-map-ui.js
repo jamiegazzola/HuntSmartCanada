@@ -58,6 +58,40 @@
   era.appendChild(success);
   modes.append(era,settingsWrap);
   toolbar.append(header,modes);
+  // Keep metric and reporting years together under the map modes; the years
+  // popover opens only on demand, instead of covering the map by default.
+  const metricSwitch=document.querySelector('#hs-harvest-panel .hs-metric-switch');
+  const metricHead=document.querySelector('#hs-harvest-panel .hs-metric-head');
+  const yearTrigger=document.getElementById('hs-year-trigger');
+  const yearPanel=document.getElementById('hs-harvest-panel');
+  if(metricSwitch&&yearTrigger&&yearPanel){
+    const successTools=node('div','hs-success-tools');
+    successTools.setAttribute('role','group');
+    successTools.setAttribute('aria-label','Hunter success map settings');
+    successTools.append(metricSwitch,yearTrigger);
+    metricHead?.remove();
+    toolbar.append(successTools);
+    yearTrigger.setAttribute('aria-expanded','false');
+    const closeYears=()=>{
+      yearPanel.classList.remove('is-open');
+      yearTrigger.setAttribute('aria-expanded','false');
+    };
+    yearTrigger.addEventListener('click',()=>{
+      yearTrigger.setAttribute('aria-expanded',String(yearPanel.classList.contains('is-open')));
+    });
+    document.addEventListener('pointerdown',event=>{
+      if(!yearPanel.contains(event.target)&&!yearTrigger.contains(event.target))closeYears();
+    });
+    document.addEventListener('keydown',event=>{
+      if(event.key==='Escape')closeYears();
+    });
+    for(const id of ['era-modern','era-historical','hs-harvest-toggle','province-bc','province-alberta']){
+      document.getElementById(id)?.addEventListener('click',()=>{
+        if(id!=='hs-harvest-toggle')closeYears();
+      });
+    }
+    document.getElementById('hs-year-close')?.addEventListener('click',closeYears);
+  }
   // Terrain stays an independent floating control, outside the compact toolbar.
   const current=()=>document.getElementById('province-alberta')?.getAttribute('aria-pressed')==='true'?'AB':'BC';
   const refreshProvince=()=>{
