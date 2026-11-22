@@ -23,6 +23,6 @@ html=html.replace('</head>', `  <style>
   .hs-preview-species-back:focus-visible { outline: 2px solid #9fe6ab; outline-offset: 2px; }
   </style>
 </head>`);
-html=html.replace('<main id="map"', '<a class="hs-preview-species-back" href="/?map=interactive" aria-label="Return to HuntSmart hunting map">← Maps</a>\n  <main id="map"');
+html=html.replace('<main id="map"', '<a class="hs-preview-species-back" href="/?map=interactive" aria-label="Back to HuntSmart app">← Back</a>\n  <main id="map"');
 fs.writeFileSync(path,html);
 console.log('Installed public-data species-map preview route and return navigation; private KMZ assets remain production-only.');
