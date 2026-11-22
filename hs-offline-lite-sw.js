@@ -1,5 +1,5 @@
 /* HuntSmart offline-lite cache: current app shell + conservative offline fallback. */
-const HS_CACHE = 'huntsmart-offline-lite-v81';
+const HS_CACHE = 'huntsmart-offline-lite-v82';
 const HS_CORE = [
   './', './index.html', './site.webmanifest', './style.css', './terrain-intelligence.css',
   './maps.js', './terrain-intelligence.js', './bc-open-seasons.js', './data.js',
