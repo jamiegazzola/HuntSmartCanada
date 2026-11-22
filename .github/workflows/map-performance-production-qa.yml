@@ -98,8 +98,15 @@ jobs:
             assert(requests.filter(isFullGeometry).length === 0, `Full geometry requested before Map: ${JSON.stringify(requests.filter(isFullGeometry))}`);
 
             const bcStarted = Date.now();
-            await page.evaluate(() => document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click());
-            await page.locator('#hsMapDestinationsBackdrop [data-map-destination="interactive"]').click();
+            // The Maps tab now enters the hunting map directly; the old
+            // intermediate map chooser was intentionally removed.
+            await page.waitForFunction(() => !!window.__HS_MAP_DESTINATIONS__ &&
+              !!document.querySelector('#hsMobileTabbar [data-tab="map"]'), null, { timeout:20000 });
+            await page.locator('#hsMobileTabbar [data-tab="map"]').click();
+            await page.waitForFunction(() => {
+              const el = document.getElementById('mapPage');
+              return !!el && el.getClientRects().length > 0 && getComputedStyle(el).display !== 'none';
+            }, null, { timeout:20000 });
             await page.waitForFunction(() => {
               try {
                 if (typeof fullMapInstance === 'undefined' || !fullMapInstance) return false;
