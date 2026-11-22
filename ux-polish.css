@@ -464,3 +464,40 @@ nav {
  #drawsPage .card-expand>div:has([id^="lehMap_"]),#drawsPage .hs-v4-data-note { grid-column:1; }
 }
 @media(max-width:360px){#drawsPage #cardsGrid>.card{padding:16px 13px 0;}#drawsPage .card-header{padding-right:91px;}#drawsPage .card-expand.open{margin:0 -13px;padding:13px 12px 20px;}#drawsPage .odds-pct{font-size:24px;}#drawsPage .card-footer{align-items:flex-start;}}
+
+/* BC LEH V4.1 — expanded hunt details: contain the zone map and use space efficiently.
+   Scoped to the BC results page; leaves existing Mapbox handlers/data unchanged. */
+@media (min-width: 981px) {
+  /* When a terrain writeup exists, put it alongside the map, not above it. */
+  #drawsPage .card-expand.open > div:has(> .tc-toggle-btn) {
+    grid-column: 1;
+    align-self: start;
+    margin-top: 0 !important;
+  }
+  #drawsPage .card-expand.open:has(> div > .tc-toggle-btn) > div:has([id^="lehMap_"]) {
+    grid-column: 2;
+    align-self: start;
+    margin-top: 0 !important;
+  }
+}
+/* The shared LEH map CSS otherwise imposes a 1:1 aspect ratio. On a
+   full-width expanded card that produces a map over 1,000 px tall. */
+#drawsPage .card-expand.open .leh-card-map,
+#drawsPage .card-expand.open [id^="lehMap_"]:not([id$="_status"]):not([id*="_btn_"]) {
+  aspect-ratio: auto !important;
+  height: 360px !important;
+  min-height: 0 !important;
+  max-height: 360px !important;
+  width: 100% !important;
+}
+@media (max-width: 980px) {
+  #drawsPage .card-expand.open > div:has(> .tc-toggle-btn),
+  #drawsPage .card-expand.open > div:has([id^="lehMap_"]) {
+    grid-column: 1;
+  }
+  #drawsPage .card-expand.open .leh-card-map,
+  #drawsPage .card-expand.open [id^="lehMap_"]:not([id$="_status"]):not([id*="_btn_"]) {
+    height: 290px !important;
+    max-height: 290px !important;
+  }
+}
