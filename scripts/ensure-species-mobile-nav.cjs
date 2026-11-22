@@ -26,6 +26,37 @@ const block = [
   '  <script defer src="/species-map/hs-map-recovery.js?v=20261120a"></script>'
 ].join('\n');
 html = html.replace('</head>', block + '\n</head>');
+// The private KMZ installer replaces the entire public species HTML during
+// production builds. Carry the canonical/share metadata from the public entrypoint
+// into that final private document, without changing map behaviour or private data.
+const publicHtml = fs.readFileSync(path.join('species-map', 'index.html'), 'utf8');
+const shareStart = '<!-- huntsmart-link-preview:start -->';
+const shareEnd = '<!-- huntsmart-link-preview:end -->';
+const startPos = publicHtml.indexOf(shareStart);
+const endPos = publicHtml.indexOf(shareEnd, startPos + shareStart.length);
+if (startPos < 0 || endPos < 0 || publicHtml.indexOf(shareStart, startPos + 1) !== -1) {
+  throw new Error('Species share-preview source block is missing or duplicated');
+}
+const shareBlock = publicHtml.slice(startPos, endPos + shareEnd.length);
+if (!shareBlock.includes('property="og:image"') ||
+    !shareBlock.includes('property="og:url"') ||
+    !shareBlock.includes('rel="canonical"')) {
+  throw new Error('Species share-preview source block is incomplete');
+}
+// Replace generic social/description/canonical tags if the private viewer
+// already defines them. Do not touch robots, map resources or private data.
+html = html.replace(/<meta\b(?=[^>]*\bproperty\s*=\s*["']og:[^"']+["'])[^>]*>\s*/gi, '');
+html = html.replace(/<meta\b(?=[^>]*\bname\s*=\s*["']twitter:[^"']+["'])[^>]*>\s*/gi, '');
+html = html.replace(/<meta\b(?=[^>]*\bname\s*=\s*["']description["'])[^>]*>\s*/gi, '');
+html = html.replace(/<link\b(?=[^>]*\brel\s*=\s*["']canonical["'])[^>]*>\s*/gi, '');
+html = html.replace(/<!-- huntsmart-link-preview:start -->[\s\S]*?<!-- huntsmart-link-preview:end -->\s*/g, '');
+html = html.replace('</head>', shareBlock + '\n</head>');
+const headMarkup = html.slice(0, html.indexOf('</head>'));
+for (const name of ['og:title', 'og:url', 'og:image']) {
+  const count = headMarkup.split('property="' + name + '"').length - 1;
+  if (count !== 1) throw new Error('Species preview must have exactly one ' + name);
+}
+
 if ((html.match(/hs-app-nav\.js/g) || []).length !== 1 ||
     (html.match(/hs-app-nav\.css/g) || []).length !== 1 ||
     (html.match(/hs-map-recovery\.js/g) || []).length !== 1) {
