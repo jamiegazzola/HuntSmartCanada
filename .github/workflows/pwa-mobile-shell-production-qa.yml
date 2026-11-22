@@ -125,6 +125,15 @@ jobs:
             assert(home.hero.bottom >= home.tabs.top - 3, `hero does not fill first mobile screen: ${JSON.stringify(home)}`);
             assert(home.stats.top >= home.tabs.top - 3, `stats appear before scrolling: ${JSON.stringify(home)}`);
             assert(home.cards.bottom <= home.hero.bottom + 2, `province cards clipped by hero: ${JSON.stringify(home)}`);
+            const cardsBottomPadding = home.hero.bottom - home.cards.bottom;
+            assert(cardsBottomPadding >= 36 && cardsBottomPadding <= 62,
+              `province choices not anchored near hero bottom: ${JSON.stringify(home)}`);
+            const cardGap = await page.evaluate(() => {
+              const nodes = document.querySelectorAll('#homePage .province-card');
+              return nodes[1].getBoundingClientRect().top - nodes[0].getBoundingClientRect().bottom;
+            });
+            assert(cardGap >= 14 && cardGap <= 20,
+              `province cards are too tight or uneven: ${cardGap}px`);
             await page.screenshot({ path: 'pwa-mobile-home-390.png', fullPage: false });
             await page.evaluate(() => document.querySelector('#homePage .home-stats-strip').scrollIntoView({ block: 'start' }));
             await page.waitForTimeout(150);
