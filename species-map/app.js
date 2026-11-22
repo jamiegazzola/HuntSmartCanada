@@ -915,6 +915,8 @@
         center: savedView?.center || (province === 'ab' ? { lat: 54.5, lng: -114.8 } : { lat: 54.4, lng: -125.7 }),
         zoom: savedView?.zoom || 5,
         mapTypeId: google.maps.MapTypeId.HYBRID,
+        disableDefaultUI: true,
+        rotateControl: false,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,

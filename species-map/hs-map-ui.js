@@ -31,9 +31,9 @@
   province.hidden=true;
   province.style.display='none';
   provinceWrap.append(provinceToggle);
-  const backToMaps=node('a','hs-map-back','← Maps');
+  const backToMaps=node('a','hs-map-back','← Back');
   backToMaps.href='/?map=interactive';
-  backToMaps.setAttribute('aria-label','Return to HuntSmart hunting map');
+  backToMaps.setAttribute('aria-label','Back to HuntSmart app');
   header.append(backToMaps,species,provinceWrap);
 
   const settingsWrap=node('div','hs-settings-wrap');

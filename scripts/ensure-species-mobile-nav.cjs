@@ -21,7 +21,7 @@ html = html.replace(/\s*<link\s+[^>]*href=["'](?:\.\/|\/species-map\/)?hs-app-na
 html = html.replace(/\s*<script\s+[^>]*src=["'](?:\.\/|\/species-map\/)?hs-app-nav\.js(?:\?[^"']*)?["'][^>]*><\/script>/g, '');
 html = html.replace(/\s*<script\s+[^>]*src=["'](?:\.\/|\/species-map\/)?hs-map-recovery\.js(?:\?[^"']*)?["'][^>]*><\/script>/g, '');
 const block = [
-  '  <link rel="stylesheet" href="/species-map/hs-app-nav.css?v=20261120-direct-map">',
+  '  <link rel="stylesheet" href="/species-map/hs-app-nav.css?v=20261122-clean-map">',
   '  <script async src="/species-map/hs-app-nav.js?v=20261120-direct-map"></script>',
   '  <script defer src="/species-map/hs-map-recovery.js?v=20261120a"></script>'
 ].join('\n');
