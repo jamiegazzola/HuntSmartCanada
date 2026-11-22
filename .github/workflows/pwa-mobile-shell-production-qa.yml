@@ -32,7 +32,7 @@ jobs:
       - name: Verify production PWA shell and map viewport
         env:
           URL: https://huntsmartcanada.ca/
-          EXPECTED_PWA_VERSION: 2026-10-29-pwa-v2
+          EXPECTED_PWA_VERSION: 2026-11-21-pwa-v3
         run: |
           node <<'NODE'
           const { chromium } = require('playwright');
@@ -106,6 +106,32 @@ jobs:
             assert(swText.includes('networkFirst(request)'), 'service worker is not using network-first app updates');
 
             await page.waitForSelector('#hsMobileTabbar', { state: 'visible', timeout: 10000 });
+            await page.waitForFunction(() => document.documentElement.classList.contains('hs-mobile-browser'), null, { timeout: 10000 });
+            const home = await page.evaluate(() => {
+              const hero = document.querySelector('#homePage .hero-photo').getBoundingClientRect();
+              const cards = document.querySelector('#homePage .province-cards').getBoundingClientRect();
+              const stats = document.querySelector('#homePage .home-stats-strip').getBoundingClientRect();
+              const tabs = document.getElementById('hsMobileTabbar').getBoundingClientRect();
+              const header = document.querySelector('body > nav:not(.hs-mobile-tabbar)').getBoundingClientRect();
+              return {
+                hero: { top: hero.top, bottom: hero.bottom },
+                cards: { bottom: cards.bottom },
+                stats: { top: stats.top },
+                tabs: { top: tabs.top },
+                header: { bottom: header.bottom }
+              };
+            });
+            assert(home.hero.top >= home.header.bottom - 3, `hero overlaps header: ${JSON.stringify(home)}`);
+            assert(home.hero.bottom >= home.tabs.top - 3, `hero does not fill first mobile screen: ${JSON.stringify(home)}`);
+            assert(home.stats.top >= home.tabs.top - 3, `stats appear before scrolling: ${JSON.stringify(home)}`);
+            assert(home.cards.bottom <= home.hero.bottom + 2, `province cards clipped by hero: ${JSON.stringify(home)}`);
+            await page.screenshot({ path: 'pwa-mobile-home-390.png', fullPage: false });
+            await page.evaluate(() => document.querySelector('#homePage .home-stats-strip').scrollIntoView({ block: 'start' }));
+            await page.waitForTimeout(150);
+            const scrolledStats = await page.evaluate(() => document.querySelector('#homePage .home-stats-strip').getBoundingClientRect().top);
+            assert(scrolledStats < home.tabs.top - 40, `stats not accessible after scrolling: ${scrolledStats}`);
+            await page.evaluate(() => window.scrollTo(0, 0));
+
             await page.evaluate(() => document.querySelector('#hsMobileTabbar [data-tab="map"]')?.click());
             await page.waitForFunction(() => !!document.getElementById('mapPage')?.getClientRects().length, null, {timeout:15000});
             await page.waitForFunction(() => {
@@ -153,6 +179,8 @@ jobs:
         if: always()
         with:
           name: pwa-mobile-shell-production-qa-${{ github.run_number }}
-          path: pwa-mobile-map-390.png
+          path: |
+            pwa-mobile-home-390.png
+            pwa-mobile-map-390.png
           if-no-files-found: warn
           retention-days: 14

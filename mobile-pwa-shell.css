@@ -474,18 +474,22 @@
 }
 
 
-/* Mobile Safari homepage: flow the hero from the top of the image rather than
-   pinning the copy to the bottom of a 86vh photo. In Safari's expanded-toolbar
-   state that fixed-height alignment hid the province choices below the fold.
-   Restrict to browser mode: the installed PWA and desktop keep their layout. */
+/* Mobile homepage: the photo fills the initial visible screen between
+   the top header and fixed bottom tabs. 100svh stays stable when Safari's
+   toolbars collapse; auto height lets short screens show all province cards
+   without clipping. The same layout works in the installed standalone PWA. */
 @media (max-width: 768px) {
-  html.hs-mobile-browser #homePage .hero-photo {
+  html.hs-mobile-browser #homePage .hero-photo,
+  html.hs-standalone #homePage .hero-photo {
+    box-sizing: border-box;
     height: auto !important;
-    min-height: 0 !important;
+    min-height: calc(100vh - var(--hs-live-header-h, 56px) - var(--hs-live-nav-h, 62px)) !important;
+    min-height: calc(100svh - var(--hs-live-header-h, 56px) - var(--hs-live-nav-h, 62px)) !important;
     max-height: none !important;
     align-items: flex-start !important;
   }
-  html.hs-mobile-browser #homePage .hero-photo-content {
+  html.hs-mobile-browser #homePage .hero-photo-content,
+  html.hs-standalone #homePage .hero-photo-content {
     box-sizing: border-box;
     width: 100%;
     max-width: 100%;

@@ -3,7 +3,7 @@
   'use strict';
   if (window.__HUNTSMART_PWA_SHELL__) return;
 
-  var VERSION = '2026-10-29-pwa-v2';
+  var VERSION = '2026-11-21-pwa-v3';
   var mobileMq = window.matchMedia('(max-width: 980px)');
   var standaloneMq = window.matchMedia('(display-mode: standalone)');
   var installPrompt = null;
