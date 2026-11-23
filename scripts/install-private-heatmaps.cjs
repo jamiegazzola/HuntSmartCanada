@@ -39,7 +39,7 @@ const appReplacements = [
   ],
   [
     "contextData.setStyle({ strokeColor: '#f5c76b', strokeOpacity: 0.95, strokeWeight: 2.5, clickable: false });",
-    "contextData.addGeoJson({type:'FeatureCollection',features:[{type:'Feature',properties:{reference:'Pink Mountain geographic reference (BC Geographical Names, not a bison sighting)'},geometry:{type:'Point',coordinates:[-122.8736111111,57.0716666667]}}]});\\n          contextData.setStyle(feature => feature.getGeometry().getType() === 'Point' ? { icon:{path:google.maps.SymbolPath.CIRCLE,scale:6,fillColor:'#f5c76b',fillOpacity:layerOpacity,strokeColor:'#211d12',strokeOpacity:layerOpacity,strokeWeight:1.2},title:feature.getProperty('reference'),clickable:false } : { strokeColor:'#f5c76b',strokeOpacity:0.95,strokeWeight:2.5,clickable:false });",
+    "contextData.addGeoJson({type:'FeatureCollection',features:[{type:'Feature',properties:{reference:'Pink Mountain geographic reference (BC Geographical Names, not a bison sighting)'},geometry:{type:'Point',coordinates:[-122.8736111111,57.0716666667]}}]});\n          contextData.setStyle(feature => feature.getGeometry().getType() === 'Point' ? { icon:{path:google.maps.SymbolPath.CIRCLE,scale:6,fillColor:'#f5c76b',fillOpacity:layerOpacity,strokeColor:'#211d12',strokeOpacity:layerOpacity,strokeWeight:1.2},title:feature.getProperty('reference'),clickable:false } : { strokeColor:'#f5c76b',strokeOpacity:0.95,strokeWeight:2.5,clickable:false });",
   ],
   [
     "const DISPLAYED_SPECIES = new Set([...KMZ_HEATMAPS, 'roosevelt_elk', 'rocky_elk_kootenay']);",

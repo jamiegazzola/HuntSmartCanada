@@ -41,7 +41,7 @@ function compile(source, {test=false}={}){
     if(!Number.isInteger(year)||year<1984||year>2024||!species)continue;
     // Single-WMU IDs only: 424 => 4-24, 105 => 1-5.
     // Multi-WMU LEH hunt areas may not be geographically attributed to one WMU.
-    const hit=/^([1-8])-?(\d{1,2})$/.exec(raw||'');
+    const hit=/^([1-8])(\d{2})$/.exec(raw||'') || /^([1-8])-(\d{1,2})$/.exec(raw||'');
     if(!hit||!(region===hit[1]||(hit[1]==='7'&&['7A','7B'].includes(region.toUpperCase())))||Number(hit[2])<1||Number(hit[2])>98){rejectedAmbiguous++;continue;}
     const id=hit[1]+'-'+Number(hit[2]);
     const key=species+'|'+id+'|'+year;
