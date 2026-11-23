@@ -87,9 +87,14 @@ jobs:
           assert(css.includes('html.hs-standalone'), 'standalone styling missing');
 
           const mapStyles = read('style.css');
-          assert(mapStyles.includes('#bcOpenSeasonsPage .os-body:has(.os-panel.open) .os-map-control-stack') &&
+          assert(mapStyles.includes('#bcOpenSeasonsPage:has(.os-panel.open) #osMapControlStack') &&
             mapStyles.includes('right: calc(min(410px, 100vw - 28px) + 30px) !important;'),
             'GOS desktop controls should move left of an open results inspector');
+          assert(mapStyles.includes('#bcOpenSeasonsPage .os-results-panel::-webkit-scrollbar') &&
+            mapStyles.includes('scrollbar-width: none !important'),
+            'GOS results must scroll without displaying a scrollbar');
+          assert(read('index.html').includes('./style.css?v=20261123goscontrols2'),
+            'Map stylesheet change must invalidate cached CSS');
           assert(mapStyles.includes('transition: right .18s ease'), 'GOS controls should transition smoothly');
 
           const build = read('netlify.toml');
