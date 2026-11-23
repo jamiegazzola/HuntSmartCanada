@@ -126,7 +126,7 @@ if 'href="/blog/">Resources</a>' not in html and footer_saved in html:
 
 # Load scoped preview map styles without modifying the rest of the app.
 for tag in [
-    '<link href="./world-class-map.css?v=20260909" rel="stylesheet"/>',
+    '<link href="./world-class-map.css?v=20261123layers" rel="stylesheet"/>',
     '<link href="./imagery-lab.css?v=20260909" rel="stylesheet"/>',
     '<link href="./terrain-intelligence.css?v=20261120-mobile5" rel="stylesheet"/>',
 ]:
