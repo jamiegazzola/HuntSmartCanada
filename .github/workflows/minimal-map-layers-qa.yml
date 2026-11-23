@@ -81,6 +81,16 @@ jobs:
                   await slider.evaluate(el=>{el.value='35';el.dispatchEvent(new Event('input',{bubbles:true}));});
                 } else {
                   await page.locator('#hsWorldSettingsBtn').click();
+                  const debug=await page.evaluate(()=>({
+                    buttonExists:!!document.getElementById('hsWorldSettingsBtn'),
+                    buttonHTML:document.getElementById('hsWorldSettingsBtn')?.outerHTML.slice(0,450),
+                    panelExists:!!document.getElementById('hsWorldSettingsPanel'),
+                    panelClass:document.getElementById('hsWorldSettingsPanel')?.className,
+                    panelHTML:document.getElementById('hsWorldSettingsPanel')?.innerHTML.slice(0,180),
+                    worldFn:typeof window.hsWcToggleSettings,
+                    fallbackFn:typeof window.hsFallbackCloseLayers
+                  }));
+                  console.log('LEH click diagnostic',JSON.stringify(debug));
                   await page.waitForFunction(()=>document.querySelector('#hsWorldSettingsPanel')?.classList.contains('open'),null,{timeout:10000});
                   await expectSimple(page,'#hsWorldSettingsPanel');
                   const slider=page.locator('#hsWorldSettingsPanel input[type="range"]').first();
