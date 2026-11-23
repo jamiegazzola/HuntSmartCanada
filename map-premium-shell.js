@@ -760,6 +760,49 @@
   #mapPage.hs-premium-map #fullMapResultsDrawer .fm-card-bottom { gap: 5px 8px !important; }
 }
 
+
+@media (max-width: 768px) {
+  #mapPage.hs-premium-map #fullMapResultsDrawer.hs-drawer-open {
+    height: min(60dvh, 520px) !important;
+    max-height: calc(100dvh - 94px) !important;
+  }
+  #mapPage.hs-premium-map #fullMapResultsDrawer.hs-drawer-open.is-maximized:not(.is-collapsed) {
+    height: min(88dvh, 820px) !important;
+    max-height: calc(100dvh - 58px) !important;
+  }
+  #mapPage.hs-premium-map #fullMapResultsDrawer.hs-drawer-open::before { display: none !important; }
+  #mapPage.hs-premium-map #fullMapResultsDrawer .hs-sheet-size-handle {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 32px;
+    height: 32px;
+    width: 80px;
+    padding: 11px 0 0;
+    margin: 0 auto;
+    flex: 0 0 32px;
+    cursor: ns-resize;
+    border: 0;
+    background: transparent;
+    touch-action: manipulation;
+  }
+  #mapPage.hs-premium-map #fullMapResultsDrawer .hs-sheet-size-handle::before {
+    content: '';
+    display: block;
+    height: 4px;
+    width: 38px;
+    border-radius: 99px;
+    background: rgba(227,242,230,.32);
+  }
+  #mapPage.hs-premium-map #fullMapResultsDrawer .hs-sheet-size-handle:focus-visible {
+    outline: 2px solid #a2e6ae;
+    outline-offset: -2px;
+  }
+}
+@media (min-width: 769px) {
+  #mapPage.hs-premium-map #fullMapResultsDrawer .hs-sheet-size-handle { display:none !important; }
+}
+
 `;
     document.head.appendChild(style);
   }
@@ -988,6 +1031,52 @@
     }
   }
 
+  // Three mobile sheet heights: compact map peek, medium results, full results.
+  function installMobileSheetSizing() {
+    const d = drawer();
+    if (!d || d.dataset.hsSheetSizingReady === 'true') return;
+    d.dataset.hsSheetSizingReady = 'true';
+    const handle = document.createElement('button');
+    handle.type = 'button';
+    handle.className = 'hs-sheet-size-handle';
+    handle.setAttribute('aria-label', 'Expand selected-unit results');
+    handle.setAttribute('title', 'Expand or collapse results');
+    d.insertBefore(handle, d.firstChild);
+
+    function stage() {
+      if (d.classList.contains('is-collapsed')) return 0;
+      if (d.classList.contains('is-maximized')) return 2;
+      return 1;
+    }
+    function changeStage(next) {
+      if (!isMobile() || !resultsVisible()) return;
+      d.classList.toggle('is-collapsed', next === 0);
+      d.classList.toggle('is-maximized', next === 2);
+      handle.setAttribute('aria-label', next === 0 ? 'Expand selected-unit results' : next === 1 ? 'Show more selected-unit results' : 'Reduce selected-unit results');
+      syncDrawerState();
+    }
+    handle.addEventListener('click', function () {
+      const current = stage();
+      changeStage(current === 0 ? 1 : current === 1 ? 2 : 1);
+    });
+
+    const header = d.querySelector('.fullmap-results-header');
+    if (header) {
+      let startY = null;
+      header.addEventListener('touchstart', function (event) {
+        if (event.touches.length !== 1) return;
+        startY = event.touches[0].clientY;
+      }, { passive: true });
+      header.addEventListener('touchend', function (event) {
+        if (startY === null || !event.changedTouches.length) return;
+        const delta = event.changedTouches[0].clientY - startY;
+        startY = null;
+        if (Math.abs(delta) < 44) return;
+        changeStage(Math.max(0, Math.min(2, stage() + (delta < 0 ? 1 : -1))));
+      }, { passive: true });
+    }
+  }
+
   function makeMobilePeekVisible() {
     if (!isMobile()) return;
     const d = drawer();
@@ -1049,6 +1138,7 @@
     updateToolbar();
     installWrappers();
     observeDrawer();
+    installMobileSheetSizing();
     syncDrawerState();
   }
 
