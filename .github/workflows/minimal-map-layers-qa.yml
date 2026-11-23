@@ -71,7 +71,14 @@ jobs:
                 await page.goto(process.env.URL+'?layers-qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
                 await page.waitForFunction(()=>!!window.__HUNTSMART_INTERACTIVE_MAP__,null,{timeout:60000});
                 await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.open('leh',{province:'BC'}));
-                await page.waitForFunction(()=>!!document.getElementById('hsWorldSettingsBtn'),null,{timeout:30000});
+                await page.waitForFunction(()=>{
+                  const root=document.getElementById('mapPage');
+                  return !!root && root.getClientRects().length>0 &&
+                    window.__HUNTSMART_INTERACTIVE_MAP__.getState().surface==='leh' &&
+                    typeof fullMapInstance!=='undefined' && !!fullMapInstance &&
+                    !!document.getElementById('hsWorldSettingsBtn');
+                },null,{timeout:45000});
+                await page.waitForTimeout(500);
                 if (mobile) {
                   await page.waitForFunction(()=>typeof window.hsOpenModal==='function',null,{timeout:20000});
                   await page.evaluate(()=>window.hsOpenModal('layers'));
@@ -100,7 +107,13 @@ jobs:
                 assert(Math.abs(lehOpacity-.35)<.015,'LEH opacity not applied: '+lehOpacity);
 
                 await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.open('gos',{province:'BC'}));
-                await page.waitForFunction(()=>{const p=document.getElementById('bcOpenSeasonsPage');return !!p&&getComputedStyle(p).display!=='none'},null,{timeout:30000});
+                await page.waitForFunction(()=>{
+                  const p=document.getElementById('bcOpenSeasonsPage');
+                  return !!p && p.getClientRects().length>0 &&
+                    window.__HUNTSMART_INTERACTIVE_MAP__.getState().surface==='gos' &&
+                    typeof osMapInstance!=='undefined' && !!osMapInstance;
+                },null,{timeout:45000});
+                await page.waitForTimeout(400);
                 if (mobile) {
                   await page.waitForFunction(()=>typeof window.gosOpenModal==='function',null,{timeout:20000});
                   await page.evaluate(()=>window.gosOpenModal('layers'));
