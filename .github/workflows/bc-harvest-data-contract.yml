@@ -59,4 +59,5 @@ jobs:
           node scripts/build-leh-history.cjs
           npm install --no-save shpjs@6.2.0
           node scripts/build-black-bear-history.mjs
+          node scripts/build-test-distribution.mjs
           node scripts/verify-harvest-success.cjs

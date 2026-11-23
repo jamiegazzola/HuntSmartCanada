@@ -1,0 +1,55 @@
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const root=path.join('site','species-map'),file=n=>path.join(root,n);
+let app=fs.readFileSync(file('app.js'),'utf8'),html=fs.readFileSync(file('index.html'),'utf8');
+const manifest=JSON.parse(fs.readFileSync(file('data/test-distribution-manifest.json'),'utf8'));
+assert.equal(Object.keys(manifest).length,9);
+const replace=(s,a,b)=>{assert(s.includes(a),'TEST patch anchor missing: '+a);return s.replace(a,b)};
+const eraAnchor="  const eraHistorical = document.getElementById('era-historical');";
+app=replace(app,eraAnchor,eraAnchor+'\n  const eraTest = document.getElementById("era-test");\n  const testMaps = '+JSON.stringify(manifest)+';\n  const testCache = new Map();\n  let testState = null;\n  window.HUNTSMART_TEST_DISTRIBUTION_STATE = () => testState;');
+app=replace(app,"    eraHistorical.setAttribute('aria-pressed', viewMode === 'historical' ? 'true' : 'false');","    eraHistorical.setAttribute('aria-pressed', viewMode === 'historical' ? 'true' : 'false');\n    eraTest.setAttribute('aria-pressed', viewMode === 'test' ? 'true' : 'false');");
+app=replace(app,"  eraHistorical.addEventListener('click', () => changeEra('historical'));","  eraHistorical.addEventListener('click', () => changeEra('historical'));\n  eraTest.addEventListener('click', () => changeEra('test'));");
+app=replace(app,"    if ((isRoosevelt && viewMode !== 'modern') || (isRockyElk && viewMode !== 'historical')) {","    const testSupported = province === 'bc' && Object.hasOwn(testMaps,item.key);\n    eraTest.hidden = !testSupported;\n    if (viewMode === 'test' && !testSupported) { viewMode = 'historical'; setEraButtons(); }\n    if (viewMode !== 'test' && ((isRoosevelt && viewMode !== 'modern') || (isRockyElk && viewMode !== 'historical'))) {");
+app=replace(app,"      if (viewMode !== 'historical') { viewMode = 'historical'; setEraButtons(); }","      if (viewMode !== 'historical' && viewMode !== 'test') { viewMode = 'historical'; setEraButtons(); }");
+app=replace(app,"    clearLayer();\n    window.HUNTSMART_BC_EVIDENCE.clear();","    clearLayer();\n    testState = null;\n    document.getElementById('hs-test-legend').hidden = true;\n    document.body.classList.remove('bc-test-distribution');\n    window.HUNTSMART_BC_EVIDENCE.clear();");
+const branch="      if (province === 'bc' && item.type === 'bc_official_evidence') {";
+app=replace(app,branch,`      if (province === 'bc' && viewMode === 'test' && testSupported) {
+        const entry = testMaps[item.key];
+        let payload = testCache.get(item.key);
+        if (!payload) {
+          const response = await fetch('data/' + entry.file + '?v=gov-test-1', {signal:renderAbort.signal});
+          if (!response.ok) throw new Error('TEST distribution source unavailable');
+          payload = await response.json();
+          if (payload.type !== 'FeatureCollection' || !payload.features?.length) throw new Error('TEST distribution data invalid');
+          if (version !== renderVersion) return;
+          testCache.set(item.key,payload);
+        }
+        if (version !== renderVersion) return;
+        activeData = makeDataLayer();
+        activeData.addGeoJson(payload);
+        activeData.setStyle(feature => {
+          const cls = feature.getProperty('historical_class');
+          const color = {L:'#3f9646',M:'#f4d03f',H:'#d73027'}[cls];
+          if (!color) return {visible:false};
+          return {fillColor:color,fillOpacity:0.62,strokeColor:'#fff',strokeOpacity:0.25,strokeWeight:0.5,zIndex:{L:1,M:2,H:3}[cls],clickable:false};
+        });
+        const note = document.getElementById('layer-note');
+        note.hidden = false;
+        document.body.classList.add('bc-test-distribution');
+        document.getElementById('layer-note-text').textContent = 'TEST: official BC '+entry.year+' relative-abundance polygons. Green low, yellow moderate, red high; unknown and contradictory records omitted. Not current population density. Combined species use original mapped subspecies; overlap shows the higher class, not summed density.';
+        const source = document.getElementById('layer-source');
+        source.hidden = false;
+        source.href = 'https://a100.gov.bc.ca/pub/acat/public/viewReport.do?reportId=40140';
+        source.textContent = 'Original BC mapping archive';
+        document.getElementById('layer-attribution').hidden = true;
+        const legend = document.getElementById('hs-test-legend');
+        legend.querySelector('strong').textContent = 'TEST · BC '+entry.year+' historical abundance';
+        legend.hidden = false;
+        testState = {species:item.key,features:payload.features.length,year:entry.year};
+      } else if (province === 'bc' && item.type === 'bc_official_evidence') {`);
+html=replace(html,'<button id="era-historical" type="button" aria-pressed="false">Historical</button>','<button id="era-historical" type="button" aria-pressed="false">Historical</button>\n    <button id="era-test" type="button" aria-pressed="false" hidden>TEST</button>');
+html=replace(html,'  <div id="error" ','  <div id="hs-test-legend" class="hs-test-legend" hidden><strong>TEST</strong><span><i style="background:#3f9646"></i>Low</span><span><i style="background:#f4d03f"></i>Moderate</span><span><i style="background:#d73027"></i>High</span></div>\n  <div id="error" ');
+html=html.replace(/app\\.js\\?v=[^"]+/,'app.js?v=gov-test-20261123a').replace(/hs-map-ui\\.js\\?v=[^"]+/,'hs-map-ui.js?v=gov-test-20261123a').replace(/hs-map-ui\\.css\\?v=[^"]+/,'hs-map-ui.css?v=gov-test-20261123a');
+new Function(app);
+fs.writeFileSync(file('app.js'),app);fs.writeFileSync(file('index.html'),html);
+console.log('Installed TEST distribution mode for nine BC species; original maps preserved.');
