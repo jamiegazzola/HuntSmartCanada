@@ -34,12 +34,23 @@ execFileSync(process.execPath, ['scripts/verify-private-species.mjs'], { stdio:'
 // visually mixing them with the KMZ makes the map misleading.
 const appReplacements = [
   [
-    "Gold: Hay River reference. A 2000 BC plan mentions occasional Hay-Zama crossings in this drainage; the line is not a bison range or sighting.",
-    "Gold line: Hay River reference (2000 BC plan). Gold dot: Pink Mountain geographic reference for the Plains Bison herd, not a sighting or range boundary. The Pink Mountain and Hay-Zama herd ranges are not mapped. Green polygons: three Wood Bison herd ranges, not density.",
+    "const response = await fetch(\`/species-map/api/species-data?kind=historicalSpecies&taxon=\${taxon}\`, { signal:renderAbort.signal });",
+    "const response = await fetch(taxon === 'blackbear' ? 'data/black-bear-historical-1988.geojson?v=1988-source-1' : \`/species-map/api/species-data?kind=historicalSpecies&taxon=\${taxon}\`, { signal:renderAbort.signal });",
   ],
   [
-    "contextData.setStyle({ strokeColor: '#f5c76b', strokeOpacity: 0.95, strokeWeight: 2.5, clickable: false });",
-    "contextData.addGeoJson({type:'FeatureCollection',features:[{type:'Feature',properties:{reference:'Pink Mountain geographic reference (BC Geographical Names, not a bison sighting)'},geometry:{type:'Point',coordinates:[-122.8736111111,57.0716666667]}}]});\n          contextData.setStyle(feature => feature.getGeometry().getType() === 'Point' ? { icon:{path:google.maps.SymbolPath.CIRCLE,scale:6,fillColor:'#f5c76b',fillOpacity:layerOpacity,strokeColor:'#211d12',strokeOpacity:layerOpacity,strokeWeight:1.2},title:feature.getProperty('reference'),clickable:false } : { strokeColor:'#f5c76b',strokeOpacity:0.95,strokeWeight:2.5,clickable:false });",
+    "Wood Bison: three mapped transboundary herd ranges; dates vary. Incomplete: Hay-Zama bison occasionally enter BC outside these mapped ranges. Not population density.",
+    "Partial bison range: three mapped Wood Bison herds only. Plains Bison (Pink Mountain) and Hay-Zama range boundaries are missing. Not current population density. LEH success is unavailable because the hunt areas cross WMU boundaries.",
+  ],
+  [
+`        if (item.key === 'wood_bison') {
+          const river = await staticRange({ asset: 'data/hay-river-bison-context.geojson' }, renderAbort.signal);
+          if (version !== renderVersion) return;
+          contextData = new google.maps.Data({ map });
+          contextData.addGeoJson(river);
+          contextData.setStyle({ strokeColor: '#f5c76b', strokeOpacity: 0.95, strokeWeight: 2.5, clickable: false });
+          document.getElementById('layer-note-text').textContent += ' Gold: Hay River reference. A 2000 BC plan mentions occasional Hay-Zama crossings in this drainage; the line is not a bison range or sighting.';
+        } else if (item.key === 'caribou' || item.key === 'caribou_northern') {`,
+`        if (item.key === 'caribou' || item.key === 'caribou_northern') {`,
   ],
   [
     "const DISPLAYED_SPECIES = new Set([...KMZ_HEATMAPS, 'roosevelt_elk', 'rocky_elk_kootenay']);",
