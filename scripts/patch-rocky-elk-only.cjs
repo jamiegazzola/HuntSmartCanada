@@ -48,9 +48,13 @@ const eraReplacement = `    const eraControl = document.querySelector('.era-cont
     const bcBison = item.key === 'wood_bison' && (typeof province === 'undefined' || province === 'bc');
     const bcBear = item.key === 'black_bear' && (typeof province === 'undefined' || province === 'bc');
     document.body.classList.toggle('bc-bear-bison', bcBison || bcBear);
+    if (bcBear) {
+      eraModern.hidden = true;
+      if (viewMode !== 'historical') { viewMode = 'historical'; setEraButtons(); }
+    }
     if (bcBison) {
       eraHistorical.hidden = true;
-      eraModern.textContent = 'Distribution';
+      eraModern.textContent = 'Partial range';
       if (viewMode !== 'modern') { viewMode = 'modern'; setEraButtons(); }
     }`;
 if (!source.includes(eraAnchor)) throw new Error('Species era-control anchor is missing');

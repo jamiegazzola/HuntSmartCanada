@@ -190,27 +190,25 @@ jobs:
               'BC must display exactly the ten requested species');
             assert.equal(await page.locator('#species option[value="wood_bison"]').textContent(),'Bison');
             await page.locator('#species').selectOption('wood_bison');
-            await page.locator('#era-modern').click();
-            await page.waitForFunction(()=>document.getElementById('layer-note-text')?.textContent.includes('Gold dot: Pink Mountain'),
+            await page.waitForFunction(()=>document.getElementById('layer-note-text')?.textContent.includes('Partial bison range'),
               null,{timeout:30000});
             assert.equal(await page.locator('#era-historical').isVisible(),false);
-            assert.equal(await page.locator('#hs-harvest-toggle').innerText(),'LEH Success');
+            assert.equal(await page.locator('#era-modern').innerText(),'Partial range');
+            assert.equal(await page.locator('#hs-harvest-toggle').isDisabled(),true);
+            assert.equal(await page.locator('#hs-harvest-toggle').innerText(),'Success unavailable');
+            const bisonState=await page.evaluate(()=>window.HUNTSMART_HARVEST_RENDER_STATE?.());
+            assert(!bisonState?.enabled&&!bisonState?.ready,'Ambiguous bison WMU data must not paint');
+            await page.locator('#species').selectOption('black_bear');
+            assert.equal(await page.locator('#era-modern').isVisible(),false);
+            assert.equal(await page.locator('#era-historical').getAttribute('aria-pressed'),'true');
+            await page.waitForFunction(()=>document.getElementById('layer-note-text')?.textContent.includes('Historical: BC 1988 distribution'),
+              null,{timeout:30000});
+            const bearData=await page.evaluate(async()=>await (await fetch('data/black-bear-historical-1988.geojson')).json());
+            assert.equal(bearData.features.length,284);
+            assert.deepEqual([...new Set(bearData.features.map(f=>f.properties.historical_class))].sort(),['H','L','M']);
             await page.locator('#hs-harvest-toggle').click();
             await page.locator('#hs-year-trigger').click();
-            await page.locator('[data-hs-period="all"]').click();
-            await page.waitForFunction(()=>window.HUNTSMART_HARVEST_RENDER_STATE?.()?.ready,
-              null,{timeout:45000});
-            assert((await page.locator('#hs-metric-legend').textContent()).includes('Bison · LEH survey only'),
-              'Bison success must not be represented as combined GOS and LEH');
-            await page.locator('#era-modern').click();
-            await page.locator('#species').selectOption('black_bear');
-            await page.locator('#era-historical').click();
-            await page.waitForFunction(()=>document.getElementById('layer-note-text')?.textContent.includes('Historical: BC 1988 distribution'),
-              null,{timeout:45000});
-            await page.locator('#era-modern').click();
-            await page.waitForFunction(()=>document.getElementById('layer-note-text')?.textContent.includes('broad BC range'),
-              null,{timeout:30000});
-            await page.locator('#hs-harvest-toggle').click();
+            await page.locator('[data-hs-period="ten"]').click();
             await page.waitForFunction(()=>window.HUNTSMART_HARVEST_RENDER_STATE?.()?.ready,
               null,{timeout:45000});
             assert.equal(await page.locator('#hs-harvest-toggle').innerText(),'Success');

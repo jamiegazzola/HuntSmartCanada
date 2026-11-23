@@ -103,7 +103,7 @@
       .then(data=>{
         if(data?.meta?.publisher!=='Government of British Columbia'||
           data?.meta?.first_year!==1984||![2023,2024].includes(data?.meta?.last_year)||
-          !data?.species?.GOAT||!data?.species?.ELK||!data?.species?.BISO)
+          !data?.species?.GOAT||!data?.species?.ELK)
           throw Error('LEH survey summary failed integrity checks');
         lehData=data;
       }).finally(()=>{pendingLeh=null;});
@@ -127,7 +127,7 @@
     thinhorn_sheep:'SHEE',dall_tatshenshini:'SHEE',stone_sheep:'SHEE',
     caribou:'CARI',caribou_northern:'CARI',caribou_mountain:'CARI',
     caribou_boreal:'CARI',grizzly_bear:'BEAG',black_bear:'BEAB',
-    wood_bison:'BISO',lynx:'LYNX',bobcat:'BOBC',cougar:'COUG',
+    wood_bison:null,lynx:'LYNX',bobcat:'BOBC',cougar:'COUG',
     wolf:'WOLF',wolverine:null
   });
   const NAMES={DEMU:'mule deer (incl. blacktail)',DEWT:'white-tailed deer',ELK:'elk',
@@ -317,7 +317,7 @@
     valid.forEach(v=>{const option=document.createElement('option');option.value=String(v.year);option.textContent=String(v.year);option.selected=v.year===selected.year;chooser.append(option);});
     chooser.addEventListener('change',()=>inspect(Number(chooser.value)));
     const text=document.createElement('span');
-    text.textContent=selected.rate.toFixed(1)+'% · '+selected.hunters.toLocaleString()+' hunters · '+selected.harvest.toLocaleString()+' harvested';
+    text.textContent=selected.rate.toFixed(1)+'% · '+Math.round(selected.hunters).toLocaleString()+' est. hunters · '+Math.round(selected.harvest).toLocaleString()+' est. harvested';
     readout.replaceChildren(chooser,text);
   }
 
@@ -458,7 +458,8 @@
   }
   const setDetail=text=>{detail.textContent=text;};
   function updateButton(){
-    btn.textContent=key()==='wood_bison'?'LEH Success':'Success';
+    btn.textContent=key()==='wood_bison'?'Success unavailable':'Success';
+    btn.title=key()==='wood_bison'?'Historical bison hunt areas cross WMUs; verified WMU success is unavailable.':'';
     btn.setAttribute('aria-pressed',String(enabled));
     btn.setAttribute('aria-label',enabled?'Show species distribution':'Show hunter success by WMU');
   }
@@ -527,8 +528,8 @@
     write('hs-wmu-title','WMU '+id);
     write('hs-wmu-meta',label()+' · '+selectedYearLabel());
     write('hs-wmu-rate',s?.reliable?s.rate.toFixed(1)+'%':'—');
-    write('hs-wmu-harvest',s?s.kills.toLocaleString():'—');
-    write('hs-wmu-hunters',s?s.hunters.toLocaleString():'—');
+    write('hs-wmu-harvest',s?Math.round(s.kills).toLocaleString():'—');
+    write('hs-wmu-hunters',s?Math.round(s.hunters).toLocaleString():'—');
     const density=densityFor(id,s);
     write('hs-wmu-density',density===null?'—':density.toFixed(density<10?1:0));
     const densityDescription=document.getElementById('hs-wmu-meta');
@@ -716,7 +717,11 @@
   function sync(){
     const visible=active();
     control.hidden=!visible;
-    btn.disabled=!visible;
+    btn.disabled=!visible||key()==='wood_bison';
+    if(visible&&key()==='wood_bison'){
+      selectedSpecies=key();enabled=false;removeLayer();resetStats();updateButton();period.hidden=true;legend.hidden=true;
+      setDetail('Bison LEH hunt areas cross WMUs; no verified WMU hunter-success estimates.');syncYearControls();return;
+    }
     if(!visible){
       selectedSpecies=null;enabled=false;removeLayer();
       updateButton();period.hidden=true;legend.hidden=true;setDetail('');syncYearControls();return;
@@ -737,7 +742,7 @@
     if(!silent)context.onModeChange();
   }
   btn.addEventListener('click',()=>{
-    if(!active()||btn.disabled)return;
+    if(!active()||btn.disabled||key()==='wood_bison')return;
     // The active mode tab should remain a mode tab; reporting years have their
     // own visible control and should not open when Success is clicked again.
     if(enabled)return;
