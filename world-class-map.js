@@ -459,11 +459,20 @@
 
   function toggleDesktopSettings() {
     ensureDesktopSettings();
-    if (!desktopPanel) return;
-    const opening = !desktopPanel.classList.contains('open');
-    desktopPanel.classList.toggle('open', opening);
-    if (settingsButton) settingsButton.classList.toggle('is-open', opening);
-    if (opening) renderDesktopPanel();
+    // The finalizer can create the fallback panel before the world-map layer.
+    // Always resolve the live element, not only this closure's cached reference.
+    const panel = document.getElementById('hsWorldSettingsPanel');
+    if (!panel) return;
+    desktopPanel = panel;
+    settingsButton = document.getElementById('hsWorldSettingsBtn');
+    const opening = !panel.classList.contains('open');
+    panel.classList.toggle('open', opening);
+    if (settingsButton) {
+      settingsButton.classList.toggle('is-open', opening);
+      settingsButton.setAttribute('aria-expanded', String(opening));
+    }
+    // Keep the fallback renderer intact when it owns the existing panel.
+    if (opening && panel.dataset.hsFallbackLayers !== '1') renderDesktopPanel();
   }
 
   function closeDesktopSettings() {
