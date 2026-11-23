@@ -427,6 +427,17 @@
       settingsButton = document.getElementById('hsWorldSettingsBtn');
     }
 
+    // A compatibility finalizer may have created this button first. Ensure the
+    // visible Layers control always invokes this renderer exactly once.
+    if (settingsButton && !settingsButton.__hsMinimalLayersBound) {
+      settingsButton.__hsMinimalLayersBound = true;
+      settingsButton.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        toggleDesktopSettings();
+      }, true);
+    }
+
     if (!document.getElementById('hsWorldSettingsPanel')) {
       desktopPanel = document.createElement('aside');
       desktopPanel.id = 'hsWorldSettingsPanel';
