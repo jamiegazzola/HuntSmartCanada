@@ -96,6 +96,22 @@
 
     var label = button.querySelector('span');
     if (label && label.textContent !== 'Layers') label.textContent = 'Layers';
+    // This finalizer can own the panel while world-class-map.js owns the
+    // button. Bind a direct handler so a mixed initialization still opens it.
+    if (!button.__hsFallbackLayersBound) {
+      button.__hsFallbackLayersBound = true;
+      button.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        var live = document.getElementById('hsWorldSettingsPanel');
+        if (!live) return;
+        var opening = !live.classList.contains('open');
+        live.classList.toggle('open', opening);
+        button.classList.toggle('is-open', opening);
+        button.setAttribute('aria-expanded', String(opening));
+        if (opening && live.dataset.hsFallbackLayers === '1') renderFallbackLayers();
+      }, true);
+    }
   }
 
   window.hsFallbackCloseLayers = function () {
