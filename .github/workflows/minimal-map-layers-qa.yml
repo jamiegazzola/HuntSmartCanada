@@ -50,6 +50,8 @@ jobs:
         run: |
           node <<'NODE'
           const { chromium } = require('playwright');
+          // Bound the browser smoke test independently of pending map tile requests.
+          setTimeout(() => { console.error('Minimal layers browser QA exceeded 180 seconds'); process.exit(1); }, 180000).unref();
           const assert = (v, m) => { if (!v) throw new Error(m); };
           const expectSimple = async (page, selector) => {
             const status = await page.locator(selector).evaluate(root => ({
@@ -133,5 +135,5 @@ jobs:
                 await page.close();
               }
             } finally {await browser.close();}
-          })().catch(error=>{console.error(error.stack||error);process.exit(1);});
+          })().then(() => process.exit(0)).catch(error=>{console.error(error.stack||error);process.exit(1);});
           NODE
