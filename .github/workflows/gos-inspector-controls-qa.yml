@@ -1,0 +1,80 @@
+name: HuntSmart GOS Inspector Controls QA
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - style.css
+      - index.html
+      - .github/workflows/gos-inspector-controls-qa.yml
+  push:
+    branches: [main]
+    paths:
+      - style.css
+      - index.html
+      - .github/workflows/gos-inspector-controls-qa.yml
+permissions:
+  contents: read
+jobs:
+  gos-inspector-controls:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm install --no-save playwright@1.55.0 --ignore-scripts --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Verify live GOS panel, controls and scrolling
+        env:
+          URL: ${{ github.event_name == 'pull_request' && format('https://deploy-preview-{0}--huntsmartcanada.netlify.app', github.event.pull_request.number) || 'https://huntsmartcanada.ca' }}
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const assert = (ok, msg) => { if (!ok) throw new Error(msg); };
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            try {
+              const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+              await page.goto(process.env.URL + '?gos-control-check=' + Date.now(), { waitUntil: 'domcontentloaded', timeout: 45000 });
+              await page.waitForFunction(() => !!window.__HUNTSMART_INTERACTIVE_MAP__, null, { timeout: 45000 });
+              await page.evaluate(() => window.__HUNTSMART_INTERACTIVE_MAP__.open('gos', { province: 'BC' }));
+              await page.waitForFunction(() => {
+                const page = document.getElementById('bcOpenSeasonsPage');
+                return !!page && getComputedStyle(page).display !== 'none' && !!document.getElementById('osMapControlStack');
+              }, null, { timeout: 45000 });
+              // Open just the existing results panel; do not modify map data.
+              await page.evaluate(() => document.querySelector('#bcOpenSeasonsPage .os-panel').classList.add('open'));
+              await page.waitForTimeout(450);
+              const open = await page.evaluate(() => {
+                const box = sel => document.querySelector(sel)?.getBoundingClientRect();
+                const controls = box('#bcOpenSeasonsPage #osMapControlStack');
+                const panel = box('#bcOpenSeasonsPage .os-panel');
+                const list = document.querySelector('#bcOpenSeasonsPage .os-results-panel');
+                const old = list.scrollTop;
+                list.innerHTML = '<div style="height:2200px" aria-hidden="true"></div>';
+                list.scrollTop = 100;
+                return {
+                  panelLeft: panel.left, controlsRight: controls.right,
+                  right: getComputedStyle(document.getElementById('osMapControlStack')).right,
+                  scrollbarWidth: getComputedStyle(list).scrollbarWidth,
+                  overflow: getComputedStyle(list).overflowY,
+                  canScroll: list.scrollTop > old
+                };
+              });
+              console.log('GOS open:', JSON.stringify(open));
+              assert(open.controlsRight <= open.panelLeft - 8, 'Zoom/3D controls are overlapped by open GOS inspector');
+              assert(open.scrollbarWidth === 'none', 'Results scrollbar is still visible');
+              assert(open.overflow === 'auto' && open.canScroll, 'Results list no longer scrolls');
+              await page.evaluate(() => document.querySelector('#bcOpenSeasonsPage .os-panel').classList.remove('open'));
+              await page.waitForTimeout(400);
+              const closed = await page.locator('#osMapControlStack').boundingBox();
+              console.log('GOS closed:', JSON.stringify(closed));
+              assert(closed.x > open.controlsRight + 150, 'Zoom/3D controls did not return to right edge');
+              await page.close();
+              console.log('GOS inspector control and scrollbar QA passed');
+            } finally { await browser.close(); }
+          })().catch(err => { console.error(err.stack || err); process.exit(1); });
+          NODE

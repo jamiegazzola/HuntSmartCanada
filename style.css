@@ -10834,7 +10834,21 @@ body.hs-filter-map-modal-open { overflow: hidden !important; }
   #bcOpenSeasonsPage .os-map-control-stack {
     transition: right .18s ease !important;
   }
-  #bcOpenSeasonsPage .os-body:has(.os-panel.open) .os-map-control-stack {
+  /* The GOS panel is a sibling of the map wrap. Match on the page root. */
+  #bcOpenSeasonsPage:has(.os-panel.open) #osMapControlStack {
     right: calc(min(410px, 100vw - 28px) + 30px) !important;
   }
+}
+
+/* Hide the GOS inspector's browser scrollbar without disabling wheel,
+   trackpad, touch, or keyboard scrolling of the season rows. */
+#bcOpenSeasonsPage .os-results-panel {
+  overflow-y: auto !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+#bcOpenSeasonsPage .os-results-panel::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
