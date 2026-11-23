@@ -28,7 +28,7 @@ function setup({fail=false,defer=false}={}){
     setStyle(style){this.style=style}setMap(map){this.map=map}}
   const features=Array.from({length:225},(_,i)=>({type:'Feature',
     properties:{wmu_id:i===0?'3-27':i===1?'3-31':i===2?'7-50':
-      i===3?'1-10':i===4?'2-12':i===5?'4-24':'unused-'+i},
+      i===3?'1-10':i===4?'2-12':i===5?'4-24':i===6?'7-42':'unused-'+i},
     geometry:{type:'Polygon',coordinates:[]}}));
   const w={HUNTSMART_SPECIES:catalogue};
   const metricButtons=['success','density'].map(name=>{const button=el('metric-'+name);button.dataset.hsMetric=name;return button;});
@@ -49,6 +49,7 @@ function setup({fail=false,defer=false}={}){
       return Promise.resolve({ok:true,json:async()=>
         url.includes('bc-recorded-harvests')?JSON.parse(fs.readFileSync(path.join(__dirname,'../species-map/data/bc-recorded-harvests.json'))):
         url.includes('bc-sheep-age')?ages:
+        url.includes('bc-leh-single-wmu')?{meta:{publisher:'Government of British Columbia',first_year:1984,last_year:2024},species:{GOAT:{},ELK:{},BISO:{'7-42':{'2022':[20,8],'2023':[20,10],'2024':[20,12]}}}}:
         url.includes('harvest-history-')?(()=>{
           const selectedCode=url.match(/harvest-history-([a-z]+)\.json/)?.[1]?.toUpperCase();
           return {meta:history.meta,code:selectedCode,species:{[selectedCode]:history.species[selectedCode]}};
@@ -226,7 +227,19 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   assert.equal(base.el('hs-harvest-panel').hidden,false);
   assert(base.el('hs-harvest-detail').textContent.includes('No comparable'));
   base.setSpecies('wood_bison');await flush();
-  assert(base.el('hs-harvest-detail').textContent.includes('No comparable'));
+  assert(base.el('hs-harvest-detail').textContent.includes('LEH survey only'));
+  assert.equal(base.el('hs-harvest-toggle').textContent,'LEH Success');
+  const bison=base.layers.at(-1);
+  bison.listener({feature:{getProperty:()=> '7-42'},latLng:{}});
+  assert.equal(base.el('hs-wmu-rate').textContent,'50.0%');
+  assert.equal(base.el('hs-wmu-hunters-label').textContent,'LEH hunter participations');
+  assert(base.el('hs-trend-note').textContent.includes('GOS and combined rates are unavailable'));
+  base.el('hs-harvest-period').value='current';base.el('hs-harvest-period').change();await flush();
+  base.layers.at(-1).listener({feature:{getProperty:()=> '7-42'},latLng:{}});
+  assert.equal(base.el('hs-wmu-rate').textContent,'60.0%');
+  base.setSpecies('black_bear');await flush();
+  assert.equal(base.el('hs-harvest-toggle').textContent,'Success');
+  assert(base.el('hs-harvest-detail').textContent.includes('resident harvest estimates'));
   base.setProvince('ab');
   assert.equal(base.api.isEnabled(),false);
   assert.equal(base.el('hs-harvest-panel').hidden,true);

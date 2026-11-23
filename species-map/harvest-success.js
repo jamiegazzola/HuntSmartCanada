@@ -67,6 +67,7 @@
     return years.length===1?years[0]:years[0]+'–'+years[years.length-1];
   }
   function recordedKills(id){
+    if(key()==='wood_bison')return 0;
     if(!inspectionCounts||!code()||excludedForSpecies(id)||UNRESOLVED_SUBTYPES.has(key()))return 0;
     const subtypes=INSPECTION_SUBTYPES[key()];
     let total=0;
@@ -89,11 +90,11 @@
     return total;
   }
   const SHEEP_AGES='/species-map/data/bc-sheep-age-ci-2022-2025.json?v=20261113f';
-  const LEH_SOURCE='/species-map/data/bc-leh-single-wmu-1984-2023.json?v=20261119a';
+  const LEH_SOURCE='/species-map/data/bc-leh-single-wmu-1984-2023.json?v=bison-20261123a';
   const LEH_CATALOGUE='https://catalogue.data.gov.bc.ca/dataset/limited-entry-hunting-survey-estimates-1984-to-2023';
   // One combined-resident Success view. Separate hunt-type records remain
   // available for source auditing, not added to the combined survey rates.
-  const huntMode='combined';
+  const huntMode=()=>key()==='wood_bison'?'leh':'combined';
   let lehData=null,pendingLeh=null;
   async function loadLeh(){
     if(lehData)return;
@@ -101,18 +102,18 @@
       .then(r=>{if(!r.ok)throw Error('Official LEH survey summary unavailable');return r.json();})
       .then(data=>{
         if(data?.meta?.publisher!=='Government of British Columbia'||
-          data?.meta?.first_year!==1984||data?.meta?.last_year!==2023||
-          !data?.species?.GOAT||!data?.species?.ELK)
+          data?.meta?.first_year!==1984||![2023,2024].includes(data?.meta?.last_year)||
+          !data?.species?.GOAT||!data?.species?.ELK||!data?.species?.BISO)
           throw Error('LEH survey summary failed integrity checks');
         lehData=data;
       }).finally(()=>{pendingLeh=null;});
     return pendingLeh;
   }
-  const modeArchive=()=>huntMode==='leh'?lehData?.species?.[code()]||{}:
-    huntMode==='combined'?history?.species?.[code()]||{}:{};
-  const yearlyEstimate=(id,year)=>huntMode==='leh'?
+  const modeArchive=()=>huntMode()==='leh'?lehData?.species?.[code()]||{}:
+    huntMode()==='combined'?history?.species?.[code()]||{}:{};
+  const yearlyEstimate=(id,year)=>huntMode()==='leh'?
     lehData?.species?.[code()]?.[id]?.[String(year)]:
-    huntMode==='combined'?(year===2024?rows()?.[id]?.y:
+    huntMode()==='combined'?(year===2024?rows()?.[id]?.y:
       history?.species?.[code()]?.[id]?.[String(year)]):null;
 
   const CODE_BY_KEY=Object.freeze({
@@ -126,15 +127,15 @@
     thinhorn_sheep:'SHEE',dall_tatshenshini:'SHEE',stone_sheep:'SHEE',
     caribou:'CARI',caribou_northern:'CARI',caribou_mountain:'CARI',
     caribou_boreal:'CARI',grizzly_bear:'BEAG',black_bear:'BEAB',
-    wood_bison:null,lynx:'LYNX',bobcat:'BOBC',cougar:'COUG',
+    wood_bison:'BISO',lynx:'LYNX',bobcat:'BOBC',cougar:'COUG',
     wolf:'WOLF',wolverine:null
   });
   const NAMES={DEMU:'mule deer (incl. blacktail)',DEWT:'white-tailed deer',ELK:'elk',
     MOOS:'moose',GOAT:'mountain goat',SHEE:'mountain sheep (all subspecies)',
-    CARI:'caribou (all ecotypes)',BEAG:'grizzly bear',BEAB:'black bear',
+    CARI:'caribou (all ecotypes)',BEAG:'grizzly bear',BEAB:'black bear',BISO:'bison',
     BOBC:'bobcat',LYNX:'lynx',COUG:'cougar',WOLF:'wolf'};
   const EXACT=new Set(['mule_deer','white_tailed_deer','elk','moose',
-    'mountain_goat','wild_sheep','caribou','grizzly_bear','black_bear',
+    'mountain_goat','wild_sheep','caribou','grizzly_bear','black_bear','wood_bison',
     'lynx','bobcat','cougar','wolf']);
   const classes=[{max:9,color:'#468f58'},{max:19,color:'#a3b950'},
     {max:29,color:'#dfcb58'},{max:39,color:'#e28d42'},
@@ -188,7 +189,7 @@
       button.setAttribute('aria-pressed',String(button.dataset.hsMetric===mapMetric)));
     const legendNode=document.getElementById('hs-metric-legend');
     if(legendNode){
-      const isElk=elkPolicy.isElk(key());
+      const isElk=elkPolicy.isElk(key())||key()==='wood_bison';
       const labels=mapMetric==='success'?
         (isElk?['0–19%','20–39%','40–59%','60–79%','80%+']:
           ['0–9%','10–19%','20–29%','30–39%','40%+']):
@@ -211,6 +212,12 @@
         item.append(swatch,document.createTextNode(
           'Inspected harvest · no comparable success rate ('+inspectedPeriodLabel()+')'));
         legendNode.append(item);
+      }
+      if(key()==='wood_bison'){
+        const note=document.createElement('span');
+        note.className='hs-elk-data-note';
+        note.textContent=mapMetric==='success'?'Bison · LEH survey only; GOS not available':'Bison · annual LEH hunter participation / 100 km²';
+        legendNode.append(note);
       }
       if(elkPolicy.isElk(key())){
         const note=document.createElement('span');
@@ -328,7 +335,7 @@
   const active=()=>!!context&&context.getProvince()==='bc';
   // The drop-down may say Rocky Mountain or Roosevelt; the source's success
   // denominator is the combined provincial ELK category, never subspecies.
-  const label=()=>elkPolicy.isRoosevelt(key())?'Roosevelt elk · coastal elk survey':
+  const label=()=>key()==='wood_bison'?'Bison · LEH only':elkPolicy.isRoosevelt(key())?'Roosevelt elk · coastal elk survey':
     elkPolicy.isRocky(key())?'Rocky Mountain elk · interior elk survey':
     (window.HUNTSMART_SPECIES||[]).find(item=>item.key===key())?.label||key().replace(/_/g,' ');
   const rows=()=>official?.species?.[code()]||null;
@@ -336,8 +343,8 @@
   let yearsMemoCode=null,yearsMemoHistory=null,yearsMemoOfficial=null,yearsMemo=[];
   function availableYears() {
     const archive=modeArchive();
-    const cacheToken=huntMode==='leh'?lehData:huntMode==='combined'?history:null;
-    const scopeKey=code()+'|'+key()+'|'+huntMode;
+    const cacheToken=huntMode()==='leh'?lehData:huntMode()==='combined'?history:null;
+    const scopeKey=code()+'|'+key()+'|'+huntMode();
     if(yearsMemoCode===scopeKey&&yearsMemoHistory===cacheToken&&yearsMemoOfficial===official)return yearsMemo;
     const found=new Set();
     // The selector must reflect the selected species' eligible geography,
@@ -349,14 +356,14 @@
           found.add(Number(year));
       }
     }
-    if(huntMode==='combined'&&Object.entries(rows()||{}).some(([id,r])=>!excludedForSpecies(id)&&Array.isArray(r.y)&&r.y[0]>0&&r.y[1]>=0))found.add(2024);
+    if(huntMode()==='combined'&&Object.entries(rows()||{}).some(([id,r])=>!excludedForSpecies(id)&&Array.isArray(r.y)&&r.y[0]>0&&r.y[1]>=0))found.add(2024);
     yearsMemo=[...found].sort((a,b)=>a-b);
     yearsMemoCode=scopeKey;yearsMemoHistory=cacheToken;yearsMemoOfficial=official;
     return yearsMemo;
   }
   function selectedYears(){
     if(historicalYear())return [Number(period.value)];
-    const cacheKey=code()+'|'+key()+'|'+huntMode+'|'+period.value+'|'+customStart+'|'+customEnd+'|'+(huntMode==='leh'?(lehData?'ready':'pending'):(history?.species?.[code()]?'ready':'pending'));
+    const cacheKey=code()+'|'+key()+'|'+huntMode()+'|'+period.value+'|'+customStart+'|'+customEnd+'|'+(huntMode()==='leh'?(lehData?'ready':'pending'):(history?.species?.[code()]?'ready':'pending'));
     if(cachedYearsKey===cacheKey)return cachedYears;
     cachedYearsKey=cacheKey;
     const available=availableYears();
@@ -381,11 +388,11 @@
     if(!yrs.length)return null;
     if(yrs.length===1){
       const y=yrs[0],v=yearlyEstimate(id,y);
-      const validated=huntMode==='combined'?history?.metrics?.[id]?.[String(y)]:null;
+      const validated=huntMode()==='combined'?history?.metrics?.[id]?.[String(y)]:null;
       return Array.isArray(v)?{y:v,coverage:1,validated}:null;
     }
     // The published 2020–24 provincial pooled estimate is retained verbatim.
-    if(huntMode==='combined'&&period.value==='average'&&yrs.length===5&&yrs[0]===2020&&yrs[4]===2024){
+    if(huntMode()==='combined'&&period.value==='average'&&yrs.length===5&&yrs[0]===2020&&yrs[4]===2024){
       const officialPooled=rows()?.[id]?.p5;
       return Array.isArray(officialPooled)?{p5:officialPooled,coverage:officialPooled[2]}:null;
     }
@@ -406,7 +413,7 @@
     const requested=selectedYears().length;
     // Annual combined results use the Python-reconciled rate and quality contract.
     // LEH and pooled statistics preserve their distinct source-specific calculations.
-    const checked=(!pooled&&huntMode==='combined')?rec?.validated:null;
+    const checked=(!pooled&&huntMode()==='combined')?rec?.validated:null;
     return {hunters,kills,years,rate:checked&&Number.isFinite(checked[0])?checked[0]:Math.round(1000*kills/hunters)/10,
       reliable:hunters>=(pooled?50:10)&&kills<=hunters&&
         (!checked||checked[1]==='ratio_comparable')&&
@@ -418,7 +425,7 @@
     return sampleCache.get(id);
   }
   function reliableCount() {
-    const ids=new Set([...Object.keys(modeArchive()),...(huntMode==='combined'?Object.keys(rows()||{}):[])]);
+    const ids=new Set([...Object.keys(modeArchive()),...(huntMode()==='combined'?Object.keys(rows()||{}):[])]);
     let count=0;
     for(const id of ids)if(!excludedForSpecies(id)&&unitStats(id)?.reliable)count++;
     return count;
@@ -451,7 +458,7 @@
   }
   const setDetail=text=>{detail.textContent=text;};
   function updateButton(){
-    btn.textContent='Success';
+    btn.textContent=key()==='wood_bison'?'LEH Success':'Success';
     btn.setAttribute('aria-pressed',String(enabled));
     btn.setAttribute('aria-label',enabled?'Show species distribution':'Show hunter success by WMU');
   }
@@ -477,7 +484,7 @@
       const documented=mapMetric==='success'&&recordedKills(id)>0;
       const ok=!!record?.reliable&&Number.isFinite(value);
       const classScale=mapMetric==='success'?
-        (elkPolicy.isElk(key())?elkSuccessClasses:classes):densityClasses;
+        ((elkPolicy.isElk(key())||key()==='wood_bison')?elkSuccessClasses:classes):densityClasses;
       const colour=classScale.find(x=>value<=x.max)?.color||'#c45145';
       return {fillColor:ok?colour:documented?INSPECTION_EVIDENCE_COLOR:'#8c9494',
         fillOpacity:(excluded?0:ok?0.76:documented?0.38:record?0.17:0.07)*opacity,
@@ -540,16 +547,16 @@
     }
     const caveats=[];
     if(inspected>0)caveats.push('Compulsory inspections may not represent all harvested animals. Licence-year inspection counts and calendar-year resident estimates cannot be compared directly. Elk subspecies in WILD inspections can be assigned from reported kill location, not genetic testing.');
-    if(huntMode==='gos')caveats.push('No verified GOS-only WMU hunter or harvest estimates have been loaded. The combined provincial figures must not be represented as GOS success.');
+    if(huntMode()==='gos')caveats.push('No verified GOS-only WMU hunter or harvest estimates have been loaded. The combined provincial figures must not be represented as GOS success.');
     const source=document.getElementById('hs-wmu-source');
-    if(source){source.href=huntMode==='leh'?LEH_CATALOGUE:BC_GOVERNMENT_HARVEST_DATA;
-      source.textContent=huntMode==='leh'?'BC LEH Survey Estimates':'Government of BC harvest statistics';}
+    if(source){source.href=huntMode()==='leh'?LEH_CATALOGUE:BC_GOVERNMENT_HARVEST_DATA;
+      source.textContent=huntMode()==='leh'?'BC LEH Survey Estimates':'Government of BC harvest statistics';}
     const note=document.getElementById('hs-trend-note');
-    if(note)note.textContent=huntMode==='leh'?
-      'LEH survey estimates, 1984–2023. Only single-WMU hunts are mapped; sums across hunt codes represent hunter participations, not unique hunters.':
+    if(note)note.textContent=huntMode()==='leh'?
+      'BC LEH survey estimates only. GOS and combined rates are unavailable. Only single-WMU hunts are mapped; sums across hunt codes represent hunter participations, not unique hunters.':
       'Combined resident estimates (LEH and GOS); original survey response counts are not supplied. Annual ratios may be volatile in low-volume units; not subspecies-specific.';
     const huntersLabel=document.getElementById('hs-wmu-hunters-label');
-    if(huntersLabel)huntersLabel.textContent=huntMode==='leh'?'LEH hunter participations':'Hunters';
+    if(huntersLabel)huntersLabel.textContent=huntMode()==='leh'?'LEH hunter participations':'Hunters';
     if(!s?.reliable)caveats.push(s?'Low estimated hunter volume or non-comparable harvest/hunter ratio. This is a presentation rule, not a statistical confidence interval.':'No comparable resident estimate for this period.');
     if(!s?.reliable&&s?.kills>0)caveats.push('Estimated harvest is reported here even though this sample cannot support a comparable success rate. This does not mean zero harvest.');
     if(s?.coverage&&selectedYears().length>1)caveats.push('Reported years: '+s.coverage+'.');
@@ -557,7 +564,7 @@
     else if(!EXACT.has(key()))caveats.push('BC category: '+(NAMES[code()]||'unavailable')+'; not subspecies-specific.');
     if(elkPolicy.isRocky(key()))caveats.push('Regions 1 and 2 are excluded from the Rocky Mountain elk view. Interior all-elk figures are not confirmed Rocky Mountain elk success.');
     if(elkPolicy.isRoosevelt(key()))caveats.push('Only coastal Regions 1 and 2 are displayed. These are geographically screened all-elk records, not a Roosevelt-specific success rate or proof of presence in every WMU.');
-    caveats.push(huntMode==='leh'?
+    caveats.push(huntMode()==='leh'?
       'LEH estimates are by hunt code, aggregated only where each record refers to one WMU and has complete survey estimates. Hunter participation may count a person more than once across hunt codes.':
       'Combined resident harvest; not GOS-only, LEH draw, legal-ram or trophy odds.');
     caveats.push('Hunter density uses mean annual estimated hunters divided by approximate mapped WMU area; this is a relative pressure proxy, not actual hunter locations or accessible hunting area.');
@@ -644,7 +651,7 @@
       ' Historical data shown on current WMU boundaries; regulations and reporting methods may have changed.':'';
     if(!type)return 'No comparable BC Government WMU hunter-success category for '+label()+'.';
     const closure=type==='BEAG'?' Grizzly bear hunting is closed in BC; these are historical records.':'';
-    if(huntMode==='gos')return 'GOS-only WMU success is not available in the published datasets. The Hunter Sample Survey includes GOS and LEH; subtracting separate LEH survey counts would not be statistically valid. Switch to LEH or Combined.';
+    if(huntMode()==='gos')return 'GOS-only WMU success is not available in the published datasets. The Hunter Sample Survey includes GOS and LEH; subtracting separate LEH survey counts would not be statistically valid. Switch to LEH or Combined.';
     const elkWarning=elkPolicy.isElk(key())?
       ' Provincial ELK records combine Roosevelt and Rocky Mountain elk; not subspecies-specific success.'+
         (elkPolicy.isRocky(key())?' Regions 1 and 2 excluded for Rocky Mountain elk.':
@@ -654,9 +661,9 @@
       ' '+lowSampleInspections+' additional WMUs have inspected harvest records ('+inspectedPeriodLabel()+') but no comparable hunter-success rate. Blue-grey in Success mode; no inference of zero harvest elsewhere.':'';
     if(!n)return 'No sufficiently reported '+date+' WMU hunter-success data for '+label()+'.'+inspectionNote+caution;
     return n+' WMUs with comparable '+date+
-      ' resident harvest estimates. Grey = missing/low estimated hunter volume. Tap a WMU for details.'+
+      (huntMode()==='leh'?' LEH harvest estimates.':' resident harvest estimates.')+' Grey = missing/low estimated hunter volume. Tap a WMU for details.'+
       (EXACT.has(key())||elkPolicy.isElk(key())?'':' Provincial category: '+NAMES[type]+' (not subspecies-specific).')+
-      closure+elkWarning+inspectionNote+caution+(huntMode==='leh'?' LEH survey is reported by hunt code; mapped only for single-WMU hunt areas.':'');
+      closure+elkWarning+inspectionNote+caution+(huntMode()==='leh'?' LEH survey only; GOS and combined estimates unavailable. Single-WMU hunt areas only.':'');
   }
   async function draw(){
     if(!enabled||!active()||!context.getMap()||layer)return;
@@ -669,13 +676,13 @@
       }
       // Independent requests run simultaneously; none delays another.
       // The optional ram-age detail must never hold up the coloured WMU map.
-      if(huntMode==='gos'){
+      if(huntMode()==='gos'){
         syncYearControls();
         setDetail(summary());
         restoreUnitAfterModeSwitch();
         return;
       }
-      await Promise.all(huntMode==='leh'?
+      await Promise.all(huntMode()==='leh'?
         [loadLeh(),fetchBoundaries()]:
         [loadOfficial(),loadHistory(targetCode),fetchBoundaries(),loadInspections().catch(e=>console.warn('Optional inspection evidence unavailable',e))]);
       if(generation!==renderSerial||!enabled||!active()||code()!==targetCode)return;
