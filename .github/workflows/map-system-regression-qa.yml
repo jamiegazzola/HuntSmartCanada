@@ -22,6 +22,7 @@ on:
       - bc-open-seasons.js
       - maps.js
       - index.html
+      - style.css
       - build-preview.sh
       - build-pwa-shell.py
       - netlify.toml
@@ -84,6 +85,11 @@ jobs:
           assert(css.includes('var(--hs-visual-vh, 100dvh)'), 'live visual viewport height CSS missing');
           assert(css.includes('safe-area-inset-bottom'), 'bottom safe-area handling missing');
           assert(css.includes('html.hs-standalone'), 'standalone styling missing');
+
+          const mapStyles = read('style.css');
+          assert(/@media\\s*\\(min-width:\\s*821px\\)[\\s\\S]*?#bcOpenSeasonsPage \\.os-body:has\\(\\.os-panel\\.open\\) \\.os-map-control-stack\\s*\\{[\\s\\S]*?right:\\s*calc\\(min\\(410px, 100vw - 28px\\) \\+ 30px\\)\\s*!important/.test(mapStyles),
+            'GOS desktop controls should move left of an open results inspector');
+          assert(mapStyles.includes('transition: right .18s ease'), 'GOS controls should transition smoothly');
 
           const build = read('netlify.toml');
           assert(build.includes('mobile-pwa-shell.css'), 'PWA CSS is not included in production build');
