@@ -68,34 +68,73 @@ function decodeLogo(file) {
   return { w, h, pixels };
 }
 
+// Rebuild smooth, high-contrast letter edges from the exact brand bitmap.
+// No alternative typography, logo redesign, third-party fonts, or dependencies.
+function cubicWeight(distance) {
+  const x = Math.abs(distance);
+  const a = -0.75;
+  if (x <= 1) return (a + 2) * x * x * x - (a + 3) * x * x + 1;
+  if (x < 2) return a * x * x * x - 5 * a * x * x + 8 * a * x - 4 * a;
+  return 0;
+}
 function makePreview(logo) {
   const width = 1200, height = 630;
   const displayWidth = 930;
   const displayHeight = Math.round(displayWidth * logo.h / logo.w);
   const x0 = Math.round((width - displayWidth) / 2);
   const y0 = Math.round((height - displayHeight) / 2);
+  const background = [11, 13, 14];
+  const colours = [
+    [240, 242, 245], // Original HuntSmart wordmark white.
+    [42, 191, 100], // Original Canada green.
+    [63, 72, 81], // Original Know Your Draw Odds muted grey.
+  ];
+  const splitX = Math.round(logo.w * 93 / 162);
+  const splitY = Math.round(logo.h * 28 / 46);
+  const alphaMasks = colours.map((colour, layer) => {
+    const a = new Float32Array(logo.w * logo.h);
+    const diff = colour.map((channel, i) => channel - background[i]);
+    const magnitude = diff.reduce((sum, v) => sum + v * v, 0);
+    for (let y = 0; y < logo.h; y++) {
+      for (let x = 0; x < logo.w; x++) {
+        if (layer === 0 && (x >= splitX || y >= splitY)) continue;
+        if (layer === 1 && (x < splitX || y >= splitY)) continue;
+        if (layer === 2 && y < splitY) continue;
+        const i = (y * logo.w + x) * 4;
+        const delta = diff.reduce((sum, v, k) => sum + (logo.pixels[i + k] - background[k]) * v, 0);
+        a[y * logo.w + x] = Math.max(0, Math.min(1, delta / magnitude));
+      }
+    }
+    return a;
+  });
   const rgb = Buffer.alloc(width * height * 3);
   for (let i = 0; i < rgb.length; i += 3) {
-    rgb[i] = 11; rgb[i + 1] = 13; rgb[i + 2] = 14;
+    rgb[i] = background[0]; rgb[i + 1] = background[1]; rgb[i + 2] = background[2];
   }
-  const sample = (x, y, c) => logo.pixels[(y * logo.w + x) * 4 + c];
   for (let dy = 0; dy < displayHeight; dy++) {
-    const fy = Math.max(0, Math.min(logo.h - 1, (dy + 0.5) * logo.h / displayHeight - 0.5));
-    const sy0 = Math.floor(fy), sy1 = Math.min(logo.h - 1, sy0 + 1), ry = fy - sy0;
+    const fy = (dy + 0.5) * logo.h / displayHeight - 0.5;
+    const sy = Math.floor(fy);
+    const yw = [-1, 0, 1, 2].map(j => cubicWeight(fy - (sy + j)));
     for (let dx = 0; dx < displayWidth; dx++) {
-      const fx = Math.max(0, Math.min(logo.w - 1, (dx + 0.5) * logo.w / displayWidth - 0.5));
-      const sx0 = Math.floor(fx), sx1 = Math.min(logo.w - 1, sx0 + 1), rx = fx - sx0;
-      const start = ((dy + y0) * width + dx + x0) * 3;
-      const alpha = ((1 - rx) * (1 - ry) * sample(sx0, sy0, 3)
-        + rx * (1 - ry) * sample(sx1, sy0, 3)
-        + (1 - rx) * ry * sample(sx0, sy1, 3)
-        + rx * ry * sample(sx1, sy1, 3)) / 255;
-      for (let c = 0; c < 3; c++) {
-        const color = ((1 - rx) * (1 - ry) * sample(sx0, sy0, c)
-          + rx * (1 - ry) * sample(sx1, sy0, c)
-          + (1 - rx) * ry * sample(sx0, sy1, c)
-          + rx * ry * sample(sx1, sy1, c));
-        rgb[start + c] = Math.round(color * alpha + [11, 13, 14][c] * (1 - alpha));
+      const fx = (dx + 0.5) * logo.w / displayWidth - 0.5;
+      const sx = Math.floor(fx);
+      const xw = [-1, 0, 1, 2].map(j => cubicWeight(fx - (sx + j)));
+      const pos = ((dy + y0) * width + dx + x0) * 3;
+      for (let layer = 0; layer < colours.length; layer++) {
+        let opacity = 0;
+        const alpha = alphaMasks[layer];
+        for (let j = -1; j <= 2; j++) {
+          const iy = Math.max(0, Math.min(logo.h - 1, sy + j));
+          for (let i = -1; i <= 2; i++) {
+            const ix = Math.max(0, Math.min(logo.w - 1, sx + i));
+            opacity += alpha[iy * logo.w + ix] * yw[j + 1] * xw[i + 1];
+          }
+        }
+        // Improve perceived sharpness without changing the letter shapes.
+        opacity = Math.max(0, Math.min(1, (opacity - 0.2) * 1.75));
+        for (let k = 0; k < 3; k++) {
+          rgb[pos + k] = Math.round(rgb[pos + k] * (1 - opacity) + colours[layer][k] * opacity);
+        }
       }
     }
   }
@@ -103,7 +142,7 @@ function makePreview(logo) {
   const scanlines = Buffer.alloc(height * (rowBytes + 1));
   for (let y = 0; y < height; y++) {
     const start = y * (rowBytes + 1);
-    scanlines[start] = 1; // PNG Sub filter
+    scanlines[start] = 1;
     for (let x = 0; x < rowBytes; x++) {
       const i = y * rowBytes + x;
       scanlines[start + 1 + x] = (rgb[i] - (x >= 3 ? rgb[i - 3] : 0)) & 255;
@@ -111,12 +150,12 @@ function makePreview(logo) {
   }
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0); ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8; ihdr[9] = 2; // 8-bit RGB
+  ihdr[8] = 8; ihdr[9] = 2;
   return Buffer.concat([signature, chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(scanlines, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
 }
 
 const input = path.join('images', 'logo.png');
-const output = path.join('site', 'images', 'huntsmart-share.png');
+const output = path.join('site', 'images', 'huntsmart-share-v2.png');
 fs.mkdirSync(path.dirname(output), { recursive: true });
 const result = makePreview(decodeLogo(input));
 fs.writeFileSync(output, result);
