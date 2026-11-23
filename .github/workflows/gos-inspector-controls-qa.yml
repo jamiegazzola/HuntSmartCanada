@@ -45,8 +45,18 @@ jobs:
                 const page = document.getElementById('bcOpenSeasonsPage');
                 return !!page && getComputedStyle(page).display !== 'none' && !!document.getElementById('osMapControlStack');
               }, null, { timeout: 45000 });
-              // Open just the existing results panel; do not modify map data.
-              await page.evaluate(() => document.querySelector('#bcOpenSeasonsPage .os-panel').classList.add('open'));
+              // Drive the real user selection state. Manually adding .open is
+              // immediately reversed by the GOS panel state synchronizer.
+              await page.waitForFunction(() =>
+                window.__HUNTSMART_INTERACTIVE_MAP__.getState().surface === 'gos' &&
+                typeof osMapInstance !== 'undefined' && !!osMapInstance,
+                null, { timeout: 45000 });
+              await page.evaluate(() => osSelectRegion('3'));
+              await page.waitForFunction(() => {
+                const panel = document.querySelector('#bcOpenSeasonsPage .os-panel');
+                const rect = panel && panel.getBoundingClientRect();
+                return !!(panel && panel.classList.contains('open') && rect && rect.left < innerWidth - 80);
+              }, null, { timeout: 20000 });
               await page.waitForTimeout(450);
               const open = await page.evaluate(() => {
                 const box = sel => document.querySelector(sel)?.getBoundingClientRect();
@@ -68,7 +78,7 @@ jobs:
               assert(open.controlsRight <= open.panelLeft - 8, 'Zoom/3D controls are overlapped by open GOS inspector');
               assert(open.scrollbarWidth === 'none', 'Results scrollbar is still visible');
               assert(open.overflow === 'auto' && open.canScroll, 'Results list no longer scrolls');
-              await page.evaluate(() => document.querySelector('#bcOpenSeasonsPage .os-panel').classList.remove('open'));
+              await page.evaluate(() => osSetPanelOpen(false, true));
               await page.waitForTimeout(400);
               const closed = await page.locator('#osMapControlStack').boundingBox();
               console.log('GOS closed:', JSON.stringify(closed));

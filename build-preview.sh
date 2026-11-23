@@ -126,7 +126,7 @@ if 'href="/blog/">Resources</a>' not in html and footer_saved in html:
 
 # Load scoped preview map styles without modifying the rest of the app.
 for tag in [
-    '<link href="./world-class-map.css?v=20260909" rel="stylesheet"/>',
+    '<link href="./world-class-map.css?v=20261123layers" rel="stylesheet"/>',
     '<link href="./imagery-lab.css?v=20260909" rel="stylesheet"/>',
     '<link href="./terrain-intelligence.css?v=20261120-mobile5" rel="stylesheet"/>',
 ]:
@@ -135,7 +135,7 @@ for tag in [
 
 # Load after maps.js so enhancement layers preserve and extend all existing
 # map functions rather than replacing them.
-wc_js = '<script defer src="./world-class-map.js?v=20260909"></script>'
+wc_js = '<script defer src="./world-class-map.js?v=20261123layers"></script>'
 if wc_js not in html:
     candidates = [
         '<script defer src="./maps.js"></script>',
@@ -157,7 +157,7 @@ if imagery_js not in html:
     else:
         html = html.replace('</body>', imagery_js + '\n</body>', 1)
 
-terrain_js = '<script defer src="./terrain-intelligence.js?v=20261120-mobile5"></script>'
+terrain_js = '<script defer src="./terrain-intelligence.js?v=20261123layers"></script>'
 if terrain_js not in html:
     if imagery_js in html:
         html = html.replace(imagery_js, imagery_js + '\n' + terrain_js, 1)

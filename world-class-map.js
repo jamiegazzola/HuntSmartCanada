@@ -335,10 +335,10 @@
   function setOverlayOpacity(value) {
     const n = Math.max(0, Math.min(100, Number(value) || 0));
     try {
-      if (typeof fullMapSetLEHOpacity === 'function') fullMapSetLEHOpacity(n / 100);
+      if (typeof fullMapSetLEHOpacity === 'function') fullMapSetLEHOpacity(1 - n / 100);
     } catch (e) {}
     const vals = document.querySelectorAll('[data-hs-wc-opacity-value]');
-    vals.forEach(function (el) { el.textContent = Math.round(100 - n) + '%'; });
+    vals.forEach(function (el) { el.textContent = Math.round(n) + '%'; });
   }
 
   function getOverlayVisibility() {
@@ -360,66 +360,24 @@
 
   function settingsBodyHTML(forMobile) {
     const base = currentBasemap();
-    const isSat = base === 'satellite';
-    const is3D = current3D();
     const visibility = getOverlayVisibility();
-    const sliderValue = 100 - visibility;
     const head = forMobile
-      ? '<div class="hs-wc-modal-head"><div><div class="hs-wc-panel-title">Map settings</div><div class="hs-wc-panel-sub">Basemap, terrain and satellite detail</div></div><span class="hs-wc-standard-chip">Mapbox 3.30</span></div>'
+      ? '<div class="hs-wc-modal-head"><div class="hs-wc-panel-title">Layers</div></div>'
       : '';
-
-    return head + '<div class="hs-wc-panel-body">' +
+    return head + '<div class="hs-wc-panel-body hs-minimal-layers">' +
       '<section class="hs-wc-section">' +
-        '<div class="hs-wc-label"><span>Basemap</span>' + (isSat ? '<span class="hs-wc-live">Standard Satellite</span>' : '') + '</div>' +
+        '<div class="hs-wc-label"><span>Map type</span></div>' +
         '<div class="hs-wc-seg three">' +
           choice('Satellite', base === 'satellite', "hsWcSetBase('satellite')", 'satellite') +
           choice('Topo', base === 'topo', "hsWcSetBase('topo')", '') +
           choice('Dark', base === 'streets', "hsWcSetBase('streets')", '') +
         '</div>' +
       '</section>' +
-
       '<section class="hs-wc-section">' +
-        '<div class="hs-wc-label"><span>Terrain</span><span class="hs-wc-live">Natural relief</span></div>' +
-        '<div class="hs-wc-seg two">' +
-          choice('2D', !is3D, 'hsWcSet3D(false)', '') +
-          choice('3D', is3D, 'hsWcSet3D(true)', '') +
-        '</div>' +
-        '<div class="hs-wc-note">3D uses a restrained 1.25× terrain exaggeration so slopes read clearly without looking artificial.</div>' +
-      '</section>' +
-
-      '<section class="hs-wc-section">' +
-        '<div class="hs-wc-label"><span>Satellite detail</span><span class="hs-wc-standard-chip">Standard</span></div>' +
-        '<div class="hs-wc-presets">' +
-          '<button type="button" class="hs-wc-preset" ' + (isSat ? 'onclick="hsWcPreset(\'clean\')"' : 'disabled') + '>Clean</button>' +
-          '<button type="button" class="hs-wc-preset" ' + (isSat ? 'onclick="hsWcPreset(\'context\')"' : 'disabled') + '>More context</button>' +
-        '</div>' +
-        '<div class="hs-wc-toggle-grid" style="margin-top:7px">' +
-          toggle('Roads', !!settings.roads, 'roads', !isSat) +
-          toggle('Trails', !!settings.trails, 'trails', !isSat) +
-          toggle('Labels', !!settings.labels, 'labels', !isSat) +
-          toggle('POIs', !!settings.poi, 'poi', !isSat) +
-        '</div>' +
-        (!isSat ? '<div class="hs-wc-note">Satellite detail controls become available on Standard Satellite.</div>' : '') +
-      '</section>' +
-
-      '<section class="hs-wc-section">' +
-        '<div class="hs-wc-label"><span>Lighting</span><span class="hs-wc-live">' + esc(settings.light) + '</span></div>' +
-        '<div class="hs-wc-seg four">' +
-          choice('Dawn', settings.light === 'dawn', "hsWcSetLight('dawn')", '') +
-          choice('Day', settings.light === 'day', "hsWcSetLight('day')", '') +
-          choice('Dusk', settings.light === 'dusk', "hsWcSetLight('dusk')", '') +
-          choice('Night', settings.light === 'night', "hsWcSetLight('night')", '') +
-        '</div>' +
-        '<div class="hs-wc-note">Lighting changes Standard Satellite immediately and does not change your selected WMU or camera position.</div>' +
-      '</section>' +
-
-      '<section class="hs-wc-section">' +
-        '<div class="hs-wc-label"><span>Map overlays</span><span data-hs-wc-opacity-value class="hs-wc-live">' + visibility + '%</span></div>' +
+        '<div class="hs-wc-label"><span>Overlay opacity</span><span data-hs-wc-opacity-value class="hs-wc-live">' + visibility + '%</span></div>' +
         '<div class="hs-wc-slider-row">' +
-          '<input type="range" min="0" max="100" step="1" value="' + sliderValue + '" oninput="hsWcSetOverlayOpacity(this.value)">' +
-          '<span data-hs-wc-opacity-value class="hs-wc-slider-value">' + visibility + '%</span>' +
+          '<input type="range" min="0" max="100" step="1" value="' + visibility + '" aria-label="Overlay opacity" oninput="hsWcSetOverlayOpacity(this.value)">' +
         '</div>' +
-        '<div class="hs-wc-note">Reduce overlay fill when you want the underlying terrain and imagery to dominate.</div>' +
       '</section>' +
     '</div>';
   }
@@ -427,8 +385,8 @@
   function renderDesktopPanel() {
     if (!desktopPanel) return;
     desktopPanel.innerHTML = '<div class="hs-wc-panel-head">' +
-      '<div><div class="hs-wc-panel-title">Map settings</div><div class="hs-wc-panel-sub">HuntSmart satellite & terrain</div></div>' +
-      '<div style="display:flex;align-items:center;gap:7px"><span class="hs-wc-standard-chip">Mapbox 3.30</span><button type="button" class="hs-wc-close" onclick="hsWcCloseSettings()" aria-label="Close">×</button></div>' +
+      '<div class="hs-wc-panel-title">Layers</div>' +
+      '<button type="button" class="hs-wc-close" onclick="hsWcCloseSettings()" aria-label="Close">×</button>' +
       '</div>' + settingsBodyHTML(false);
   }
 
@@ -469,6 +427,17 @@
       settingsButton = document.getElementById('hsWorldSettingsBtn');
     }
 
+    // A compatibility finalizer may have created this button first. Ensure the
+    // visible Layers control always invokes this renderer exactly once.
+    if (settingsButton && !settingsButton.__hsMinimalLayersBound) {
+      settingsButton.__hsMinimalLayersBound = true;
+      settingsButton.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        toggleDesktopSettings();
+      }, true);
+    }
+
     if (!document.getElementById('hsWorldSettingsPanel')) {
       desktopPanel = document.createElement('aside');
       desktopPanel.id = 'hsWorldSettingsPanel';
@@ -490,11 +459,20 @@
 
   function toggleDesktopSettings() {
     ensureDesktopSettings();
-    if (!desktopPanel) return;
-    const opening = !desktopPanel.classList.contains('open');
-    desktopPanel.classList.toggle('open', opening);
-    if (settingsButton) settingsButton.classList.toggle('is-open', opening);
-    if (opening) renderDesktopPanel();
+    // The finalizer can create the fallback panel before the world-map layer.
+    // Always resolve the live element, not only this closure's cached reference.
+    const panel = document.getElementById('hsWorldSettingsPanel');
+    if (!panel) return;
+    desktopPanel = panel;
+    settingsButton = document.getElementById('hsWorldSettingsBtn');
+    const opening = !panel.classList.contains('open');
+    panel.classList.toggle('open', opening);
+    if (settingsButton) {
+      settingsButton.classList.toggle('is-open', opening);
+      settingsButton.setAttribute('aria-expanded', String(opening));
+    }
+    // Keep the fallback renderer intact when it owns the existing panel.
+    if (opening && panel.dataset.hsFallbackLayers !== '1') renderDesktopPanel();
   }
 
   function closeDesktopSettings() {

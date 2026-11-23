@@ -1,0 +1,147 @@
+name: HuntSmart Minimal Map Layers QA
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - world-class-map.js
+      - terrain-intelligence.js
+      - bc-open-seasons.js
+      - gos-premium-toolbar.js
+      - map-ui-polish.js
+      - build-preview.sh
+      - index.html
+      - .github/workflows/minimal-map-layers-qa.yml
+  push:
+    branches: [main]
+    paths:
+      - world-class-map.js
+      - terrain-intelligence.js
+      - bc-open-seasons.js
+      - gos-premium-toolbar.js
+      - map-ui-polish.js
+      - build-preview.sh
+      - index.html
+      - .github/workflows/minimal-map-layers-qa.yml
+permissions:
+  contents: read
+jobs:
+  map-layers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate JS syntax
+        run: |
+          node --check world-class-map.js
+          node --check terrain-intelligence.js
+          node --check bc-open-seasons.js
+          node --check gos-premium-toolbar.js
+          node --check map-ui-polish.js
+      - name: Install Playwright runner
+        run: |
+          npm install --no-save playwright@1.55.0 --ignore-scripts --no-audit --no-fund
+          command -v google-chrome || command -v google-chrome-stable
+      - name: Exercise desktop and mobile Layers on deployed app
+        env:
+          URL: ${{ github.event_name == 'pull_request' && format('https://deploy-preview-{0}--huntsmartcanada.netlify.app', github.event.pull_request.number) || 'https://huntsmartcanada.ca' }}
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          // Bound the browser smoke test independently of pending map tile requests.
+          setTimeout(() => { console.error('Minimal layers browser QA exceeded 180 seconds'); process.exit(1); }, 180000).unref();
+          const assert = (v, m) => { if (!v) throw new Error(m); };
+          const expectSimple = async (page, selector) => {
+            const status = await page.locator(selector).evaluate(root => ({
+              text: root.innerText,
+              options: [...root.querySelectorAll('button')].filter(b => ['Satellite','Topo','Dark'].includes(b.textContent.trim())).map(b => b.textContent.trim()),
+              sliders: [...root.querySelectorAll('input[type="range"]')].length
+            }));
+            console.log(selector, JSON.stringify(status));
+            assert(status.options.join(',') === 'Satellite,Topo,Dark', 'Incorrect basemap controls for '+selector);
+            assert(status.sliders === 1, 'Expected exactly one opacity slider for '+selector);
+            assert(!/Wildfires|Satellite detail|Lighting|Natural relief|More context|3D uses|Terrain|Roads|Trails|POIs|Dawn|Dusk|Night/.test(status.text), 'Unexpected settings clutter: '+status.text);
+          };
+          (async () => {
+            const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--no-sandbox'] });
+            try {
+              for (const size of [{width:1440,height:900},{width:390,height:844}]) {
+                const mobile=size.width<=768;
+                console.log('LAYERS_STAGE',size.width,'start');
+                const page=await browser.newPage({viewport:size,hasTouch:mobile});
+                await page.goto(process.env.URL+'?layers-qa='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+                console.log('LAYERS_STAGE',size.width,'loaded');
+                await page.waitForFunction(()=>!!window.__HUNTSMART_INTERACTIVE_MAP__,null,{timeout:60000});
+                console.log('LAYERS_STAGE',size.width,'controller ready');
+                if (!mobile) await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.open('leh',{province:'BC'}));
+                console.log('LAYERS_STAGE',size.width,'LEH open requested');
+                if (!mobile) await page.waitForFunction(()=>{
+                  const root=document.getElementById('mapPage');
+                  return !!root && root.getClientRects().length>0 &&
+                    window.__HUNTSMART_INTERACTIVE_MAP__.getState().surface==='leh' &&
+                    typeof fullMapInstance!=='undefined' && !!fullMapInstance &&
+                    !!document.getElementById('hsWorldSettingsBtn');
+                },null,{timeout:45000});
+                await page.waitForTimeout(500);
+                console.log('LAYERS_STAGE',size.width,'LEH initialized');
+                if (mobile) {
+                  await page.waitForFunction(()=>typeof window.hsOpenModal==='function',null,{timeout:20000});
+                  await page.evaluate(()=>window.hsOpenModal('layers'));
+                  await page.waitForFunction(()=>!!document.querySelector('#hsModal .hs-minimal-layers'),null,{timeout:10000});
+                  await expectSimple(page,'#hsModal');
+                  const slider=page.locator('#hsModal input[type="range"]').first();
+                  await slider.evaluate(el=>{el.value='35';el.dispatchEvent(new Event('input',{bubbles:true}));});
+                } else {
+                  await page.locator('#hsWorldSettingsBtn').click();
+                  const debug=await page.evaluate(()=>({
+                    buttonExists:!!document.getElementById('hsWorldSettingsBtn'),
+                    buttonHTML:document.getElementById('hsWorldSettingsBtn')?.outerHTML.slice(0,450),
+                    panelExists:!!document.getElementById('hsWorldSettingsPanel'),
+                    panelClass:document.getElementById('hsWorldSettingsPanel')?.className,
+                    panelHTML:document.getElementById('hsWorldSettingsPanel')?.innerHTML.slice(0,180),
+                    worldFn:typeof window.hsWcToggleSettings,
+                    fallbackFn:typeof window.hsFallbackCloseLayers
+                  }));
+                  console.log('LEH click diagnostic',JSON.stringify(debug));
+                  await page.waitForFunction(()=>document.querySelector('#hsWorldSettingsPanel')?.classList.contains('open'),null,{timeout:10000});
+                  await expectSimple(page,'#hsWorldSettingsPanel');
+                  const slider=page.locator('#hsWorldSettingsPanel input[type="range"]').first();
+                  await slider.evaluate(el=>{el.value='35';el.dispatchEvent(new Event('input',{bubbles:true}));});
+                }
+                console.log('LAYERS_STAGE',size.width,'LEH panel checked');
+                const lehOpacity=await page.evaluate(()=>typeof _fullMapWMUOpacity==='undefined'?null:_fullMapWMUOpacity);
+                assert(Math.abs(lehOpacity-.35)<.015,'LEH opacity not applied: '+lehOpacity);
+
+                if (!mobile) await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.open('gos',{province:'BC'}));
+                console.log('LAYERS_STAGE',size.width,'GOS requested');
+                if (!mobile) await page.waitForFunction(()=>{
+                  const p=document.getElementById('bcOpenSeasonsPage');
+                  return !!p && p.getClientRects().length>0 &&
+                    window.__HUNTSMART_INTERACTIVE_MAP__.getState().surface==='gos' &&
+                    typeof osMapInstance!=='undefined' && !!osMapInstance;
+                },null,{timeout:45000});
+                await page.waitForTimeout(400);
+                console.log('LAYERS_STAGE',size.width,'GOS initialized');
+                if (mobile) {
+                  await page.waitForFunction(()=>typeof window.gosOpenModal==='function',null,{timeout:20000});
+                  await page.evaluate(()=>window.gosOpenModal('layers'));
+                  await page.waitForFunction(()=>!!document.querySelector('#gosModal input[type="range"]'),null,{timeout:10000});
+                  await expectSimple(page,'#gosModal');
+                  await page.locator('#gosModal input[type="range"]').first().evaluate(el=>{el.value='65';el.dispatchEvent(new Event('input',{bubbles:true}));});
+                } else {
+                  await page.waitForFunction(()=>!!document.getElementById('osUnifiedSettingsBtn'),null,{timeout:20000});
+                  await page.locator('#osUnifiedSettingsBtn').click();
+                  await page.waitForFunction(()=>document.querySelector('#osUnifiedSettingsPanel')?.classList.contains('open'),null,{timeout:10000});
+                  await expectSimple(page,'#osUnifiedSettingsPanel');
+                  await page.locator('#hsGosMinimalOpacity').evaluate(el=>{el.value='65';el.dispatchEvent(new Event('input',{bubbles:true}));});
+                }
+                const gosOpacity=await page.evaluate(()=>typeof osOverlayVisibility==='undefined'?null:osOverlayVisibility);
+                assert(Math.abs(gosOpacity-.65)<.015,'GOS opacity not applied: '+gosOpacity);
+                console.log('Layers QA passed for',size.width);
+                await page.close();
+              }
+            } finally {await browser.close();}
+          })().then(() => process.exit(0)).catch(error=>{console.error(error.stack||error);process.exit(1);});
+          NODE

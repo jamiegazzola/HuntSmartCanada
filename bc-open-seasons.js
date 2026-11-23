@@ -8301,43 +8301,17 @@ Object.assign(window, {
 
   // ── Layers modal ──────────────────────────────────────────
   function _gosLayersHTML() {
-    const tile = (typeof _osCurrentTile !== 'undefined' && _osCurrentTile) || 'streets';
-    const is3D  = !!(window.osTerrain3D || (typeof osTerrain3D !== 'undefined' && osTerrain3D));
-    const overlayPct = 75;
-    const wildfirePct = 60;
-    const wildfireOn = !!(window.osWildfireVisible);
-    const btn = (label, cls, active, fn) =>
-      `<button type="button" class="gos-modal-btn ${cls}${active?' active':''}" onclick="${fn}">${label}</button>`;
-    return `
-      <div class="gos-modal-head">
-        <span class="gos-modal-title">Map layers</span>
-        <button type="button" class="gos-modal-close" onclick="gosCloseModal()">&#10005;</button>
-      </div>
-      <div class="gos-modal-lbl">Map type</div>
-      <div class="gos-modal-seg3">
-        ${btn('Streets','map-type',tile==='streets',"gosSetTile('streets')")}
-        ${btn('Satellite','map-type',tile==='satellite',"gosSetTile('satellite')")}
-        ${btn('Topo','map-type',tile==='topo',"gosSetTile('topo')")}
-      </div>
-      <div class="gos-modal-lbl">Mode</div>
-      <div class="gos-modal-seg2">
-        ${btn('2D','mode',!is3D,"gosSet3D(false)")}
-        ${btn('3D','mode',is3D,"gosSet3D(true)")}
-      </div>
-      <div class="gos-modal-lbl">GOS overlay opacity</div>
-      <div class="gos-slider-row">
-        <input type="range" min="0" max="100" step="1" value="${overlayPct}" oninput="gosSetOverlayOpacity(this.value)">
-        <span class="gos-slider-val" id="gosOverlayVal">${overlayPct}%</span>
-      </div>
-      <div class="gos-modal-lbl">Historical wildfires</div>
-      <div class="gos-modal-seg2" style="margin-bottom:6px">
-        ${btn('Show','',wildfireOn,"gosSetWildfire(true)")}
-        ${btn('Hide','',!wildfireOn,"gosSetWildfire(false)")}
-      </div>
-      <div class="gos-slider-row">
-        <input type="range" min="0" max="100" step="1" value="${wildfirePct}" oninput="gosSetWildfireOpacity(this.value)">
-        <span class="gos-slider-val amber" id="gosWildfireVal">${wildfirePct}%</span>
-      </div>`;
+    const tile = (typeof osMapStyle !== 'undefined' && osMapStyle) || 'streets';
+    const raw = (typeof osOverlayVisibility !== 'undefined') ? Number(osOverlayVisibility) : 1;
+    const pct = Math.round(Math.max(0, Math.min(1, Number.isFinite(raw) ? raw : 1)) * 100);
+    const btn = (label, selected, type) =>
+      '<button type="button" class="gos-modal-btn map-type' + (selected ? ' active' : '') + '" onclick="gosSetTile(\'' + type + '\')">' + label + '</button>';
+    return '<div class="gos-modal-head"><span class="gos-modal-title">Layers</span><button type="button" class="gos-modal-close" onclick="gosCloseModal()" aria-label="Close">×</button></div>' +
+      '<div class="gos-modal-lbl">Map type</div><div class="gos-modal-seg3">' +
+        btn('Satellite',tile === 'satellite','satellite') + btn('Topo',tile === 'topo','topo') + btn('Dark',tile === 'streets','streets') +
+      '</div><div class="gos-modal-lbl">Overlay opacity</div>' +
+      '<div class="gos-slider-row"><input type="range" min="0" max="100" value="' + pct + '" aria-label="Overlay opacity" oninput="gosSetOverlayOpacity(this.value)">' +
+      '<span class="gos-slider-val" id="gosOverlayVal">' + pct + '%</span></div>';
   }
 
   window.gosSetTile = function (type) {
@@ -8356,8 +8330,12 @@ Object.assign(window, {
     if (modal) modal.innerHTML = _gosLayersHTML();
   };
   window.gosSetOverlayOpacity = function (val) {
-    const v = qs('gosOverlayVal'); if (v) v.textContent = Math.round(val) + '%';
-    try { if (typeof osSetOverlayOpacity === 'function') osSetOverlayOpacity(1 - val / 100); } catch (e) {}
+    const pct = Math.max(0, Math.min(100, Number(val) || 0));
+    const label = qs('gosOverlayVal'); if (label) label.textContent = Math.round(pct) + '%';
+    try {
+      if (typeof osSetLayerOpacityClean === 'function') osSetLayerOpacityClean(pct / 100);
+      else if (typeof osSetOverlayOpacity === 'function') osSetOverlayOpacity(pct / 100);
+    } catch (e) {}
   };
   window.gosSetWildfire = function (show) {
     window.osWildfireVisible = show;
@@ -8639,18 +8617,26 @@ Object.assign(window, {
   };
   window.gosCloseModal=function(){var s=$('gosScrim');if(s){s.classList.remove('hs-open');s.style.cssText='display:none!important';}['gosRbSearch','gosRbFilters','gosRbLayers'].forEach(function(id){var b=$(id);if(b)b.classList.remove('hs-active');});};
   function _glh(){
-    var tile=(typeof _osCurrentTile!=='undefined'&&_osCurrentTile)||'streets';
-    var i3=!!(window.osTerrain3D||(typeof osTerrain3D!=='undefined'&&osTerrain3D));
-    function B(l,c,on,f){return '<button type="button" class="hs-sc '+c+(on?' gos-on':'')+'" onclick="'+f+'">'+l+'</button>';}
-    return '<div class="hs-mh"><span class="hs-mt">Map layers</span><button type="button" class="hs-mx" onclick="gosCloseModal()">&#10005;</button></div>'
-      +'<div class="hs-ml">Map type</div><div class="hs-seg3">'+B('Streets','hs-mt-btn',tile==='streets',"gosSetTile('streets')")+B('Satellite','hs-mt-btn',tile==='satellite',"gosSetTile('satellite')")+B('Topo','hs-mt-btn',tile==='topo',"gosSetTile('topo')")+'</div>'
-      +'<div class="hs-ml">Mode</div><div class="hs-seg2">'+B('2D','hs-mode',!i3,"gosSet3D(false)")+B('3D','hs-mode',!!i3,"gosSet3D(true)")+'</div>'
-      +'<div class="hs-ml">GOS overlay opacity</div><div class="hs-slider-row"><input type="range" min="0" max="100" value="75" oninput="var v=document.getElementById(\'gosOpV\');if(v)v.textContent=Math.round(this.value)+\'%\'"><span class="hs-sv" id="gosOpV">75%</span></div>'
-      +'<div class="hs-ml">Historical wildfires</div>'
-      +'<div class="hs-seg2" style="margin-bottom:6px">'+B('Show','',!!window.osWildfireVisible,"gosSetWildfire(true)")+B('Hide','',!window.osWildfireVisible,"gosSetWildfire(false)")+'</div>'
-      +'<div class="hs-slider-row"><input type="range" min="0" max="100" value="60" oninput="var v=document.getElementById(\'gosWfV\');if(v)v.textContent=Math.round(this.value)+\'%\'"><span class="hs-sv hs-sv-amber" id="gosWfV">60%</span></div>';
+    var tile=(typeof osMapStyle!=='undefined'&&osMapStyle)||'streets';
+    var raw=(typeof osOverlayVisibility!=='undefined')?Number(osOverlayVisibility):1;
+    var pct=Math.round(Math.max(0,Math.min(1,Number.isFinite(raw)?raw:1))*100);
+    function B(label,selected,type){
+      return '<button type="button" class="hs-sc hs-mt-btn'+(selected?' gos-on':'')+'" onclick="gosSetTile(\''+type+'\')">'+label+'</button>';
+    }
+    return '<div class="hs-mh"><span class="hs-mt">Layers</span><button type="button" class="hs-mx" onclick="gosCloseModal()" aria-label="Close">×</button></div>'
+      +'<div class="hs-ml">Map type</div><div class="hs-seg3">'
+      +B('Satellite',tile==='satellite','satellite')+B('Topo',tile==='topo','topo')+B('Dark',tile==='streets','streets')+'</div>'
+      +'<div class="hs-ml">Overlay opacity</div><div class="hs-slider-row"><input type="range" min="0" max="100" step="1" value="'+pct+'" aria-label="Overlay opacity" oninput="gosSetOverlayOpacity(this.value)"><span class="hs-sv" id="gosOverlayVal">'+pct+'%</span></div>';
   }
   window.gosSetTile=function(t){window._osCurrentTile=t;try{if(typeof osSetTile==='function')osSetTile(t);}catch(e){}var m=$('gosModal');if(m)m.innerHTML=_glh();};
+  window.gosSetOverlayOpacity=function(value){
+    var pct=Math.max(0,Math.min(100,Number(value)||0));
+    var label=$('gosOverlayVal');if(label)label.textContent=Math.round(pct)+'%';
+    try {
+      if(typeof osSetLayerOpacityClean==='function')osSetLayerOpacityClean(pct/100);
+      else if(typeof osSetOverlayOpacity==='function')osSetOverlayOpacity(pct/100);
+    }catch(e){}
+  };
   window.gosSet3D=function(on){try{var cur=!!(window.osTerrain3D||(typeof osTerrain3D!=='undefined'&&osTerrain3D));if(cur!==on&&typeof osToggle3D==='function')osToggle3D();}catch(e){}_s3();var m=$('gosModal');if(m)m.innerHTML=_glh();};
   window.gosSetWildfire=function(show){window.osWildfireVisible=show;try{if(typeof osToggleWildfireClean==='function')osToggleWildfireClean(show);}catch(e){}var m=$('gosModal');if(m)m.innerHTML=_glh();};
   function _gfh(){

@@ -25,39 +25,27 @@
 
   function fallbackLayersHTML() {
     var base = currentBase();
-    var terrain = current3D();
     var visibility = currentOverlayVisibility();
-    var slider = 100 - visibility;
-    function choice(label, active, action, extra) {
-      return '<button type="button" class="hs-wc-choice ' + (extra || '') + (active ? ' active' : '') + '" onclick="' + action + '">' + label + '</button>';
+    function choice(label, active, action) {
+      return '<button type="button" class="hs-wc-choice' + (active ? ' active' : '') + '" onclick="' + action + '">' + label + '</button>';
     }
     return '<div class="hs-wc-panel-head">' +
-      '<div><div class="hs-wc-panel-title">Map layers</div><div class="hs-wc-panel-sub">Basemap, terrain and boundary visibility</div></div>' +
+      '<div class="hs-wc-panel-title">Layers</div>' +
       '<button type="button" class="hs-wc-close" onclick="hsFallbackCloseLayers()" aria-label="Close layers">×</button>' +
-      '</div>' +
-      '<div class="hs-wc-panel-body">' +
+      '</div><div class="hs-wc-panel-body hs-minimal-layers">' +
         '<section class="hs-wc-section">' +
-          '<div class="hs-wc-label"><span>Basemap</span></div>' +
+          '<div class="hs-wc-label"><span>Map type</span></div>' +
           '<div class="hs-wc-seg three">' +
-            choice('Satellite', base === 'satellite', "hsFallbackSetBase('satellite')", 'satellite') +
-            choice('Topo', base === 'topo', "hsFallbackSetBase('topo')", '') +
-            choice('Dark', base === 'streets', "hsFallbackSetBase('streets')", '') +
+            choice('Satellite', base === 'satellite', "hsFallbackSetBase('satellite')") +
+            choice('Topo', base === 'topo', "hsFallbackSetBase('topo')") +
+            choice('Dark', base === 'streets', "hsFallbackSetBase('streets')") +
           '</div>' +
         '</section>' +
         '<section class="hs-wc-section">' +
-          '<div class="hs-wc-label"><span>Terrain</span></div>' +
-          '<div class="hs-wc-seg two">' +
-            choice('2D', !terrain, 'hsFallbackSet3D(false)', '') +
-            choice('3D', terrain, 'hsFallbackSet3D(true)', '') +
-          '</div>' +
-        '</section>' +
-        '<section class="hs-wc-section">' +
-          '<div class="hs-wc-label"><span>Boundary visibility</span><span class="hs-wc-live">' + visibility + '%</span></div>' +
+          '<div class="hs-wc-label"><span>Overlay opacity</span><span class="hs-wc-live">' + visibility + '%</span></div>' +
           '<div class="hs-wc-slider-row">' +
-            '<input type="range" min="0" max="100" step="1" value="' + slider + '" oninput="hsFallbackSetOverlayOpacity(this.value)">' +
-            '<span class="hs-wc-slider-value">' + visibility + '%</span>' +
+            '<input type="range" min="0" max="100" step="1" value="' + visibility + '" aria-label="Overlay opacity" oninput="hsFallbackSetOverlayOpacity(this.value)">' +
           '</div>' +
-          '<div class="hs-wc-note">Reduce boundary fill when you want satellite imagery and terrain to dominate.</div>' +
         '</section>' +
       '</div>';
   }
@@ -108,6 +96,22 @@
 
     var label = button.querySelector('span');
     if (label && label.textContent !== 'Layers') label.textContent = 'Layers';
+    // This finalizer can own the panel while world-class-map.js owns the
+    // button. Bind a direct handler so a mixed initialization still opens it.
+    if (!button.__hsFallbackLayersBound) {
+      button.__hsFallbackLayersBound = true;
+      button.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        var live = document.getElementById('hsWorldSettingsPanel');
+        if (!live) return;
+        var opening = !live.classList.contains('open');
+        live.classList.toggle('open', opening);
+        button.classList.toggle('is-open', opening);
+        button.setAttribute('aria-expanded', String(opening));
+        if (opening && live.dataset.hsFallbackLayers === '1') renderFallbackLayers();
+      }, true);
+    }
   }
 
   window.hsFallbackCloseLayers = function () {
@@ -128,8 +132,12 @@
   };
   window.hsFallbackSetOverlayOpacity = function (value) {
     var slider = Math.max(0, Math.min(100, Number(value) || 0));
-    try { if (typeof fullMapSetLEHOpacity === 'function') fullMapSetLEHOpacity(slider / 100); } catch (_) {}
-    setTimeout(renderFallbackLayers, 30);
+    try { if (typeof fullMapSetLEHOpacity === 'function') fullMapSetLEHOpacity(1 - slider / 100); } catch (_) {}
+    var panel = document.getElementById('hsWorldSettingsPanel');
+    if (panel) {
+      var label = panel.querySelector('.hs-wc-live');
+      if (label) label.textContent = Math.round(slider) + '%';
+    }
   };
 
   function ensureWorldSettingsCompatibility() {
