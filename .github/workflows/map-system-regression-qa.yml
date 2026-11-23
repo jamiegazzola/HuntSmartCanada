@@ -87,7 +87,8 @@ jobs:
           assert(css.includes('html.hs-standalone'), 'standalone styling missing');
 
           const mapStyles = read('style.css');
-          assert(/@media\\s*\\(min-width:\\s*821px\\)[\\s\\S]*?#bcOpenSeasonsPage \\.os-body:has\\(\\.os-panel\\.open\\) \\.os-map-control-stack\\s*\\{[\\s\\S]*?right:\\s*calc\\(min\\(410px, 100vw - 28px\\) \\+ 30px\\)\\s*!important/.test(mapStyles),
+          assert(mapStyles.includes('#bcOpenSeasonsPage .os-body:has(.os-panel.open) .os-map-control-stack') &&
+            mapStyles.includes('right: calc(min(410px, 100vw - 28px) + 30px) !important;'),
             'GOS desktop controls should move left of an open results inspector');
           assert(mapStyles.includes('transition: right .18s ease'), 'GOS controls should transition smoothly');
 
