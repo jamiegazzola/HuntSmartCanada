@@ -184,6 +184,38 @@ jobs:
             assert.equal(await page.locator('#era-modern').isVisible(),true);
             assert.equal(await page.locator('#era-historical').isVisible(),true);
             assert.equal(await page.locator('#era-modern').innerText(),'Modern');
+            // Confirm the new species work through the same real user journey.
+            const keys=await page.locator('#species option').evaluateAll(options=>options.map(o=>o.value).sort());
+            assert.deepEqual(keys,['black_bear','caribou','elk','moose','mountain_goat','mule_deer','roosevelt_elk','white_tailed_deer','wild_sheep','wood_bison'].sort(),
+              'BC must display exactly the ten requested species');
+            assert.equal(await page.locator('#species option[value="wood_bison"]').textContent(),'Bison');
+            await page.locator('#species').selectOption('wood_bison');
+            await page.locator('#era-modern').click();
+            await page.waitForFunction(()=>document.getElementById('layer-note-text')?.textContent.includes('Gold dot: Pink Mountain'),
+              null,{timeout:30000});
+            assert.equal(await page.locator('#era-historical').isVisible(),false);
+            assert.equal(await page.locator('#hs-harvest-toggle').innerText(),'LEH Success');
+            await page.locator('#hs-harvest-toggle').click();
+            await page.locator('#hs-year-trigger').click();
+            await page.locator('[data-hs-period="all"]').click();
+            await page.waitForFunction(()=>window.HUNTSMART_HARVEST_RENDER_STATE?.()?.ready,
+              null,{timeout:45000});
+            assert((await page.locator('#hs-metric-legend').textContent()).includes('Bison · LEH survey only'),
+              'Bison success must not be represented as combined GOS and LEH');
+            await page.locator('#era-modern').click();
+            await page.locator('#species').selectOption('black_bear');
+            await page.locator('#era-historical').click();
+            await page.waitForFunction(()=>document.getElementById('layer-note-text')?.textContent.includes('Historical: BC 1988 distribution'),
+              null,{timeout:45000});
+            await page.locator('#era-modern').click();
+            await page.waitForFunction(()=>document.getElementById('layer-note-text')?.textContent.includes('broad BC range'),
+              null,{timeout:30000});
+            await page.locator('#hs-harvest-toggle').click();
+            await page.waitForFunction(()=>window.HUNTSMART_HARVEST_RENDER_STATE?.()?.ready,
+              null,{timeout:45000});
+            assert.equal(await page.locator('#hs-harvest-toggle').innerText(),'Success');
+            assert((await page.locator('#hs-harvest-detail').textContent()).includes('resident harvest estimates'),
+              'Black bear must use the official combined harvest archive');
             // Page-origin errors originating from Google/Mapbox can be logged independently.
             assert(!errs.some(s=>/controls missing|ReferenceError.*hs-map-ui|Cannot read properties of null.*appendChild/i.test(s)),
               'HuntSmart control runtime failed: '+errs.join(' | '));

@@ -26,7 +26,7 @@ function parseCSV(source){
   if(cell||row.length){row.push(cell);lines.push(row);}
   return lines;
 }
-function compile(source){
+function compile(source, {test=false}={}){
   const table=parseCSV(source);
   const header=table.shift().map(s=>s.replace(/^\uFEFF/,'').trim());
   const idx={};
@@ -38,11 +38,11 @@ function compile(source){
   for(const row of table){
     const year=Number(row[idx.Year]),species=row[idx.Species]?.trim();
     const region=row[idx.Region]?.trim(),raw=row[idx.WMU]?.trim();
-    if(!Number.isInteger(year)||year<1984||year>2023||!species)continue;
+    if(!Number.isInteger(year)||year<1984||year>2024||!species)continue;
     // Single-WMU IDs only: 424 => 4-24, 105 => 1-5.
     // Multi-WMU LEH hunt areas may not be geographically attributed to one WMU.
-    const hit=/^([1-8])(\d{2})$/.exec(raw||'');
-    if(!hit||region!==hit[1]||Number(hit[2])<1){rejectedAmbiguous++;continue;}
+    const hit=/^([1-8])(\d{2})$/.exec(raw||'') || /^([1-8])-(\d{1,2})$/.exec(raw||'');
+    if(!hit||!(region===hit[1]||(hit[1]==='7'&&['7A','7B'].includes(region.toUpperCase())))||Number(hit[2])<1||Number(hit[2])>98){rejectedAmbiguous++;continue;}
     const id=hit[1]+'-'+Number(hit[2]);
     const key=species+'|'+id+'|'+year;
     if(!groups.has(key))groups.set(key,{species,id,year,hunters:0,kills:0,valid:true,codes:new Set()});
@@ -66,11 +66,14 @@ function compile(source){
     counts[record.species]=(counts[record.species]||0)+1;
   }
   const total=Object.values(counts).reduce((a,b)=>a+b,0);
-  assert(total>1000&&species.GOAT&&species.ELK&&species.MOOS,
-    'LEH data unexpectedly empty; refusing to publish invalid records');
+  if(!test) {
+    assert(total>1000&&species.GOAT&&species.ELK&&species.MOOS,
+      'LEH data unexpectedly empty; refusing to publish invalid records');
+    assert(species.BISO&&Object.keys(species.BISO).length>0,'No usable BISO single-WMU estimates: check government source before publishing');
+  }
   return {meta:{publisher:'Government of British Columbia',
-    dataset:'Limited Entry Hunting Survey Estimates 1984 to 2023',
-    source:URL,first_year:1984,last_year:2023,
+    dataset:'Limited Entry Hunting Survey Estimates',
+    source:URL,first_year:1984,last_year:Math.max(...Array.from(groups.values(),r=>r.year)),
     unit:'LEH hunt-code estimated hunter participation, not unique individual hunters',
     mapping:'Only single-WMU LEH hunt areas are included; multi-WMU and incomplete survey estimates omitted',
     limitation:'Summing different hunt codes may double-count participating individuals. Do not subtract these figures from combined harvest to calculate GOS.',
@@ -81,7 +84,11 @@ if(process.argv.includes('--self-test')){
   const demo='Year,Species,Region,WMU,Hunt Code,Estimated Hunters,Estimated Kills\n2023,GOAT,4,424,1,10,2\n2023,GOAT,4,424,2,15,4\n2023,GOAT,4,"424,425",3,20,3\n2023,ELK,4,424,4,5,\n2023,ELK,4,425,5,8,2\n';
   const rows=parseCSV(demo);
   assert.equal(rows[3][3],'424,425');
-  console.log('LEH CSV parser self-test passed');
+  const bisonFixture='Year,Species,Region,WMU,Hunt Code,Estimated Hunters,Estimated Kills\n2024,BISO,7B,742,1,20,8\n2024,BISO,7,7-42,2,30,12\n2024,BISO,7B,"742,757",3,20,3\n2024,BISO,7B,758,4,5,\n';
+  const checked=compile(bisonFixture,{test:true});
+  assert.deepEqual(checked.species.BISO,{'7-42':{'2024':[50,20]}});
+  assert.equal(checked.meta.last_year,2024);
+  console.log('LEH CSV parser and bison single-WMU aggregation self-test passed');
   process.exit(0);
 }
 const csv=execFileSync('curl',['--fail','--location','--silent','--show-error','--retry','2','--max-time','45',URL],{
@@ -92,3 +99,4 @@ const dest=path.join('site','species-map','data','bc-leh-single-wmu-1984-2023.js
 fs.mkdirSync(path.dirname(dest),{recursive:true});
 fs.writeFileSync(dest,JSON.stringify(result));
 console.log('Official LEH WMU snapshot built:',result.meta.accepted_records,'records; ambiguous excluded:',result.meta.rejected_ambiguous);
+console.log('BISO verified WMU/year counts:',JSON.stringify(Object.fromEntries(Object.entries(result.species.BISO).map(([unit,years])=>[unit,Object.keys(years).length]))));

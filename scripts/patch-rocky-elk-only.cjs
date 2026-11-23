@@ -44,6 +44,14 @@ const eraReplacement = `    const eraControl = document.querySelector('.era-cont
     if ((isRoosevelt && viewMode !== 'modern') || (isRockyElk && viewMode !== 'historical')) {
       viewMode = isRoosevelt ? 'modern' : 'historical';
       setEraButtons();
+    }
+    const bcBison = item.key === 'wood_bison' && (typeof province === 'undefined' || province === 'bc');
+    const bcBear = item.key === 'black_bear' && (typeof province === 'undefined' || province === 'bc');
+    document.body.classList.toggle('bc-bear-bison', bcBison || bcBear);
+    if (bcBison) {
+      eraHistorical.hidden = true;
+      eraModern.textContent = 'Distribution';
+      if (viewMode !== 'modern') { viewMode = 'modern'; setEraButtons(); }
     }`;
 if (!source.includes(eraAnchor)) throw new Error('Species era-control anchor is missing');
 source = source.replace(eraAnchor, eraReplacement);

@@ -3,6 +3,7 @@ name: BC Harvest Data Contract
 on:
   pull_request:
     paths:
+      - 'scripts/build-leh-history.cjs'
       - 'scripts/build-verified-bc-harvest.py'
       - 'scripts/install-harvest-success.cjs'
       - 'scripts/verify-harvest-success.cjs'
@@ -55,4 +56,5 @@ jobs:
           node --check species-map/elk-species.js
           node --check species-map/harvest-success.js
           node scripts/build-leh-history.cjs --self-test
+          node scripts/build-leh-history.cjs
           node scripts/verify-harvest-success.cjs

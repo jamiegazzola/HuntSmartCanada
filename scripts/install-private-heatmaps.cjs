@@ -34,8 +34,16 @@ execFileSync(process.execPath, ['scripts/verify-private-species.mjs'], { stdio:'
 // visually mixing them with the KMZ makes the map misleading.
 const appReplacements = [
   [
+    "Gold: Hay River reference. A 2000 BC plan mentions occasional Hay-Zama crossings in this drainage; the line is not a bison range or sighting.",
+    "Gold line: Hay River reference (2000 BC plan). Gold dot: Pink Mountain geographic reference for the Plains Bison herd, not a sighting or range boundary. The Pink Mountain and Hay-Zama herd ranges are not mapped. Green polygons: three Wood Bison herd ranges, not density.",
+  ],
+  [
+    "contextData.setStyle({ strokeColor: '#f5c76b', strokeOpacity: 0.95, strokeWeight: 2.5, clickable: false });",
+    "contextData.addGeoJson({type:'FeatureCollection',features:[{type:'Feature',properties:{reference:'Pink Mountain geographic reference (BC Geographical Names, not a bison sighting)'},geometry:{type:'Point',coordinates:[-122.8736111111,57.0716666667]}}]});\n          contextData.setStyle(feature => feature.getGeometry().getType() === 'Point' ? { icon:{path:google.maps.SymbolPath.CIRCLE,scale:6,fillColor:'#f5c76b',fillOpacity:layerOpacity,strokeColor:'#211d12',strokeOpacity:layerOpacity,strokeWeight:1.2},title:feature.getProperty('reference'),clickable:false } : { strokeColor:'#f5c76b',strokeOpacity:0.95,strokeWeight:2.5,clickable:false });",
+  ],
+  [
     "const DISPLAYED_SPECIES = new Set([...KMZ_HEATMAPS, 'roosevelt_elk', 'rocky_elk_kootenay']);",
-    "const DISPLAYED_SPECIES = new Set([...KMZ_HEATMAPS, 'roosevelt_elk']);",
+    "const DISPLAYED_SPECIES = new Set([...KMZ_HEATMAPS, 'roosevelt_elk', 'wood_bison', 'black_bear']);",
   ],
   [
     "let viewMode = ['modern', 'winter', 'summer', 'historical'].includes(storedMode) ? storedMode : 'modern';",
@@ -230,6 +238,7 @@ fs.writeFileSync(path.join(dest, '..', 'app.js'), patchedApp);
 const catalogPath = path.join(dest, '..', 'species-catalog.js');
 let catalog = fs.readFileSync(catalogPath, 'utf8');
 catalog = catalog.replace("label: 'Mule Deer (including Black-tailed Deer)'", "label: 'Mule Deer'");
+catalog = catalog.replace("label: 'Wood Bison'", "label: 'Bison'");
 fs.writeFileSync(catalogPath, catalog);
 
 // Keep the legacy elements in the private source DOM so older JS references
@@ -242,6 +251,8 @@ fs.appendFileSync(cssPath, `
 .evidence-toggle,
 .layer-note { display: none !important; }
 .era-control button { flex: 1 1 50%; }
+/* Source notes for the two non-KMZ species remain in the existing settings panel. */
+body.bc-bear-bison .layer-note:not([hidden]) { display: block !important; }
 `);
 
 console.log(`Installed ${staged.length} verified private map assets in KMZ-only mode.`);
