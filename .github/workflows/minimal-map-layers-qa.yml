@@ -40,10 +40,10 @@ jobs:
           node --check bc-open-seasons.js
           node --check gos-premium-toolbar.js
           node --check map-ui-polish.js
-      - name: Install browser
+      - name: Install Playwright runner
         run: |
           npm install --no-save playwright@1.55.0 --ignore-scripts --no-audit --no-fund
-          npx playwright install --with-deps chromium
+          command -v google-chrome || command -v google-chrome-stable
       - name: Exercise desktop and mobile Layers on deployed app
         env:
           URL: ${{ github.event_name == 'pull_request' && format('https://deploy-preview-{0}--huntsmartcanada.netlify.app', github.event.pull_request.number) || 'https://huntsmartcanada.ca' }}
@@ -65,7 +65,7 @@ jobs:
             assert(!/Wildfires|Satellite detail|Lighting|Natural relief|More context|3D uses|Terrain|Roads|Trails|POIs|Dawn|Dusk|Night/.test(status.text), 'Unexpected settings clutter: '+status.text);
           };
           (async () => {
-            const browser = await chromium.launch({ headless: true });
+            const browser = await chromium.launch({ channel: 'chrome', headless: true, args: ['--no-sandbox'] });
             try {
               for (const size of [{width:1440,height:900},{width:390,height:844}]) {
                 const mobile=size.width<=768;
