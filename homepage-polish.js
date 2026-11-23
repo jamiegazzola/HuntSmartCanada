@@ -25,23 +25,6 @@
   });
 
   /* ══════════════════════════════════════
-     2. PARALLAX HERO
-  ══════════════════════════════════════ */
-  function parallax() {
-    if (!isHome()) return;
-    var bg = document.querySelector('.hero-photo-bg');
-    if (!bg) return;
-    var scrollY = window.scrollY;
-    var hero    = document.querySelector('.hero-photo');
-    if (!hero) return;
-    var heroH   = hero.offsetHeight;
-    if (scrollY > heroH) return;
-    var pct = scrollY / heroH;
-    bg.style.transform = 'scale(1.08) translateY(' + (pct * 28) + '%)';
-  }
-  window.addEventListener('scroll', parallax, { passive: true });
-
-  /* ══════════════════════════════════════
      3. SCROLL REVEAL — staggered
   ══════════════════════════════════════ */
   function addRevealClasses() {
