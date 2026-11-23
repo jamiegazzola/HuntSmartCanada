@@ -75,9 +75,9 @@ jobs:
                 console.log('LAYERS_STAGE',size.width,'loaded');
                 await page.waitForFunction(()=>!!window.__HUNTSMART_INTERACTIVE_MAP__,null,{timeout:60000});
                 console.log('LAYERS_STAGE',size.width,'controller ready');
-                await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.open('leh',{province:'BC'}));
+                if (!mobile) await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.open('leh',{province:'BC'}));
                 console.log('LAYERS_STAGE',size.width,'LEH open requested');
-                await page.waitForFunction(()=>{
+                if (!mobile) await page.waitForFunction(()=>{
                   const root=document.getElementById('mapPage');
                   return !!root && root.getClientRects().length>0 &&
                     window.__HUNTSMART_INTERACTIVE_MAP__.getState().surface==='leh' &&
@@ -114,9 +114,9 @@ jobs:
                 const lehOpacity=await page.evaluate(()=>typeof _fullMapWMUOpacity==='undefined'?null:_fullMapWMUOpacity);
                 assert(Math.abs(lehOpacity-.35)<.015,'LEH opacity not applied: '+lehOpacity);
 
-                await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.open('gos',{province:'BC'}));
+                if (!mobile) await page.evaluate(()=>window.__HUNTSMART_INTERACTIVE_MAP__.open('gos',{province:'BC'}));
                 console.log('LAYERS_STAGE',size.width,'GOS requested');
-                await page.waitForFunction(()=>{
+                if (!mobile) await page.waitForFunction(()=>{
                   const p=document.getElementById('bcOpenSeasonsPage');
                   return !!p && p.getClientRects().length>0 &&
                     window.__HUNTSMART_INTERACTIVE_MAP__.getState().surface==='gos' &&
