@@ -1,0 +1,33 @@
+name: Black bear source audit
+on:
+  push:
+    branches: [fix/black-bear-distribution]
+    paths: ['.github/workflows/black-bear-source-audit.yml']
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save shpjs@6.2.0
+      - name: Inspect real BC shapefile and live endpoint
+        run: |
+          curl -fL --retry 2 --max-time 60 'https://a100.gov.bc.ca/pub/acat/documents/r40140/BAPID_6342_M_URAM_POLY_1988_1391732862892_1732534014.zip' -o /tmp/bear.zip
+          sha256sum /tmp/bear.zip
+          unzip -l /tmp/bear.zip
+          node --input-type=module <<'NODE'
+          import shp from 'shpjs';
+          import fs from 'node:fs';
+          const data=await shp(fs.readFileSync('/tmp/bear.zip'));
+          for(const fc of Array.isArray(data)?data:[data]){
+            const counts={};
+            for(const f of fc.features){const k=JSON.stringify([f.properties.HSV,f.properties.Density_Co]);counts[k]=(counts[k]||0)+1;}
+            console.log('ARCHIVE',fc.fileName,fc.features.length,JSON.stringify(fc.features[0].properties),JSON.stringify(counts));
+          }
+          NODE
+          curl -sS -L --max-time 40 -w '\nHTTP %{http_code}\n' 'https://huntsmartcanada.ca/species-map/api/species-data?kind=historicalSpecies&taxon=blackbear' -o /tmp/live-bear
+          head -c 1200 /tmp/live-bear
