@@ -111,6 +111,9 @@
   }
 
   #bcOpenSeasonsPage #osFilterBtn,#bcOpenSeasonsPage #osLayersBtn{display:none!important}
+  /* The external 3D control is retained; remove duplicate toolbar controls. */
+  #bcOpenSeasonsPage .os-toolbar-actions > .os-2d3d-toggle,
+  #bcOpenSeasonsPage .os-toolbar-actions > .os-dock-clear { display:none!important; }
   #bcOpenSeasonsPage #osUnifiedSettingsBtn{
     position:relative!important;
     inset:auto!important;
