@@ -143,6 +143,8 @@ jobs:
                   expanded:document.getElementById('mapPage').classList.contains('hs-premium-results-expanded'),
                   drawerClasses:drawerEl ? drawerEl.className : '',
                   summary:!!document.querySelector('#fullMapResultsDrawer .hs-premium-inspector-summary'),
+                  refinedCards:document.querySelectorAll('#fullMapResultsDrawer .fm-card.hs-hunt-refined').length,
+                  cardExpanders:document.querySelectorAll('#fullMapResultsDrawer .hs-hunt-toggle[aria-expanded="false"]').length,
                   kicker:!!document.querySelector('#fullMapResultsDrawer .hs-premium-kicker'),
                   cards:document.querySelectorAll('#fullMapResultsDrawer .fm-card').length,
                   title:(document.getElementById('fullMapResultsTitle')?.textContent || '').trim(),
@@ -158,6 +160,9 @@ jobs:
               assert(state.premium, 'Premium map shell class is missing.');
               assert(state.open, 'Premium results-open state was not set.');
               assert(state.cards > 0, 'Selected WMU produced no hunt cards.');
+              assert(!state.summary && state.kicker, 'Selected-unit header should be present without a duplicate best-odds summary.');
+              assert(state.refinedCards === state.cards && state.cardExpanders === state.cards,
+                `Hunt cards were not enhanced: ${JSON.stringify({ cards:state.cards, refined:state.refinedCards, expanders:state.cardExpanders })}`);
               assert(/3-17/.test(state.title), `Inspector is not scoped to WMU 3-17: ${state.title}`);
               assert(Math.abs(before.width - state.map.width) <= 2, `Map canvas width changed when inspector opened: ${before.width} -> ${state.map.width}`);
               assert(Math.abs(before.left - state.map.left) <= 2, 'Map canvas shifted horizontally when inspector opened.');
@@ -166,7 +171,7 @@ jobs:
                 assert(state.drawer.position === 'absolute', `Desktop inspector is not an overlay: ${JSON.stringify(state.drawer)}`);
                 assert(state.drawer.width >= 340 && state.drawer.width <= 420, `Desktop inspector width is outside premium range: ${state.drawer.width}`);
                 assert(state.drawer.right <= viewport.width - 8 && state.drawer.bottom <= viewport.height - 8, 'Desktop inspector is clipped by viewport.');
-                assert(state.summary && state.kicker, 'Desktop inspector premium summary/header is missing.');
+                assert(state.kicker, 'Desktop inspector selected-unit header is missing.');
                 assert(!intersects(state.drawer, state.shell), 'Desktop inspector overlaps BC/Alberta/LEH/GOS/Guide controls.');
                 assert(!intersects(state.drawer, state.search), 'Desktop inspector overlaps search.');
                 assert(!intersects(state.drawer, state.toolbar), 'Desktop inspector overlaps species/layers controls.');
@@ -211,6 +216,16 @@ jobs:
                 if (expanded.rail) assert(expanded.rail.opacity <= 0.05, 'Mobile utility rail should fade while sheet is expanded.');
               }
 
+              // Exercise the new inline details and confirm the original full-draw action remains available.
+              const firstToggle = page.locator('#fullMapResultsDrawer .hs-hunt-toggle').first();
+              await firstToggle.click();
+              const firstDetails = page.locator('#fullMapResultsDrawer .hs-hunt-card-details').first();
+              assert(await firstToggle.getAttribute('aria-expanded') === 'true', 'Hunt details did not expand.');
+              assert(await firstDetails.isVisible(), 'Expanded hunt facts are hidden.');
+              assert(await firstDetails.locator('.hs-hunt-open-draw').count() === 1,
+                'Full draw details action was lost in the redesign.');
+              await firstToggle.click();
+              assert(await firstToggle.getAttribute('aria-expanded') === 'false', 'Hunt details did not collapse.');
               assert(!errors.length, `Page errors: ${errors.join(' | ')}`);
               await page.close();
             }
