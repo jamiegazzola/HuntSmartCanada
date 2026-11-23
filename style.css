@@ -10826,3 +10826,15 @@ body.hs-filter-map-modal-open { overflow: hidden !important; }
   #mapPage #fullMapResultsDrawer.hs-drawer-open{max-height:42vh!important}
   #mapPage .fullmap-results-grid{max-height:calc(42vh - 96px)!important}
 }
+
+/* GOS desktop inspector: keep 3D / zoom controls visible beside the open
+   results drawer, matching LEH's selected-unit control displacement.
+   Mobile uses its own independent map-control positioning. */
+@media (min-width: 821px) {
+  #bcOpenSeasonsPage .os-map-control-stack {
+    transition: right .18s ease !important;
+  }
+  #bcOpenSeasonsPage .os-body:has(.os-panel.open) .os-map-control-stack {
+    right: calc(min(410px, 100vw - 28px) + 30px) !important;
+  }
+}
