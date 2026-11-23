@@ -775,12 +775,12 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    min-height: 32px;
-    height: 32px;
+    min-height: 44px;
+    height: 44px;
     width: 80px;
-    padding: 11px 0 0;
+    padding: 17px 0 0;
     margin: 0 auto;
-    flex: 0 0 32px;
+    flex: 0 0 44px;
     cursor: ns-resize;
     border: 0;
     background: transparent;
@@ -882,7 +882,7 @@
     return cell;
   }
 
-  function renderHuntHistory(panel, action) {
+  function renderHuntHistory(panel, action, beforeNode) {
     // Official historical fill-rate data is optional; never manufacture missing years.
     const match = String(action || '').match(/openBCDrawDetailFromMap\('([^']*)','([^']*)'\)/);
     if (!match || typeof DATA === 'undefined' || !Array.isArray(DATA)) return;
@@ -920,7 +920,9 @@
       bars.appendChild(column);
     });
     chart.append(heading, bars);
-    panel.appendChild(chart);
+    if (entries.length < 5) bars.style.gridTemplateColumns = 'repeat(' + entries.length + ', minmax(22px, 32px))';
+    if (beforeNode) panel.insertBefore(chart, beforeNode);
+    else panel.appendChild(chart);
   }
 
   function enhanceHuntCard(card, index) {
@@ -985,7 +987,6 @@
     if (match) facts.append(huntMeta('Draw code', match[1]));
     if (meta) facts.append(huntMeta('Hunt', meta.textContent.trim()));
     details.appendChild(facts);
-    renderHuntHistory(details, action);
 
     const explanation = document.createElement('p');
     explanation.className = 'hs-hunt-metric-note';
@@ -1012,6 +1013,10 @@
       toggle.setAttribute('aria-expanded', String(expanded));
       toggle.setAttribute('aria-label', (expanded ? 'Collapse ' : 'Expand ') + (species ? species.textContent.trim() : 'hunt') + ' draw details');
       details.hidden = !expanded;
+      if (expanded && details.dataset.hsHistoryBuilt !== 'true') {
+        details.dataset.hsHistoryBuilt = 'true';
+        renderHuntHistory(details, action, explanation);
+      }
       card.classList.toggle('hs-expanded', expanded);
     });
     card.append(toggle, details);
