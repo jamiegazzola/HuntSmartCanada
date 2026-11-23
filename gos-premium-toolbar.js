@@ -281,8 +281,14 @@
     }
 
     var basemap = actions.querySelector('.os-basemap-buttons') || panel.querySelector('.os-basemap-buttons');
-    if (basemap && !panel.contains(basemap)) {
-      panel.appendChild(makeSection('Map type', basemap));
+    if (basemap) {
+      // The three existing map controls retain the working osSetTile handler.
+      var sat = document.getElementById('osTile_satellite');
+      var topo = document.getElementById('osTile_topo');
+      var dark = document.getElementById('osTile_streets');
+      if (dark) dark.textContent = 'Dark';
+      [sat, topo, dark].forEach(function (el) { if (el) basemap.appendChild(el); });
+      if (!panel.contains(basemap)) panel.appendChild(makeSection('Map type', basemap));
     }
 
     // Preserve existing GOS styling and hunting layers, but expose only opacity.
