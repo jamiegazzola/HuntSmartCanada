@@ -67,9 +67,9 @@
       label=document.createElement('span');
       button.appendChild(label);
     }
-    if(label.textContent !== 'Settings') label.textContent='Settings';
-    if(button.title !== 'Map settings') button.title='Map settings';
-    if(button.getAttribute('aria-label') !== 'Map settings') button.setAttribute('aria-label','Map settings');
+    if(label.textContent !== 'Layers') label.textContent='Layers';
+    if(button.title !== 'Map layers') button.title='Map layers';
+    if(button.getAttribute('aria-label') !== 'Map layers') button.setAttribute('aria-label','Map layers');
   }
 
   function watchSelect(select){
