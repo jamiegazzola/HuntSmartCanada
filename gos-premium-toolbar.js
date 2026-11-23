@@ -142,6 +142,11 @@
   #bcOpenSeasonsPage #osUnifiedSettingsPanel{position:fixed!important;z-index:9475!important;width:min(360px,calc(100vw - 28px))!important;max-height:calc(100dvh - 132px)!important;overflow:auto!important;overscroll-behavior:contain;scrollbar-width:none;display:none;padding:0 14px 14px!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:16px!important;background:rgba(12,16,14,.985)!important;box-shadow:0 22px 58px rgba(0,0,0,.44)!important;backdrop-filter:blur(22px) saturate(120%)!important;-webkit-backdrop-filter:blur(22px) saturate(120%)!important}
   #bcOpenSeasonsPage #osUnifiedSettingsPanel::-webkit-scrollbar{display:none}
   #bcOpenSeasonsPage #osUnifiedSettingsPanel.open{display:block!important}
+  #bcOpenSeasonsPage #osUnifiedSettingsPanel .hs-gos-minimal-opacity{display:flex;align-items:center;gap:12px;margin:4px 0 2px}
+  #bcOpenSeasonsPage #osUnifiedSettingsPanel .hs-gos-minimal-opacity input{flex:1;min-width:0;accent-color:#65d576;cursor:pointer}
+  #bcOpenSeasonsPage #osUnifiedSettingsPanel .hs-gos-minimal-opacity output{min-width:42px;text-align:right;color:#eef6ef;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+  #bcOpenSeasonsPage #osUnifiedSettingsPanel .hs-gos-settings-section{margin-top:16px}
+
   #bcOpenSeasonsPage .hs-gos-settings-head{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;min-height:52px;margin:0 -14px 12px;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(12,16,14,.985)}
   #bcOpenSeasonsPage .hs-gos-settings-head strong{color:#f1f5f2;font-size:13px;letter-spacing:-.01em}
   #bcOpenSeasonsPage .hs-gos-settings-close{width:32px;height:32px;border:1px solid rgba(255,255,255,.09);border-radius:9px;background:rgba(255,255,255,.035);color:#9ca69f;cursor:pointer}
@@ -210,6 +215,17 @@
     if (btn) { btn.classList.remove('active'); btn.setAttribute('aria-expanded', 'false'); }
   }
 
+  function syncOpacity() {
+    var range = document.getElementById('hsGosMinimalOpacity');
+    var value = document.getElementById('hsGosMinimalOpacityValue');
+    if (!range || !value) return;
+    var original = document.getElementById('osOpacityRange');
+    var raw = original ? Number(original.value) : (typeof osOverlayVisibility !== 'undefined' ? Number(osOverlayVisibility) : 1);
+    var percent = Math.round(Math.max(0, Math.min(1, Number.isFinite(raw) ? raw : 1)) * 100);
+    range.value = String(percent);
+    value.textContent = percent + '%';
+  }
+
   function openSettings() {
     if (!isDesktop()) return;
     try {
@@ -219,6 +235,7 @@
     var panel = document.getElementById(PANEL_ID);
     var btn = document.getElementById(BUTTON_ID);
     if (!panel || !btn) return;
+    syncOpacity();
     panel.classList.add('open');
     btn.classList.add('active');
     btn.setAttribute('aria-expanded', 'true');
@@ -247,7 +264,7 @@
       btn.className = 'os-dock-btn hs-gos-settings-btn';
       btn.setAttribute('aria-expanded', 'false');
       btn.setAttribute('aria-controls', PANEL_ID);
-      btn.innerHTML = '<span class="hs-gos-settings-icon">☷</span><span>Settings</span>';
+      btn.innerHTML = '<span class="hs-gos-settings-icon">☷</span><span>Layers</span>';
       btn.addEventListener('click', function (ev) { ev.stopPropagation(); toggleSettings(); });
       species.insertAdjacentElement('afterend', btn);
     }
@@ -257,26 +274,44 @@
       panel = document.createElement('div');
       panel.id = PANEL_ID;
       panel.setAttribute('role', 'dialog');
-      panel.setAttribute('aria-label', 'General Open Seasons map settings');
-      panel.innerHTML = '<div class="hs-gos-settings-head"><strong>Settings</strong><button type="button" class="hs-gos-settings-close" aria-label="Close settings">×</button></div>';
+      panel.setAttribute('aria-label', 'General Open Seasons map layers');
+      panel.innerHTML = '<div class="hs-gos-settings-head"><strong>Layers</strong><button type="button" class="hs-gos-settings-close" aria-label="Close settings">×</button></div>';
       popovers.appendChild(panel);
       panel.querySelector('.hs-gos-settings-close').addEventListener('click', closeSettings);
     }
 
-    var filters = document.getElementById('osFilterPanel');
     var basemap = actions.querySelector('.os-basemap-buttons') || panel.querySelector('.os-basemap-buttons');
-    var mode = actions.querySelector('.os-2d3d-toggle') || panel.querySelector('.os-2d3d-toggle');
-    var layers = document.getElementById('osLayersPanel');
-    var clear = actions.querySelector('.os-dock-clear') || panel.querySelector('.os-dock-clear');
-
-    if (filters && !panel.contains(filters)) panel.appendChild(makeSection('', filters));
-    if (basemap && !panel.contains(basemap)) panel.appendChild(makeSection('Map type', basemap));
-    if (mode && !panel.contains(mode)) panel.appendChild(makeSection('Terrain', mode));
-    if (layers && !panel.contains(layers)) panel.appendChild(makeSection('', layers));
-    if (clear && !panel.contains(clear)) {
-      panel.appendChild(makeSection('Reset', clear));
-      clear.addEventListener('click', function () { setTimeout(closeSettings, 0); });
+    if (basemap && !panel.contains(basemap)) {
+      panel.appendChild(makeSection('Map type', basemap));
     }
+
+    // Preserve existing GOS styling and hunting layers, but expose only opacity.
+    if (!panel.querySelector('#hsGosMinimalOpacity')) {
+      var section = makeSection('Overlay opacity', null);
+      var row = document.createElement('div');
+      row.className = 'hs-gos-minimal-opacity';
+      var range = document.createElement('input');
+      range.type = 'range';
+      range.id = 'hsGosMinimalOpacity';
+      range.min = '0';
+      range.max = '100';
+      range.step = '1';
+      range.setAttribute('aria-label', 'Overlay opacity');
+      var value = document.createElement('output');
+      value.id = 'hsGosMinimalOpacityValue';
+      value.setAttribute('for', range.id);
+      range.addEventListener('input', function () {
+        var n = Math.max(0, Math.min(100, Number(range.value)));
+        value.textContent = Math.round(n) + '%';
+        if (typeof window.osSetLayerOpacityClean === 'function') window.osSetLayerOpacityClean(n / 100);
+        else if (typeof window.osSetOverlayOpacity === 'function') window.osSetOverlayOpacity(n / 100);
+      });
+      row.appendChild(range);
+      row.appendChild(value);
+      section.appendChild(row);
+      panel.appendChild(section);
+    }
+    syncOpacity();
     return true;
   }
 
