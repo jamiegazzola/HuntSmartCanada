@@ -549,3 +549,8 @@
   .hs-wc-settings-panel,
   .hs-wc-toast { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/* Minimal map settings: one full-width opacity slider, no unused grid column. */
+.hs-minimal-layers .hs-wc-slider-row { display: block; }
+.hs-minimal-layers .hs-wc-slider-row input[type="range"] { display:block; width:100%; margin:5px 0 1px; cursor:pointer; }
+.hs-minimal-layers .hs-wc-section + .hs-wc-section { margin-top:18px; }
