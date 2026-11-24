@@ -332,7 +332,7 @@
   const isSheep=()=>code()==='SHEE';
   // Shared with the private distribution viewer; 'elk' is its Rocky key.
   const excludedForSpecies=id=>elkPolicy.excludesFromSuccess(key(),id);
-  const active=()=>!!context&&context.getProvince()==='bc';
+  const active=()=>!!context&&context.getProvince()==='bc'&&key()!=='grizzly_bear';
   // The drop-down may say Rocky Mountain or Roosevelt; the source's success
   // denominator is the combined provincial ELK category, never subspecies.
   const label=()=>key()==='wood_bison'?'Bison · LEH only':elkPolicy.isRoosevelt(key())?'Roosevelt elk · coastal elk survey':
@@ -717,6 +717,7 @@
   function sync(){
     const visible=active();
     control.hidden=!visible;
+    btn.hidden=!visible;
     btn.disabled=!visible||key()==='wood_bison';
     if(visible&&key()==='wood_bison'){
       selectedSpecies=key();enabled=false;removeLayer();resetStats();updateButton();period.hidden=true;legend.hidden=true;

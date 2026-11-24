@@ -217,12 +217,32 @@ jobs:
             await page.waitForFunction(()=>document.getElementById('layer-note-text')?.textContent.includes('official BC caribou herd boundaries'),null,{timeout:30000});
             await page.locator('#era-historical').click();
             assert.equal(await page.locator('#era-historical').getAttribute('aria-pressed'),'true');
+            await page.locator('#hs-harvest-toggle').click();
             await page.locator('#species').selectOption('grizzly_bear');
             assert(await page.locator('#era-modern').isVisible());
             assert.equal(await page.locator('#era-historical').isVisible(),false);
             await page.waitForFunction(()=>window.HUNTSMART_GRIZZLY_STATE?.()?.features===232,null,{timeout:30000});
             assert(await page.locator('#hs-grizzly-legend').isVisible());
+            assert.equal(await page.locator('#hs-harvest-toggle').isVisible(),false,'Grizzly must never show Success');
+            assert.equal(await page.locator('#hs-year-trigger').isVisible(),false);
+            assert.equal(await page.evaluate(()=>window.HUNTSMART_HARVEST_RENDER_STATE?.()?.enabled),false);
+            // Centre on a verified interior point of Francois WMU 6-06, then tap/click the actual map.
+            await page.evaluate(()=>localStorage.setItem('bc-species-map-view-v2',JSON.stringify({center:{lat:54.4,lng:-125.7},zoom:9})));
+            await page.reload({waitUntil:'domcontentloaded'});
+            await page.waitForFunction(()=>window.HUNTSMART_GRIZZLY_STATE?.()?.features===232,null,{timeout:30000});
+            const grizzlyMapBox=await page.locator('#map').boundingBox();
+            assert(grizzlyMapBox,'Grizzly map must be visible');
+            const gx=grizzlyMapBox.x+grizzlyMapBox.width/2,gy=grizzlyMapBox.y+grizzlyMapBox.height/2;
+            if(width<700)await page.touchscreen.tap(gx,gy);else await page.mouse.click(gx,gy);
+            await page.locator('#hs-grizzly-card').waitFor({state:'visible',timeout:15000});
+            assert.equal(await page.locator('#hs-grizzly-title').textContent(),'Francois');
+            assert((await page.locator('#hs-grizzly-meta').textContent()).includes('6-06'));
+            assert.equal(await page.locator('#hs-grizzly-density').textContent(),'7.252');
+            assert.equal(await page.locator('#hs-grizzly-class').textContent(),'Moderate');
+            await page.locator('#hs-grizzly-close').click();
+            assert.equal(await page.locator('#hs-grizzly-card').isVisible(),false);
             await page.locator('#species').selectOption('moose');
+            assert(await page.locator('#hs-harvest-toggle').isVisible(),'Success must return for other species');
             assert.equal(await page.locator('#hs-grizzly-legend').isVisible(),false);
             assert.equal(await page.evaluate(()=>window.HUNTSMART_GRIZZLY_STATE?.()),null);
             // Confirm the new species work through the same real user journey.

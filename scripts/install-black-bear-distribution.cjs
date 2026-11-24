@@ -101,9 +101,75 @@ const grizzlyBranch=[
 app=replace(app,"      if (province === 'bc' && item.key === 'black_bear' && viewMode === 'historical') {",grizzlyBranch);
 html=replace(html,'  <div id="error" ','  <div id="hs-grizzly-legend" class="hs-bear-legend" hidden><strong>BC 2018 · bears per 1,000 km²</strong><span><i style="background:#3f9646"></i>≤5</span><span><i style="background:#f4d03f"></i>5–15</span><span><i style="background:#f48b27"></i>15–30</span><span><i style="background:#d73027"></i>&gt;30</span></div>\n  <div id="error" ');
 fs.appendFileSync(file('app.css'),'\nbody.bc-grizzly-distribution:not(.hunter-success-only) .layer-note:not([hidden]){display:block!important}\n');
-html=html.replace(/app\.css\?v=[^"]+/,'app.css?v=bc-distribution-policy-20261124');
-html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=bc-distribution-policy-20261124');
+html=html.replace(/app\.css\?v=[^"]+/,'app.css?v=bc-grizzly-stats-20261124');
+html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=bc-grizzly-stats-20261124');
+html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=bc-grizzly-stats-20261124');
+
+
+/* Grizzly-only distribution statistics: exact published subunit attributes. */
+app=replace(app,"  let grizzlyState = null;","  let grizzlyState = null;\n  let grizzlySelection = null;\n  let grizzlyLayer = null;\n  let grizzlyFeature = null;");
+app=replace(app,"  window.HUNTSMART_GRIZZLY_STATE = () => grizzlyState;","  window.HUNTSMART_GRIZZLY_STATE = () => grizzlyState && {...grizzlyState,selection:grizzlySelection};");
+app=replace(app,"    grizzlyState = null;\n    document.getElementById('hs-grizzly-legend').hidden = true;","    grizzlyState = null;\n    closeGrizzlyCard();\n    grizzlyLayer = null;\n    document.getElementById('hs-grizzly-legend').hidden = true;");
+const cardFunctions=[
+"  function closeGrizzlyCard() {",
+"    grizzlySelection = null;",
+"    grizzlyFeature = null;",
+"    document.getElementById('hs-grizzly-card').hidden = true;",
+"    document.body.classList.remove('bc-grizzly-selected');",
+"    grizzlyLayer?.refreshOpacity();",
+"  }",
+"  function showGrizzlyCard(event) {",
+"    if (province !== 'bc' || select.value !== 'grizzly_bear' || !grizzlyLayer) return;",
+"    if (document.getElementById('coordinate-drop-pin')?.getAttribute('aria-pressed') === 'true') {",
+"      google.maps.event.trigger(map,'click',event);",
+"      return;",
+"    }",
+"    const feature = event.feature;",
+"    const density = Number(feature.getProperty('density_2018'));",
+"    if (!Number.isFinite(density) || density < 0) return;",
+"    const name = String(feature.getProperty('name') || 'Population subunit');",
+"    const wmu = String(feature.getProperty('wmu') || 'Not specified');",
+"    grizzlyFeature = feature;",
+"    grizzlySelection = {name,wmu,density,year:2018};",
+"    document.getElementById('hs-grizzly-title').textContent = name;",
+"    document.getElementById('hs-grizzly-meta').textContent = 'WMU ' + wmu + ' · Government of BC · 2018';",
+"    document.getElementById('hs-grizzly-density').textContent = density.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:3});",
+"    document.getElementById('hs-grizzly-class').textContent = density <= 5 ? 'Low' : density <= 15 ? 'Moderate' : density <= 30 ? 'High' : 'Very high';",
+"    document.getElementById('hs-grizzly-card').hidden = false;",
+"    document.body.classList.add('bc-grizzly-selected');",
+"    grizzlyLayer.refreshOpacity();",
+"  }",
+"  document.getElementById('hs-grizzly-close').addEventListener('click',closeGrizzlyCard);",
+"  document.addEventListener('keydown',event => { if (event.key === 'Escape' && grizzlySelection) closeGrizzlyCard(); });",
+""
+].join('\n');
+app=replace(app,'  async function renderSelected() {',cardFunctions+'\n  async function renderSelected() {');
+app=replace(app,"        renderStaticRange(payload, item);\n        document.getElementById('layer-note').hidden = false;",[
+"        grizzlyLayer = makeDataLayer();",
+"        activeData = grizzlyLayer;",
+"        grizzlyLayer.addGeoJson(payload);",
+"        grizzlyLayer.setStyle(feature => {",
+"          const density = Number(feature.getProperty('density_2018'));",
+"          const level = density <= 5 ? 1 : density <= 15 ? 2 : density <= 30 ? 3 : 4;",
+"          const color = PALETTE[level];",
+"          const selected = feature === grizzlyFeature;",
+"          return {fillColor:'rgb('+color.slice(0,3).join(',')+')',fillOpacity:0.65,strokeColor:selected?'#fff':'#fff',strokeOpacity:selected?1:0.35,strokeWeight:selected?2.5:0.6,zIndex:selected?5:1,clickable:true};",
+"        });",
+"        grizzlyLayer.addListener('click',showGrizzlyCard);",
+"        document.getElementById('layer-note').hidden = false;"
+].join('\n'));
+const markup=[
+'  <section id="hs-grizzly-card" class="hs-wmu-card hs-grizzly-card" aria-label="Grizzly bear population subunit statistics" hidden>',
+'    <div class="hs-wmu-heading"><div><h2 id="hs-grizzly-title" class="hs-wmu-title">Grizzly bear</h2><div id="hs-grizzly-meta" class="hs-wmu-meta"></div></div><button type="button" id="hs-grizzly-close" class="hs-wmu-close" aria-label="Close grizzly statistics">×</button></div>',
+'    <div class="hs-wmu-stats"><div><strong id="hs-grizzly-density"></strong><span>Est. bears / 1,000 km²</span></div><div><strong id="hs-grizzly-class"></strong><span>Density class</span></div></div>',
+'    <p class="hs-grizzly-explanation">2018 estimated average for this population subunit, not an exact count or current local density.</p>',
+'    <a href="https://catalogue.data.gov.bc.ca/dataset/grizzly-bear-population-estimates" target="_blank" rel="noopener noreferrer">Government of BC source</a>',
+'  </section>',
+'  <div id="error" '
+].join('\n');
+html=replace(html,'  <div id="error" ',markup);
+fs.appendFileSync(file('app.css'),'\n.hs-grizzly-card{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hs-grizzly-card[hidden]{display:none!important}.hs-grizzly-explanation{font-size:11px;color:#bac7bc;line-height:1.4;margin:12px 0 8px}.hs-grizzly-card .hs-wmu-stats{grid-template-columns:1fr 1fr}.hs-grizzly-card a{font-size:11px;color:#a7d8b0}@media(max-width:700px){.hs-grizzly-card{bottom:calc(env(safe-area-inset-bottom,0px) + 84px)!important}.bc-grizzly-selected #hs-grizzly-legend{display:none!important}}\n');
 
 new Function(app);
 fs.writeFileSync(file('app.js'),app);fs.writeFileSync(file('index.html'),html);
-console.log('Adopted the validated TEST map as Black Bear Historical; all other maps unchanged.');
+console.log('Installed BC distribution policy, black bear history and clickable official grizzly density statistics.');
