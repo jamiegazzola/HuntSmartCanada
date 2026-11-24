@@ -17,6 +17,8 @@ on:
   push:
     branches: [main]
     paths:
+      - 'scripts/verify-harvest-success.cjs'
+      - '.github/workflows/bc-harvest-data-contract.yml'
       - 'scripts/build-verified-bc-harvest.py'
       - 'scripts/install-harvest-success.cjs'
       - 'species-map/harvest-success.js'

@@ -82,7 +82,8 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
          patched.includes("eraHistorical.hidden = isRoosevelt;"),
     'Private distribution patch must preserve visible Success controls for both elk species');
   const keys=[...catalogue.map(x=>x.key),...extra];
-  assert.equal(keys.length,31);
+  assert.equal(keys.length,30);
+  assert(!keys.includes('wood_bison'),'Bison is excluded from the distribution catalogue');
   assert.equal(Object.keys(base.w.HUNTSMART_BC_HARVEST_CODES).length,31,
     'Each BC distribution species must have an explicit government category or null');
   for(const key of keys)assert(Object.hasOwn(base.w.HUNTSMART_BC_HARVEST_CODES,key),key+' missing');
@@ -214,15 +215,23 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
   base.layers.at(-1).listener({feature:{getProperty:()=> '7-50'},latLng:{}});
   assert(base.el('hs-wmu-caveats').textContent.includes('Stone Sheep mean'),
     'Current sheep average can include labelled 2022–25 age samples');
-  // Grizzly hunting is now closed, but historical 1985 records are valid.
+  // Grizzly is distribution-only; even historic harvest cannot enable Success.
   const grizzly=setup();
-  grizzly.setSpecies('grizzly_bear');
   grizzly.el('hs-harvest-toggle').click();await flush();
-  assert(grizzly.el('hs-harvest-detail').textContent.includes('closed'));
+  const beforeGrizzly=grizzly.layers.at(-1);
+  grizzly.setSpecies('grizzly_bear');await flush();
+  assert.equal(beforeGrizzly.map,null,'Switching to grizzly must detach hunter-success geometry');
+  assert.equal(grizzly.api.isEnabled(),false);
+  assert.equal(grizzly.el('hs-harvest-toggle').hidden,true);
+  assert.equal(grizzly.el('hs-harvest-toggle').disabled,true);
+  const layerCount=grizzly.layers.length;
+  grizzly.el('hs-harvest-toggle').click();await flush();
   grizzly.el('hs-harvest-period').value='1985';
   grizzly.el('hs-harvest-period').change();await flush();
-  assert(grizzly.layers.at(-1)?.fc?.features.length===225,'Historical grizzly harvest must render');
-  assert(grizzly.el('hs-harvest-detail').textContent.includes('1985'));
+  assert.equal(grizzly.layers.length,layerCount,'Grizzly must not create a success layer');
+  grizzly.setSpecies('moose');await flush();
+  assert.equal(grizzly.el('hs-harvest-toggle').hidden,false);
+  assert.equal(grizzly.el('hs-harvest-toggle').disabled,false);
   base.setSpecies('wolverine');await flush();
   assert.equal(base.el('hs-harvest-panel').hidden,false);
   assert(base.el('hs-harvest-detail').textContent.includes('No comparable'));

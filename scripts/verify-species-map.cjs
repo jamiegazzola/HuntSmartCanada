@@ -190,7 +190,9 @@ async function run() {
     assert.equal(setup({ savedSpecies: oldSelection }).element('species').value, 'mule_deer', 'Previous black-tail selections must restore the combined mule layer');
   }
   const raster = ['mule_deer', 'white_tailed_deer', 'elk', 'moose', 'mountain_goat'];
-  const ranges = ['wild_sheep', 'bighorn_sheep', 'thinhorn_sheep', 'dall_tatshenshini', 'caribou', 'caribou_northern', 'caribou_mountain', 'caribou_boreal', 'grizzly_bear', 'black_bear', 'wood_bison'];
+  const ranges = ['wild_sheep', 'bighorn_sheep', 'thinhorn_sheep', 'dall_tatshenshini', 'caribou', 'caribou_northern', 'caribou_mountain', 'caribou_boreal', 'grizzly_bear', 'black_bear'];
+  assert(!optionKeys.includes('wood_bison'),'Removed bison must not appear in BC distribution options');
+  assert.equal(setup({savedSpecies:'wood_bison'}).element('species').value,'mule_deer','Retired bison selection must recover');
   for (const key of [...raster, ...ranges]) {
     const previousLayers = env.layers.length;
     const previousOverlays = env.overlays.length;
@@ -219,7 +221,7 @@ async function run() {
         assert.equal(env.element('moose-survey-link').hidden, true);
       }
     } else {
-      assert.equal(env.layers.length, previousLayers + (['wood_bison','caribou','caribou_northern'].includes(key) ? 2 : 1), `${key} did not create its layers`);
+      assert.equal(env.layers.length, previousLayers + (['caribou','caribou_northern'].includes(key) ? 2 : 1), `${key} did not create its layers`);
       assert(env.layers[previousLayers].collection.features.length, `${key} has no features`);
       if (key === 'caribou_northern') {
         const names = env.layers[previousLayers].collection.features.map(f => f.properties.HERD_NAME);
@@ -230,10 +232,6 @@ async function run() {
         const names = env.layers[previousLayers].collection.features.map(f => f.properties.HERD_NAME);
         assert(names.includes('Columbia North'));
         assert(!names.includes('Graham') && !names.includes('Narraway'));
-      }
-      if (key === 'wood_bison') {
-        assert(env.layers.at(-1).collection.features[0].geometry.type.includes('LineString'));
-        assert(env.element('layer-note-text').textContent.includes('not a bison range'));
       }
       if (key === 'caribou' || key === 'caribou_northern') {
         assert.equal(env.layers.at(-1).collection.features[0].properties.herd, 'Burnt Pine');
