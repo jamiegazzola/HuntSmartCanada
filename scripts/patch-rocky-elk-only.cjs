@@ -16,10 +16,15 @@ if (sourceManifest['kmz-elk-historic.png']?.source_image_sha256 !== '8c074b12c2d
   throw new Error('Rocky Mountain Elk March 2005 source does not match uploaded KMZ.');
 }
 
+// The caribou installer now preserves missing estimates directly. Accept
+// the new parsing expression rather than demanding an obsolete anchor.
 const caribouPopulationAnchor = 'const population = Number(estimate.population);';
-const caribouPopulationReplacement = 'const population = estimate.population == null ? null : Number(estimate.population);';
-if (!source.includes(caribouPopulationAnchor)) throw new Error('Caribou population parsing anchor is missing');
-source = source.replace(caribouPopulationAnchor, caribouPopulationReplacement);
+const caribouPopulationReplacement = 'const population = estimate.population == null ? NaN : Number(estimate.population);';
+if (source.includes(caribouPopulationAnchor)) {
+  source = source.replace(caribouPopulationAnchor, caribouPopulationReplacement);
+} else if (!source.includes(caribouPopulationReplacement)) {
+  throw new Error('Caribou population parsing guard is missing');
+}
 
 const eraAnchor = `    const eraControl = document.querySelector('.era-control');
     const isRoosevelt = item.type === 'roosevelt';
