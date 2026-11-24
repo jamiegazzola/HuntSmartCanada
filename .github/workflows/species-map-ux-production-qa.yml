@@ -269,7 +269,10 @@ jobs:
             }
             console.log('DISTRIBUTION_CLICK_DIAGNOSTIC',JSON.stringify({width,hit,errors:errs,after:await page.evaluate(()=>window.HUNTSMART_DISTRIBUTION_STATE?.())}));
             await distCard.waitFor({state:'visible',timeout:5000});
-            assert((await page.locator('#hs-distribution-stats').textContent()).includes('Moderate'));
+            const mooseStats=await page.locator('#hs-distribution-stats').textContent();
+            assert(mooseStats.includes('Moderate')&&mooseStats.includes('10–76.9')&&mooseStats.includes('Historical moose / 100 km²'),'Moose card must show original density thresholds');
+            assert(!mooseStats.includes('Mapped polygon area'));
+            await page.waitForFunction(()=>document.getElementById('hs-distribution-meta')?.textContent.includes('WMU '),null,{timeout:15000});
             assert((await page.locator('#hs-distribution-meta').textContent()).includes('2005'));
             await page.locator('#hs-distribution-close').click();
             assert.equal(await page.locator('#hs-distribution-card').isVisible(),false);

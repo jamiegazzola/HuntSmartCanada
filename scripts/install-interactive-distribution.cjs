@@ -68,29 +68,56 @@ const helper=[
 "    document.getElementById('hs-history-legend').hidden=true;",
 "    document.body.classList.remove('bc-historical-vectors','bc-interactive-distribution');",
 "  }",
+"  // Government legend thresholds: source specifies one animal per N square kilometres.",
+"  const historicalThresholds={\"mule_deer\":[200,2,0.2],\"white_tailed_deer\":[518,5,0.5],\"elk\":[250,10,2.5],\"moose\":[260,10,1.3],\"mountain_goat\":[260,13,3],\"wild_sheep\":[250,5,1.3],\"caribou\":[250,25,3.4],\"black_bear\":[500,50,8],\"roosevelt_elk\":[250,10,2.5]};",
+"  const densityAnimals={\"mule_deer\":\"deer\",\"white_tailed_deer\":\"deer\",\"elk\":\"elk\",\"moose\":\"moose\",\"mountain_goat\":\"goats\",\"wild_sheep\":\"sheep\",\"caribou\":\"caribou\",\"black_bear\":\"bears\",\"roosevelt_elk\":\"elk\"};",
+"  const historicalPDFs={\"mule_deer\":\"mule_deer.pdf\",\"elk\":\"elk.pdf\",\"moose\":\"moose.pdf\",\"mountain_goat\":\"Mountain_goat.pdf\",\"wild_sheep\":\"mountain_sheep.pdf\",\"caribou\":\"caribou.pdf\"};",
+"  function historicalDensity(key,cls){",
+"    const bounds=historicalThresholds[key];if(!bounds||!['L','M','H'].includes(cls))return null;",
+"    const [few,moderate,high]=bounds.map(n=>100/n);",
+"    const fmt=n=>Number(n.toPrecision(3)).toLocaleString('en-CA',{maximumFractionDigits:3});",
+"    return ['Historical '+densityAnimals[key]+' / 100 km²',cls==='L'?fmt(few)+'–'+fmt(moderate):cls==='M'?fmt(moderate)+'–'+fmt(high):'>'+fmt(high)];",
+"  }",
+"  const densityValues=(key,cls)=>{const value=historicalDensity(key,cls);return value?[value]:[];};",
+"  function ringContains(ring,x,y){let inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const a=ring[i],b=ring[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])inside=!inside;}return inside;}",
+"  function geometryContains(g,x,y){const polygons=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];return polygons.some(r=>r.length&&ringContains(r[0],x,y)&&!r.slice(1).some(h=>ringContains(h,x,y)));}",
+"  async function selectedWmu(latLng){",
+"    if(!latLng)return null;const x=latLng.lng(),y=latLng.lat();",
+"    if(!Number.isFinite(x)||!Number.isFinite(y))return null;",
+"    const collection=await harvestSuccess.fetchBoundaries();",
+"    const matches=collection.features.filter(f=>geometryContains(f.geometry,x,y)).map(f=>String(f.properties.wmu_id||f.properties.WMUNIT_NUM));",
+"    const unique=[...new Set(matches)];return unique.length===1?unique[0]:null;",
+"  }",
+"  function updateSelectedWmu(event,selection,metaId,base){",
+"    selectedWmu(event.latLng).then(id=>{if(selection()&&id)document.getElementById(metaId).textContent=base+' · WMU '+id+' (approx.)';}).catch(()=>{});",
+"  }",
 "  function distributionDetails(kind, feature){",
 "    const p=name=>feature.getProperty(name);",
 "    const item=speciesByKey[select.value];",
 "    const cls=p('historical_class')||p('density_class');",
 "    if(kind==='historic'){",
-"      return {title:p('subspecies')||item.label,meta:'BC government · March 2005 map compilation',values:[['Relative abundance',historicalLabels[cls]||'Unclassified'],['Mapped polygon area',numberText(p('area_km2'))+' km²']],note:'Historical relative abundance, not current animal density. Observation dates are unspecified. Polygon area is not a population estimate.',source:distributionSource};",
+"      const pdf=historicalPDFs[item.key];",
+"      return {title:p('subspecies')||item.label,meta:'BC government · 2005 compilation',values:[['Relative abundance',historicalLabels[cls]||'Unclassified'],...densityValues(item.key,cls)],note:'Historical density class; rounded range, not a current count.',source:pdf?distributionSource+'plots_and_pdfs/'+pdf:archiveSource};",
 "    }",
 "    if(kind==='bear'){",
-"      const ranges={L:'1 per 50–500 km²',M:'1 per 8–50 km²',H:'Over 1 per 8 km²'};",
-"      return {title:'Black bear',meta:'BC government · 1988',values:[['Historical abundance',historicalLabels[cls]||'Unknown'],['Historical density range',ranges[cls]||'Unavailable']],note:'Published historical class, not an exact count or current density.',source:archiveSource};",
+
+"      return {title:'Black bear',meta:'BC government · 1988',values:[['Relative abundance',historicalLabels[cls]||'Unknown'],...densityValues('black_bear',cls)],note:'Historical density class; not a current count.',source:archiveSource};",
 "    }",
 "    if(kind==='caribou'){",
 "      const method=p('POPULATION_METHOD')||'unavailable';",
 "      const methods={survey:'Survey',minimum:'Minimum known alive',ipm:'Integrated population model',expert:'Expert estimate',combined_survey:'Combined survey',combined_ipm:'Combined population model',unavailable:'Unavailable'};",
 "      const density=p('DENSITY_PER_KM2');",
-"      return {title:p('HERD_NAME')||'Caribou herd',meta:'Government of BC · published herd estimates',values:[['Estimated herd population',numberText(p('POPULATION_ESTIMATE'),0)],['Est. animals / 1,000 km²',density==null?'Unavailable':numberText(Number(density)*1000,2)],['Mapped herd area',numberText(p('RANGE_AREA_KM2'),0)+' km²'],['Estimate method',methods[method]||method]],note:'Estimate dates vary by herd. Density is calculated over mapped herd range; combined, minimum-count and transboundary values are approximate.',source:herdSource};",
+"      const minimum=method==='minimum',population=p('POPULATION_ESTIMATE'),year=p('POPULATION_YEAR');",
+"      const estimateLabel=minimum?'Minimum known alive':'Estimated herd population';",
+"      const prefix=minimum?'≥':'';",
+"      return {title:(p('HERD_NAME')||'Unnamed')+' · Caribou',meta:'BC government · '+(year||'2023 status report'),values:[[estimateLabel,population==null?'Unavailable':prefix+numberText(population,0)],[minimum?'Minimum / 100 km²':'Est. caribou / 100 km²',density==null?'Unavailable':prefix+numberText(Number(density)*100,2)],['Estimate method',methods[method]||method],['Relative density',p('DENSITY_LABEL')||'Unavailable']],note:'Average across mapped herd range; combined or cross-border values are approximate.',source:herdSource};",
 "    }",
 "    if(kind==='roosevelt-recent'){",
 "      const density=p('density_per_km2');",
-"      return {title:p('unit')||'Roosevelt elk population unit',meta:'BC government · '+(p('survey_year')||'2013–2023'),values:[['Population estimate',numberText(p('estimate'),0)],['Estimated elk / 1,000 km²',density==null?'Unavailable':numberText(Number(density)*1000,2)],['Population-unit land area',numberText(p('area_km2'),0)+' km²'],['Estimate method',p('estimate_source')==='model'?'Model':'Standard estimate']],note:'Population-unit average, not current animal locations or a drainage-level prediction.',source:epuSource};",
+"      return {title:(p('unit')||'Population unit')+' · Roosevelt elk',meta:'BC government · '+(p('survey_year')||'2013–2023'),values:[['Population estimate',numberText(p('estimate'),0)],['Estimated elk / 100 km²',density==null?'Unavailable':numberText(Number(density)*100,2)],['Estimate method',p('estimate_source')==='model'?'Model':'Standard estimate'],['Density class',cls==='R'?'Very low':historicalLabels[cls]||'Unknown']],note:'Population-unit average; not an exact local density.',source:epuSource};",
 "    }",
 "    const island=kind==='roosevelt-island';",
-"    return {title:'Roosevelt elk',meta:island?'Vancouver Island · BC 2011 map':'Mainland / coastal BC · 1990 archive',values:[['Historical density class',historicalLabels[cls]||'Unknown']],note:island?'Approximate density zone digitized from the 2011 provincial map. Not a current density estimate.':'Historical distribution class. Not a current animal count.',source:island?islandSource:archiveSource};",
+"    return {title:'Roosevelt elk',meta:island?'Vancouver Island · BC 2011 map':'Mainland / coastal BC · 1990 archive',values:[['Relative abundance',historicalLabels[cls]||'Unknown'],...densityValues('roosevelt_elk',cls)],note:island?'Digitized 2011 historical density class; approximate boundaries.':'Historical density class; not a current count.',source:island?islandSource:archiveSource};",
 "  }",
 "  function attachDistributionLayer(layer,kind){",
 "    let features=0;layer.forEach(()=>{features++;});",
@@ -107,6 +134,8 @@ const helper=[
 "      document.getElementById('hs-distribution-explanation').textContent=details.note;",
 "      document.getElementById('hs-distribution-source').href=details.source;",
 "      distributionSelection={layer,feature:event.feature,details,kind};",
+"      const selection=distributionSelection;",
+"      updateSelectedWmu(event,()=>distributionSelection===selection,'hs-distribution-meta',details.meta);",
 "      layer.overrideStyle(event.feature,{strokeColor:'#fff',strokeOpacity:0.95,strokeWeight:2.5,zIndex:10});",
 "      card.hidden=false;document.body.classList.add('bc-distribution-selected');",
 "    });",
@@ -119,6 +148,7 @@ const helper=[
 ""
 ].join('\n');
 app=replace(app,regionStart,helper+'\n'+regionStart);
+app=replace(app,"    document.getElementById('hs-grizzly-meta').textContent = 'WMU ' + wmu + ' · Government of BC · 2018';","    const grizzlyMeta='Subunit WMU '+wmu+' · BC government · 2018';\n    document.getElementById('hs-grizzly-meta').textContent=grizzlyMeta;\n    const chosenGrizzly=grizzlySelection;\n    updateSelectedWmu(event,()=>grizzlySelection===chosenGrizzly,'hs-grizzly-meta',grizzlyMeta);");
 app=replace(app,"    clearLayer();\n    bearState = null;","    clearDistributionAreas();\n    clearLayer();\n    bearState = null;");
 const first="      if (province === 'bc' && item.key === 'grizzly_bear') {";
 const historicBranch=[
@@ -186,8 +216,16 @@ const markup=[
 '  <div id="error" '
 ].join('\n');
 html=replace(html,'  <div id="error" ',markup);
-html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=bc-historical-vectors-20261124').replace(/app\.css\?v=[^"]+/,'app.css?v=bc-historical-vectors-20261124');
+html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=bc-distribution-density-20261124').replace(/app\.css\?v=[^"]+/,'app.css?v=bc-distribution-density-20261124');
 fs.appendFileSync(cssFile,'\nbody.bc-interactive-distribution:not(.hunter-success-only) .layer-note:not([hidden]){display:block!important}.hs-distribution-card{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hs-distribution-card .hs-wmu-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hs-distribution-card .hs-wmu-stats strong{font-size:16px;overflow-wrap:anywhere}.hs-distribution-card[hidden]{display:none!important}@media(max-width:700px){.hs-distribution-card{bottom:calc(env(safe-area-inset-bottom,0px) + 84px)!important}.bc-distribution-selected #hs-history-legend,.bc-distribution-selected #hs-bear-legend{visibility:hidden}}\n');
+html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=bc-distribution-density-20261124');
 new Function(app);
+// Independently validate density conversions and point-in-polygon including holes.
+const functions=new Function(helper.slice(helper.indexOf('  const historicalThresholds='),helper.indexOf('  async function selectedWmu('))+'\nreturn {historicalDensity,geometryContains};')();
+assert.deepEqual(functions.historicalDensity('mule_deer','H'),['Historical deer / 100 km²','>500']);
+assert.deepEqual(functions.historicalDensity('moose','M'),['Historical moose / 100 km²','10–76.9']);
+assert.equal(functions.historicalDensity('roosevelt_elk','R'),null);
+const polygon={type:'Polygon',coordinates:[[[0,0],[4,0],[4,4],[0,4],[0,0]],[[1,1],[2,1],[2,2],[1,2],[1,1]]]};
+assert(functions.geometryContains(polygon,3,3));assert(!functions.geometryContains(polygon,1.5,1.5));assert(!functions.geometryContains(polygon,5,5));
 fs.writeFileSync(appFile,app);fs.writeFileSync(htmlFile,html);
 console.log('Installed '+Object.values(expected).reduce((a,b)=>a+b,0)+' original historical polygons, plus selectable modern caribou, black bear and Roosevelt layers.');

@@ -29,7 +29,7 @@ const replacement = `      } else if (item.key === 'caribou' && viewMode === 'mo
           'Horseranch':{population:550,method:'expert'},
           'Level-Kawdy':{population:1552,method:'combined_survey'},
           'Liard Plateau':{population:151,method:'survey'},
-          'Little Rancheria':{population:1000,method:'survey'},
+          'Little Rancheria':{population:752,method:'survey'},
           'Maxhamish':{population:112,method:'minimum'},
           'Muskwa':{population:917,method:'survey'},
           'Pink Mountain':{population:533,method:'survey'},
@@ -65,6 +65,7 @@ const replacement = `      } else if (item.key === 'caribou' && viewMode === 'mo
           'Frisby Boulder':{population:8,method:'ipm'},
           'Central Selkirks':{population:27,method:'ipm'}
         };
+        const surveyYears={'Atlin':2019,'Calendar':2022,'Carcross':2019,'Edziza':2017,'Finlay':2020,'Frog':2023,'Gataga':2023,'Horseranch':2023,'Level-Kawdy':2023,'Liard Plateau':2022,'Little Rancheria':2022,'Maxhamish':2022,'Muskwa':2004,'Pink Mountain':2021,'Rabbit':2022,'Snake-Sahtaneh':2022,'Spatsizi':2023,'Swan Lake':2021,'Thutade':2019,'Tsenaglode':2021,'Westside Fort Nelson':2022};
         const ringAreaKm2 = (ring) => {
           if (!Array.isArray(ring) || ring.length < 3) return 0;
           const radius = 6371.0088;
@@ -103,7 +104,7 @@ const replacement = `      } else if (item.key === 'caribou' && viewMode === 'mo
           const herd = feature.properties?.HERD_NAME;
           const estimate = populationByHerd[herd] || { population:null, method:'unavailable' };
           const area = geometryAreaKm2(feature.geometry);
-          const population = Number(estimate.population);
+          const population = estimate.population == null ? NaN : Number(estimate.population);
           const density = Number.isFinite(population) && population >= 0 && area > 0 ? population / area : null;
           return {
             ...feature,
@@ -111,6 +112,7 @@ const replacement = `      } else if (item.key === 'caribou' && viewMode === 'mo
               ...(feature.properties || {}),
               POPULATION_ESTIMATE:Number.isFinite(population) ? population : null,
               POPULATION_METHOD:estimate.method,
+              POPULATION_YEAR:estimate.method==='ipm'||estimate.method==='combined_ipm'?2023:(surveyYears[herd]||null),
               RANGE_AREA_KM2:area,
               DENSITY_PER_KM2:density,
               DENSITY_IS_MINIMUM:estimate.method === 'minimum'
@@ -124,6 +126,7 @@ const replacement = `      } else if (item.key === 'caribou' && viewMode === 'mo
         if (!positive.length) throw new Error('Caribou population-density values are unavailable.');
         const quantile = (p) => positive[Math.min(positive.length - 1, Math.floor((positive.length - 1) * p))];
         const cuts = [quantile(0.25), quantile(0.5), quantile(0.75)];
+        for(const feature of features){const density=feature.properties.DENSITY_PER_KM2;feature.properties.DENSITY_LABEL=density==null?'Unavailable':density<=0?'Zero estimate':density<=cuts[0]?'Lower quartile':density<=cuts[1]?'Moderate':density<=cuts[2]?'High':'Highest quartile';}
         const payload = { ...raw, features };
         activeData = new google.maps.Data({ map });
         activeData.addGeoJson(payload);

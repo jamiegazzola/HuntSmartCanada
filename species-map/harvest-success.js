@@ -797,7 +797,7 @@
   window.HUNTSMART_HARVEST_SUCCESS={
     attach(args){context=args;updateButton();
       const instance={
-        sync,exitSuccess,isEnabled:()=>enabled&&active(),
+        sync,exitSuccess,fetchBoundaries,isEnabled:()=>enabled&&active(),
         // Production QA checks painted geometry rather than only rendered buttons.
         getRenderState(){
           let features=0;
