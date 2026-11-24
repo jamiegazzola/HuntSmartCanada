@@ -22,6 +22,8 @@ on:
       - scripts/install-harvest-success.cjs
       - scripts/install-huntsmart-minimal-ui.cjs
       - scripts/install-black-bear-distribution.cjs
+      - scripts/install-interactive-distribution.cjs
+      - scripts/assets/bc-historical-vectors-2005.zip
 
 permissions:
   contents: read
@@ -210,11 +212,17 @@ jobs:
               assert.equal(await page.locator('#era-modern').isVisible(),false,speciesKey+' must not expose unverified Modern');
               assert.equal(await page.locator('#era-historical').getAttribute('aria-pressed'),'true');
             }
+            for(const [key,count] of Object.entries({mule_deer:187,white_tailed_deer:39,elk:37,moose:304,mountain_goat:291,wild_sheep:141,caribou:53})){
+              await page.locator('#species').selectOption(key);
+              await page.waitForFunction(({key,count})=>{const state=window.HUNTSMART_DISTRIBUTION_STATE?.();return state?.species===key&&state.layers.some(l=>l.kind==='historic'&&l.features===count)}, {key,count},{timeout:30000});
+              assert(await page.locator('#hs-history-legend').isVisible());
+            }
             await page.locator('#species').selectOption('caribou');
             assert(await page.locator('#era-modern').isVisible());
             assert(await page.locator('#era-historical').isVisible());
             await page.locator('#era-modern').click();
             await page.waitForFunction(()=>document.getElementById('layer-note-text')?.textContent.includes('official BC caribou herd boundaries'),null,{timeout:30000});
+            await page.waitForFunction(()=>window.HUNTSMART_DISTRIBUTION_STATE?.()?.layers.some(l=>l.kind==='caribou'&&l.features>0),null,{timeout:30000});
             await page.locator('#era-historical').click();
             assert.equal(await page.locator('#era-historical').getAttribute('aria-pressed'),'true');
             await page.locator('#hs-harvest-toggle').click();
@@ -245,6 +253,13 @@ jobs:
             assert(await page.locator('#hs-harvest-toggle').isVisible(),'Success must return for other species');
             assert.equal(await page.locator('#hs-grizzly-legend').isVisible(),false);
             assert.equal(await page.evaluate(()=>window.HUNTSMART_GRIZZLY_STATE?.()),null);
+            await page.waitForFunction(()=>window.HUNTSMART_DISTRIBUTION_STATE?.()?.layers.some(l=>l.kind==='historic'&&l.features===304),null,{timeout:30000});
+            if(width<700)await page.touchscreen.tap(gx,gy);else await page.mouse.click(gx,gy);
+            await page.locator('#hs-distribution-card').waitFor({state:'visible',timeout:15000});
+            assert((await page.locator('#hs-distribution-stats').textContent()).includes('Moderate'));
+            assert((await page.locator('#hs-distribution-meta').textContent()).includes('2005'));
+            await page.locator('#hs-distribution-close').click();
+            assert.equal(await page.locator('#hs-distribution-card').isVisible(),false);
             // Confirm the new species work through the same real user journey.
             const keys=await page.locator('#species option').evaluateAll(options=>options.map(o=>o.value).sort());
             assert.deepEqual(keys,['black_bear','caribou','elk','grizzly_bear','moose','mountain_goat','mule_deer','roosevelt_elk','white_tailed_deer','wild_sheep'].sort(),
@@ -257,6 +272,7 @@ jobs:
               null,{timeout:30000});
             await page.waitForFunction(()=>window.HUNTSMART_BEAR_HISTORY_STATE?.()?.features===284,null,{timeout:30000});
             assert(await page.locator('#hs-bear-legend').isVisible());
+            await page.waitForFunction(()=>window.HUNTSMART_DISTRIBUTION_STATE?.()?.layers.some(l=>l.kind==='bear'&&l.features===284),null,{timeout:30000});
             const bearData=await page.evaluate(async()=>await (await fetch('data/black-bear-historical-1988.geojson')).json());
             assert.equal(bearData.features.length,284);
             assert.deepEqual([...new Set(bearData.features.map(f=>f.properties.historical_class))].sort(),['H','L','M']);

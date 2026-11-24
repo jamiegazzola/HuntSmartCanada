@@ -173,3 +173,5 @@ fs.appendFileSync(file('app.css'),'\n.hs-grizzly-card{font-family:-apple-system,
 new Function(app);
 fs.writeFileSync(file('app.js'),app);fs.writeFileSync(file('index.html'),html);
 console.log('Installed BC distribution policy, black bear history and clickable official grizzly density statistics.');
+
+require('./install-interactive-distribution.cjs');

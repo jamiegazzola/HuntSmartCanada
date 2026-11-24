@@ -99,10 +99,9 @@ jobs:
             assert(!app.includes('map.setZoom(Math.max(map.getZoom(), 18))'),'3D toggle must not forcibly zoom to blurry satellite imagery');
             assert(!app.includes('map.setZoom(preTiltView.zoom)'),'leaving 3D must not unexpectedly restore old zoom');
             assert(app.includes('toggleTerrain3D()') && app.includes('syncTerrain3D(version)'), 'DEM-based 3D terrain toggle must remain available');
-            assert(app.includes("const cacheKey = 'rocky_elk_march_2005_clipped'"),'Rocky elk historical KMZ renderer missing');
-            assert(app.includes("kmzOverlayUrl('kmz-elk-historic.png'"),'March 2005 Rocky elk source is not selected');
-            assert(app.includes("ctx.globalCompositeOperation = 'destination-out'"),'Rocky elk Region 1/2 image mask missing');
-            assert(app.includes("feature.properties?.region_id === id"),'Rocky elk region exclusion validation missing');
+            assert(app.includes('BC_HISTORICAL_SOURCE_POLYGONS_2005'),'Official March 2005 selectable vector renderer missing');
+            const rockySource=JSON.parse(await text('/species-map/data/historical-2005/elk.geojson'));
+            assert(rockySource.features.length===37&&rockySource.features.every(f=>f.properties.subspecies==='Rocky Mountain elk'),'Rocky elk must use the original distinct historical source');
             assert(app.includes("if (item.type === 'roosevelt')"),'Roosevelt elk independent branch missing');
             const regionMask = JSON.parse(await text('/species-map/data/rocky-elk-excluded-regions.geojson'));
             assert(regionMask.type === 'FeatureCollection' && regionMask.features.length === 2,'Rocky elk Region 1/2 clip data missing');
@@ -138,7 +137,7 @@ jobs:
               'Personal GIS file picker or parser missing from production HTML');
             const hunterModule=await waitForMarker('/species-map/harvest-success.js',
               'window.HUNTSMART_BC_HARVEST_CODES=CODE_BY_KEY');
-            assert(hunterModule.includes("btn.textContent='Success'"),
+            assert(hunterModule.includes("btn.textContent=key()==='wood_bison'?'Success unavailable':'Success'"),
               'Hunter-success toggle must switch map modes');
             assert(hunterModule.includes('context.onModeChange()'), 'Hunter success must rerender');
             assert(hunterModule.includes('BC_GOVERNMENT_HARVEST_DATA') &&
