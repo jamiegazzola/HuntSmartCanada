@@ -35,6 +35,10 @@ for(const [key,count] of Object.entries(expected)){
     }
     if(key==='elk')assert.equal(p.subspecies,'Rocky Mountain elk');
   }
+  if(key==='wild_sheep'){
+    const actual=Object.fromEntries(Object.entries(data.features.reduce((a,f)=>{const name=f.properties.subspecies;a[name]=(a[name]||0)+1;return a;},{})).sort());
+    assert.deepEqual(actual,Object.fromEntries(Object.entries({"California bighorn":32,"Rocky Mountain bighorn":25,"Stone’s sheep":79,"Dall’s sheep":5}).sort()),'Historical sheep subspecies counts changed');
+  }
   fs.writeFileSync(path.join(dataDir,key+'.geojson'),bytes);
 }
 fs.writeFileSync(path.join(dataDir,'manifest.json'),JSON.stringify(manifest));
@@ -46,6 +50,13 @@ const helper=[
 "  // BC_HISTORICAL_SOURCE_POLYGONS_2005",
 "  const historicVectorCounts = "+JSON.stringify(expected)+";",
 "  const distributionLayers = new Map();",
+"  const sheepFilter=document.getElementById('hs-sheep-filter');",
+"  const sheepOptions={\"California bighorn\":32,\"Rocky Mountain bighorn\":25,\"Stone’s sheep\":79,\"Dall’s sheep\":5};",
+"  function currentSheepFilter(){return Object.hasOwn(sheepOptions,sheepFilter.value)?sheepFilter.value:'all';}",
+"  function syncSheepFilter(){",
+"    document.getElementById('hs-sheep-filter-row').hidden=province!=='bc'||select.value!=='wild_sheep'||viewMode!=='historical'||harvestSuccess.isEnabled();",
+"  }",
+"  sheepFilter.addEventListener('change',()=>{if(province==='bc'&&select.value==='wild_sheep'&&!harvestSuccess.isEnabled())void renderSelected();});",
 "  let distributionSelection = null;",
 "  const historicalColors = { L:'#3f9646', M:'#f4d03f', H:'#d73027' };",
 "  const historicalLabels = {L:'Few',M:'Moderate',H:'Plentiful',R:'Rare / occasional'};",
@@ -144,10 +155,11 @@ const helper=[
 "  }",
 "  document.getElementById('hs-distribution-close').addEventListener('click',closeDistributionArea);",
 "  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&distributionSelection)closeDistributionArea();});",
-"  window.HUNTSMART_DISTRIBUTION_STATE=()=>({species:select.value,mode:viewMode,layers:[...distributionLayers.values()].map(({kind,features})=>({kind,features})),selection:distributionSelection?.details||null});",
+"  window.HUNTSMART_DISTRIBUTION_STATE=()=>({species:select.value,mode:viewMode,sheepFilter:select.value==='wild_sheep'?currentSheepFilter():null,layers:[...distributionLayers.values()].map(({kind,features})=>({kind,features})),selection:distributionSelection?.details||null});",
 ""
 ].join('\n');
 app=replace(app,regionStart,helper+'\n'+regionStart);
+app=replace(app,'    harvestSuccess.sync();','    harvestSuccess.sync();\n    syncSheepFilter();');
 app=replace(app,"    document.getElementById('hs-grizzly-meta').textContent = 'WMU ' + wmu + ' · Government of BC · 2018';","    const grizzlyMeta='Subunit WMU '+wmu+' · BC government · 2018';\n    document.getElementById('hs-grizzly-meta').textContent=grizzlyMeta;\n    const chosenGrizzly=grizzlySelection;\n    updateSelectedWmu(event,()=>grizzlySelection===chosenGrizzly,'hs-grizzly-meta',grizzlyMeta);");
 app=replace(app,"    clearLayer();\n    bearState = null;","    clearDistributionAreas();\n    clearLayer();\n    bearState = null;");
 const first="      if (province === 'bc' && item.key === 'grizzly_bear') {";
@@ -156,7 +168,10 @@ const historicBranch=[
 "        const payload=await staticRange({asset:'data/historical-2005/'+item.key+'.geojson'},renderAbort.signal);",
 "        if(version!==renderVersion)return;",
 "        if(payload.compilation_year!==2005||payload.features.length!==historicVectorCounts[item.key])throw Error('Historical distribution source is incomplete');",
-"        activeData=makeDataLayer();activeData.addGeoJson(payload);",
+"        const subspecies=item.key==='wild_sheep'?currentSheepFilter():'all';",
+"        const displayed=subspecies==='all'?payload:{...payload,features:payload.features.filter(f=>f.properties.subspecies===subspecies)};",
+"        if(subspecies!=='all'&&displayed.features.length!==sheepOptions[subspecies])throw Error('Sheep subspecies data is incomplete');",
+"        activeData=makeDataLayer();activeData.addGeoJson(displayed);",
 "        activeData.setStyle(feature=>{const cls=feature.getProperty('historical_class');return {fillColor:historicalColors[cls],fillOpacity:0.62,strokeColor:'#fff',strokeOpacity:0.25,strokeWeight:0.45,zIndex:{L:1,M:2,H:3}[cls],clickable:true};});",
 "        attachDistributionLayer(activeData,'historic');",
 "        document.getElementById('layer-note').hidden=false;",
@@ -206,6 +221,7 @@ const onDemandHook='      renderSelected(); // BC_HISTORICAL_VECTORS_ON_DEMAND';
 if(app.includes(preloadHook))app=app.replace(preloadHook,onDemandHook);
 else app=replace(app,deployedPreloadHook,onDemandHook);
 const markup=[
+'  <div id="hs-sheep-filter-row" class="hs-sheep-filter-row" hidden><label for="hs-sheep-filter">Subspecies</label><select id="hs-sheep-filter" aria-label="Sheep distribution subspecies"><option value="all">All wild sheep</option><option value="California bighorn">California bighorn</option><option value="Rocky Mountain bighorn">Rocky Mountain bighorn</option><option value="Stone’s sheep">Stone’s sheep</option><option value="Dall’s sheep">Dall’s sheep</option></select></div>',
 '  <div id="hs-history-legend" class="hs-bear-legend" hidden><strong>BC historical · 2005 compilation</strong><span><i style="background:#3f9646"></i>Few</span><span><i style="background:#f4d03f"></i>Moderate</span><span><i style="background:#d73027"></i>Plentiful</span></div>',
 '  <section id="hs-distribution-card" class="hs-wmu-card hs-distribution-card" aria-label="Wildlife distribution area statistics" hidden>',
 '    <div class="hs-wmu-heading"><div><h2 id="hs-distribution-title" class="hs-wmu-title"></h2><div id="hs-distribution-meta" class="hs-wmu-meta"></div></div><button type="button" id="hs-distribution-close" class="hs-wmu-close" aria-label="Close distribution statistics">×</button></div>',
@@ -216,9 +232,11 @@ const markup=[
 '  <div id="error" '
 ].join('\n');
 html=replace(html,'  <div id="error" ',markup);
-html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=bc-distribution-density-20261124-r2').replace(/app\.css\?v=[^"]+/,'app.css?v=bc-distribution-density-20261124-r2');
+html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=bc-sheep-filter-20261124').replace(/app\.css\?v=[^"]+/,'app.css?v=bc-sheep-filter-20261124');
 fs.appendFileSync(cssFile,'\nbody.bc-interactive-distribution:not(.hunter-success-only) .layer-note:not([hidden]){display:block!important}.hs-distribution-card{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hs-distribution-card .hs-wmu-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hs-distribution-card .hs-wmu-stats strong{font-size:16px;overflow-wrap:anywhere}.hs-distribution-card[hidden]{display:none!important}@media(max-width:700px){.hs-distribution-card{bottom:calc(env(safe-area-inset-bottom,0px) + 84px)!important}.bc-distribution-selected #hs-history-legend,.bc-distribution-selected #hs-bear-legend{visibility:hidden}}\n');
-html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=bc-distribution-density-20261124-r2');
+html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=bc-sheep-filter-20261124');
+html=html.replace(/hs-map-ui\.js\?v=[^"]+/,'hs-map-ui.js?v=bc-sheep-filter-20261124');
+fs.appendFileSync(cssFile,'\n.hs-map-toolbar .hs-sheep-filter-row{display:flex;align-items:center;gap:8px;margin-top:7px;min-width:0;color:#c7d0c8;font-size:12px;font-weight:600}.hs-map-toolbar .hs-sheep-filter-row[hidden]{display:none!important}.hs-sheep-filter-row label{flex:none;padding-left:3px}.hs-sheep-filter-row select{min-width:0;flex:1;width:100%;min-height:39px;padding:7px 9px;color:#f1f5f1;background:#252d28;border:1px solid rgba(255,255,255,.1);border-radius:8px;font:600 13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hs-sheep-filter-row select:focus-visible{outline:2px solid #fff;outline-offset:2px}\n');
 new Function(app);
 // Independently validate density conversions and point-in-polygon including holes.
 const functions=new Function(helper.slice(helper.indexOf('  const historicalThresholds='),helper.indexOf('  async function selectedWmu('))+'\nreturn {historicalDensity,geometryContains};')();

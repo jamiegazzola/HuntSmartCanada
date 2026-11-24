@@ -51,7 +51,7 @@ jobs:
           async function waitForRelease(){
             for(let i=0;i<40;i++){
               const r=await fetch(process.env.URL+'?release-check='+Date.now(),{cache:'no-store'}).catch(()=>null);
-              if(r?.ok&&(await r.text()).includes('bc-distribution-density-20261124-r2'))return;
+              if(r?.ok&&(await r.text()).includes('bc-sheep-filter-20261124'))return;
               await new Promise(resolve=>setTimeout(resolve,5000));
             }
             throw Error('Expected production distribution-density release was not published');
@@ -228,7 +228,22 @@ jobs:
               await page.waitForFunction(({key,count})=>{const state=window.HUNTSMART_DISTRIBUTION_STATE?.();return state?.species===key&&state.layers.some(l=>l.kind==='historic'&&l.features===count)}, {key,count},{timeout:30000}).catch(async error=>{console.error('DISTRIBUTION_DIAGNOSTIC',JSON.stringify(await page.evaluate(()=>({state:window.HUNTSMART_DISTRIBUTION_STATE?.(),success:window.HUNTSMART_HARVEST_RENDER_STATE?.(),error:document.getElementById('error')?.textContent,note:document.getElementById('layer-note-text')?.textContent}))));throw error;});
               assert(await page.locator('#hs-history-legend').isVisible());
             }
+            await page.locator('#species').selectOption('wild_sheep');
+            const sheepFilter=page.locator('#hs-sheep-filter');
+            assert(await sheepFilter.isVisible());
+            assert.equal(await sheepFilter.inputValue(),'all');
+            for(const [subspecies,count] of Object.entries({"California bighorn":32,"Rocky Mountain bighorn":25,"Stone’s sheep":79,"Dall’s sheep":5})){
+              await sheepFilter.selectOption(subspecies);
+              await page.waitForFunction(({subspecies,count})=>{const s=window.HUNTSMART_DISTRIBUTION_STATE?.();return s?.sheepFilter===subspecies&&s.layers.some(l=>l.kind==='historic'&&l.features===count)}, {subspecies,count},{timeout:15000});
+            }
+            await sheepFilter.selectOption('all');
+            await page.waitForFunction(()=>window.HUNTSMART_DISTRIBUTION_STATE?.()?.layers.some(l=>l.kind==='historic'&&l.features===141),null,{timeout:15000});
+            await page.locator('#hs-harvest-toggle').click();
+            assert.equal(await sheepFilter.isVisible(),false,'Subspecies filters cannot imply separate hunter-success statistics');
+            await page.locator('#era-historical').click();
+            assert(await sheepFilter.isVisible());
             await page.locator('#species').selectOption('roosevelt_elk');
+            assert.equal(await sheepFilter.isVisible(),false);
             await page.waitForFunction(()=>{const state=window.HUNTSMART_DISTRIBUTION_STATE?.();return state?.species==='roosevelt_elk'&&state.layers.some(l=>l.kind==='roosevelt-island'&&l.features===37)&&state.layers.some(l=>l.kind==='roosevelt-recent'&&l.features>0)&&state.layers.some(l=>l.kind==='roosevelt-history'&&l.features>0)},null,{timeout:30000});
             await page.locator('#species').selectOption('caribou');
             assert(await page.locator('#era-modern').isVisible());

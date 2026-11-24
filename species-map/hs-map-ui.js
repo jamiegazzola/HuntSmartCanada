@@ -58,6 +58,8 @@
   era.appendChild(success);
   modes.append(era,settingsWrap);
   toolbar.append(header,modes);
+  const sheepFilterRow=document.getElementById('hs-sheep-filter-row');
+  if(sheepFilterRow)toolbar.append(sheepFilterRow);
   // Keep metric and reporting years together under the map modes; the years
   // popover opens only on demand, instead of covering the map by default.
   const metricSwitch=document.querySelector('#hs-harvest-panel .hs-metric-switch');
