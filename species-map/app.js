@@ -158,7 +158,6 @@
   });
   function populateSpecies() {
     const list = province === 'ab' ? AB_SPECIES : SPECIES;
-    const byKey = province === 'ab' ? albertaByKey : speciesByKey;
     const storageKey = province === 'ab' ? 'alberta-species-map-v1' : 'bc-species-map-v2';
     const saved = localStorage.getItem(storageKey);
     select.innerHTML = '';
@@ -168,7 +167,9 @@
       option.textContent = item.label;
       select.appendChild(option);
     }
-    select.value = byKey[saved] ? saved : (province === 'ab' ? 'caribou' : 'mule_deer');
+    const selected = list.some(item => item.key === saved) ? saved : (province === 'ab' ? 'caribou' : 'mule_deer');
+    select.value = selected;
+    if (saved && saved !== selected) localStorage.setItem(storageKey, selected);
     eraControl.hidden = province === 'ab';
     bcProvinceButton.setAttribute('aria-pressed', String(province === 'bc'));
     abProvinceButton.setAttribute('aria-pressed', String(province === 'ab'));
