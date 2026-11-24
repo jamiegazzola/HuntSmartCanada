@@ -259,8 +259,16 @@ jobs:
             assert.equal(await page.locator('#hs-grizzly-legend').isVisible(),false);
             assert.equal(await page.evaluate(()=>window.HUNTSMART_GRIZZLY_STATE?.()),null);
             await page.waitForFunction(()=>window.HUNTSMART_DISTRIBUTION_STATE?.()?.layers.some(l=>l.kind==='historic'&&l.features===304),null,{timeout:30000});
-            if(width<700)await page.touchscreen.tap(gx,gy);else await page.mouse.click(gx,gy);
-            await page.locator('#hs-distribution-card').waitFor({state:'visible',timeout:15000});
+            // The Data layer count is synchronous, but Google's hit-test tiles
+            // become ready asynchronously after large polygon collections load.
+            const distCard=page.locator('#hs-distribution-card');
+            const hit=await page.evaluate(({gx,gy})=>({target:document.elementFromPoint(gx,gy)?.outerHTML.slice(0,250),view:localStorage.getItem('bc-species-map-view-v2'),state:window.HUNTSMART_DISTRIBUTION_STATE?.(),pin:document.getElementById('coordinate-drop-pin')?.getAttribute('aria-pressed')}),{gx,gy});
+            for(let i=0;i<15&&!await distCard.isVisible();i++){
+              await page.waitForTimeout(500);
+              if(width<700)await page.touchscreen.tap(gx,gy);else await page.mouse.click(gx,gy);
+            }
+            console.log('DISTRIBUTION_CLICK_DIAGNOSTIC',JSON.stringify({width,hit,errors:errs,after:await page.evaluate(()=>window.HUNTSMART_DISTRIBUTION_STATE?.())}));
+            await distCard.waitFor({state:'visible',timeout:5000});
             assert((await page.locator('#hs-distribution-stats').textContent()).includes('Moderate'));
             assert((await page.locator('#hs-distribution-meta').textContent()).includes('2005'));
             await page.locator('#hs-distribution-close').click();
