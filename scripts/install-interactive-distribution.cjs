@@ -170,7 +170,11 @@ roosevelt+="\n        attachDistributionLayer(activeData,'roosevelt-history');\n
 app=app.slice(0,islandStart)+roosevelt+app.slice(nextBranch);
 // All seven original KMZ historical selections now load only their own static
 // vector data. Do not download unused older rasters or old sheep API layers.
-app=replace(app,'      scheduleBackgroundKmzPreload();','      // Historical vectors are loaded on demand; retired KMZ preloading is disabled.');
+const preloadHook='      renderSelected();\n      scheduleBackgroundKmzPreload();';
+const deployedPreloadHook="      renderSelected().finally(() => { if (!window.matchMedia('(max-width:768px)').matches && navigator.connection?.downlink >= 10 && !navigator.connection?.saveData) setTimeout(scheduleBackgroundKmzPreload, 5000); });";
+const onDemandHook='      renderSelected(); // BC_HISTORICAL_VECTORS_ON_DEMAND';
+if(app.includes(preloadHook))app=app.replace(preloadHook,onDemandHook);
+else app=replace(app,deployedPreloadHook,onDemandHook);
 const markup=[
 '  <div id="hs-history-legend" class="hs-bear-legend" hidden><strong>BC historical · 2005 compilation</strong><span><i style="background:#3f9646"></i>Few</span><span><i style="background:#f4d03f"></i>Moderate</span><span><i style="background:#d73027"></i>Plentiful</span></div>',
 '  <section id="hs-distribution-card" class="hs-wmu-card hs-distribution-card" aria-label="Wildlife distribution area statistics" hidden>',
