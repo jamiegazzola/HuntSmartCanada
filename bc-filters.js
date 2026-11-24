@@ -258,6 +258,8 @@ function fpUpdateCta() {
   if (num) num.textContent = count.toLocaleString();
   const lbl = document.getElementById('fpCtaLabel');
   if (lbl) lbl.textContent = 'Show Results';
+  const mobileLabel = document.getElementById('fpMobileCtaLabel');
+  if (mobileLabel) mobileLabel.textContent = `Show ${count.toLocaleString()} ${count === 1 ? 'Draw' : 'Draws'}`;
 }
 
 function applyFiltersAndGoToDraws() {

@@ -10852,3 +10852,109 @@ body.hs-filter-map-modal-open { overflow: hidden !important; }
   width: 0 !important;
   height: 0 !important;
 }
+
+/* BC draw setup: one compact mobile screen, with a scroll fallback for
+   expanded maps, short viewports and larger accessibility text. */
+@media (max-width: 767px) {
+  #filterPage .filter-page-wrap {
+    height: calc(var(--hs-visual-vh, 100dvh) - var(--hs-live-header-h, 56px) - var(--hs-live-nav-h, 62px)) !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    overflow-y: auto !important;
+    align-items: flex-start;
+  }
+  #filterPage .filter-page-content {
+    box-sizing: border-box;
+    max-width: 580px;
+    height: auto;
+    min-height: 0;
+    flex: 0 0 auto;
+    gap: 8px !important;
+    padding: 8px 12px 12px !important;
+    justify-content: flex-start !important;
+    overflow: visible !important;
+  }
+  #filterPage .fp-header { margin: 0 !important; }
+  #filterPage .fp-eyebrow {
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    line-height: 1.3;
+    margin-bottom: 3px;
+  }
+  #filterPage .fp-title { font-size: 25px !important; line-height: 1.12; margin: 0; }
+  #filterPage .fp-card {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 8px !important;
+    padding: 9px 10px !important;
+    overflow: visible !important;
+    border-radius: 14px !important;
+  }
+  #filterPage .fp-section { gap: 4px !important; }
+  #filterPage .fp-card > .fp-section:first-child { padding-bottom: 0 !important; }
+  #filterPage #fpBcMapBtn {
+    width: 100%;
+    min-height: 44px !important;
+    padding: 6px 10px !important;
+    justify-content: center;
+    font-size: 13px !important;
+  }
+  #filterPage .fp-section-label { font-size: 10px; letter-spacing: 1.2px; line-height: 1.3; }
+  #filterPage #fpSpeciesChips { gap: 4px !important; }
+  #filterPage #fpSpeciesChips .fp-chip {
+    min-height: 40px !important;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    line-height: 1.25;
+    color: #afc2ad;
+  }
+  #filterPage #fpSpeciesChips .fp-chip.active { color: var(--white); }
+  #filterPage .fp-card > .fp-section:has(.fp-odds-wrap) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 6px !important;
+    row-gap: 3px !important;
+  }
+  #filterPage .fp-odds-wrap { display: contents; }
+  #filterPage .fp-odds-readout { grid-column: 2; grid-row: 1; gap: 2px; }
+  #filterPage .fp-odds-num { font-size: 16px; line-height: 1.15; }
+  #filterPage .fp-odds-unit { font-size: 11px; }
+  #filterPage .fp-odds-hint { display: none; }
+  #filterPage .fp-slider {
+    grid-column: 1 / -1;
+    height: 28px;
+    margin: 0;
+    background: transparent;
+  }
+  #filterPage .fp-slider::-webkit-slider-runnable-track {
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255,255,255,.22);
+  }
+  #filterPage .fp-slider::-webkit-slider-thumb { margin-top: -7.5px; }
+  #filterPage .fp-slider::-moz-range-track {
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255,255,255,.22);
+  }
+  #filterPage .fp-slider::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--white); border: 2px solid rgba(0,0,0,.3);
+  }
+  #filterPage .fp-ticks { grid-column: 1 / -1; color: #a6b5a5; font-size: 9px !important; }
+  #filterPage .fp-match-display, #filterPage .fp-skip, #filterPage #fpCtaLabel { display: none !important; }
+  #filterPage #fpMobileCtaLabel[hidden] { display: inline !important; }
+  #filterPage .fp-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    flex: 0 0 auto;
+    min-height: 48px !important;
+    padding: 9px 14px !important;
+    font-size: 15px !important;
+  }
+}
