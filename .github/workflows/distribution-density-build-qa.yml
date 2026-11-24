@@ -1,0 +1,26 @@
+name: Distribution density build validation
+on:
+  push:
+    branches: [qa/distribution-density-20261124]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reproduce exact historical installer with previous production viewer
+        run: |
+          mkdir -p site/species-map/data
+          for name in app.js index.html app.css hs-app-nav.js hs-app-nav.css hs-map-recovery.js; do
+            curl --fail --silent --show-error --retry 2 --max-time 25 "https://6b05c68b16b3805629f0a0e8--huntsmartcanada.netlify.app/species-map/$name" -o "site/species-map/$name"
+          done
+          node scripts/patch-caribou-official.cjs
+          node scripts/install-interactive-distribution.cjs
+          CONTEXT=production node scripts/ensure-species-mobile-nav.cjs
+          node --check site/species-map/app.js
+          grep -q 'Historical moose / 100' site/species-map/app.js || grep -q 'historicalThresholds' site/species-map/app.js
