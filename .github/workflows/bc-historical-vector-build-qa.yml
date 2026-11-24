@@ -25,3 +25,4 @@ jobs:
           node scripts/install-interactive-distribution.cjs
           node --check site/species-map/app.js
           grep -q 'BC_HISTORICAL_SOURCE_POLYGONS_2005' site/species-map/app.js
+
