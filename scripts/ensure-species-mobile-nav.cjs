@@ -68,7 +68,9 @@ if ((html.match(/hs-app-nav\.js/g) || []).length !== 1 ||
 const appPath = path.join(dir, 'app.js');
 let app = fs.readFileSync(appPath, 'utf8');
 const preload = '      renderSelected();\n      scheduleBackgroundKmzPreload();';
-if (app.includes(preload)) {
+if (app.includes('BC_HISTORICAL_SOURCE_POLYGONS_2005')) {
+  if (!app.includes('renderSelected(); // BC_HISTORICAL_VECTORS_ON_DEMAND') || app.includes(preload)) throw new Error('Historical polygon viewer must load on demand');
+} else if (app.includes(preload)) {
   app = app.replace(preload,
     "      renderSelected().finally(() => { if (!window.matchMedia('(max-width:768px)').matches && navigator.connection?.downlink >= 10 && !navigator.connection?.saveData) setTimeout(scheduleBackgroundKmzPreload, 5000); });");
   fs.writeFileSync(appPath, app);

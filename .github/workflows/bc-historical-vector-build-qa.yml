@@ -17,12 +17,13 @@ jobs:
       - name: Reproduce historical vector installer against last good production viewer
         run: |
           mkdir -p site/species-map/data
-          for name in app.js index.html app.css; do
+          for name in app.js index.html app.css hs-app-nav.js hs-app-nav.css hs-map-recovery.js; do
             curl --fail --silent --show-error --retry 3 --max-time 25 "https://6b05c68b16b3805629f0a0e8--huntsmartcanada.netlify.app/species-map/$name" -o "site/species-map/$name"
           done
           sha256sum scripts/assets/bc-historical-vectors-2005.zip
           unzip -l scripts/assets/bc-historical-vectors-2005.zip
           node scripts/install-interactive-distribution.cjs
+          CONTEXT=production node scripts/ensure-species-mobile-nav.cjs
           node --check site/species-map/app.js
           grep -q 'BC_HISTORICAL_SOURCE_POLYGONS_2005' site/species-map/app.js
 

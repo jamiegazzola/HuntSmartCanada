@@ -89,7 +89,7 @@ jobs:
             assert(mapPage.ok,`/species-map/ returned ${mapPage.status}`);
             assert(mapPage.status!==401,'species map unexpectedly requires authentication');
 
-            const app=await waitForMarker('/species-map/app.js','terrainToggle.disabled = harvestSuccess.isEnabled()');
+            const app=await waitForMarker('/species-map/app.js','BC_HISTORICAL_SOURCE_POLYGONS_2005');
             assert(app.includes("button.id = 'coordinate-drop-pin'"),'drop-pin button missing');
             assert(app.includes("toast.textContent = 'Coordinates copied'"),'coordinate-copy confirmation missing');
             assert(app.includes("map.setOptions({ mapTypeControl: false })"),'old map-type control is not disabled');
