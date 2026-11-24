@@ -58,7 +58,8 @@ function fpBcRenderMap(geojson) {
   if (container._leaflet_id) { container.innerHTML = ''; delete container._leaflet_id; }
 
   fpBcLeafletInstance = L.map('fpBcLeafletMap', {
-    center: [54.0, -124.0], zoom: 5, minZoom: 4, maxZoom: 13,
+    center: [54.0, -124.0], zoom: 5, minZoom: 2, maxZoom: 13,
+    zoomSnap: 0.25, zoomDelta: 0.5,
     zoomControl: true, scrollWheelZoom: true, touchZoom: true, attributionControl: false
   });
   hsAddDarkLeafletTiles(fpBcLeafletInstance);
@@ -96,7 +97,10 @@ function fpBcRenderMap(geojson) {
       });
     }
   }).addTo(fpBcLeafletInstance);
-  fpBcLeafletInstance.fitBounds([[48.3, -139.0], [60.0, -114.0]]);
+  fpBcLeafletInstance.invalidateSize({ animate: false });
+  fpBcLeafletInstance.fitBounds([[48.3, -139.0], [60.0, -114.0]], {
+    padding: [12, 12], animate: false
+  });
 }
 
 function fpBcGetStyle(feature, isSelected) {

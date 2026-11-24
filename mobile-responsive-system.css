@@ -259,10 +259,10 @@
     min-height: 48px !important;
   }
 
-  #fpBcLeafletMap,
-  #abFpLeafletMap,
-  #bcLeafletMap,
-  #abLeafletMap {
+  #fpBcLeafletMap:not(.hs-filter-map-fullscreen),
+  #abFpLeafletMap:not(.hs-filter-map-fullscreen),
+  #bcLeafletMap:not(.hs-filter-map-fullscreen),
+  #abLeafletMap:not(.hs-filter-map-fullscreen) {
     width: 100% !important;
     max-width: 100% !important;
   }
@@ -792,10 +792,10 @@
     padding-right: 0 !important;
   }
 
-  #fpBcLeafletMap,
-  #abFpLeafletMap,
-  #bcLeafletMap,
-  #abLeafletMap {
+  #fpBcLeafletMap:not(.hs-filter-map-fullscreen),
+  #abFpLeafletMap:not(.hs-filter-map-fullscreen),
+  #bcLeafletMap:not(.hs-filter-map-fullscreen),
+  #abLeafletMap:not(.hs-filter-map-fullscreen) {
     height: 220px !important;
   }
 
@@ -1038,4 +1038,36 @@
     animation-iteration-count: 1 !important;
     transition-duration: .01ms !important;
   }
+}
+
+/* Expanded filter maps own the mobile visual viewport; inline map dimensions
+   must never constrain the reparented Leaflet container. */
+@media (max-width: 980px) {
+  body > .hs-filter-map-fullscreen.hs-filter-map-container {
+    position: fixed !important;
+    inset: 0 !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: var(--hs-visual-vh, 100dvh) !important;
+    max-height: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+  }
+  body > .hs-filter-map-fullscreen::before { display: none !important; }
+  body > .hs-filter-map-fullscreen .leaflet-top { top: env(safe-area-inset-top, 0px); }
+  body > .hs-filter-map-fullscreen .leaflet-bottom { bottom: env(safe-area-inset-bottom, 0px); }
+  body > .hs-filter-map-fullscreen .hs-map-expand-btn {
+    top: calc(10px + env(safe-area-inset-top, 0px));
+    right: calc(10px + env(safe-area-inset-right, 0px));
+    min-height: 44px;
+    background: #13251a;
+  }
+  body > .hs-filter-map-fullscreen .leaflet-tile-pane { z-index: 200; }
+  body > .hs-filter-map-fullscreen .leaflet-overlay-pane { z-index: 400; }
+  body > .hs-filter-map-fullscreen .leaflet-shadow-pane { z-index: 500; }
+  body > .hs-filter-map-fullscreen .leaflet-marker-pane { z-index: 600; }
+  body > .hs-filter-map-fullscreen .leaflet-top,
+  body > .hs-filter-map-fullscreen .leaflet-bottom { z-index: 1000; }
 }

@@ -32,10 +32,28 @@ function hsInstallLeafletExpandControl(containerId, mapInstance, label) {
   btn.textContent = 'Expand';
   btn.title = 'Expand map';
 
+  let resizeFrame = 0;
   function invalidateMap() {
-    setTimeout(function(){ try { mapInstance && mapInstance.invalidateSize(); } catch(_) {} }, 80);
-    setTimeout(function(){ try { mapInstance && mapInstance.invalidateSize(); } catch(_) {} }, 240);
-    setTimeout(function(){ try { mapInstance && mapInstance.invalidateSize(); } catch(_) {} }, 520);
+    if (resizeFrame) cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(function() {
+      resizeFrame = 0;
+      if (!container.isConnected || !container.clientWidth || !container.clientHeight) return;
+      mapInstance.invalidateSize({ animate: false, pan: true });
+    });
+  }
+  // Reparenting, browser chrome, orientation changes and CSS transitions can
+  // resize the map without a window resize event. Keep the WMU renderer synced.
+  const resizeObserver = typeof ResizeObserver === 'function'
+    ? new ResizeObserver(invalidateMap) : null;
+  if (resizeObserver) resizeObserver.observe(container);
+  mapInstance.on('unload', function() {
+    if (resizeObserver) resizeObserver.disconnect();
+    if (resizeFrame) cancelAnimationFrame(resizeFrame);
+  });
+  function refreshMapAfterMove() {
+    invalidateMap();
+    requestAnimationFrame(invalidateMap);
+    if (!resizeObserver) setTimeout(invalidateMap, 240);
   }
 
   function expandToBody() {
@@ -54,7 +72,7 @@ function hsInstallLeafletExpandControl(containerId, mapInstance, label) {
     document.body.classList.add('hs-filter-map-modal-open');
     btn.textContent = 'Collapse';
     btn.title = 'Collapse map';
-    invalidateMap();
+    refreshMapAfterMove();
   }
 
   function collapseToOriginalPlace() {
@@ -72,7 +90,7 @@ function hsInstallLeafletExpandControl(containerId, mapInstance, label) {
     document.body.classList.remove('hs-filter-map-modal-open');
     btn.textContent = 'Expand';
     btn.title = 'Expand map';
-    invalidateMap();
+    refreshMapAfterMove();
   }
 
   btn.onclick = function(e) {
