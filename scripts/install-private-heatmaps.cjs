@@ -54,7 +54,7 @@ const appReplacements = [
   ],
   [
     "const DISPLAYED_SPECIES = new Set([...KMZ_HEATMAPS, 'roosevelt_elk', 'rocky_elk_kootenay']);",
-    "const DISPLAYED_SPECIES = new Set([...KMZ_HEATMAPS, 'roosevelt_elk', 'wood_bison', 'black_bear']);",
+    "const DISPLAYED_SPECIES = new Set([...KMZ_HEATMAPS, 'roosevelt_elk', 'black_bear']);",
   ],
   [
     "let viewMode = ['modern', 'winter', 'summer', 'historical'].includes(storedMode) ? storedMode : 'modern';",
@@ -249,7 +249,9 @@ fs.writeFileSync(path.join(dest, '..', 'app.js'), patchedApp);
 const catalogPath = path.join(dest, '..', 'species-catalog.js');
 let catalog = fs.readFileSync(catalogPath, 'utf8');
 catalog = catalog.replace("label: 'Mule Deer (including Black-tailed Deer)'", "label: 'Mule Deer'");
-catalog = catalog.replace("label: 'Wood Bison'", "label: 'Bison'");
+// Exclude Bison from the published registry, not just its dropdown.
+catalog = catalog.replace(/^\s*\{ key: 'wood_bison', [^\n]*\},\r?\n/m, '\n');
+if (catalog.includes("key: 'wood_bison'")) throw new Error('Bison must not be published in the species registry');
 fs.writeFileSync(catalogPath, catalog);
 
 // Keep the legacy elements in the private source DOM so older JS references

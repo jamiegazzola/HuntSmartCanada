@@ -25,5 +25,4 @@ window.HUNTSMART_SPECIES = [
     { key: 'caribou_boreal', label: 'Boreal Caribou', type: 'range', asset: 'data/caribou-herds.geojson', filter: 'Boreal', filterField: 'ECOTYPE' },
     { key: 'grizzly_bear', label: 'Grizzly Bear', type: 'grizzly', asset: 'data/grizzly-2018.geojson' },
     { key: 'black_bear', label: 'Black Bear', type: 'range', asset: 'data/black-bear-broad-range.geojson' },
-    { key: 'wood_bison', label: 'Bison', type: 'range', asset: 'data/wood-bison-herds.geojson' },
   ];

@@ -45,7 +45,8 @@ app=replace(app,branch,`      if (province === 'bc' && item.key === 'black_bear'
         bearState = {species:item.key,features:payload.features.length,year:1988};
       } else if (province === 'bc' && item.type === 'bc_official_evidence') {`);
 html=replace(html,'  <div id="error" ','  <div id="hs-bear-legend" class="hs-bear-legend" hidden><strong>BC 1988 · historical abundance</strong><span><i style="background:#3f9646"></i>Low</span><span><i style="background:#f4d03f"></i>Moderate</span><span><i style="background:#d73027"></i>High</span></div>\n  <div id="error" ');
-html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=bear-history-20261123c').replace(/hs-map-ui\.js\?v=[^"]+/,'hs-map-ui.js?v=bear-history-20261123c').replace(/hs-map-ui\.css\?v=[^"]+/,'hs-map-ui.css?v=bear-history-20261123c');
+html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=no-bison-20261123d').replace(/hs-map-ui\.js\?v=[^"]+/,'hs-map-ui.js?v=no-bison-20261123d').replace(/hs-map-ui\.css\?v=[^"]+/,'hs-map-ui.css?v=no-bison-20261123d');
+html=html.replace(/species-catalog\.js\?v=[^"]+/,'species-catalog.js?v=no-bison-20261123d').replace(/alberta-species\.js\?v=[^"]+/,'alberta-species.js?v=no-bison-20261123d');
 new Function(app);
 fs.writeFileSync(file('app.js'),app);fs.writeFileSync(file('index.html'),html);
 console.log('Adopted the validated TEST map as Black Bear Historical; all other maps unchanged.');

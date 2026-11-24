@@ -15,6 +15,10 @@ on:
       - species-map/hs-app-nav.css
       - netlify.toml
       - scripts/install-alberta-species.cjs
+      - scripts/install-private-heatmaps.cjs
+      - species-map/species-catalog.js
+      - species-map/alberta-species.js
+      - species-map/app.js
       - scripts/install-harvest-success.cjs
       - scripts/install-huntsmart-minimal-ui.cjs
 
@@ -46,6 +50,13 @@ jobs:
               viewport:{width,height},hasTouch:width<700,isMobile:width<700,
               serviceWorkers:'block'
             });
+            await context.addInitScript(()=>{
+              if (!sessionStorage.getItem('qa-bison-seeded')) {
+                localStorage.setItem('bc-species-map-v2','wood_bison');
+                localStorage.setItem('alberta-species-map-v1','wood_bison');
+                sessionStorage.setItem('qa-bison-seeded','1');
+              }
+            });
             const page=await context.newPage();
             const errs=[];
             page.on('pageerror',error=>errs.push(error.message));
@@ -73,9 +84,12 @@ jobs:
               'Toolbar exceeds the map viewport: '+JSON.stringify(geometry));
             const initialProvince=await page.locator('.hs-province-toggle').innerText();
             assert.equal(initialProvince,'BC','Default province should be BC');
+            assert.equal(await page.locator('#species').inputValue(),'mule_deer','Removed BC saved Bison falls back to mule deer');
             await page.locator('.hs-province-toggle').click();
             assert.equal(await page.locator('.hs-province-toggle').innerText(),'AB',
               'Province button must switch directly to Alberta without a menu');
+            assert.equal(await page.locator('#species option[value="wood_bison"]').count(),0,'Bison must not appear in Alberta distribution');
+            assert.equal(await page.locator('#species').inputValue(),'caribou','Removed AB saved Bison falls back to caribou');
             assert.equal(await page.locator('#era-control').isVisible(),false,
               'Alberta must not expose unsupported BC distribution and Success tabs');
             await page.locator('.hs-province-toggle').click();
@@ -194,18 +208,9 @@ jobs:
             await page.locator('#species').selectOption('moose');
             // Confirm the new species work through the same real user journey.
             const keys=await page.locator('#species option').evaluateAll(options=>options.map(o=>o.value).sort());
-            assert.deepEqual(keys,['black_bear','caribou','elk','moose','mountain_goat','mule_deer','roosevelt_elk','white_tailed_deer','wild_sheep','wood_bison'].sort(),
-              'BC must display exactly the ten requested species');
-            assert.equal(await page.locator('#species option[value="wood_bison"]').textContent(),'Bison');
-            await page.locator('#species').selectOption('wood_bison');
-            await page.waitForFunction(()=>document.getElementById('layer-note-text')?.textContent.includes('Partial bison range'),
-              null,{timeout:30000});
-            assert.equal(await page.locator('#era-historical').isVisible(),false);
-            assert.equal(await page.locator('#era-modern').innerText(),'Partial range');
-            assert.equal(await page.locator('#hs-harvest-toggle').isDisabled(),true);
-            assert.equal(await page.locator('#hs-harvest-toggle').innerText(),'Success unavailable');
-            const bisonState=await page.evaluate(()=>window.HUNTSMART_HARVEST_RENDER_STATE?.());
-            assert(!bisonState?.enabled&&!bisonState?.ready,'Ambiguous bison WMU data must not paint');
+            assert.deepEqual(keys,['black_bear','caribou','elk','moose','mountain_goat','mule_deer','roosevelt_elk','white_tailed_deer','wild_sheep'].sort(),
+              'BC must display exactly the nine supported species');
+            assert.equal(await page.locator('#species option[value="wood_bison"]').count(),0);
             await page.locator('#species').selectOption('black_bear');
             assert.equal(await page.locator('#era-modern').isVisible(),false);
             assert.equal(await page.locator('#era-historical').getAttribute('aria-pressed'),'true');

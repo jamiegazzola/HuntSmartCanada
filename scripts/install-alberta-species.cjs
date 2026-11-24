@@ -46,7 +46,7 @@
              "const list = province === 'ab' ? AB_SPECIES : SPECIES.filter(item => DISPLAYED_SPECIES.has(item.key));")
     .replace("    eraControl.hidden = province === 'ab';","    eraControl.hidden = province === 'ab';\n    document.body.classList.toggle('province-alberta', province === 'ab');")
     .replace('    if (renderAbort) renderAbort.abort();','    showEvidence = false;\n    if (renderAbort) renderAbort.abort();');
-  assert(switchBlock.includes('DISPLAYED_SPECIES.has(item.key)'), 'private BC species filter preserved');
+  assert(switchBlock.includes('DISPLAYED_SPECIES.has(item.key)') && switchBlock.includes('list.some(item => item.key === saved)'), 'private BC species filter and saved selection fallback preserved');
   app = app.slice(0,listStart)+switchBlock+'\n'+app.slice(listEnd);
   assert(app.includes('HUNTSMART_ALBERTA_LOCAL.attach') &&
     app.includes('personalAlberta.draw(item, makeDataLayer)') === false,

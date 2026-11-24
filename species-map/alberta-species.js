@@ -16,5 +16,4 @@ window.HUNTSMART_ALBERTA_SPECIES = [
   { key:'grizzly_bear', label:'Grizzly Bear Zones (personal)', type:'personal_government_file',
     governmentFile:'GrizzlyBearZone.zip', sourceUrl:'https://extranet.gov.ab.ca/srd/geodiscover/srd_pub/LAT/FWDSensitivity/GrizzlyBearZone.zip', displayName:'Grizzly bear core and secondary zones' },
   { key:'pronghorn', label:'Pronghorn (source review)', type:'pending', sourceUrl:'https://www.alberta.ca/aerial-wildlife-survey-reports' },
-  { key:'wood_bison', label:'Wood Bison (source review)', type:'pending', sourceUrl:'https://www.alberta.ca/aerial-wildlife-survey-reports' },
 ];
