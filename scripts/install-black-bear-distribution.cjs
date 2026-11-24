@@ -47,6 +47,63 @@ app=replace(app,branch,`      if (province === 'bc' && item.key === 'black_bear'
 html=replace(html,'  <div id="error" ','  <div id="hs-bear-legend" class="hs-bear-legend" hidden><strong>BC 1988 · historical abundance</strong><span><i style="background:#3f9646"></i>Low</span><span><i style="background:#f4d03f"></i>Moderate</span><span><i style="background:#d73027"></i>High</span></div>\n  <div id="error" ');
 html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=no-bison-20261123d').replace(/hs-map-ui\.js\?v=[^"]+/,'hs-map-ui.js?v=no-bison-20261123d').replace(/hs-map-ui\.css\?v=[^"]+/,'hs-map-ui.css?v=no-bison-20261123d');
 html=html.replace(/species-catalog\.js\?v=[^"]+/,'species-catalog.js?v=no-bison-20261123d').replace(/alberta-species\.js\?v=[^"]+/,'alberta-species.js?v=no-bison-20261123d');
+
+/* Single-source BC distribution policy. Caribou alone retains both eras.
+   The existing legacy assets remain archived, not selectable or preloaded. */
+app=replace(app,"const DISPLAYED_SPECIES = new Set([...KMZ_HEATMAPS, 'roosevelt_elk', 'black_bear']);","const DISPLAYED_SPECIES = new Set([...KMZ_HEATMAPS, 'roosevelt_elk', 'black_bear', 'grizzly_bear']);");
+const grizzly=JSON.parse(fs.readFileSync(file('data/grizzly-2018.geojson'),'utf8'));
+assert.equal(grizzly.type,'FeatureCollection');
+assert.equal(grizzly.features.length,232);
+assert(grizzly.source.includes('bc_grizzly_population_estimates_2015_and_2018'));
+assert(grizzly.features.every(f=>Number.isFinite(f.properties?.density_2018)&&f.properties.density_2018>=0&&['Polygon','MultiPolygon'].includes(f.geometry?.type)),'Invalid government grizzly estimates');
+const eraEnd=[
+"    if (bcBison) {",
+"      eraHistorical.hidden = true;",
+"      eraModern.textContent = 'Partial range';",
+"      if (viewMode !== 'modern') { viewMode = 'modern'; setEraButtons(); }",
+"    }"
+].join('\n');
+app=replace(app,eraEnd,eraEnd+[
+"",
+"    // Restrict the displayed BC species to their strongest available source.",
+"    if (province === 'bc' && DISPLAYED_SPECIES.has(item.key)) {",
+"      const both = item.key === 'caribou';",
+"      const current = item.key === 'grizzly_bear' || isRoosevelt;",
+"      eraModern.hidden = !both && !current;",
+"      eraHistorical.hidden = !both && current;",
+"      eraModern.textContent = both ? 'Modern' : 'Distribution';",
+"      eraHistorical.textContent = 'Historical';",
+"      if (!both) viewMode = current ? 'modern' : 'historical';",
+"      showEvidence = false;",
+"      setEraButtons();",
+"    }",
+"    document.body.classList.toggle('bc-grizzly-distribution', province === 'bc' && item.key === 'grizzly_bear');"
+].join('\n'));
+app=replace(app,"const queue = [...keys.map(key => 'kmz-' + key + '-historic.png'), ...keys.filter(key => key !== 'caribou').map(key => 'kmz-' + key + '-modern.png')];","const queue = keys.filter(key => key !== 'wild_sheep').map(key => 'kmz-' + key + '-historic.png');");
+app=replace(app,"  let bearState = null;","  let bearState = null;\n  let grizzlyState = null;\n  window.HUNTSMART_GRIZZLY_STATE = () => grizzlyState;");
+app=replace(app,"    bearState = null;\n    document.getElementById('hs-bear-legend').hidden = true;","    bearState = null;\n    grizzlyState = null;\n    document.getElementById('hs-grizzly-legend').hidden = true;\n    document.getElementById('hs-bear-legend').hidden = true;");
+const grizzlyBranch=[
+"      if (province === 'bc' && item.key === 'grizzly_bear') {",
+"        const payload = await staticRange(item, renderAbort.signal);",
+"        if (version !== renderVersion) return;",
+"        if (payload.features.length !== 232 || !payload.features.every(f => Number.isFinite(f.properties?.density_2018) && f.properties.density_2018 >= 0)) throw new Error('Government grizzly density data invalid');",
+"        renderStaticRange(payload, item);",
+"        document.getElementById('layer-note').hidden = false;",
+"        document.getElementById('layer-source').hidden = false;",
+"        document.getElementById('layer-source').href = payload.source;",
+"        document.getElementById('layer-source').textContent = 'Official BC grizzly population estimates';",
+"        document.getElementById('layer-note-text').textContent = '2018 BC grizzly bear population estimates per 1,000 km² by population subunit. These are management-area averages, not exact animal locations or current abundance. Blank areas do not prove absence.';",
+"        document.getElementById('layer-attribution').hidden = true;",
+"        document.getElementById('hs-grizzly-legend').hidden = false;",
+"        grizzlyState = {species:item.key,features:payload.features.length,year:2018};",
+"      } else if (province === 'bc' && item.key === 'black_bear' && viewMode === 'historical') {"
+].join('\n');
+app=replace(app,"      if (province === 'bc' && item.key === 'black_bear' && viewMode === 'historical') {",grizzlyBranch);
+html=replace(html,'  <div id="error" ','  <div id="hs-grizzly-legend" class="hs-bear-legend" hidden><strong>BC 2018 · bears per 1,000 km²</strong><span><i style="background:#3f9646"></i>≤5</span><span><i style="background:#f4d03f"></i>5–15</span><span><i style="background:#f48b27"></i>15–30</span><span><i style="background:#d73027"></i>&gt;30</span></div>\n  <div id="error" ');
+fs.appendFileSync(file('app.css'),'\nbody.bc-grizzly-distribution:not(.hunter-success-only) .layer-note:not([hidden]){display:block!important}\n');
+html=html.replace(/app\.css\?v=[^"]+/,'app.css?v=bc-distribution-policy-20261124');
+html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=bc-distribution-policy-20261124');
+
 new Function(app);
 fs.writeFileSync(file('app.js'),app);fs.writeFileSync(file('index.html'),html);
 console.log('Adopted the validated TEST map as Black Bear Historical; all other maps unchanged.');

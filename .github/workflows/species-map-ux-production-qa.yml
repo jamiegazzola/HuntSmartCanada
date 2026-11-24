@@ -21,6 +21,7 @@ on:
       - species-map/app.js
       - scripts/install-harvest-success.cjs
       - scripts/install-huntsmart-minimal-ui.cjs
+      - scripts/install-black-bear-distribution.cjs
 
 permissions:
   contents: read
@@ -131,9 +132,9 @@ jobs:
             await page.locator('[data-hs-period="custom"]').click();
             assert.equal(await page.locator('#hs-harvest-period').inputValue(),'custom',
               'Custom preset is not selectable');
-            await page.locator('#era-modern').click();
-            assert.equal(await page.locator('#era-modern').getAttribute('aria-pressed'),'true',
-              'Switching from success to Modern failed');
+            await page.locator('#era-historical').click();
+            assert.equal(await page.locator('#era-historical').getAttribute('aria-pressed'),'true',
+              'Switching from success to retained historical distribution failed');
             assert.equal(await page.locator('#hs-year-trigger').isVisible(),false,
               'Year picker should hide outside Success');
             // Elk's only supported distribution era remains accessible alongside Success.
@@ -195,21 +196,39 @@ jobs:
             assert.equal((await page.locator('.hs-map-back').textContent()).trim(),'← Back',
               'Return navigation should say Back');
             await page.locator('#species').selectOption('moose');
-            assert.equal(await page.locator('#era-modern').isVisible(),true);
+            assert.equal(await page.locator('#era-modern').isVisible(),false);
             assert.equal(await page.locator('#era-historical').isVisible(),true);
-            assert.equal(await page.locator('#era-modern').innerText(),'Modern');
-            // Comparison is finished: original controls and layers remain for all species.
+            // Caribou alone retains two distribution eras.
             assert.equal(await page.locator('#era-test').count(),0,'Temporary TEST tab must be removed');
             for(const speciesKey of ['mule_deer','white_tailed_deer','elk','roosevelt_elk','moose','mountain_goat','wild_sheep','caribou']){
               await page.locator('#species').selectOption(speciesKey);
               assert.equal(await page.locator('#hs-bear-legend').isVisible(),false);
               assert.equal(await page.evaluate(()=>window.HUNTSMART_BEAR_HISTORY_STATE?.()),null);
             }
+            for(const speciesKey of ['mule_deer','white_tailed_deer','elk','moose','mountain_goat','wild_sheep','black_bear']){
+              await page.locator('#species').selectOption(speciesKey);
+              assert.equal(await page.locator('#era-modern').isVisible(),false,speciesKey+' must not expose unverified Modern');
+              assert.equal(await page.locator('#era-historical').getAttribute('aria-pressed'),'true');
+            }
+            await page.locator('#species').selectOption('caribou');
+            assert(await page.locator('#era-modern').isVisible());
+            assert(await page.locator('#era-historical').isVisible());
+            await page.locator('#era-modern').click();
+            await page.waitForFunction(()=>document.getElementById('layer-note-text')?.textContent.includes('official BC caribou herd boundaries'),null,{timeout:30000});
+            await page.locator('#era-historical').click();
+            assert.equal(await page.locator('#era-historical').getAttribute('aria-pressed'),'true');
+            await page.locator('#species').selectOption('grizzly_bear');
+            assert(await page.locator('#era-modern').isVisible());
+            assert.equal(await page.locator('#era-historical').isVisible(),false);
+            await page.waitForFunction(()=>window.HUNTSMART_GRIZZLY_STATE?.()?.features===232,null,{timeout:30000});
+            assert(await page.locator('#hs-grizzly-legend').isVisible());
             await page.locator('#species').selectOption('moose');
+            assert.equal(await page.locator('#hs-grizzly-legend').isVisible(),false);
+            assert.equal(await page.evaluate(()=>window.HUNTSMART_GRIZZLY_STATE?.()),null);
             // Confirm the new species work through the same real user journey.
             const keys=await page.locator('#species option').evaluateAll(options=>options.map(o=>o.value).sort());
-            assert.deepEqual(keys,['black_bear','caribou','elk','moose','mountain_goat','mule_deer','roosevelt_elk','white_tailed_deer','wild_sheep'].sort(),
-              'BC must display exactly the nine supported species');
+            assert.deepEqual(keys,['black_bear','caribou','elk','grizzly_bear','moose','mountain_goat','mule_deer','roosevelt_elk','white_tailed_deer','wild_sheep'].sort(),
+              'BC must display exactly the ten supported species');
             assert.equal(await page.locator('#species option[value="wood_bison"]').count(),0);
             await page.locator('#species').selectOption('black_bear');
             assert.equal(await page.locator('#era-modern').isVisible(),false);
