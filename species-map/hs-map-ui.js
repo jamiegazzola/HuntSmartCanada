@@ -85,7 +85,7 @@
     document.addEventListener('keydown',event=>{
       if(event.key==='Escape')closeYears();
     });
-    for(const id of ['era-modern','era-historical','era-test','hs-harvest-toggle','province-bc','province-alberta']){
+    for(const id of ['era-modern','era-historical','hs-harvest-toggle','province-bc','province-alberta']){
       document.getElementById(id)?.addEventListener('click',()=>{
         if(id!=='hs-harvest-toggle')closeYears();
       });
@@ -128,7 +128,7 @@
     }
   });
   // When species/map mode changes, keep only one information surface open.
-  for(const id of ['era-modern','era-historical','era-test','era-winter','era-summer']){
+  for(const id of ['era-modern','era-historical','era-winter','era-summer']){
     document.getElementById(id)?.addEventListener('click',()=>{
       document.getElementById('hs-harvest-panel')?.classList.remove('is-open');
       settings.hidden=true;settingsToggle.setAttribute('aria-expanded','false');

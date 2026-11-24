@@ -184,17 +184,12 @@ jobs:
             assert.equal(await page.locator('#era-modern').isVisible(),true);
             assert.equal(await page.locator('#era-historical').isVisible(),true);
             assert.equal(await page.locator('#era-modern').innerText(),'Modern');
-            // Verify TEST against the actual static data and keep the same camera.
-            for(const speciesKey of ['mule_deer','white_tailed_deer','elk','roosevelt_elk','moose','mountain_goat','wild_sheep','caribou','black_bear']){
+            // Comparison is finished: original controls and layers remain for all species.
+            assert.equal(await page.locator('#era-test').count(),0,'Temporary TEST tab must be removed');
+            for(const speciesKey of ['mule_deer','white_tailed_deer','elk','roosevelt_elk','moose','mountain_goat','wild_sheep','caribou']){
               await page.locator('#species').selectOption(speciesKey);
-              assert(await page.locator('#era-test').isVisible(),speciesKey+' TEST missing');
-              await page.locator('#era-test').click();
-              await page.waitForFunction(key=>window.HUNTSMART_TEST_DISTRIBUTION_STATE?.()?.species===key&&window.HUNTSMART_TEST_DISTRIBUTION_STATE?.()?.features>0,speciesKey,{timeout:45000});
-              assert.equal(await page.locator('#era-test').getAttribute('aria-pressed'),'true');
-              assert(await page.locator('#hs-test-legend').isVisible());
-              const original=await page.locator('#era-historical').isVisible()?'#era-historical':'#era-modern';
-              await page.locator(original).click();
-              assert.equal(await page.locator('#hs-test-legend').isVisible(),false);
+              assert.equal(await page.locator('#hs-bear-legend').isVisible(),false);
+              assert.equal(await page.evaluate(()=>window.HUNTSMART_BEAR_HISTORY_STATE?.()),null);
             }
             await page.locator('#species').selectOption('moose');
             // Confirm the new species work through the same real user journey.
@@ -206,7 +201,6 @@ jobs:
             await page.waitForFunction(()=>document.getElementById('layer-note-text')?.textContent.includes('Partial bison range'),
               null,{timeout:30000});
             assert.equal(await page.locator('#era-historical').isVisible(),false);
-            assert.equal(await page.locator('#era-test').isVisible(),false);
             assert.equal(await page.locator('#era-modern').innerText(),'Partial range');
             assert.equal(await page.locator('#hs-harvest-toggle').isDisabled(),true);
             assert.equal(await page.locator('#hs-harvest-toggle').innerText(),'Success unavailable');
@@ -217,6 +211,8 @@ jobs:
             assert.equal(await page.locator('#era-historical').getAttribute('aria-pressed'),'true');
             await page.waitForFunction(()=>document.getElementById('layer-note-text')?.textContent.includes('Historical: BC 1988 distribution'),
               null,{timeout:30000});
+            await page.waitForFunction(()=>window.HUNTSMART_BEAR_HISTORY_STATE?.()?.features===284,null,{timeout:30000});
+            assert(await page.locator('#hs-bear-legend').isVisible());
             const bearData=await page.evaluate(async()=>await (await fetch('data/black-bear-historical-1988.geojson')).json());
             assert.equal(bearData.features.length,284);
             assert.deepEqual([...new Set(bearData.features.map(f=>f.properties.historical_class))].sort(),['H','L','M']);
@@ -226,6 +222,7 @@ jobs:
             await page.waitForFunction(()=>window.HUNTSMART_HARVEST_RENDER_STATE?.()?.ready,
               null,{timeout:45000});
             assert.equal(await page.locator('#hs-harvest-toggle').innerText(),'Success');
+            assert.equal(await page.locator('#hs-bear-legend').isVisible(),false);
             assert((await page.locator('#hs-harvest-detail').textContent()).includes('resident harvest estimates'),
               'Black bear must use the official combined harvest archive');
             // Page-origin errors originating from Google/Mapbox can be logged independently.
