@@ -216,9 +216,9 @@ const markup=[
 '  <div id="error" '
 ].join('\n');
 html=replace(html,'  <div id="error" ',markup);
-html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=bc-distribution-density-20261124').replace(/app\.css\?v=[^"]+/,'app.css?v=bc-distribution-density-20261124');
+html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=bc-distribution-density-20261124-r2').replace(/app\.css\?v=[^"]+/,'app.css?v=bc-distribution-density-20261124-r2');
 fs.appendFileSync(cssFile,'\nbody.bc-interactive-distribution:not(.hunter-success-only) .layer-note:not([hidden]){display:block!important}.hs-distribution-card{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.hs-distribution-card .hs-wmu-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hs-distribution-card .hs-wmu-stats strong{font-size:16px;overflow-wrap:anywhere}.hs-distribution-card[hidden]{display:none!important}@media(max-width:700px){.hs-distribution-card{bottom:calc(env(safe-area-inset-bottom,0px) + 84px)!important}.bc-distribution-selected #hs-history-legend,.bc-distribution-selected #hs-bear-legend{visibility:hidden}}\n');
-html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=bc-distribution-density-20261124');
+html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=bc-distribution-density-20261124-r2');
 new Function(app);
 // Independently validate density conversions and point-in-polygon including holes.
 const functions=new Function(helper.slice(helper.indexOf('  const historicalThresholds='),helper.indexOf('  async function selectedWmu('))+'\nreturn {historicalDensity,geometryContains};')();

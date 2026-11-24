@@ -48,6 +48,14 @@ jobs:
           node <<'NODE'
           const { chromium }=require('playwright');
           const assert=require('node:assert/strict');
+          async function waitForRelease(){
+            for(let i=0;i<40;i++){
+              const r=await fetch(process.env.URL+'?release-check='+Date.now(),{cache:'no-store'}).catch(()=>null);
+              if(r?.ok&&(await r.text()).includes('bc-distribution-density-20261124-r2'))return;
+              await new Promise(resolve=>setTimeout(resolve,5000));
+            }
+            throw Error('Expected production distribution-density release was not published');
+          }
           async function check(browser,width,height) {
             const context=await browser.newContext({
               viewport:{width,height},hasTouch:width<700,isMobile:width<700,
@@ -308,6 +316,7 @@ jobs:
             await context.close();
           }
           (async()=>{
+            await waitForRelease();
             const browser=await chromium.launch({headless:true});
             await check(browser,1280,900);
             await check(browser,390,844);
