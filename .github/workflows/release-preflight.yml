@@ -1,0 +1,61 @@
+name: HuntSmart Release Preflight (local build)
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - AGENTS.md
+      - README.md
+      - docs/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-preflight-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  local-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CONTEXT: deploy-preview
+      BRANCH: ci-release-preflight
+      COMMIT_REF: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked build dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Build the actual Netlify preview command locally
+        run: |
+          python3 - <<'PY'
+          import subprocess, tomllib
+          from pathlib import Path
+          with Path("netlify.toml").open("rb") as handle:
+              command = tomllib.load(handle)["build"]["command"]
+          subprocess.run(["bash", "-lc", command], check=True)
+          for name in ("index.html", "site.webmanifest", "terrain-intelligence.js", "maps.js", "data.js", "species-map/index.html"):
+              assert (Path("site") / name).stat().st_size > 0, name
+          PY
+      - name: Smoke test locally served build (no production traffic)
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory site > /tmp/huntsmart-preflight-http.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8765/ -o /tmp/huntsmart-preflight-index.html; then break; fi
+            sleep 1
+          done
+          test -s /tmp/huntsmart-preflight-index.html
+          for asset in site.webmanifest terrain-intelligence.js maps.js data.js species-map/index.html; do
+            curl -fsS "http://127.0.0.1:8765/$asset" -o /dev/null
+          done
+          node --check site/maps.js
+          node --check site/terrain-intelligence.js
+          echo "Local build and HTTP smoke passed; no Netlify deployment was requested."

@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - mobile-responsive-system.css
+      - mobile-responsive-system.js
+      - mobile-navigation-touch-fix.css
       - mobile-pwa-shell.css
       - mobile-pwa-shell.js
       - ux-polish.js
@@ -14,6 +17,13 @@ on:
       - map-vector-runtime.js
       - maps.js
       - bc-filters.js
+      - bc-draws.js
+      - bc-detail.js
+      - bc-open-seasons.js
+      - ux-polish.css
+      - style.css
+      - terrain-intelligence.css
+      - build-preview.sh
       - ab-filters.js
       - netlify.toml
       - species-map/hs-map-ui.css
@@ -21,35 +31,16 @@ on:
       - species-map/hs-app-nav.css
       - species-map/hs-app-nav.js
       - species-map/hs-map-recovery.js
-      - scripts/ensure-species-mobile-nav.cjs
       - scripts/ensure-species-mobile-nav.cjs
       - scripts/mobile-browser-preview-qa.cjs
       - scripts/webkit-mobile-ux-qa.cjs
       - .github/workflows/mobile-browser-distribution-qa.yml
-  push:
-    branches: [main]
-    paths:
-      - mobile-pwa-shell.css
-      - mobile-pwa-shell.js
-      - ux-polish.js
-      - mobile-account-nav.js
-      - map-destinations.js
-      - data.js
-      - index.html
-      - map-vector-runtime.js
-      - maps.js
-      - bc-filters.js
-      - ab-filters.js
-      - netlify.toml
-      - species-map/hs-map-ui.css
-      - species-map/hs-map-ui.js
-      - species-map/hs-app-nav.css
-      - species-map/hs-app-nav.js
-      - species-map/hs-map-recovery.js
-      - scripts/ensure-species-mobile-nav.cjs
-      - scripts/ensure-species-mobile-nav.cjs
-      - scripts/mobile-browser-preview-qa.cjs
-      - scripts/webkit-mobile-ux-qa.cjs
+  workflow_dispatch:
+
+# Cancel only superseded runs for the same PR; manual audits remain deliberate.
+concurrency:
+  group: mobile-browser-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
