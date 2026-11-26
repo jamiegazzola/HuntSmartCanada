@@ -45,8 +45,13 @@ jobs:
                 const page = document.getElementById('bcOpenSeasonsPage');
                 return !!page && getComputedStyle(page).display !== 'none' && !!document.getElementById('osMapControlStack');
               }, null, { timeout: 45000 });
-              // Open just the existing results panel; do not modify map data.
-              await page.evaluate(() => document.querySelector('#bcOpenSeasonsPage .os-panel').classList.add('open'));
+              // Select a real region so the application does not auto-close an empty inspector.
+              await page.waitForFunction(() => typeof osSelectRegion === 'function' && osMapInstance && osMapInstance.isStyleLoaded(), null, { timeout: 45000 });
+              await page.evaluate(() => osSelectRegion('3'));
+              await page.waitForFunction(() => {
+                const panel = document.querySelector('#bcOpenSeasonsPage .os-panel.open');
+                return panel && panel.getBoundingClientRect().left < innerWidth - 100;
+              }, null, { timeout: 15000 });
               await page.waitForTimeout(450);
               const open = await page.evaluate(() => {
                 const box = sel => document.querySelector(sel)?.getBoundingClientRect();
@@ -68,7 +73,8 @@ jobs:
               assert(open.controlsRight <= open.panelLeft - 8, 'Zoom/3D controls are overlapped by open GOS inspector');
               assert(open.scrollbarWidth === 'none', 'Results scrollbar is still visible');
               assert(open.overflow === 'auto' && open.canScroll, 'Results list no longer scrolls');
-              await page.evaluate(() => document.querySelector('#bcOpenSeasonsPage .os-panel').classList.remove('open'));
+              await page.evaluate(() => osSelectRegion('3'));
+              await page.waitForFunction(() => !document.querySelector('#bcOpenSeasonsPage .os-panel.open'), null, { timeout: 15000 });
               await page.waitForTimeout(400);
               const closed = await page.locator('#osMapControlStack').boundingBox();
               console.log('GOS closed:', JSON.stringify(closed));
