@@ -668,3 +668,22 @@
  #mapPage:has(#fullMapResultsDrawer.hs-drawer-open) > .hs-map-current,
  #bcOpenSeasonsPage:has(.os-panel:not([hidden])) > .hs-map-current{display:none}
 }
+
+/* Keep fullscreen card maps flex-sized after the shell's earlier rules. */
+@media (max-width: 768px) {
+  body .leh-card-fullscreen-overlay {
+    width: 100% !important; height: auto !important; min-height: 0 !important;
+    top: var(--hs-live-header-h, 56px) !important;
+    bottom: var(--hs-live-nav-h, 62px) !important;
+    z-index: 9401 !important;
+  }
+  body .leh-card-fullscreen-overlay > div:first-child {
+    padding: 4px 6px !important; gap: 4px !important;
+    flex-wrap: nowrap !important; justify-content: flex-start !important;
+  }
+  body .leh-card-fullscreen-overlay > div:first-child .leh-map-btn { padding-inline: 7px !important; }
+  body .leh-card-fullscreen-overlay .leh-card-map {
+    flex: 1 1 0 !important; height: auto !important; width: 100% !important;
+    min-height: 0 !important; aspect-ratio: auto !important;
+  }
+}

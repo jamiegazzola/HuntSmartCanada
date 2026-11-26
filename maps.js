@@ -2752,6 +2752,9 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
         map._hsZoneReady = true;
         zoneApplied = true;
         requestAnimationFrame(finishWhenRendered);
+        const queued = map._hsPendingTile;
+        delete map._hsPendingTile;
+        if (queued && queued !== map._lehCurrentTile) bcCardMapSetLayer(containerId, queued);
       });
     });
 
@@ -2782,12 +2785,10 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
 
 // Called by the Satellite / Topo toggle buttons rendered in the card HTML
 // e.g. onclick="bcCardMapSetLayer('cardMapDiv_6038', 'topo')"
-// Now re-initialises the Mapbox map with the new style (preserves 3D terrain)
+// Switches the existing map style while preserving the camera, terrain and hunt boundaries.
 function bcCardMapSetLayer(containerId, type) {
   const map = _lehCardMaps[containerId];
   if (!map) return;
-  if (map._lehCurrentTile === type && !map._hsStyleSwitching) return;
-
   if (type !== 'satellite' && type !== 'topo') return;
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -2795,6 +2796,7 @@ function bcCardMapSetLayer(containerId, type) {
     map._hsPendingTile = type;
     return;
   }
+  if (map._lehCurrentTile === type) return;
   // Keep the same canvas, camera and hunt geometry; changing a basemap must
   // not destroy the map or refit to the province/WMU.
   const style = map.getStyle();

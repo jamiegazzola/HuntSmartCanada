@@ -187,19 +187,39 @@ async function mobile(browser, w, h) {
     assert(!/unavailable|failed/i.test(cardStatus), 'LEH card failed to show zone: ' + cardStatus);
     await page.locator('#' + cardId + ' .hs-leh-card-loading').waitFor({state:'hidden',timeout:30000});
     console.log('LEH_CARD_FIRST_RENDER', JSON.stringify({elapsedMs:Date.now()-cardStarted,cardId,status:cardStatus}));
+    const toolbar = await page.locator('#exp-' + cardIndex + ' .hs-leh-map-controls').evaluate(el=>{
+      const parent=el.getBoundingClientRect();
+      return [...el.querySelectorAll('button')].every(b=>{
+        const r=b.getBoundingClientRect();
+        return r.left>=parent.left-1 && r.right<=parent.right+1 && r.height>=44 && getComputedStyle(b).whiteSpace==='nowrap';
+      });
+    });
+    assert(toolbar,'Mobile zone map controls wrap or overflow');
     await image(page, '390-leh-card');
 
-    await page.evaluate(id => { window.__hsQaCardBefore = _lehCardMaps[id]; }, cardId);
+    await page.evaluate(id => {
+      const map = _lehCardMaps[id];
+      window.__hsQaCardBefore = map;
+      window.__hsQaCardCamera = {center:map.getCenter().toArray(),zoom:map.getZoom()};
+      window.__hsQaCardLayers = ['card-wmu-line','card-zone-line','card-ctx-line'].filter(layer=>map.getLayer(layer));
+    }, cardId);
     await page.locator('#' + cardId + '_btn_topo').click();
     await page.waitForFunction(id => {
       const map = _lehCardMaps[id];
-      if (!map || map === window.__hsQaCardBefore || map._lehCurrentTile !== 'topo') return false;
+      if (!map || map !== window.__hsQaCardBefore || map._lehCurrentTile !== 'topo' || map._hsStyleSwitching) return false;
       // Mapbox getStyle() throws while a newly replaced style is still loading.
       if (!map.isStyleLoaded?.()) return false;
       try { return /outdoors/i.test(map.getStyle()?.name || ''); }
       catch (_) { return false; }
     }, cardId, {timeout:30000});
     await page.locator('#' + cardId + ' .hs-leh-card-loading').waitFor({state:'hidden',timeout:30000});
+    const preserved=await page.evaluate(id=>{
+      const map=_lehCardMaps[id], previous=window.__hsQaCardCamera, center=map.getCenter().toArray();
+      return Math.abs(map.getZoom()-previous.zoom)<0.01 &&
+        center.every((v,i)=>Math.abs(v-previous.center[i])<0.001) &&
+        window.__hsQaCardLayers.every(layer=>!!map.getLayer(layer));
+    },cardId);
+    assert(preserved,'Basemap switch lost camera or hunt boundaries');
     console.log('LEH_CARD_TOPO', JSON.stringify(await page.evaluate(id => ({
       mode:_lehCardMaps[id]._lehCurrentTile,
       style:_lehCardMaps[id].getStyle()?.name,
@@ -217,6 +237,13 @@ async function mobile(browser, w, h) {
     assert(Math.abs(fullscreen.overlayBottom-fullscreen.navTop)<=4 &&
       Math.abs(fullscreen.overlayTop-fullscreen.headerBottom)<=4,
       'Expanded hunt card hides navigation: '+JSON.stringify(fullscreen));
+    const expandedMap=await page.locator('#'+cardId).boundingBox();
+    assert(expandedMap&&expandedMap.height>150,'Expanded map has no usable height');
+    await page.locator('.leh-card-fullscreen-overlay button').filter({hasText:'Collapse'}).click();
+    await page.locator('.leh-card-fullscreen-overlay').waitFor({state:'detached',timeout:6000});
+    assert(await page.evaluate(id=>_lehCardMaps[id]===window.__hsQaCardBefore,cardId),'Collapse recreated card map');
+    await page.evaluate(id => window.bcCardMapToggleFullscreen(id),cardId);
+    await page.locator('.leh-card-fullscreen-overlay').waitFor({state:'visible',timeout:8000});
     await image(page,'390-leh-card-expanded');
     await page.locator('#hsMobileTabbar [data-tab="home"]').click();
     await page.locator('.leh-card-fullscreen-overlay').waitFor({state:'detached',timeout:6000});

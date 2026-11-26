@@ -178,7 +178,7 @@
         if (!rec) return;
         _addFullscreen3DButton(containerId);
         if (_current3D(containerId)) {
-          _applyCardTerrain(containerId, true, { animate: true });
+          _applyCardTerrain(containerId, true, { animate: false });
         } else {
           _sync3DButtons(containerId, false);
         }
