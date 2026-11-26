@@ -161,7 +161,7 @@ jobs:
               await page.locator('#sidebarInner .hs-v4-mobile-apply button').click();
               assert(!(await visible(page,'#sidebarInner')),`${size.name} apply did not close filters`);
               await page.click('#sidebarToggle');
-              await page.click('#drawsPage .hs-mobile-filter-backdrop');
+              await page.locator('#drawsPage .hs-mobile-filter-backdrop').click({position:{x:2,y:2}});
             }
 
             await show(page,'saved','#savedPage');
