@@ -167,25 +167,7 @@
     };
   }
 
-  const originalSetLayer = window.bcCardMapSetLayer;
-  if (typeof originalSetLayer === 'function') {
-    window.bcCardMapSetLayer = function patchedBcCardMapSetLayer(containerId, type) {
-      const container = document.getElementById(containerId);
-      if (container) container.dataset.tile = type;
-
-      // Do not mutate map._lehCurrentTile before invoking the original toggle:
-      // it short-circuits when it sees the requested style as already active.
-      ['satellite', 'topo'].forEach(t => {
-        document.querySelectorAll(`[id="${containerId}_btn_${t}"]`).forEach(btn => {
-          btn.classList.toggle('active', t === type);
-        });
-      });
-
-      const result = originalSetLayer.apply(this, arguments);
-      _retryApplyTerrain(containerId, _current3D(containerId), 30, false);
-      return result;
-    };
-  }
+  // Basemap switches now preserve the map and restore its terrain in maps.js.
 
   const originalFullscreen = window.bcCardMapToggleFullscreen;
   if (typeof originalFullscreen === 'function') {

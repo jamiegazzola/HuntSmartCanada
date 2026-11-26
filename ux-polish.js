@@ -280,6 +280,10 @@
       field.className='ci ci-harvest';
       const lbl=document.createElement('div');
       lbl.className='ci-label'; lbl.textContent='Harvest success';
+      if (badge.classList.contains('fill-none')) {
+        badge.textContent='N/A'; badge.setAttribute('aria-label','Harvest success data unavailable');
+        badge.title='No verified harvest success data is available for this hunt.';
+      }
       field.append(lbl,badge);
       info.append(field);
     }
@@ -312,6 +316,10 @@
     const toggle=q(card,'.expand-toggle');
     if (toggle) { toggle.textContent=open?'Hide details':'Show details'; toggle.setAttribute('aria-expanded',String(open)); }
     if (!open || panel.classList.contains('hs-v4-detail-ready')) return;
+    const collapse = document.createElement('button');
+    collapse.className='hs-v4-mobile-collapse'; collapse.type='button'; collapse.textContent='Hide details';
+    collapse.addEventListener('click',()=>{ toggle?.click(); card.scrollIntoView({block:'nearest'}); });
+    panel.prepend(collapse);
     const index=Number((panel.id||'').replace(/^exp-/,''));
     const r=Number.isInteger(index)?lookupRecord(index):null;
     const chartBlocks=Array.from(panel.children).filter(node=>node.tagName==='DIV' && node!==q(panel,'.expand-grid') && (node.querySelector('.chart-toggle-wrap') || node.querySelector('.chart-label')));

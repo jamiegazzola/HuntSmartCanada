@@ -4,7 +4,7 @@
   'use strict';
   if (window.__HUNTSMART_MOBILE_SYSTEM__) return;
 
-  var VERSION = '2026-10-29-mobile-v2';
+  var VERSION = '2026-11-26-mobile-draws-v3';
   var mobileMq = window.matchMedia('(max-width: 980px)');
   var compactMq = window.matchMedia('(max-width: 420px)');
   var coarseMq = window.matchMedia('(pointer: coarse)');
@@ -35,8 +35,9 @@
 
   function setViewportVars() {
     var vv = window.visualViewport;
-    var h = vv ? vv.height : window.innerHeight;
-    var w = vv ? vv.width : window.innerWidth;
+    var unzoomed = vv && Math.abs(vv.scale - 1) < 0.01;
+    var h = unzoomed ? vv.height : window.innerHeight;
+    var w = unzoomed ? vv.width : window.innerWidth;
     document.documentElement.style.setProperty('--hs-visual-vh', h + 'px');
     document.documentElement.style.setProperty('--hs-visual-vw', w + 'px');
   }
@@ -124,7 +125,9 @@
       var label = toggle.querySelector('span:first-child');
       if (label) {
         var active = countActiveFilters(inner);
-        label.textContent = active ? ('Filters · ' + active) : 'Filters';
+        var species = Array.from(inner.querySelectorAll('#speciesChips .chip.active')).map(function (chip) { return chip.textContent.trim(); }).filter(function (name) { return name && !/^all$/i.test(name); });
+        var summary = species.length === 1 ? ' · ' + species[0] : '';
+        label.textContent = active ? ('Filters · ' + active + summary) : 'Filters';
       }
     }
 

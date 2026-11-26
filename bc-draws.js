@@ -830,15 +830,15 @@ function buildBCExpandHTML(r, idPrefix) {
   const zoneLabel = r.Zone ? `Zone ${r.Zone} · MU ${r.MU}` : `MU ${r.MU}`;
   const mapHTML = `
     <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="display:flex;align-items:center;gap:8px">
+      <div class="hs-leh-map-toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="hs-leh-map-zone" style="display:flex;align-items:center;gap:8px">
           <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted)">Zone Map</span>
           <span style="display:inline-flex;align-items:center;gap:4px;background:rgba(240,180,41,.12);border:1px solid rgba(240,180,41,.4);color:#f0b429;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px">${zoneLabel}</span>${hasZoneModifier ? '<span style="font-size:9px;color:var(--text-muted,#666)">Partial area — see regs</span>' : ''}
         </div>
-        <div style="display:flex;gap:3px;align-items:center">
+        <div class="hs-leh-map-controls" style="display:flex;gap:3px;align-items:center">
           <button id="${mapContainerId}_btn_satellite" class="leh-map-btn active" onclick="event.stopPropagation();bcCardMapSetLayer('${mapContainerId}','satellite')">Satellite</button>
           <button id="${mapContainerId}_btn_topo" class="leh-map-btn" onclick="event.stopPropagation();bcCardMapSetLayer('${mapContainerId}','topo')">Topo</button>
-          <button class="leh-map-btn leh-map-expand-btn" onclick="event.stopPropagation();bcCardMapToggleFullscreen('${mapContainerId}')" title="Expand map" style="width:26px;padding:0;font-size:13px;display:flex;align-items:center;justify-content:center">⛶</button>
+          <button class="leh-map-btn leh-map-expand-btn" onclick="event.stopPropagation();bcCardMapToggleFullscreen('${mapContainerId}')" title="Expand map" aria-label="Expand zone map" style="width:26px;padding:0;font-size:13px;display:flex;align-items:center;justify-content:center">⛶</button>
         </div>
       </div>
       <div id="${mapContainerId}" style="height:280px;width:100%;border-radius:8px;overflow:hidden;background:#1a1a1a"></div>

@@ -60,8 +60,9 @@
     if (!root || !body) return;
 
     var vv = window.visualViewport;
-    var visualH = Math.round(vv && vv.height ? vv.height : window.innerHeight);
-    var visualW = Math.round(vv && vv.width ? vv.width : window.innerWidth);
+    var unzoomed = vv && Math.abs(vv.scale - 1) < 0.01;
+    var visualH = Math.round(unzoomed && vv.height ? vv.height : window.innerHeight);
+    var visualW = Math.round(unzoomed && vv.width ? vv.width : window.innerWidth);
     root.style.setProperty('--hs-visual-vh', visualH + 'px');
     root.style.setProperty('--hs-visual-vw', visualW + 'px');
 

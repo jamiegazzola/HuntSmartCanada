@@ -2431,9 +2431,11 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
   // before Mapbox reads the container size.
   container.classList.add('leh-card-map');
   container.style.width = '100%';
-  container.style.aspectRatio = '1 / 1';
-  container.style.height = 'auto';
-  container.style.minHeight = '0';
+  if (!container.closest('.leh-card-fullscreen-overlay')) {
+    container.style.aspectRatio = '1 / 1';
+    container.style.height = 'auto';
+    container.style.minHeight = '0';
+  }
 
   // Destroy any previous map instance in this container
   if (_lehCardMaps[containerId]) {
@@ -2553,7 +2555,7 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
       // Card maps start in flat 2D. Terrain can distort LEH zone reading in small cards.
 
       zonesReady.then(data => {
-        if (!_lehCardMaps[containerId]) return; // card closed
+        if (_lehCardMaps[containerId] !== map || !container.isConnected) return; // stale card
 
         const zones   = data.zones    || data;
         const muIndex = data.mu_index || {};
@@ -2739,11 +2741,15 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
         }
 
         // Single hover tooltip is handled by the robust card hover block above.
-
+        map._hsZoneReady = true;
+        const queued = map._hsPendingTile;
+        delete map._hsPendingTile;
+        if (queued && queued !== map._lehCurrentTile) bcCardMapSetLayer(containerId, queued);
 
       }).catch(err => {
         console.error('[bcCardMapInit zone]', err);
         setStatus('Zone data unavailable', false);
+        map._hsZoneReady = true;
         zoneApplied = true;
         requestAnimationFrame(finishWhenRendered);
       });
@@ -2780,39 +2786,67 @@ function bcCardMapInit(containerId, mu, zone, speciesType) {
 function bcCardMapSetLayer(containerId, type) {
   const map = _lehCardMaps[containerId];
   if (!map) return;
-  if (map._lehCurrentTile === type) return;
+  if (map._lehCurrentTile === type && !map._hsStyleSwitching) return;
 
-  // Sync button states
-  ['satellite', 'topo'].forEach(t => {
-    const btn = document.getElementById(`${containerId}_btn_${t}`);
-    if (btn) btn.classList.toggle('active', t === type);
-  });
-
-  // Read the map container's parent to get the mu/zone/species we need to re-init
-  // These are stored as data attributes on the map container by the card HTML
+  if (type !== 'satellite' && type !== 'topo') return;
   const container = document.getElementById(containerId);
   if (!container) return;
-  const mu          = container.dataset.mu          || '';
-  const zone        = container.dataset.zone        || '';
-  const speciesType = container.dataset.speciesType || '';
-
-  if (mu) {
-    // Full re-init with new style (Mapbox can't swap satellite<->outdoors in-place easily)
-    bcCardMapInit(containerId, mu, zone, speciesType);
-  } else {
-    // Fallback: just swap style and reapply terrain
-    const newStyle = type === 'topo'
-      ? 'mapbox://styles/mapbox/outdoors-v12'
-      : 'mapbox://styles/mapbox/satellite-streets-v12';
-    const center  = map.getCenter();
-    const zoom    = map.getZoom();
-    const pitch   = map.getPitch();
-    const bearing = map.getBearing();
-    map.setStyle(newStyle);
-    map._lehCurrentTile = type;
-    map.once('style.load', () => {
-      map.jumpTo({ center, zoom, pitch: 0, bearing: 0 });
+  if (!map._hsZoneReady || map._hsStyleSwitching) {
+    map._hsPendingTile = type;
+    return;
+  }
+  // Keep the same canvas, camera and hunt geometry; changing a basemap must
+  // not destroy the map or refit to the province/WMU.
+  const style = map.getStyle();
+  if (!style) return;
+  const sources = Object.entries(style.sources || {}).filter(([id]) => id.startsWith('card-'));
+  const layers = (style.layers || []).filter(layer => layer.id.startsWith('card-'));
+  const terrain = map.getTerrain();
+  const camera = {center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing()};
+  const nextStyle = type === 'topo' ? 'mapbox://styles/mapbox/outdoors-v12' : 'mapbox://styles/mapbox/satellite-streets-v12';
+  const status = document.getElementById(containerId + '_status');
+  const originalStatus = status?.textContent || '';
+  const syncButtons = (active) => {
+    ['satellite', 'topo'].forEach(t => {
+      document.querySelectorAll(`[id="${containerId}_btn_${t}"],[id="${containerId}_btn_${t}_fullscreen"]`).forEach(btn => {
+        btn.classList.toggle('active', t === active);
+        btn.setAttribute('aria-pressed', String(t === active));
+      });
     });
+  };
+  map._hsStyleSwitching = true;
+  container.dataset.tile = type;
+  syncButtons(type);
+  if (status) status.textContent = 'Switching map style…';
+  const restore = () => {
+    if (_lehCardMaps[containerId] !== map || !container.isConnected) return;
+    try {
+      for (const [id, source] of sources) if (!map.getSource(id)) map.addSource(id, source);
+      for (const layer of layers) if (!map.getLayer(layer.id)) map.addLayer(layer);
+      if (terrain && map.getSource(terrain.source)) map.setTerrain(terrain);
+      map.jumpTo(camera);
+      map.resize();
+      map._lehCurrentTile = type;
+      if (status) status.textContent = originalStatus;
+    } catch (err) {
+      console.warn('[cardMap style restore]', err);
+      if (status) status.textContent = 'Map style could not be fully restored. Retry map.';
+    } finally {
+      map._hsStyleSwitching = false;
+      const pending = map._hsPendingTile;
+      delete map._hsPendingTile;
+      if (pending && pending !== map._lehCurrentTile) bcCardMapSetLayer(containerId, pending);
+    }
+  };
+  map.once('style.load', restore);
+  try { map.setStyle(nextStyle, {diff: false}); }
+  catch (err) {
+    map.off('style.load', restore);
+    map._hsStyleSwitching = false;
+    container.dataset.tile = map._lehCurrentTile;
+    syncButtons(map._lehCurrentTile);
+    if (status) status.textContent = 'Map style unavailable. Try again.';
+    console.warn('[cardMap style switch]', err);
   }
 }
 
@@ -2830,25 +2864,28 @@ function bcCardMapToggleFullscreen(containerId) {
   const expandBtn = document.querySelector(`[onclick*="bcCardMapToggleFullscreen('${containerId}')"]`);
 
   const resizeSoon = () => {
-    [60, 180, 420, 850].forEach(ms => setTimeout(() => {
+    const live = _lehCardMaps[containerId];
+    if (live && typeof live.resize === 'function') live.resize();
+    [0, 60, 180, 420, 850].forEach(ms => setTimeout(() => {
       const m = _lehCardMaps[containerId];
       if (m && typeof m.resize === 'function') m.resize();
     }, ms));
   };
 
   if (_bcCardMapFullscreen[containerId]) {
-    const { overlay, placeholder, oldStyle } = _bcCardMapFullscreen[containerId];
+    const { overlay, placeholder, oldStyle, oldOverflow } = _bcCardMapFullscreen[containerId];
     if (placeholder?.parentNode) placeholder.parentNode.replaceChild(mapDiv, placeholder);
     mapDiv.setAttribute('style', oldStyle || 'height:280px;width:100%;border-radius:8px;overflow:hidden;background:#1a1a1a');
     if (overlay?.parentNode) overlay.parentNode.removeChild(overlay);
     delete _bcCardMapFullscreen[containerId];
     if (expandBtn) { expandBtn.textContent = '⛶'; expandBtn.title = 'Expand map'; }
-    document.body.style.overflow = '';
+    document.body.style.overflow = oldOverflow || '';
     resizeSoon();
     return;
   }
 
   const oldStyle = mapDiv.getAttribute('style') || '';
+  const oldOverflow = document.body.style.overflow;
   const placeholder = document.createElement('div');
   placeholder.style.height = mapDiv.offsetHeight ? `${mapDiv.offsetHeight}px` : '280px';
   placeholder.style.width = '100%';
@@ -2868,7 +2905,8 @@ function bcCardMapToggleFullscreen(containerId) {
     tb.className = 'leh-map-btn' + ((_lehCardMaps[containerId]?._lehCurrentTile === t) ? ' active' : '');
     tb.dataset.tile = t;
     tb.textContent = t.charAt(0).toUpperCase() + t.slice(1);
-    tb.id = `${containerId}_btn_${t}`;
+    tb.id = `${containerId}_btn_${t}_fullscreen`;
+    tb.setAttribute('aria-pressed', String(_lehCardMaps[containerId]?._lehCurrentTile === t));
     tb.style.cssText = 'font-size:11px;padding:4px 12px;';
     tb.onclick = () => { bcCardMapSetLayer(containerId, t); resizeSoon(); };
     bar.appendChild(tb);
@@ -2887,7 +2925,7 @@ function bcCardMapToggleFullscreen(containerId) {
   overlay.appendChild(mapDiv);
   document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
-  _bcCardMapFullscreen[containerId] = { overlay, placeholder, oldStyle };
+  _bcCardMapFullscreen[containerId] = { overlay, placeholder, oldStyle, oldOverflow };
   if (expandBtn) { expandBtn.textContent = '✕'; expandBtn.title = 'Collapse map'; }
   resizeSoon();
 }

@@ -1071,3 +1071,102 @@
   body > .hs-filter-map-fullscreen .leaflet-top,
   body > .hs-filter-map-fullscreen .leaflet-bottom { z-index: 1000; }
 }
+
+
+/* Mobile draw results: normal-flow list chrome and a modal above its own scrim.
+   The old sticky sidebar established a stacking context below the backdrop. */
+@media (max-width: 980px) {
+  :is(#drawsPage,#abDrawsPage) .sidebar {
+    position: static !important;
+    top: auto !important;
+    z-index: auto !important;
+    overflow: visible !important;
+    isolation: auto !important;
+  }
+  :is(#drawsPage,#abDrawsPage) .sidebar-inner.open {
+    position: fixed !important;
+    z-index: 12010 !important;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+    max-height: min(calc(var(--hs-visual-vh, 100dvh) - 16px), 760px) !important;
+    overscroll-behavior-y: contain;
+    scrollbar-width: none;
+  }
+  :is(#drawsPage,#abDrawsPage) .sidebar-inner::-webkit-scrollbar { display: none; }
+  .hs-mobile-filter-backdrop { z-index: 12000 !important; }
+  body.hs-mobile-filter-open #hsMobileTabbar { visibility: hidden !important; }
+  #drawsPage .hs-v4-sheet-bar {
+    position: sticky; top: 0; z-index: 5;
+    flex: 0 0 auto; background: #121513; padding-block: 4px 8px;
+  }
+  #drawsPage .hs-v4-mobile-apply {
+    flex: 0 0 auto; bottom: -1px !important;
+    padding: 8px 16px max(10px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+  :is(#drawsPage,#abDrawsPage) .draws-main {
+    overflow: visible !important;
+    padding: 8px 12px calc(var(--hs-live-nav-h, 62px) + 16px) !important;
+  }
+  :is(#drawsPage,#abDrawsPage) .draws-topbar {
+    position: static !important; top: auto !important; z-index: auto !important;
+    gap: 8px !important; margin-bottom: 8px !important;
+    padding: 4px 0 8px !important;
+  }
+  :is(#drawsPage,#abDrawsPage) .draws-title { margin-bottom: 2px; }
+  :is(#drawsPage,#abDrawsPage) .sort-controls { min-width: 0; gap: 6px; }
+  #drawsPage .legend { margin-bottom: 8px !important; }
+  #drawsPage #cardsGrid { gap: 10px !important; }
+  #drawsPage #cardsGrid > .card { padding: 12px 12px 0 !important; }
+  #drawsPage .card-header { min-height: 60px !important; padding-right: 106px !important; gap: 6px; }
+  #drawsPage .odds-badge { top: 12px; right: 46px; min-width: 60px; }
+  #drawsPage .star-btn { top: 3px; right: 1px; min-width: 44px; min-height: 44px; }
+  #drawsPage .card-info { padding: 10px 0 !important; gap: 8px 12px !important; }
+  #drawsPage .card-footer { padding: 7px 0 1px !important; }
+  #drawsPage .expand-toggle { min-height: 44px !important; padding-block: 5px !important; }
+  #drawsPage .card-expand.open { margin-inline: -12px !important; padding: 10px 8px 14px !important; gap: 10px !important; }
+  #drawsPage .card-expand > .expand-grid { padding: 10px !important; gap: 8px 12px !important; }
+  #drawsPage .card-expand > div:has(> .hs-leh-map-toolbar) { padding: 8px !important; }
+  #drawsPage .card-expand > .hs-v4-chart-card { padding: 9px !important; }
+  #drawsPage .hs-v4-chart-card .chart-toggle-pills {
+    position: static !important; display: flex; justify-content: flex-end; margin-bottom: 4px;
+  }
+  #drawsPage .hs-v4-chart-card .chart-toggle-btn { min-height: 44px !important; min-width: 44px; }
+  #drawsPage .hs-v4-chart-card svg text { font-size: 15px; }
+  #drawsPage .hs-v4-chart-card svg text[fill="#404850"],
+  #drawsPage .hs-v4-chart-card svg text[fill="#6b7a8d"] { fill: #b6c4bb; }
+  #drawsPage .hs-v4-mobile-collapse {
+    display: block; width: 100%; min-height: 44px; border: 1px solid #394b3d;
+    border-radius: 7px; color: var(--v4-green, #8bdfa0); background: #1a2320;
+    font: inherit; font-size: 12px; font-weight: 700;
+  }
+  .hs-leh-map-toolbar { display: flex !important; flex-direction: column; align-items: stretch !important; gap: 8px; }
+  .hs-leh-map-zone { flex-wrap: wrap; min-width: 0; }
+  .hs-leh-map-controls { flex-wrap: nowrap; gap: 6px !important; }
+  .hs-leh-map-controls .leh-map-btn, .leh-card-fullscreen-overlay .leh-map-btn {
+    min-height: 44px !important; min-width: 44px; white-space: nowrap;
+    flex: 0 0 auto; padding-inline: 10px !important; touch-action: manipulation;
+  }
+  .hs-leh-map-controls .leh-map-expand-btn { margin-left: auto; width: 44px !important; }
+  .leh-card-map .mapboxgl-canvas-container.mapboxgl-interactive { touch-action: none !important; }
+  .leh-card-map .mapboxgl-ctrl button { width: 44px; height: 44px; touch-action: manipulation; }
+  .leh-card-map .mapboxgl-ctrl-attrib button { width: 28px; height: 28px; }
+}
+@media (min-width: 981px) {
+  #drawsPage .hs-v4-mobile-collapse { display: none; }
+}
+@media (max-width: 768px) {
+  body .leh-card-fullscreen-overlay {
+    width: 100% !important; height: auto !important; min-height: 0 !important;
+    top: var(--hs-live-header-h, 56px) !important;
+    bottom: var(--hs-live-nav-h, 62px) !important;
+    z-index: 9401 !important;
+  }
+  body .leh-card-fullscreen-overlay > div:first-child {
+    padding: 4px 6px !important; gap: 4px !important;
+    flex-wrap: nowrap !important; justify-content: flex-start !important;
+  }
+  body .leh-card-fullscreen-overlay > div:first-child .leh-map-btn { padding-inline: 7px !important; }
+  body .leh-card-fullscreen-overlay .leh-card-map {
+    flex: 1 1 0 !important; height: auto !important; width: 100% !important;
+    min-height: 0 !important; aspect-ratio: auto !important;
+  }
+}
