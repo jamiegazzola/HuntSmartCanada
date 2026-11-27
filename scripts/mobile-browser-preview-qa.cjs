@@ -205,6 +205,20 @@ async function mobile(browser, w, h) {
     await sheet.locator('.reset-btn').click();
     assert((await rows.nth(0).textContent()).includes('All species'),'Reset did not clear species summary');
     assert((await rows.nth(3).textContent()).includes('Any'),'Reset did not clear odds summary');
+    await rows.nth(4).click();
+    await sheet.locator('#specialTagChips button',{hasText:'New hunt'}).click();
+    assert(await page.evaluate(()=>filtered.length>0&&filtered.every(r=>r.is_new===true)),'Special tags did not filter actual draw records');
+    await sheet.locator('.hs-filter-back').click();
+    assert((await rows.nth(4).textContent()).includes('New hunt'),'Special tag summary did not update');
+    await sheet.locator('.reset-btn').click();
+    await rows.nth(5).click();
+    await sheet.locator('#seasonDateFrom').fill('2026-10-01');
+    await sheet.locator('#seasonDateTo').fill('2026-10-15');
+    assert(await page.evaluate(()=>filtered.length>0&&filtered.length<DATA.length&&filtered.every(r=>bcMatchesSeasonDate(r,'2026-10-01','2026-10-15',2026))),'Season dates did not filter actual draw records');
+    await sheet.locator('.hs-filter-back').click();
+    assert(!(await rows.nth(5).textContent()).includes('Any'),'Season date summary did not update');
+    await sheet.locator('.reset-btn').click();
+    assert(await page.evaluate(()=>selSpecialTags.size===0&&!selSeasonFrom&&!selSeasonTo),'Reset did not clear special tags and dates');
   }
   await sheet.locator('.hs-v4-mobile-apply button').click();
   await sheet.waitFor({state:'hidden'});
