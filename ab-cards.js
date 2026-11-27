@@ -597,6 +597,15 @@ function abBuildWMUList() {
   // Map toggle button + panel injected above the dropdown
   // Preserve open state if map was already open before this re-render
   const panelWasOpen = abMapOpen;
+  // Keep the Leaflet container and its viewport alive while filter results are
+  // refreshed, including when the map is temporarily reparented to body.
+  const existingSelect=list.querySelector('select');
+  if(existingSelect && list.querySelector('#abMapPanel')){
+    existingSelect.replaceChildren(new Option('All WMUs',''),...wmus.map(w=>new Option(w,w,false,w===sel)));
+    existingSelect.value=sel;
+    if(panelWasOpen && typeof abUpdateMapChips==='function')abUpdateMapChips();
+    return;
+  }
   const mapPanelHtml = `
     <button id="abMapToggleBtn" onclick="abToggleMap()"
       style="width:100%;padding:8px 10px;margin-bottom:8px;background:${panelWasOpen ? 'rgba(74,222,128,.18)' : 'rgba(74,222,128,.08)'};border:1.5px solid rgba(74,222,128,.25);border-radius:8px;color:#4ade80;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .15s">
@@ -707,7 +716,7 @@ function abSidebarClearFilter(type) {
   abApplyFilters();
 }
 function abResetAll() {
-  abSelSpecies.clear(); abSelWMU.clear(); abMinOdds=0; abMinHarvest=0; abProfileFilter='all';
+  abSelSpecies.clear(); abSelClass.clear(); abSelWMU.clear(); abMinOdds=0; abMinHarvest=0; abProfileFilter='all';
   const sl=document.getElementById('abOddsSlider'); if(sl) sl.value=0;
   abApplyFilters();
 }

@@ -170,6 +170,88 @@ async function mobile(browser, w, h) {
   await inspect(page, w + ' draw results');
   await image(page, w + '-draws');
 
+  const filter = page.locator('#sidebarInner');
+  await page.locator('#sidebarToggle').click();
+  await filter.locator('.hs-filter-overview').waitFor({state:'visible'});
+  assert.equal(await filter.locator('.hs-filter-row').count(),7,'BC filter categories missing');
+  const layout = await filter.evaluate(el=>{
+    const outer=el.getBoundingClientRect(), header=el.querySelector('.hs-filter-header').getBoundingClientRect();
+    const content=el.querySelector('.hs-filter-content'), middle=content.getBoundingClientRect();
+    const footer=el.querySelector('.hs-filter-footer').getBoundingClientRect();
+    return {outer:outer.height,viewport:window.visualViewport.height,header:header.bottom,middleTop:middle.top,middleBottom:middle.bottom,footer:footer.top,scroll:content.scrollWidth,width:content.clientWidth};
+  });
+  assert(Math.abs(layout.outer-layout.viewport)<=4 && layout.header<=layout.middleTop+1 && layout.middleBottom<=layout.footer+1 && layout.scroll<=layout.width+1,'Filter viewport layout: '+JSON.stringify(layout));
+  const before = await page.evaluate(()=>({species:[...selSpecies],count:filtered.length}));
+  await filter.getByRole('button',{name:/^Species/}).click();
+  const option=filter.locator('#speciesChips .chip').first();
+  await option.waitFor({state:'visible'});
+  await option.click();
+  assert.notDeepEqual(await page.evaluate(()=>[...selSpecies]),before.species,'Species selection did not update');
+  await filter.getByRole('button',{name:'Done',exact:true}).click();
+  await filter.getByRole('button',{name:'Close filters'}).click();
+  await filter.waitFor({state:'hidden'});
+  assert.deepEqual(await page.evaluate(()=>({species:[...selSpecies],count:filtered.length})),before,'Dismissal did not restore prior filters');
+  await page.locator('#sidebarToggle').click();
+  await filter.getByRole('button',{name:/^Species/}).click();
+  await filter.locator('#speciesChips .chip').first().click();
+  await filter.getByRole('button',{name:'Done',exact:true}).click();
+  await filter.getByRole('button',{name:/^Show [\d,]+ draws$/}).click();
+  await filter.waitFor({state:'hidden'});
+  assert.notDeepEqual(await page.evaluate(()=>[...selSpecies]),before.species,'Apply did not preserve selection');
+  await page.locator('#sidebarToggle').click();
+  await filter.getByRole('button',{name:'Reset',exact:true}).click();
+  await image(page,w+'-filters-redesign');
+  await filter.getByRole('button',{name:/^Show [\d,]+ draws$/}).click();
+  await filter.waitFor({state:'hidden'});
+  assert.equal(await page.evaluate(()=>selSpecies.size),0,'Reset did not restore all species');
+
+  if (w === 390) {
+    const baseCount=await page.evaluate(()=>filtered.length);
+    await page.locator('#sidebarToggle').click();
+    await filter.getByRole('button',{name:/^Special tags/}).click();
+    await filter.getByRole('button',{name:'Youth only',exact:true}).click();
+    assert(await page.evaluate(()=>filtered.length>0&&filtered.every(r=>/age restricted:\s*under 18 only/i.test(r.Notes))), 'Youth tag did not constrain actual results');
+    await filter.getByRole('button',{name:'Clear',exact:true}).click();
+    await filter.getByRole('button',{name:'Done',exact:true}).click();
+    await filter.getByRole('button',{name:/^Season dates/}).click();
+    await filter.locator('#seasonDateFrom').fill('2026-09-15');
+    await filter.locator('#seasonDateTo').fill('2026-09-15');
+    assert(await page.evaluate(()=>filtered.length>0&&filtered.length<DATA.length&&filtered.every(r=>bcSeasonMatches(r.Season,'2026-09-15','2026-09-15',2026))), 'Date selection did not constrain actual results');
+    await filter.getByRole('button',{name:'Clear',exact:true}).click();
+    await filter.getByRole('button',{name:'Done',exact:true}).click();
+    await filter.getByRole('button',{name:/^Management unit/}).click();
+    await filter.getByRole('searchbox').fill('3-17');
+    await filter.getByRole('button',{name:'WMU 3-17',exact:true}).click();
+    assert(await page.evaluate(()=>selMUsFull.has('3-17')&&filtered.every(r=>bcNormalizeMU(r.MU)==='3-17')),'WMU selection not connected to results');
+    await filter.getByRole('button',{name:'Done',exact:true}).click();
+    await filter.getByRole('button',{name:'Select on map',exact:true}).click();
+    await filter.locator('#bcMapPanel').waitFor({state:'visible'});
+    await page.waitForFunction(()=>Boolean(document.querySelector('#bcLeafletMap .leaflet-overlay-pane path')),null,{timeout:45000});
+    assert(await page.evaluate(()=>selMUsFull.has('3-17')),'Opening map lost the selected WMU');
+    await filter.getByRole('button',{name:'Back to filters'}).click();
+    assert(await page.evaluate(()=>selMUsFull.has('3-17')),'Returning from map lost the selected WMU');
+    await filter.getByRole('button',{name:/^Management unit/}).click();
+    await filter.getByRole('button',{name:'Clear',exact:true}).click();
+    await filter.getByRole('button',{name:'Done',exact:true}).click();
+    await filter.getByRole('button',{name:/^Show [\d,]+ draws$/}).click();
+    assert.equal(await page.evaluate(()=>filtered.length),baseCount,'Clear did not restore all records');
+    await show(page,'abDraws','#abDrawsPage');
+    await page.locator('#abSpeciesChips .chip').first().waitFor({state:'attached'});
+    await page.locator('#abSidebarToggle').click();
+    const abFilter=page.locator('#abSidebarInner');
+    await abFilter.locator('.hs-filter-overview').waitFor({state:'visible'});
+    await abFilter.getByRole('button',{name:/^Species/}).click();
+    await abFilter.locator('#abSpeciesChips .chip').first().click();
+    assert(await page.evaluate(()=>abSelSpecies.size>0),'Alberta species picker did not update');
+    await abFilter.getByRole('button',{name:'Done',exact:true}).click();
+    await abFilter.getByRole('button',{name:'Reset',exact:true}).click();
+    await abFilter.getByRole('button',{name:/^Show [\d,]+ draws$/}).click();
+    assert.equal(await page.evaluate(()=>abSelSpecies.size),0,'Alberta reset did not restore all species');
+    await show(page,'draws','#drawsPage');
+  }
+
+
+
   if (w === 390) {
     const cardIndex = await page.evaluate(() => filtered.findIndex(r => r && r.Code && r.MU && r.Zone));
     assert(cardIndex >= 0, 'No BC LEH hunt card available to test its map');

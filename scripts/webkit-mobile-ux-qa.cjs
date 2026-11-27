@@ -119,6 +119,26 @@ async function run(browser,w,h) {
   await page.screenshot({path:'mobile-qa-artifacts/'+w+'-webkit-filter.png'});
   await page.evaluate(()=>showPage('draws'));
   await inspectTabs(page,w+'-results');
+  await page.locator('#sidebarToggle').click();
+  const filter=page.locator('#sidebarInner');
+  await filter.locator('.hs-filter-overview').waitFor({state:'visible',timeout:10000});
+  const bounds=await filter.evaluate(el=>{
+    const r=el.getBoundingClientRect(), content=el.querySelector('.hs-filter-content');
+    const footer=el.querySelector('.hs-filter-footer').getBoundingClientRect();
+    const row=el.querySelector('.hs-filter-overview .hs-filter-row').getBoundingClientRect();
+    return {width:r.width,height:r.height,vw:visualViewport.width,vh:visualViewport.height,
+      row:row.width,content:content.clientWidth,scroll:content.scrollWidth,footer:footer.bottom};
+  });
+  assert(Math.abs(bounds.width-bounds.vw)<=4&&Math.abs(bounds.height-bounds.vh)<=4&&bounds.footer<=bounds.vh+4&&bounds.scroll<=bounds.content+1,'WebKit filter clips viewport '+JSON.stringify(bounds));
+  await page.screenshot({path:'mobile-qa-artifacts/'+w+'-webkit-results-filters.png'});
+  const prev=await page.evaluate(()=>({species:[...selSpecies],count:filtered.length}));
+  await filter.getByRole('button',{name:/^Species/}).click();
+  await filter.locator('#speciesChips .chip').first().click();
+  await filter.getByRole('button',{name:'Done',exact:true}).click();
+  await filter.getByRole('button',{name:'Close filters'}).click();
+  await filter.waitFor({state:'hidden'});
+  assert.deepEqual(await page.evaluate(()=>({species:[...selSpecies],count:filtered.length})),prev,'WebKit dismiss lost previous filters');
+  await inspectTabs(page,w+'-results-after-filters');
   await page.locator('#hsMobileTabbar [data-tab="saved"]').click();
   await page.waitForFunction(()=>document.getElementById('savedPage')?.getClientRects().length>0,null,{timeout:12000});
   await inspectTabs(page,w+'-saved');

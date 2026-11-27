@@ -4,6 +4,8 @@ const MU_NAMES = {1:"Vancouver Island",2:"Lower Mainland",3:"Thompson",4:"Kooten
 // ── MAIN STATE ──
 let selSpecies = new Set();
 let selClass = new Set();
+let selSpecialTags = new Set();
+let selSeasonDateFrom = '', selSeasonDateTo = '';
 let selMUs = new Set();
 let selMUsFull = new Set(); // full BC WMU IDs like '4-01' for map filter
 
@@ -577,12 +579,79 @@ function onSlider(v) {
   applyFilters();
 }
 
+// The 2026/27 synopsis spans August through July. Preserve gaps in split seasons.
+const BC_SPECIAL_TAGS = [
+  {key:'archery', label:'Archery restriction', matches:r=>/archery only/i.test(r.Notes || '')},
+  {key:'youth', label:'Youth only', matches:r=>/age restricted:\s*under 18 only/i.test(r.Notes || '')},
+  {key:'private', label:'Private land only', matches:r=>/private land only/i.test(r.Notes || '')},
+  {key:'new', label:'New hunt', matches:r=>r.is_new === true}
+];
+const BC_SEASON_MONTHS = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function bcSeasonIntervals(season, startYear) {
+  return String(season || '').split(/\s*&\s*/).map(part=>{
+    const m=part.match(/^\s*([A-Za-z]+)\s+(\d{1,2})\s*[-–—]\s*([A-Za-z]+)\s+(\d{1,2})\s*$/);
+    if (!m) return null;
+    const date=(month,day)=>{
+      const mo=BC_SEASON_MONTHS[month.slice(0,3).toLowerCase()], d=Number(day);
+      if (!mo || d<1 || d>31) return null;
+      const year=startYear+(mo<8?1:0);
+      const t=new Date(Date.UTC(year,mo-1,d));
+      return t.getUTCMonth()===mo-1 && t.getUTCDate()===d ? t.toISOString().slice(0,10):null;
+    };
+    const from=date(m[1],m[2]),to=date(m[3],m[4]);
+    return from && to && from<=to ? [from,to] : null;
+  }).filter(Boolean);
+}
+function bcSeasonMatches(season, from, to, startYear) {
+  if (!from && !to) return true;
+  return bcSeasonIntervals(season,startYear).some(([a,b])=>(!from || b>=from)&&(!to || a<=to));
+}
+function bcSpecialMatches(row, selected) {
+  return !selected.size || BC_SPECIAL_TAGS.some(tag=>selected.has(tag.key)&&tag.matches(row));
+}
+function buildSpecialTagChips() {
+  const wrap=document.getElementById('specialTagChips');
+  if (!wrap) return;
+  wrap.replaceChildren();
+  BC_SPECIAL_TAGS.filter(tag=>DATA.some(tag.matches)).forEach(tag=>{
+    const b=document.createElement('button');
+    b.type='button';b.className='chip'+(selSpecialTags.has(tag.key)?' active':'');
+    b.textContent=tag.label;b.setAttribute('aria-pressed',String(selSpecialTags.has(tag.key)));
+    b.addEventListener('click',()=>{
+      selSpecialTags.has(tag.key)?selSpecialTags.delete(tag.key):selSpecialTags.add(tag.key);
+      buildSpecialTagChips();applyFilters();
+    });
+    wrap.append(b);
+  });
+  document.getElementById('clearSpecialTags')?.classList.toggle('visible',selSpecialTags.size>0);
+}
+function syncSeasonDates() {
+  const from=document.getElementById('seasonDateFrom'),to=document.getElementById('seasonDateTo');
+  if(from) from.value=selSeasonDateFrom;
+  if(to) to.value=selSeasonDateTo;
+  document.getElementById('clearSeasonDate')?.classList.toggle('visible',Boolean(selSeasonDateFrom||selSeasonDateTo));
+}
+function setSeasonDateFilter(which,value) {
+  const input=document.getElementById(which==='from'?'seasonDateFrom':'seasonDateTo');
+  const valid=!value || (/^\d{4}-\d{2}-\d{2}$/.test(value)&&(!input?.min||value>=input.min)&&(!input?.max||value<=input.max));
+  if(!valid){syncSeasonDates();return;}
+  if(which==='from'){
+    selSeasonDateFrom=value;
+    if(value&&selSeasonDateTo&&value>selSeasonDateTo)selSeasonDateTo='';
+  }else{
+    selSeasonDateTo=value;
+    if(value&&selSeasonDateFrom&&value<selSeasonDateFrom)selSeasonDateFrom='';
+  }
+  syncSeasonDates();applyFilters();
+}
+
 function buildSpeciesChips() {
   const all = [...new Set(DATA.map(r=>r.Species))].sort();
   document.getElementById('speciesChips').innerHTML = all.map(s =>
     `<div class="chip${selSpecies.has(s)?' active':''}" onclick="toggleSpecies('${s}')">${s}</div>`
   ).join('');
   document.getElementById('clearSpecies').classList.toggle('visible', selSpecies.size>0);
+  buildSpecialTagChips(); syncSeasonDates();
 }
 
 function buildMUList() {
@@ -633,6 +702,8 @@ function clearFilter(type) {
   if (type==='species') { selSpecies.clear(); buildSpeciesChips(); buildMUList(); }
   if (type==='mu') { selMUs.clear(); selMUsFull.clear(); bcUpdateMapChips(); bcUpdateMapStyles(); buildMUList(); }
   if (type==='class') { selClass.clear(); buildClassChips(); }
+  if (type==='special') { selSpecialTags.clear(); buildSpecialTagChips(); }
+  if (type==='seasonDate') { selSeasonDateFrom=''; selSeasonDateTo=''; syncSeasonDates(); }
   applyFilters();
 }
 
@@ -646,7 +717,8 @@ function setSort(mode) {
 }
 
 function resetAll() {
-  selSpecies.clear(); selMUs.clear(); selMUsFull.clear(); selMinOdds=0; selMinHarvest=0; selClass.clear();
+  selSpecies.clear(); selMUs.clear(); selMUsFull.clear(); selAreas.clear(); selMinOdds=0; selMinHarvest=0; selClass.clear();
+  selSpecialTags.clear(); selSeasonDateFrom=''; selSeasonDateTo=''; syncSeasonDates();
     document.getElementById('oddsSlider').value=0;
   onSlider(0);
   bcUpdateMapChips(); bcUpdateMapStyles();
@@ -655,7 +727,10 @@ function resetAll() {
 
 function applyFilters() {
   const q = (document.getElementById('search') ? document.getElementById('search').value : '').toLowerCase();
+  const startYear=Number(document.getElementById('seasonDateFrom')?.min.slice(0,4))||2026;
   filtered = DATA.filter(r => {
+    if (!bcSpecialMatches(r,selSpecialTags)) return false;
+    if (!bcSeasonMatches(r.Season,selSeasonDateFrom,selSeasonDateTo,startYear)) return false;
     if (selSpecies.size>0 && !selSpecies.has(r.Species)) return false;
     if (selMUs.size>0 && !selMUs.has(r.MU_General)) return false;
     if (selMUsFull.size>0 && !selMUsFull.has(bcNormalizeMU(r.MU))) return false;
