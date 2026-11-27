@@ -168,6 +168,47 @@ async function mobile(browser, w, h) {
 
   await show(page, 'draws', '#drawsPage');
   await inspect(page, w + ' draw results');
+
+  await page.locator('#sidebarToggle').click();
+  const sheet=page.locator('#sidebarInner');
+  await sheet.locator('.hs-filter-overview').waitFor({state:'visible'});
+  const overview=await sheet.evaluate(el=>{
+    const nodes=[...el.querySelectorAll('.hs-filter-row'),el.querySelector('.reset-btn'),el.querySelector('.hs-v4-mobile-apply button')];
+    const rect=el.getBoundingClientRect();
+    const bottom=window.visualViewport?.height||innerHeight;
+    return {rows:el.querySelectorAll('.hs-filter-row').length,height:el.clientHeight,scroll:el.scrollHeight,
+      fits:rect.top>=-2&&rect.bottom<=bottom+2&&nodes.every(node=>{
+        if(!node)return false;
+        const r=node.getBoundingClientRect();
+        return r.height>=43&&r.top>=rect.top-1&&r.bottom<=rect.bottom+1&&r.left>=rect.left-1&&r.right<=rect.right+1;
+      })};
+  });
+  assert.equal(overview.rows,6,'All six filter categories must be available');
+  assert(overview.fits&&overview.scroll<=overview.height+2,'Filter overview must fit on one screen: '+JSON.stringify(overview));
+  if(w===390) {
+    await image(page,'390-filter-overview');
+    const rows=sheet.locator('.hs-filter-row');
+    await rows.nth(0).click();
+    const first=sheet.locator('#speciesChips .chip').first();
+    await first.waitFor({state:'visible'});
+    const species=(await first.textContent()).trim();
+    await first.click();
+    await sheet.locator('.hs-filter-back').click();
+    assert((await rows.nth(0).textContent()).includes(species),'Selected species not shown in overview');
+    for (const [index,selector] of [[1,'#classChips'],[2,'#bcMapToggleBtn'],[3,'#oddsSlider'],[4,'#specialTagChips'],[5,'#seasonDateFrom']]) {
+      await rows.nth(index).click();
+      assert(await sheet.locator(selector).isVisible(),'Filter control inaccessible: '+selector);
+      if(index===3) await sheet.locator(selector).press('End');
+      await sheet.locator('.hs-filter-back').click();
+    }
+    assert((await rows.nth(3).textContent()).includes('75'),'Minimum odds summary did not update');
+    await sheet.locator('.reset-btn').click();
+    assert((await rows.nth(0).textContent()).includes('All species'),'Reset did not clear species summary');
+    assert((await rows.nth(3).textContent()).includes('Any'),'Reset did not clear odds summary');
+  }
+  await sheet.locator('.hs-v4-mobile-apply button').click();
+  await sheet.waitFor({state:'hidden'});
+
   await image(page, w + '-draws');
 
   if (w === 390) {
