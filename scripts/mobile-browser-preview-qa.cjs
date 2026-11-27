@@ -223,6 +223,14 @@ async function mobile(browser, w, h) {
     await filter.getByRole('searchbox').fill('3-17');
     await filter.getByRole('button',{name:'WMU 3-17',exact:true}).click();
     assert(await page.evaluate(()=>selMUsFull.has('3-17')&&filtered.every(r=>bcNormalizeMU(r.MU)==='3-17')),'WMU selection not connected to results');
+    await filter.getByRole('button',{name:'Done',exact:true}).click();
+    await filter.getByRole('button',{name:'Select on map',exact:true}).click();
+    await filter.locator('#bcMapPanel').waitFor({state:'visible'});
+    await page.waitForFunction(()=>Boolean(document.querySelector('#bcLeafletMap .leaflet-overlay-pane path')),null,{timeout:45000});
+    assert(await page.evaluate(()=>selMUsFull.has('3-17')),'Opening map lost the selected WMU');
+    await filter.getByRole('button',{name:'Back to filters'}).click();
+    assert(await page.evaluate(()=>selMUsFull.has('3-17')),'Returning from map lost the selected WMU');
+    await filter.getByRole('button',{name:/^Management unit/}).click();
     await filter.getByRole('button',{name:'Clear',exact:true}).click();
     await filter.getByRole('button',{name:'Done',exact:true}).click();
     await filter.getByRole('button',{name:/^Show [\d,]+ draws$/}).click();

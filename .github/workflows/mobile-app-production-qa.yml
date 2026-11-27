@@ -54,7 +54,7 @@ jobs:
       - name: Validate responsive production journeys
         env:
           URL: https://huntsmartcanada.ca/
-          EXPECTED_MOBILE_VERSION: 2026-11-26-mobile-draws-v3
+          EXPECTED_MOBILE_VERSION: 2026-11-27-mobile-filters-v1
           EXPECTED_GOS_VERSION: 2026-10-28-gos-species-v1
         run: |
           node <<'NODE'
@@ -152,16 +152,17 @@ jobs:
               await page.click('#sidebarToggle');
               await page.waitForFunction(()=>document.getElementById('sidebarInner')?.classList.contains('open'),null,{timeout:5000});
               await inside(page,'#sidebarInner',`${size.name} filter sheet`);
-              assert(await visible(page,'#drawsPage .hs-mobile-filter-backdrop'),`${size.name} filter backdrop missing`);
+              assert(await visible(page,'#sidebarInner .hs-filter-overview'),`${size.name} filter overview missing`);
               const sheetHit=await page.$eval('#sidebarInner',el=>{
                 const r=el.getBoundingClientRect();
                 return el.contains(document.elementFromPoint(r.left+r.width/2,r.top+Math.min(r.height/2,40)));
               });
-              assert(sheetHit,`${size.name} filter sheet is underneath its backdrop`);
-              await page.locator('#sidebarInner .hs-v4-mobile-apply button').click();
+              assert(sheetHit,`${size.name} filter screen is underneath another layer`);
+              await page.locator('#sidebarInner .hs-filter-apply').click();
               assert(!(await visible(page,'#sidebarInner')),`${size.name} apply did not close filters`);
               await page.click('#sidebarToggle');
-              await page.locator('#drawsPage .hs-mobile-filter-backdrop').click({position:{x:2,y:2}});
+              await page.locator('#sidebarInner .hs-filter-back').click();
+              assert(!(await visible(page,'#sidebarInner')),`${size.name} close did not dismiss filters`);
             }
 
             await show(page,'saved','#savedPage');

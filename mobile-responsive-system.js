@@ -4,7 +4,7 @@
   'use strict';
   if (window.__HUNTSMART_MOBILE_SYSTEM__) return;
 
-  var VERSION = '2026-11-26-mobile-draws-v3';
+  var VERSION = '2026-11-27-mobile-filters-v1';
   var mobileMq = window.matchMedia('(max-width: 980px)');
   var compactMq = window.matchMedia('(max-width: 420px)');
   var coarseMq = window.matchMedia('(pointer: coarse)');
@@ -69,26 +69,6 @@
     hamburger.setAttribute('aria-controls', 'navMobileMenu');
     hamburger.setAttribute('aria-haspopup', 'true');
     hamburger.setAttribute('aria-expanded', menu.classList.contains('open') ? 'true' : 'false');
-  }
-
-  function countActiveFilters(inner) {
-    if (!inner) return 0;
-    var count = 0;
-    inner.querySelectorAll('.chip.active, .fp-chip.active, .map-chip.active').forEach(function (el) {
-      var text = (el.textContent || '').trim().toLowerCase();
-      if (!/^(all|all draws|any|all species)$/.test(text)) count += 1;
-    });
-    inner.querySelectorAll('input[type="range"]').forEach(function (el) {
-      var min = el.min === '' ? '0' : String(el.min);
-      if (String(el.value) !== min) count += 1;
-    });
-    inner.querySelectorAll('input[type="date"]').forEach(function (el) {
-      if (el.value) count += 1;
-    });
-    inner.querySelectorAll('select').forEach(function (el) {
-      if (el.value) count += 1;
-    });
-    return count;
   }
 
   function wireFilterSheet(pageId, innerId, toggleId, toggleFunctionName) {

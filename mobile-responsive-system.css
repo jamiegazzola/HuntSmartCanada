@@ -329,7 +329,7 @@
   .hs-filter-layout::before { display:none !important; }
   .hs-filter-layout [hidden] { display:none !important; }
   .hs-filter-header {
-    display:grid; grid-template-columns:minmax(64px,1fr) auto minmax(64px,1fr);
+    display:grid; grid-template-columns:64px minmax(0,1fr) 64px;
     align-items:center; gap:8px; padding: max(4px,env(safe-area-inset-top)) 16px 4px;
     border-bottom:1px solid var(--border,#334038);
   }
@@ -392,19 +392,7 @@
   .hs-filter-apply { display:block; width:100%; min-height:48px; border:0; border-radius:7px;
     background:#79bc86; color:#102017; font:700 15px/1.3 'DM Sans',system-ui,sans-serif; }
   .hs-filter-layout :focus-visible { outline:2px solid var(--accent,#79bc86); outline-offset:-2px; }
-    .hs-mobile-filter-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 10010;
-    display: none;
-    background: rgba(0,0,0,.56);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
-  }
 
-  .hs-mobile-filter-backdrop.open {
-    display: block;
-  }
 
   .draws-main {
     width: 100%;
