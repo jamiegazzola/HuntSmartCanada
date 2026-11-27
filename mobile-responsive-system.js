@@ -135,8 +135,7 @@
         odds:abMinOdds, harvest:abMinHarvest, profile:abProfileFilter};
       return {species:[...selSpecies], classes:[...selClass], regions:[...selMUs], units:[...selMUsFull],
         areas:[...selAreas], odds:selMinOdds, harvest:selMinHarvest,
-        special:activeTexts(document.getElementById('specialTagChips') || inner),
-        dates:['seasonDateFrom','seasonDateTo'].map(function(id){return document.getElementById(id)?.value || '';})};
+        special:[...selSpecialTags], dates:[selSeasonDateFrom,selSeasonDateTo]};
     }
     function restore(s) {
       if (!s || JSON.stringify(values()) === JSON.stringify(s)) return;
@@ -157,21 +156,8 @@
         buildSpeciesChips(); buildClassChips(); buildMUList();
         if (typeof bcUpdateMapChips === 'function') bcUpdateMapChips();
         if (typeof bcUpdateMapStyles === 'function') bcUpdateMapStyles();
-        var special = document.getElementById('specialTagChips');
-        if (special) {
-          var opts = Array.from(special.querySelectorAll('.chip'));
-          opts.forEach(function(el){
-            var wanted = s.special.includes(el.textContent.trim().replace(/\s+/g,' '));
-            if (el.isConnected && el.classList.contains('active') !== wanted) el.click();
-          });
-        }
-        ['seasonDateFrom','seasonDateTo'].forEach(function(id,i){
-          var input = document.getElementById(id);
-          if (input && input.value !== s.dates[i]) {
-            input.value = s.dates[i];
-            if (typeof setSeasonDateFilter === 'function') setSeasonDateFilter(i ? 'to' : 'from',s.dates[i]);
-          }
-        });
+        selSpecialTags = new Set(s.special); selSeasonDateFrom=s.dates[0]; selSeasonDateTo=s.dates[1];
+        buildSpecialTagChips(); syncSeasonDates();
         if (slider) onSlider(slider.value); else applyFilters();
       }
     }
@@ -199,7 +185,7 @@
           return ab ? selected(s.units,'All WMUs') : selected(s.units.concat(s.regions.map(function(n){return MU_NAMES[n] || n;})),'All regions');
         case 'odds': var v = ab ? AB_ODDS_STEPS[s.odds] : s.odds; return v ? v + '%+' : 'Any';
         case 'profile': return ({all:'All draws',has_profile:'Has my points',above_threshold:'Above threshold',below_threshold:'Below threshold'})[s.profile] || 'All draws';
-        case 'special': return selected(s.special,'Any');
+        case 'special': return selected(s.special.map(function(key){return BC_SPECIAL_TAGS.find(function(t){return t.key===key;})?.label || key;}),'Any');
         case 'dates': return s.dates.filter(Boolean).join(' – ') || 'Any dates';
         default: return selected(activeTexts(p.block),'Any');
       }
@@ -210,11 +196,19 @@
       toggle.setAttribute('aria-expanded',String(open));
       if (open && !mounted) mount();
       if (!open && mounted) finish(false,false);
-      if (!mounted) return;
+      if (!mounted) {
+        var lbl=toggle.querySelector('span:first-child');
+        if(lbl && page.style.display!=='none') {
+          var current=values(), n=current.species.length+current.classes.length+current.units.length+(current.regions?.length||0)+(current.areas?.length||0)+(current.odds?1:0)+(current.harvest?1:0)+(current.special?.length||0)+(current.dates?.some(Boolean)?1:0)+(current.profile&&current.profile!=='all'?1:0);
+          setText(lbl,n?'Filters · '+n:'Filters');
+        }
+        return;
+      }
       syncProfile();
       var s = values();
       panels.forEach(function(p){
         setText(p.value,summary(p,s));
+        if(p===activePanel && p.updateUnits && !p.block.classList.contains('hs-filter-map-mode'))p.updateUnits();
         p.block.querySelectorAll('.chip,.mu-item').forEach(function(el){
           if (el.tagName !== 'BUTTON') {el.setAttribute('role','button');el.tabIndex=0;}
           el.setAttribute('aria-pressed',String(el.classList.contains('active')));
@@ -227,14 +221,73 @@
       var label = toggle.querySelector('span:first-child');
       if (label) setText(label,active ? 'Filters · ' + active : 'Filters');
     }
+    function buildUnitPicker(p) {
+      var unitBox=make('div','hs-filter-unit-picker');
+      var search=make('input','hs-filter-unit-search');
+      search.type='search';search.placeholder=ab?'Search WMUs':'Search regions or WMUs';
+      search.setAttribute('aria-label',search.placeholder);
+      var results=make('div','hs-filter-unit-results');
+      unitBox.append(search,results);
+      p.block.append(unitBox);
+      p.unitBox=unitBox;
+      var signature='';
+      p.updateUnits=function() {
+        var query=search.value.trim().toLowerCase();
+        var source=ab?AB_DATA.map(function(r){return String(r.wmu);}):DATA.filter(function(r){
+          return !selSpecies.size||selSpecies.has(r.Species);
+        }).map(function(r){return bcNormalizeMU(r.MU);});
+        var selected=ab?abSelWMU:selMUsFull;
+        var ids=[...new Set(source.concat([...selected]))].filter(function(id){return id && (ab?/^\d+[A-Za-z]?$/.test(id):/^\d+-\d+$/.test(id));});
+        ids.sort(function(a,b){return a.localeCompare(b,undefined,{numeric:true});});
+        var regions=Array.from(p.block.querySelectorAll('.mu-item'));
+        var visible=ids.filter(function(id){
+          if(ab) return !query||id.toLowerCase().includes(query);
+          var region=MU_NAMES[Number(id.split('-')[0])]||'';
+          var padded=id.replace(/-(\d)$/,'-0$1');
+          return query ? id.includes(query)||padded.includes(query)||region.toLowerCase().includes(query) : selected.has(id);
+        });
+        regions.forEach(function(el){
+          var next=Boolean(query&&!el.textContent.toLowerCase().includes(query));
+          if(el.hidden!==next)el.hidden=next;
+        });
+        var next=JSON.stringify([query,visible,[...selected]]);
+        if(signature===next)return;
+        signature=next;
+        results.replaceChildren();
+        if(!ab&&!query&&!visible.length){
+          results.append(make('p','hs-filter-empty','Search for a specific WMU or select a region above.'));
+          return;
+        }
+        if(!visible.length){
+          if(ab||!regions.some(function(el){return !el.hidden;}))results.append(make('p','hs-filter-empty','No matching management units.'));
+          return;
+        }
+        var group='';
+        visible.forEach(function(id){
+          if(!ab){
+            var name=MU_NAMES[Number(id.split('-')[0])]||'Other regions';
+            if(name!==group){group=name;results.append(make('h3','hs-filter-unit-group',group));}
+          }
+          var button=make('button','chip'+(selected.has(id)?' active':''),'WMU '+id);
+          button.setAttribute('aria-pressed',String(selected.has(id)));
+          button.addEventListener('click',function(){
+            if(ab)abToggleWMU(id);
+            else {bcToggleWMUFull(id);bcUpdateMapChips();}
+            p.updateUnits();sync();
+          });
+          results.append(button);
+        });
+      };
+      search.addEventListener('input',p.updateUnits);
+    }
     function showPanel(p, map) {
       if (activePanel && activePanel !== p) closeMap();
       activePanel = p;
       overview.hidden = Boolean(p);
-      panels.forEach(function(item){item.block.hidden = item !== p;});
+      panels.forEach(function(item){item.block.hidden = item !== p;item.block.classList.toggle('hs-filter-map-mode',item===p&&Boolean(map));});
       back.textContent = p ? 'Back' : 'Close';
       back.setAttribute('aria-label',p ? 'Back to filters' : 'Close filters');
-      heading.textContent = p ? p.label : 'Filters';
+      heading.textContent = p ? (map?'Select on map':p.label) : 'Filters';
       reset.textContent = p ? 'Clear' : 'Reset';
       body.scrollTop = 0;
       if (map) {
@@ -259,10 +312,6 @@
       if (ab) {abSelClass.clear();abResetAll();syncProfile();}
       else {
         selAreas.clear();
-        var special = panels.find(function(p){return p.key==='special';});
-        var dates = panels.find(function(p){return p.key==='dates';});
-        if (special) clearPanel(special);
-        if (dates) clearPanel(dates);
         resetAll();
       }
       sync();
@@ -292,6 +341,7 @@
           overview.append(mapRow);
         }
         body.append(block);
+        if(key==='location')buildUnitPicker(p);
         if (key === 'special' && !block.querySelector('.chip')) {
           var empty = make('p','hs-filter-empty','No special tag options available.');
           empty.dataset.hsFilterTemporary='1';block.append(empty);
@@ -319,6 +369,9 @@
       mounted = false; snapshot = null; activePanel = null;
       original.forEach(function(el){
         el.hidden=false;
+        el.classList.remove('hs-filter-map-mode');
+        el.querySelectorAll('.hs-filter-unit-picker').forEach(function(x){x.remove();});
+        el.querySelectorAll('.mu-item[hidden]').forEach(function(x){x.hidden=false;});
         el.querySelectorAll('[data-hs-filter-temporary]').forEach(function(x){x.remove();});
         el.querySelectorAll('[data-hs-filter-temporary-disabled]').forEach(function(x){x.disabled=false;delete x.dataset.hsFilterTemporaryDisabled;});
       });

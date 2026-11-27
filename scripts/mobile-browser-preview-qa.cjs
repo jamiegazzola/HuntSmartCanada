@@ -205,6 +205,44 @@ async function mobile(browser, w, h) {
   await filter.waitFor({state:'hidden'});
   assert.equal(await page.evaluate(()=>selSpecies.size),0,'Reset did not restore all species');
 
+  if (w === 390) {
+    const baseCount=await page.evaluate(()=>filtered.length);
+    await page.locator('#sidebarToggle').click();
+    await filter.getByRole('button',{name:/^Special tags/}).click();
+    await filter.getByRole('button',{name:'Youth only',exact:true}).click();
+    assert(await page.evaluate(()=>filtered.length>0&&filtered.every(r=>/age restricted:\s*under 18 only/i.test(r.Notes))), 'Youth tag did not constrain actual results');
+    await filter.getByRole('button',{name:'Clear',exact:true}).click();
+    await filter.getByRole('button',{name:'Done',exact:true}).click();
+    await filter.getByRole('button',{name:/^Season dates/}).click();
+    await filter.locator('#seasonDateFrom').fill('2026-09-15');
+    await filter.locator('#seasonDateTo').fill('2026-09-15');
+    assert(await page.evaluate(()=>filtered.length>0&&filtered.length<DATA.length&&filtered.every(r=>bcSeasonMatches(r.Season,'2026-09-15','2026-09-15',2026))), 'Date selection did not constrain actual results');
+    await filter.getByRole('button',{name:'Clear',exact:true}).click();
+    await filter.getByRole('button',{name:'Done',exact:true}).click();
+    await filter.getByRole('button',{name:/^Management unit/}).click();
+    await filter.getByRole('searchbox').fill('3-17');
+    await filter.getByRole('button',{name:'WMU 3-17',exact:true}).click();
+    assert(await page.evaluate(()=>selMUsFull.has('3-17')&&filtered.every(r=>bcNormalizeMU(r.MU)==='3-17')),'WMU selection not connected to results');
+    await filter.getByRole('button',{name:'Clear',exact:true}).click();
+    await filter.getByRole('button',{name:'Done',exact:true}).click();
+    await filter.getByRole('button',{name:/^Show [\d,]+ draws$/}).click();
+    assert.equal(await page.evaluate(()=>filtered.length),baseCount,'Clear did not restore all records');
+    await show(page,'abDraws','#abDrawsPage');
+    await page.locator('#abSpeciesChips .chip').first().waitFor({state:'attached'});
+    await page.locator('#abSidebarToggle').click();
+    const abFilter=page.locator('#abSidebarInner');
+    await abFilter.locator('.hs-filter-overview').waitFor({state:'visible'});
+    await abFilter.getByRole('button',{name:/^Species/}).click();
+    await abFilter.locator('#abSpeciesChips .chip').first().click();
+    assert(await page.evaluate(()=>abSelSpecies.size>0),'Alberta species picker did not update');
+    await abFilter.getByRole('button',{name:'Done',exact:true}).click();
+    await abFilter.getByRole('button',{name:'Reset',exact:true}).click();
+    await abFilter.getByRole('button',{name:/^Show [\d,]+ draws$/}).click();
+    assert.equal(await page.evaluate(()=>abSelSpecies.size),0,'Alberta reset did not restore all species');
+    await show(page,'draws','#drawsPage');
+  }
+
+
 
   if (w === 390) {
     const cardIndex = await page.evaluate(() => filtered.findIndex(r => r && r.Code && r.MU && r.Zone));

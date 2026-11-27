@@ -707,7 +707,7 @@ function abSidebarClearFilter(type) {
   abApplyFilters();
 }
 function abResetAll() {
-  abSelSpecies.clear(); abSelWMU.clear(); abMinOdds=0; abMinHarvest=0; abProfileFilter='all';
+  abSelSpecies.clear(); abSelClass.clear(); abSelWMU.clear(); abMinOdds=0; abMinHarvest=0; abProfileFilter='all';
   const sl=document.getElementById('abOddsSlider'); if(sl) sl.value=0;
   abApplyFilters();
 }
