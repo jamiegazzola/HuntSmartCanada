@@ -56,6 +56,7 @@ jobs:
               const p = document.getElementById('drawDetailPage');
               return !!(p && p.getClientRects().length && getComputedStyle(p).display !== 'none');
             }, null, { timeout:15000 });
+            await page.waitForFunction(()=>!!document.querySelector('#drawDetailPage .hs-pd-bc .hs-pd-field .dd-wu-body')?.textContent.trim(),null,{timeout:30000});
             await page.waitForTimeout(1000);
           }
 
@@ -80,6 +81,10 @@ jobs:
                 odds:p?.querySelector('.hs-pd-odd b')?.textContent?.trim() || '',
                 actions:Array.from(p?.querySelectorAll('.hs-pd-actions button') || []).map(x => x.textContent.trim()),
                 quick:Array.from(p?.querySelectorAll('.hs-pd-q') || []).map(x => x.textContent.replace(/\s+/g,' ').trim()),
+                mapPanel:rect(p?.querySelector('.hs-pd-map')),
+                terrain:rect(p?.querySelector('.hs-pd-field')),
+                terrainText:p?.querySelector('.hs-pd-field .dd-wu-body')?.textContent?.trim()||'',
+                history:rect(p?.querySelector('.hs-pd-history')),
                 hasTrend:!!p?.querySelector('.hs-pd-chart'),
                 hasMap:!!document.getElementById('ddPremiumMap'),
                 hasOpenMap:/Open full map/i.test(text),
@@ -101,6 +106,9 @@ jobs:
             assert(s.actions.some(x => /Save/i.test(x)) && s.actions.some(x => /Compare/i.test(x)), `${name}: Save / Compare actions missing`);
             assert(s.quick.length === 4, `${name}: summary strip should have four metrics`);
             assert(s.hasTrend, `${name}: draw trend section missing`);
+            assert(s.mapPanel && s.terrain && s.terrainText && s.history, `${name}: map-first field context missing`);
+            assert(s.history.top >= Math.max(s.mapPanel.bottom,s.terrain.bottom)-2, `${name}: charts precede field context`);
+            assert(name==='desktop' ? Math.abs(s.mapPanel.top-s.terrain.top)<4 && s.mapPanel.width>s.terrain.width : s.mapPanel.bottom<=s.terrain.top+2, `${name}: field context not responsive`);
             assert(s.hasMap && s.map && s.map.height >= 250, `${name}: interactive hunt map missing/collapsed`);
             assert(s.hasOpenMap, `${name}: Open full map action missing`);
             assert(s.hasSources && s.sourceLinks.length >= 3, `${name}: official source section incomplete`);

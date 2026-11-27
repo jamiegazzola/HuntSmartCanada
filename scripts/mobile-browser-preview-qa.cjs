@@ -90,7 +90,17 @@ async function assertMapFirst(page,panelSelector,desktop) {
   console.log('MAP_FIRST_LAYOUT',desktop?'desktop':'mobile',JSON.stringify(layout));
 }
 async function assertDetailMapFirst(page,desktop) {
-  await page.evaluate(()=>openDrawDetail(filtered.findIndex(r=>r&&r.MU&&r.Code&&r.writeup)));
+  // Open via the map/key path with a record not yet decorated by the results
+  // list. The existing writeups cache should still supply its field content.
+  await page.evaluate(()=>{
+    const record=filtered.find(r=>r&&r.MU&&r.Code&&r.writeup);
+    if(!record)throw new Error('No hunt with field context');
+    const original=record.writeup;
+    try {
+      delete record.writeup;
+      openDrawDetailByKey(record.Code,record.MU);
+    } finally { record.writeup=original; }
+  });
   await page.locator('#drawDetailPage .hs-pd-bc').waitFor({state:'visible'});
   const layout=await page.locator('#drawDetailPage .hs-pd-bc').evaluate(el=>{
     const get=sel=>{const n=el.querySelector(sel);const r=n?.getBoundingClientRect();return r?{x:r.x,y:r.y,w:r.width,h:r.height,b:r.bottom}:null;};

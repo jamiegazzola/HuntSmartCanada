@@ -73,7 +73,8 @@ jobs:
               assert(open.controlsRight <= open.panelLeft - 8, 'Zoom/3D controls are overlapped by open GOS inspector');
               assert(open.scrollbarWidth === 'none', 'Results scrollbar is still visible');
               assert(open.overflow === 'auto' && open.canScroll, 'Results list no longer scrolls');
-              await page.evaluate(() => osSelectRegion('3'));
+              // Explicitly close the inspector, even if a species filter remains active.
+              await page.locator('#osPanelCloseBtn').click();
               await page.waitForFunction(() => !document.querySelector('#bcOpenSeasonsPage .os-panel.open'), null, { timeout: 15000 });
               await page.waitForTimeout(400);
               const closed = await page.locator('#osMapControlStack').boundingBox();

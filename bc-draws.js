@@ -894,7 +894,7 @@ function buildBCExpandHTML(r, idPrefix) {
   // Field information and restrictions are immediately visible, with all
   // existing source text preserved; never infer missing access conditions.
   const escapeField = value => String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const [terrain, access] = String(r.writeup || '').split('|||').map(s=>s.trim());
+  const [terrain, access] = String(r.writeup || (typeof getWriteup==='function'?getWriteup(r):'') || '').split('|||').map(s=>s.trim());
   const writeupHTML = `<section class="hs-bc-terrain-panel" aria-label="Terrain and access">
     <h3 class="hs-bc-section-title">Terrain &amp; Access</h3>
     <div class="writeup-body tc-card">
