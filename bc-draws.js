@@ -852,7 +852,16 @@ function toggleSavedCard(key) {
   if (!el) return;
   const open = el.classList.contains('open');
   if (open) { el.classList.remove('open'); if (btn) btn.textContent = '▾ Show details'; }
-  else       { el.classList.add('open');    if (btn) btn.textContent = '▴ Hide details'; }
+  else {
+    el.classList.add('open'); if (btn) btn.textContent = '▴ Hide details';
+    const mapEl=el.querySelector('.hs-bc-zone-map');
+    if (mapEl && typeof bcCardMapInit==='function') {
+      if (!mapEl._lehInited) {
+        mapEl._lehInited=true;
+        bcCardMapInit(mapEl.id,mapEl.dataset.mu,mapEl.dataset.zone,mapEl.dataset.speciesType);
+      } else if (typeof bcCardMapInvalidate==='function') bcCardMapInvalidate(mapEl.id);
+    }
+  }
 }
 
 // Builds expand HTML for a BC draw — used by both draw cards and saved cards
@@ -882,19 +891,19 @@ function buildBCExpandHTML(r, idPrefix) {
         ${buildGreenBarChart(Object.fromEntries(Object.entries(r.yearly_fill_rates||{}).map(([y,v])=>[y,parseFloat(v)*100])), 'bc'+idPrefix, 'Harvest success % by year · AVG ' + (fr !== null ? fr + '%' : '—'))}
       </div>` : '';
 
-  const writeupHTML = r.writeup ? (() => {
-    const cleanText = t => (t||'').replace(/\u2014/g,'-').replace(/\u2013/g,'-').replace(/\u2018|\u2019/g,"'").replace(/\u201C|\u201D/g,'"');
-    const parts = r.writeup.split('|||');
-    const terrain = cleanText(parts[0]);
-    const access  = cleanText(parts[1]);
-    const notesWarn = r.Notes ? `<div class="tc-warn"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 1.5L13 12.5H1L7 1.5Z" stroke="#c47a1a" stroke-width="1.2" stroke-linejoin="round"/><path d="M7 6v3" stroke="#c47a1a" stroke-width="1.2" stroke-linecap="round"/><circle cx="7" cy="10.5" r="0.6" fill="#c47a1a"/></svg><span>${r.Notes}</span></div>` : '';
-    return '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">' +
-      '<button onclick="event.stopPropagation();toggleWriteup(this)" class="tc-toggle-btn">✦ Terrain &amp; Access <span class="tc-arrow">▾</span></button>' +
-      '<div class="writeup-body tc-card" style="display:none;margin-top:10px">' +
-      (terrain ? '<div class="tc-section"><div class="tc-section-label"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M1 12L5 5l3 4 2-3 3 6H1z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>Terrain &amp; conditions</div><div class="tc-body">' + terrain + '</div></div>' : '') +
-      (access ? '<div class="tc-section"><div class="tc-section-label"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="5" r="2.5" stroke="currentColor" stroke-width="1.1"/><path d="M2 13c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>Access &amp; what to expect</div><div class="tc-body">' + access + '</div>' + notesWarn + '</div>' : (notesWarn ? '<div class="tc-section">' + notesWarn + '</div>' : '')) +
-      '</div></div>';
-  })() : '';
+  // Field information and restrictions are immediately visible, with all
+  // existing source text preserved; never infer missing access conditions.
+  const escapeField = value => String(value || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const [terrain, access] = String(r.writeup || (typeof getWriteup==='function'?getWriteup(r):'') || '').split('|||').map(s=>s.trim());
+  const writeupHTML = `<section class="hs-bc-terrain-panel" aria-label="Terrain and access">
+    <h3 class="hs-bc-section-title">Terrain &amp; Access</h3>
+    <div class="writeup-body tc-card">
+      ${terrain ? `<div class="tc-section"><div class="tc-section-label">Terrain &amp; conditions</div><div class="tc-body">${escapeField(terrain)}</div></div>` : ''}
+      ${access ? `<div class="tc-section"><div class="tc-section-label">Access &amp; what to expect</div><div class="tc-body">${escapeField(access)}</div></div>` : ''}
+      ${!terrain && !access ? '<div class="tc-section"><p class="tc-body">Terrain and access information is not available for this hunt.</p></div>' : ''}
+    </div>
+  </section>`;
+  const notesHTML = r.Notes ? `<section class="hs-bc-hunt-notes" aria-label="Hunt notes and restrictions"><h3 class="hs-bc-section-title">Hunt notes &amp; restrictions</h3><div class="tc-warn"><span>${escapeField(r.Notes)}</span></div></section>` : '';
 
   // ── LEH Zone Map ──
   const mapContainerId = `lehMap_${idPrefix}_${r.Code}`;
@@ -915,7 +924,7 @@ function buildBCExpandHTML(r, idPrefix) {
   const hasZoneModifier = r.Zone && /[\*\+]/.test(r.Zone);
   const zoneLabel = r.Zone ? `Zone ${r.Zone} · MU ${r.MU}` : `MU ${r.MU}`;
   const mapHTML = `
-    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+    <div class="hs-bc-zone-panel" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
       <div class="hs-leh-map-toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div class="hs-leh-map-zone" style="display:flex;align-items:center;gap:8px">
           <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted)">Zone Map</span>
@@ -927,11 +936,12 @@ function buildBCExpandHTML(r, idPrefix) {
           <button class="leh-map-btn leh-map-expand-btn" onclick="event.stopPropagation();bcCardMapToggleFullscreen('${mapContainerId}')" title="Expand map" aria-label="Expand zone map" style="width:26px;padding:0;font-size:13px;display:flex;align-items:center;justify-content:center">⛶</button>
         </div>
       </div>
-      <div id="${mapContainerId}" style="height:280px;width:100%;border-radius:8px;overflow:hidden;background:#1a1a1a"></div>
+      <div id="${mapContainerId}" class="hs-bc-zone-map" data-mu="${escapeField(r.MU)}" data-zone="${escapeField(r.Zone)}" data-species-type="${escapeField(mapSpeciesType)}" style="height:280px;width:100%;border-radius:8px;overflow:hidden;background:#1a1a1a"></div>
       <div id="${mapContainerId}_status" style="font-size:10px;color:var(--text-muted);padding:4px 2px;font-family:monospace"></div>
     </div>`;
 
     return `
+    ${mapHTML}${writeupHTML}${notesHTML}
     <div class="expand-grid">
       <div class="ei"><div class="ei-label">Full MU</div><div class="ei-val">${r.MU}</div></div>
       <div class="ei"><div class="ei-label">Draw Code</div><div class="ei-val">${r.Code}</div></div>
@@ -940,9 +950,8 @@ function buildBCExpandHTML(r, idPrefix) {
       <div class="ei"><div class="ei-label">Draw Odds (${BC_ACTUAL_ODDS_YEAR} actual)</div><div class="ei-val">${pct}</div></div>
       <div class="ei"><div class="ei-label">Tags Available</div><div class="ei-val">${r.Tags}</div></div>
       ${r.fill_rate_alltime!=null?`<div class="ei"><div class="ei-label">Harvest Success (all-time)</div><div class="ei-val">${fmtFill(r.fill_rate_alltime)} <span style="font-size:10px;color:${(r.fill_rate_years||0)>=10?'#4ade80':(r.fill_rate_years||0)>=4?'#facc15':'#f87171'}">(${r.fill_rate_years} yrs)</span></div></div>`:''}
-      ${r.Notes?`<div class="ei ei-note">📝 ${r.Notes}</div>`:''}
     </div>
-    ${oddsChartHTML}${harvestChartHTML}${writeupHTML}${mapHTML}`;
+    ${oddsChartHTML}${harvestChartHTML}`;
 }
 
 function renderCards() {
