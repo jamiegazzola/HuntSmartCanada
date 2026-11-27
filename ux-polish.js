@@ -388,18 +388,4 @@
     if(btn.classList.contains('expand-toggle')) queueMicrotask(()=>afterExpanded(card));
     else queueMicrotask(()=>{btn.setAttribute('aria-pressed',String(btn.classList.contains('starred')));btn.setAttribute('aria-label',btn.classList.contains('starred')?'Remove saved hunt':'Save hunt');});
   });
-  const sheet=document.getElementById('sidebarInner');
-  if(sheet && !sheet.querySelector('.hs-v4-mobile-apply')) {
-    const header=document.createElement('div');header.className='hs-v4-sheet-bar';
-    const title=document.createElement('strong');title.textContent='Filter hunts';
-    const close=document.createElement('button');close.type='button';close.textContent='×';close.setAttribute('aria-label','Close filters');
-    close.addEventListener('click',()=>{if(sheet.classList.contains('open') && typeof toggleSidebar==='function') toggleSidebar();});
-    header.append(title,close);sheet.prepend(header);
-    const footer=document.createElement('div');footer.className='hs-v4-mobile-apply';
-    const apply=document.createElement('button');apply.type='button';apply.textContent='Show draws';
-    apply.addEventListener('click',()=>{if(sheet.classList.contains('open') && typeof toggleSidebar==='function') toggleSidebar();});
-    footer.append(apply);sheet.append(footer);
-    const count=document.getElementById('countDisplay');
-    if(count){const update=()=>{apply.textContent='Show '+count.textContent.trim()+' draws';};update();new MutationObserver(update).observe(count,{childList:true,subtree:true,characterData:true});}
-  }
 })();

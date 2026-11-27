@@ -170,6 +170,42 @@ async function mobile(browser, w, h) {
   await inspect(page, w + ' draw results');
   await image(page, w + '-draws');
 
+  const filter = page.locator('#sidebarInner');
+  await page.locator('#sidebarToggle').click();
+  await filter.locator('.hs-filter-overview').waitFor({state:'visible'});
+  assert.equal(await filter.locator('.hs-filter-row').count(),7,'BC filter categories missing');
+  const layout = await filter.evaluate(el=>{
+    const outer=el.getBoundingClientRect(), header=el.querySelector('.hs-filter-header').getBoundingClientRect();
+    const content=el.querySelector('.hs-filter-content'), middle=content.getBoundingClientRect();
+    const footer=el.querySelector('.hs-filter-footer').getBoundingClientRect();
+    return {outer:outer.height,viewport:window.visualViewport.height,header:header.bottom,middleTop:middle.top,middleBottom:middle.bottom,footer:footer.top,scroll:content.scrollWidth,width:content.clientWidth};
+  });
+  assert(Math.abs(layout.outer-layout.viewport)<=4 && layout.header<=layout.middleTop+1 && layout.middleBottom<=layout.footer+1 && layout.scroll<=layout.width+1,'Filter viewport layout: '+JSON.stringify(layout));
+  const before = await page.evaluate(()=>({species:[...selSpecies],count:filtered.length}));
+  await filter.getByRole('button',{name:/^Species/}).click();
+  const option=filter.locator('#speciesChips .chip').first();
+  await option.waitFor({state:'visible'});
+  await option.click();
+  assert.notDeepEqual(await page.evaluate(()=>[...selSpecies]),before.species,'Species selection did not update');
+  await filter.getByRole('button',{name:'Done',exact:true}).click();
+  await filter.getByRole('button',{name:'Close filters'}).click();
+  await filter.waitFor({state:'hidden'});
+  assert.deepEqual(await page.evaluate(()=>({species:[...selSpecies],count:filtered.length})),before,'Dismissal did not restore prior filters');
+  await page.locator('#sidebarToggle').click();
+  await filter.getByRole('button',{name:/^Species/}).click();
+  await filter.locator('#speciesChips .chip').first().click();
+  await filter.getByRole('button',{name:'Done',exact:true}).click();
+  await filter.getByRole('button',{name:/^Show [\d,]+ draws$/}).click();
+  await filter.waitFor({state:'hidden'});
+  assert.notDeepEqual(await page.evaluate(()=>[...selSpecies]),before.species,'Apply did not preserve selection');
+  await page.locator('#sidebarToggle').click();
+  await filter.getByRole('button',{name:'Reset',exact:true}).click();
+  await image(page,w+'-filters-redesign');
+  await filter.getByRole('button',{name:/^Show [\d,]+ draws$/}).click();
+  await filter.waitFor({state:'hidden'});
+  assert.equal(await page.evaluate(()=>selSpecies.size),0,'Reset did not restore all species');
+
+
   if (w === 390) {
     const cardIndex = await page.evaluate(() => filtered.findIndex(r => r && r.Code && r.MU && r.Zone));
     assert(cardIndex >= 0, 'No BC LEH hunt card available to test its map');
