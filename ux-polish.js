@@ -403,3 +403,182 @@
     if(count){const update=()=>{apply.textContent='Show '+count.textContent.trim()+' draws';};update();new MutationObserver(update).observe(count,{childList:true,subtree:true,characterData:true});}
   }
 })();
+
+
+/* BC LEH: one-screen filter overview on phones. Existing controls remain the
+   source of truth; each row opens its original controls in the same dialog. */
+(function () {
+  'use strict';
+  function init() {
+    const sheet=document.getElementById('sidebarInner');
+    if (!sheet || sheet.classList.contains('hs-one-screen')) return;
+    const header=sheet.querySelector('.hs-v4-sheet-bar');
+    const footer=sheet.querySelector('.hs-v4-mobile-apply');
+    const reset=sheet.querySelector('.reset-btn');
+    if (!header || !footer || !reset) return;
+    const title=header.querySelector('strong');
+    const mq=window.matchMedia('(max-width: 980px)');
+    const byId=id=>document.getElementById(id);
+    const selected=id=>Array.from(byId(id)?.querySelectorAll('.active,[aria-pressed="true"]')||[])
+      .map(el=>el.textContent.trim()).filter(Boolean);
+    const summarize=(items,empty)=>items.length===0?empty:items.length===1?items[0]:items.length+' selected';
+    const shortDate=value=>value?new Date(value+'T12:00:00').toLocaleDateString('en-CA',{month:'short',day:'numeric'}):'';
+    const specs=[
+      ['Species','speciesChips',()=>summarize(selected('speciesChips'),'All species')],
+      ['Animal class','classChips',()=>summarize(selected('classChips'),'All classes')],
+      ['Region / WMU','muList',()=>{
+        const regions=selected('muList');
+        const zones=typeof selMUsFull!=='undefined'?selMUsFull.size:0;
+        if(zones) return (regions.length?regions.length+' regions · ':'')+zones+' WMU'+(zones===1?'':'s');
+        return summarize(regions,'All regions');
+      }],
+      ['Minimum odds','oddsSlider',()=>((byId('oddsDisplay')?.textContent||'Any')+(byId('oddsUnit')?.textContent||'')).trim()],
+      ['Special tags','specialTagChips',()=>summarize(selected('specialTagChips'),'Any')],
+      ['Season dates','seasonDateFrom',()=>{
+        const a=shortDate(byId('seasonDateFrom')?.value), b=shortDate(byId('seasonDateTo')?.value);
+        return a&&b?a+' – '+b:a?'From '+a:b?'To '+b:'Any dates';
+      }]
+    ];
+    const entries=specs.map(([label,id,summary])=>({label,summary,block:byId(id)?.closest('.filter-block')}));
+    if(entries.some(e=>!e.block)) return;
+    const overview=document.createElement('div');
+    overview.className='hs-filter-overview';
+    const back=document.createElement('button');
+    back.type='button'; back.className='hs-filter-back'; back.textContent='‹ Back';
+    back.setAttribute('aria-label','Back to all filters');
+    header.prepend(back);
+    let current=null;
+    function update() {
+      entries.forEach(e=>{
+        const value=e.summary();
+        if(e.value.textContent!==value) e.value.textContent=value;
+      });
+    }
+    function closeMap() {
+      const map=byId('bcMapPanel');
+      if(map && map.style.display!=='none' && typeof bcToggleMap==='function') bcToggleMap();
+    }
+    function showOverview(focus=false) {
+      if(!current) return;
+      const previous=current;
+      if(previous.block.contains(byId('bcMapPanel'))) closeMap();
+      previous.block.classList.remove('hs-filter-active');
+      sheet.classList.remove('hs-filter-detail');
+      current=null;
+      title.textContent='Filter hunts';
+      sheet.scrollTop=0;
+      update();
+      if(focus) previous.button.focus({preventScroll:true});
+    }
+    function open(e) {
+      if(!mq.matches) return;
+      if(current) showOverview();
+      current=e;
+      e.block.classList.add('hs-filter-active');
+      sheet.classList.add('hs-filter-detail');
+      title.textContent=e.label;
+      sheet.scrollTop=0;
+      back.focus({preventScroll:true});
+    }
+    entries.forEach(e=>{
+      const button=document.createElement('button');
+      button.type='button'; button.className='hs-filter-row';
+      const label=document.createElement('span'); label.className='hs-filter-label'; label.textContent=e.label;
+      const value=document.createElement('span'); value.className='hs-filter-value';
+      const arrow=document.createElement('span'); arrow.className='hs-filter-chevron'; arrow.textContent='›'; arrow.setAttribute('aria-hidden','true');
+      button.append(label,value,arrow);
+      button.addEventListener('click',()=>open(e));
+      e.value=value; e.button=button;
+      overview.append(button);
+    });
+    header.after(overview);
+    back.addEventListener('click',()=>showOverview(true));
+    sheet.addEventListener('input',update);
+    sheet.addEventListener('change',update);
+    sheet.addEventListener('click',()=>queueMicrotask(update));
+    const observer=new MutationObserver(()=>{
+      if(!sheet.classList.contains('open') && current) showOverview();
+      update();
+    });
+    observer.observe(sheet,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class']});
+    mq.addEventListener('change',()=>showOverview());
+    const style=document.createElement('style');
+    style.id='hs-one-screen-filter-style';
+    style.textContent=String.raw`
+      #sidebarInner .hs-filter-overview,#sidebarInner .hs-filter-back { display:none; }
+      @media(max-width:980px) {
+        #drawsPage #sidebarInner.hs-one-screen.open {
+          box-sizing:border-box!important; gap:6px!important;
+          padding:10px 12px!important; max-height:min(calc(var(--hs-visual-vh,100dvh) - 16px),760px)!important;
+          overflow-y:auto!important; overflow-x:hidden!important; min-height:0!important; height:auto!important;
+        }
+        #drawsPage #sidebarInner.hs-one-screen::before { display:none!important; }
+        #drawsPage #sidebarInner.hs-one-screen > .hs-v4-sheet-bar {
+          flex:0 0 auto!important; position:static!important; padding:0 0 6px!important;
+          margin:0!important; border-bottom:1px solid #33423b; gap:8px!important;
+        }
+        #drawsPage #sidebarInner.hs-one-screen .hs-v4-sheet-bar strong {
+          font-size:20px!important; line-height:1.2!important; min-width:0; flex:1;
+        }
+        #drawsPage #sidebarInner.hs-one-screen .hs-v4-sheet-bar button { min-width:44px!important; min-height:44px!important; padding:4px 8px!important; }
+        #drawsPage #sidebarInner.hs-one-screen:not(.hs-filter-detail) > .filter-block { display:none!important; }
+        #drawsPage #sidebarInner.hs-one-screen:not(.hs-filter-detail) > .hs-filter-overview {
+          display:grid!important; gap:3px; flex:0 0 auto!important; min-width:0; margin:0;
+        }
+        #drawsPage #sidebarInner.hs-one-screen .hs-filter-row {
+          display:grid!important; grid-template-columns:minmax(0,1fr) minmax(0,1fr) 12px;
+          align-items:center; gap:6px; min-width:0; width:100%; min-height:44px!important;
+          padding:5px 8px!important; border:0; border-bottom:1px solid #28352e;
+          border-radius:0; background:transparent; text-align:left; color:var(--text,#e5eee5);
+          font:500 13px/1.25 'DM Sans',sans-serif; cursor:pointer;
+        }
+        #drawsPage #sidebarInner.hs-one-screen .hs-filter-label { font-weight:600; }
+        #drawsPage #sidebarInner.hs-one-screen .hs-filter-value {
+          text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#aabcb0; font-size:12px;
+        }
+        #drawsPage #sidebarInner.hs-one-screen .hs-filter-chevron { font-size:20px; line-height:1; text-align:right; color:#aabcb0; }
+        #drawsPage #sidebarInner.hs-one-screen > .reset-btn {
+          flex:0 0 auto!important; min-height:44px!important; padding:4px 8px!important; margin:0!important;
+          border:0!important; font-size:12px!important; background:transparent!important;
+        }
+        #drawsPage #sidebarInner.hs-one-screen > .hs-v4-mobile-apply {
+          position:static!important; flex:0 0 auto!important; margin:0!important; padding:0!important;
+          border:0!important; box-shadow:none!important; background:transparent!important;
+        }
+        #drawsPage #sidebarInner.hs-one-screen > .hs-v4-mobile-apply button { min-height:46px!important; padding:6px!important; }
+        #drawsPage #sidebarInner.hs-one-screen.hs-filter-detail > .hs-filter-overview,
+        #drawsPage #sidebarInner.hs-one-screen.hs-filter-detail > .filter-block:not(.hs-filter-active),
+        #drawsPage #sidebarInner.hs-one-screen.hs-filter-detail > .reset-btn { display:none!important; }
+        #drawsPage #sidebarInner.hs-one-screen.hs-filter-detail .hs-filter-back {
+          display:inline-flex!important; align-items:center; justify-content:center; font-size:12px; white-space:nowrap;
+        }
+        #drawsPage #sidebarInner.hs-one-screen.hs-filter-detail > .filter-block.hs-filter-active {
+          display:flex!important; flex:0 0 auto!important; overflow:visible!important; min-height:0!important; gap:8px!important; padding:4px 0!important;
+        }
+        #drawsPage #sidebarInner.hs-one-screen.hs-filter-detail .hs-filter-active .chips-wrap {
+          display:flex!important; flex-wrap:wrap!important; overflow:visible!important; max-height:none!important; height:auto!important;
+        }
+        #drawsPage #sidebarInner.hs-one-screen.hs-filter-detail .hs-filter-active .chip,
+        #drawsPage #sidebarInner.hs-one-screen.hs-filter-detail .hs-filter-active .mu-item {
+          min-height:44px!important; display:inline-flex; align-items:center; white-space:normal;
+        }
+        #drawsPage #sidebarInner.hs-one-screen.hs-filter-detail .hs-filter-active .mu-list {
+          display:flex!important; flex-direction:column; overflow:visible!important; max-height:none!important; height:auto!important;
+        }
+        #drawsPage #sidebarInner.hs-one-screen.hs-filter-detail .season-date-row {
+          display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px!important;
+        }
+        #drawsPage #sidebarInner.hs-one-screen.hs-filter-detail .season-date-field { min-width:0; }
+        #drawsPage #sidebarInner.hs-one-screen.hs-filter-detail input[type=date] { box-sizing:border-box; width:100%; min-width:0; min-height:44px; }
+      }
+      @media(max-width:980px) and (max-height:490px) and (orientation:landscape) {
+        #drawsPage #sidebarInner.hs-one-screen:not(.hs-filter-detail) > .hs-filter-overview { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      }
+`;
+    document.head.append(style);
+    sheet.classList.add('hs-one-screen');
+    update();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
+})();
