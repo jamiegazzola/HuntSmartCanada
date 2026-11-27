@@ -19,6 +19,84 @@ let selMinHarvest = 0;
 let sortMode = 'odds';
 let filtered = [];
 
+let selSpecialTags = new Set();
+let selSeasonFrom = '';
+let selSeasonTo = '';
+
+// Explicit flags in the published draw data; a restriction may apply to
+// only a portion of a hunt. The official synopsis remains authoritative.
+const BC_SPECIAL_TAGS = [
+  {label:'Archery restriction',matches:r=>/\bARCHERY ONLY\b/i.test(r.Notes||'')},
+  {label:'Age restricted',matches:r=>/\b(?:AGE RESTRICTED|UNDER 18 ONLY)\b/i.test(r.Notes||'')},
+  {label:'Private-land only',matches:r=>/\bPRIVATE LAND ONLY\b/i.test(r.Notes||'')},
+  {label:'New hunt',matches:r=>r.is_new===true}
+];
+const BC_SEASON_MONTHS = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
+
+function bcSeasonIntervals(season, startYear) {
+  const pieces=String(season||'').split(/\s*&\s*/);
+  const result=[];
+  for(const piece of pieces) {
+    const m=piece.trim().match(/^([A-Za-z]+)\s+(\d{1,2})\s*[-–—]\s*([A-Za-z]+)\s+(\d{1,2})$/);
+    if(!m)continue;
+    const date=(month,day)=>{
+      const n=BC_SEASON_MONTHS[month.toLowerCase()];
+      if(!n)return '';
+      const y=startYear+(n<8?1:0), d=Number(day);
+      if(!d||d>new Date(Date.UTC(y,n,0)).getUTCDate())return '';
+      return y+'-'+String(n).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    };
+    const a=date(m[1],m[2]),b=date(m[3],m[4]);
+    if(a&&b&&a<=b)result.push([a,b]);
+  }
+  return result;
+}
+function bcMatchesSeasonDate(record,from,to,startYear) {
+  if(!from&&!to)return true;
+  return bcSeasonIntervals(record.Season,startYear).some(([start,end])=>(!from||end>=from)&&(!to||start<=to));
+}
+function bcSeasonYear() {
+  return Number((document.getElementById('seasonDateFrom')?.min||'2026-08-01').slice(0,4));
+}
+function syncSeasonDateControls() {
+  const from=document.getElementById('seasonDateFrom'),to=document.getElementById('seasonDateTo');
+  if(from)from.value=selSeasonFrom;
+  if(to)to.value=selSeasonTo;
+  document.getElementById('clearSeasonDate')?.classList.toggle('visible',Boolean(selSeasonFrom||selSeasonTo));
+}
+function setSeasonDateFilter(which,value) {
+  if(which==='from'){
+    selSeasonFrom=value||'';
+    if(selSeasonFrom&&selSeasonTo&&selSeasonFrom>selSeasonTo)selSeasonTo=selSeasonFrom;
+  } else if(which==='to'){
+    selSeasonTo=value||'';
+    if(selSeasonFrom&&selSeasonTo&&selSeasonTo<selSeasonFrom)selSeasonFrom=selSeasonTo;
+  } else return;
+  syncSeasonDateControls();
+  applyFilters();
+}
+function buildSpecialTagChips() {
+  const wrap=document.getElementById('specialTagChips');
+  if(!wrap)return;
+  wrap.replaceChildren();
+  for(const tag of BC_SPECIAL_TAGS) {
+    const chip=document.createElement('button');
+    chip.type='button';
+    chip.className='chip'+(selSpecialTags.has(tag.label)?' active':'');
+    chip.textContent=tag.label;
+    chip.setAttribute('aria-pressed',String(selSpecialTags.has(tag.label)));
+    chip.addEventListener('click',()=>{
+      if(selSpecialTags.has(tag.label))selSpecialTags.delete(tag.label);
+      else selSpecialTags.add(tag.label);
+      buildSpecialTagChips();
+      applyFilters();
+    });
+    wrap.append(chip);
+  }
+  document.getElementById('clearSpecialTags')?.classList.toggle('visible',selSpecialTags.size>0);
+}
+
+
 // ── FILTER PAGE STATE ──
 let fpSelSpecies = new Set();
 let fpSelClass = new Set();
@@ -578,6 +656,8 @@ function onSlider(v) {
 }
 
 function buildSpeciesChips() {
+  buildSpecialTagChips();
+  syncSeasonDateControls();
   const all = [...new Set(DATA.map(r=>r.Species))].sort();
   document.getElementById('speciesChips').innerHTML = all.map(s =>
     `<div class="chip${selSpecies.has(s)?' active':''}" onclick="toggleSpecies('${s}')">${s}</div>`
@@ -633,6 +713,8 @@ function clearFilter(type) {
   if (type==='species') { selSpecies.clear(); buildSpeciesChips(); buildMUList(); }
   if (type==='mu') { selMUs.clear(); selMUsFull.clear(); bcUpdateMapChips(); bcUpdateMapStyles(); buildMUList(); }
   if (type==='class') { selClass.clear(); buildClassChips(); }
+  if (type==='special') { selSpecialTags.clear(); buildSpecialTagChips(); }
+  if (type==='seasonDate') { selSeasonFrom=''; selSeasonTo=''; syncSeasonDateControls(); }
   applyFilters();
 }
 
@@ -646,6 +728,7 @@ function setSort(mode) {
 }
 
 function resetAll() {
+  selSpecialTags.clear(); selSeasonFrom=''; selSeasonTo=''; syncSeasonDateControls();
   selSpecies.clear(); selMUs.clear(); selMUsFull.clear(); selMinOdds=0; selMinHarvest=0; selClass.clear();
     document.getElementById('oddsSlider').value=0;
   onSlider(0);
@@ -655,7 +738,10 @@ function resetAll() {
 
 function applyFilters() {
   const q = (document.getElementById('search') ? document.getElementById('search').value : '').toLowerCase();
+  const seasonYear=bcSeasonYear();
   filtered = DATA.filter(r => {
+    if (selSpecialTags.size && !BC_SPECIAL_TAGS.some(tag=>selSpecialTags.has(tag.label)&&tag.matches(r))) return false;
+    if (!bcMatchesSeasonDate(r,selSeasonFrom,selSeasonTo,seasonYear)) return false;
     if (selSpecies.size>0 && !selSpecies.has(r.Species)) return false;
     if (selMUs.size>0 && !selMUs.has(r.MU_General)) return false;
     if (selMUsFull.size>0 && !selMUsFull.has(bcNormalizeMU(r.MU))) return false;
