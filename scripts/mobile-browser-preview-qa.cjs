@@ -71,6 +71,37 @@ async function inspect(page, label) {
 async function image(page, label) {
   await page.screenshot({ path:'mobile-qa-artifacts/' + label + '.png', fullPage:false, animations:'disabled' });
 }
+
+async function assertMapFirst(page,panelSelector,desktop) {
+  const layout=await page.locator(panelSelector).evaluate(el=>{
+    const get=sel=>{const n=el.querySelector(sel);if(!n)return null;const r=n.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,b:r.bottom,text:n.textContent.trim().length};};
+    return {map:get('.hs-bc-zone-panel'),terrain:get('.hs-bc-terrain-panel'),body:get('.hs-bc-terrain-panel .tc-body'),chart:get('.hs-v4-chart-card'),notes:get('.hs-bc-hunt-notes'),summary:get('.expand-grid')};
+  });
+  assert(layout.map&&layout.terrain&&layout.body?.h>0&&layout.body.text>0&&layout.chart,'Missing visible map, terrain or history '+JSON.stringify(layout));
+  assert(layout.map.h>240,'Map is too short '+JSON.stringify(layout));
+  assert(layout.chart.y>=Math.max(layout.map.b,layout.terrain.b)-2,'Charts are above field context '+JSON.stringify(layout));
+  if(desktop) {
+    assert(Math.abs(layout.map.y-layout.terrain.y)<4&&layout.map.x<layout.terrain.x&&layout.map.w>layout.terrain.w,'Desktop map and terrain must be side by side '+JSON.stringify(layout));
+    assert(layout.summary.b<=layout.map.y+2,'Desktop summary must precede map');
+  } else {
+    assert(layout.map.b<=layout.terrain.y+2&&layout.map.y<layout.summary.y,'Mobile map should precede terrain and expanded stats '+JSON.stringify(layout));
+  }
+  if(layout.notes) assert(layout.notes.y>=layout.terrain.b-2&&layout.notes.b<=layout.chart.y+2,'Notes should precede charts');
+  console.log('MAP_FIRST_LAYOUT',desktop?'desktop':'mobile',JSON.stringify(layout));
+}
+async function assertDetailMapFirst(page,desktop) {
+  await page.evaluate(()=>openDrawDetail(filtered.findIndex(r=>r&&r.MU&&r.Code&&r.writeup)));
+  await page.locator('#drawDetailPage .hs-pd-bc').waitFor({state:'visible'});
+  const layout=await page.locator('#drawDetailPage .hs-pd-bc').evaluate(el=>{
+    const get=sel=>{const n=el.querySelector(sel);const r=n?.getBoundingClientRect();return r?{x:r.x,y:r.y,w:r.width,h:r.height,b:r.bottom}:null;};
+    return {map:get('.hs-pd-map'),terrain:get('.hs-pd-field'),history:get('.hs-pd-history'),body:get('.hs-pd-field .dd-wu-body')};
+  });
+  assert(layout.map?.h>240&&layout.terrain?.h>0&&layout.body?.h>0&&layout.history.y>=Math.max(layout.map.b,layout.terrain.b)-2,'Detail page field context missing or out of order '+JSON.stringify(layout));
+  assert(desktop?Math.abs(layout.map.y-layout.terrain.y)<4&&layout.map.w>layout.terrain.w:layout.map.b<=layout.terrain.y+2,'Detail page responsive field layout '+JSON.stringify(layout));
+  await image(page,desktop?'desktop-map-first-detail':'390-map-first-detail');
+  await page.evaluate(()=>showPage('draws'));
+}
+
 async function mobile(browser, w, h) {
   const context = await browser.newContext({
     viewport:{width:w,height:h}, screen:{width:w,height:h},
@@ -226,7 +257,8 @@ async function mobile(browser, w, h) {
   await image(page, w + '-draws');
 
   if (w === 390) {
-    const cardIndex = await page.evaluate(() => filtered.findIndex(r => r && r.Code && r.MU && r.Zone));
+    await page.waitForFunction(()=>filtered.some(r=>r?.writeup)&&document.querySelector('#cardsGrid .hs-bc-terrain-panel .tc-body'),null,{timeout:30000});
+    const cardIndex = await page.evaluate(() => filtered.findIndex((r,i) => r && r.Code && r.MU && r.Zone && r.writeup && document.getElementById('expbtn-'+i)));
     assert(cardIndex >= 0, 'No BC LEH hunt card available to test its map');
     const cardStarted = Date.now();
     await page.locator('#expbtn-' + cardIndex).click();
@@ -250,6 +282,7 @@ async function mobile(browser, w, h) {
       });
     });
     assert(toolbar,'Mobile zone map controls wrap or overflow');
+    await assertMapFirst(page,'#exp-'+cardIndex,false);
     await image(page, '390-leh-card');
 
     await page.evaluate(id => {
@@ -304,6 +337,7 @@ async function mobile(browser, w, h) {
     await page.locator('.leh-card-fullscreen-overlay').waitFor({state:'detached',timeout:6000});
     assert(await page.locator('#homePage').isVisible(),'Navigating away from fullscreen map failed');
     await page.evaluate(()=>window.showPage('draws'));
+    await assertDetailMapFirst(page,false);
   }
 
   await show(page, 'saved', '#savedPage');
@@ -477,6 +511,16 @@ async function desktop(browser) {
     await show(page,route,id);
     await inspect(page,'desktop '+slug);
     await image(page,'desktop-'+slug);
+    if(route==='draws') {
+      await page.waitForFunction(()=>filtered.some(r=>r?.writeup)&&document.querySelector('#cardsGrid .hs-bc-terrain-panel .tc-body'),null,{timeout:30000});
+      const index=await page.evaluate(()=>filtered.findIndex((r,i)=>r?.writeup&&r?.MU&&document.getElementById('expbtn-'+i)));
+      assert(index>=0,'No rendered hunt with field information');
+      await page.locator('#expbtn-'+index).click();
+      await page.locator('#exp-'+index+' .hs-v4-chart-card').first().waitFor({state:'visible'});
+      await assertMapFirst(page,'#exp-'+index,true);
+      await image(page,'desktop-map-first-card');
+      await assertDetailMapFirst(page,true);
+    }
     assert(await page.locator('#navDistribution').isVisible(),'Species map top navigation disappeared on '+slug);
   }
   await page.close();

@@ -591,3 +591,43 @@ nav {
     margin-bottom: 9px;
   }
 }
+
+
+/* Map-first BC hunt details. Mobile follows the DOM reading order; desktop
+   places the summary above a 60/40 field row and the historical charts below. */
+.card-expand.open:has(> .hs-bc-zone-panel) > :is(.hs-bc-zone-panel,.hs-bc-terrain-panel,.hs-bc-hunt-notes) {
+  min-width:0; max-width:100%; margin:0 !important; padding:12px;
+  border:1px solid #394b3d !important; border-radius:9px; background:#1a2320;
+}
+.card-expand.open .hs-bc-section-title {
+  color:#e0e8df; font-size:14px; font-weight:700; line-height:1.35; margin:0 0 10px;
+}
+.card-expand.open .hs-bc-terrain-panel .writeup-body.tc-card {
+  display:block !important; margin:0 !important; border:0; background:transparent; border-radius:0;
+}
+#drawsPage .card-expand.open .hs-bc-terrain-panel .writeup-body.tc-card .tc-section,
+#savedPage .card-expand.open .hs-bc-terrain-panel .tc-section {
+  padding:0 0 12px; border-left:0;
+}
+#drawsPage .card-expand.open .hs-bc-terrain-panel .writeup-body.tc-card .tc-section + .tc-section,
+#savedPage .card-expand.open .hs-bc-terrain-panel .tc-section + .tc-section { padding-top:12px; }
+.card-expand.open .hs-bc-terrain-panel .tc-section:last-child { padding-bottom:0 !important; }
+.card-expand.open .hs-bc-terrain-panel .tc-body { color:#d3ded6; font-size:14px; line-height:1.65; overflow-wrap:anywhere; }
+.card-expand.open .hs-bc-hunt-notes .tc-warn { margin:0; }
+.card-expand.open .hs-bc-hunt-notes .tc-warn span { color:#d7c8a8; font-size:13px; line-height:1.6; overflow-wrap:anywhere; }
+#drawsPage .card-expand.open:has(> .hs-bc-zone-panel) > .hs-bc-terrain-panel,
+#drawsPage .card-expand.open:has(> .hs-bc-zone-panel) > .hs-bc-hunt-notes { grid-column:1/-1; }
+#savedPage .card-expand.open:has(> .hs-bc-zone-panel) { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; }
+#savedPage .hs-bc-zone-map { height:290px !important; aspect-ratio:auto !important; min-height:0 !important; }
+@media (min-width:981px) {
+  #drawsPage .card-expand.open:has(> .hs-bc-zone-panel) { grid-template-columns:repeat(10,minmax(0,1fr)); align-items:start; }
+  #drawsPage .card-expand.open:has(> .hs-bc-zone-panel) > .expand-grid { order:-1; }
+  #drawsPage .card-expand.open:has(> .hs-bc-zone-panel) > .hs-bc-zone-panel { grid-column:1/span 6; align-self:start; }
+  #drawsPage .card-expand.open:has(> .hs-bc-zone-panel) > .hs-bc-terrain-panel { grid-column:7/-1; align-self:start; }
+  #drawsPage .card-expand.open:has(> .hs-bc-zone-panel) > .hs-v4-chart-card { grid-column:span 5; }
+  #drawsPage .card-expand.open .hs-bc-zone-panel .hs-leh-map-toolbar { flex-wrap:wrap; gap:6px; }
+}
+@media (max-width:980px) {
+  #drawsPage .card-expand.open:has(> .hs-bc-zone-panel) > :is(.hs-bc-zone-panel,.hs-bc-terrain-panel,.hs-bc-hunt-notes,.expand-grid,.hs-v4-chart-card) { grid-column:1/-1; }
+  #drawsPage .card-expand.open .hs-bc-zone-panel .hs-bc-zone-map { height:290px !important; max-height:290px !important; }
+}
