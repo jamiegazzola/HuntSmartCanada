@@ -715,47 +715,78 @@ function fullMapSetProvince(prov) {
 }
 
 // ── Entry point ──
-let _fullMapGateAttempts = 0;
+function setHuntMapStatus(id, state, message = '') {
+  const overlay = document.getElementById(id);
+  if (!overlay) return;
+  overlay.dataset.state = state;
+  overlay.hidden = state === 'ready';
+  overlay.style.display = state === 'ready' ? 'none' : '';
+  const status = document.getElementById(id + 'Text');
+  if (status.textContent !== message) status.textContent = message;
+  overlay.querySelector('.map-retry').hidden = state !== 'error';
+}
+
+let huntMapLibraryPending;
+function ensureHuntMapLibrary() {
+  if (window.mapboxgl?.Map) return Promise.resolve();
+  if (!huntMapLibraryPending) {
+    huntMapLibraryPending = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      const timeout = setTimeout(fail, 12000);
+      function fail() {
+        clearTimeout(timeout);
+        script.remove();
+        reject(new Error('Mapbox GL could not load'));
+      }
+      script.src = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
+      script.onload = () => {
+        if (!window.mapboxgl?.Map) return fail();
+        clearTimeout(timeout);
+        resolve();
+      };
+      script.onerror = fail;
+      document.head.appendChild(script);
+    }).finally(() => { huntMapLibraryPending = null; });
+  }
+  return huntMapLibraryPending;
+}
+
+function watchHuntMapStartup(map, statusId, layerId, isCurrent, reset) {
+  const timeout = setTimeout(() => {
+    if (!isCurrent()) return;
+    reset();
+    setHuntMapStatus(statusId, 'error', 'The map did not finish loading.');
+  }, 18000);
+  map.once('remove', () => clearTimeout(timeout));
+  map.on('render', ready);
+  function ready() {
+    if (!isCurrent() || !map.getLayer(layerId)) return;
+    clearTimeout(timeout);
+    map.off('render', ready);
+    setHuntMapStatus(statusId, 'ready');
+  }
+}
+
 function fullMapInit() {
-  if (fullMapInitialized[fullMapProvince]) {
-    if (fullMapInstance) {
-      fullMapInstance.resize();
-      const loading = document.getElementById('fullMapLoading');
-      if (loading && fullMapInstance.loaded()) loading.style.display = 'none';
-    }
+  const province = fullMapProvince;
+  if (fullMapInstance && fullMapInitialized[province]) {
+    fullMapInstance.resize();
     return;
   }
-
-  const loading = document.getElementById('fullMapLoading');
-  const txt     = document.getElementById('fullMapLoadingText');
-  if (loading) loading.style.display = 'flex';
-  if (txt) txt.textContent = `Loading ${fullMapProvince === 'BC' ? 'BC' : 'Alberta'} map…`;
-
-  function doInit() {
-    // Get token from config.js
+  setHuntMapStatus('fullMapLoading', 'loading', `Loading ${province === 'BC' ? 'BC' : 'Alberta'} map…`);
+  const init = () => {
+    if (province !== fullMapProvince || fullMapInstance) return;
     const token = (typeof MAPBOX_TOKEN !== 'undefined') ? MAPBOX_TOKEN : '';
-    if (!token) {
-      if (loading) loading.innerHTML = '<span style="color:#f87171;font-size:12px">Mapbox token missing. Add config.js.</span>';
-      return;
-    }
+    if (!token) throw new Error('Mapbox token missing');
     mapboxgl.accessToken = token;
-    if (fullMapProvince === 'BC') _fullMapInitBC();
+    if (province === 'BC') _fullMapInitBC();
     else _fullMapInitAB();
-  }
-
-  if (window.mapboxgl) {
-    doInit();
-  } else {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css';
-    document.head.appendChild(link);
-    const script = document.createElement('script');
-    script.src = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
-    script.onload = doInit;
-    script.onerror = () => { if (loading) loading.innerHTML = '<span style="color:#f87171;font-size:12px">Failed to load map.</span>'; };
-    document.head.appendChild(script);
-  }
+  };
+  return ensureHuntMapLibrary().then(init).catch(error => {
+    if (province !== fullMapProvince) return;
+    console.error('[HuntSmart map]', error);
+    setHuntMapStatus('fullMapLoading', 'error', 'The map could not load.');
+  });
 }
 
 // ── Build base Mapbox map ──
@@ -799,16 +830,28 @@ function _fullMapFitProvinceOverview(prov) {
   }
 }
 
+function _resetFullMapInstance(map, province) {
+  map.remove();
+  fullMapInstance = null;
+  fullMapGeoLayer = null;
+  fullMapInitialized[province] = false;
+}
+
+function _watchFullMapStartup(map, province) {
+  watchHuntMapStartup(map, 'fullMapLoading', _LYR_WMU_FILL,
+    () => fullMapInstance === map && fullMapProvince === province,
+    () => _resetFullMapInstance(map, province));
+}
+
 // ── BC init ──
 function _fullMapInitBC() {
   const map = _fullMapBuild([-126.3, 54.4], 4.15);
   if (!map) return;
   fullMapInstance = map;
   fullMapInitialized['BC'] = true;
+  _watchFullMapStartup(map, 'BC');
 
   map.on('load', () => {
-    const loading = document.getElementById('fullMapLoading');
-    if (loading) loading.style.display = 'none';
     fullMapBuildSelectors();
     setTimeout(hsRailBootstrap, 80);
 
@@ -908,21 +951,17 @@ function _fullMapInitAB() {
   if (!map) return;
   fullMapInstance = map;
   fullMapInitialized['AB'] = true;
+  _watchFullMapStartup(map, 'AB');
 
   map.on('load', async () => {
     try { await dataReady; } catch (error) {
       if (fullMapInstance !== map) return;
-      map.remove();
-      fullMapInstance = null;
-      fullMapInitialized.AB = false;
-      const text = document.getElementById('fullMapLoadingText');
-      if (text) text.textContent = 'Alberta data could not load. Reopen the map to retry.';
+      _resetFullMapInstance(map, 'AB');
+      setHuntMapStatus('fullMapLoading', 'error', 'Alberta draw data could not load.');
       console.error('[HuntSmart Alberta map]', error);
       return;
     }
     if (fullMapInstance !== map) return;
-    const loading = document.getElementById('fullMapLoading');
-    if (loading) loading.style.display = 'none';
     fullMapBuildSelectors();
     setTimeout(hsRailBootstrap, 80);
 

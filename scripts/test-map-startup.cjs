@@ -10,7 +10,7 @@ async function main() {
   let resized = 0;
   const ctx = {fullMapInitialized:{BC:true}, fullMapProvince:'BC',fullMapInstance:{resize(){resized++;},loaded(){return true;}},document:{getElementById(){return loader;}}};
   vm.createContext(ctx);vm.runInContext(entry,ctx);ctx.fullMapInit();
-  assert.equal(resized,1);assert.equal(loader.style.display,'none');
+  assert.equal(resized,1);assert.equal(loader.style.display,'flex'); // Re-entry does not hide an in-progress load.
   // A failed WebGL constructor must remain retryable rather than marked initialized.
   const init = source.slice(source.indexOf('function _fullMapInitBC()'), source.indexOf('// ── AB init'));
   ctx.fullMapInitialized.BC=false;ctx._fullMapBuild=()=>{throw Error('WebGL unavailable');};
@@ -23,9 +23,12 @@ async function main() {
   vm.createContext(dataCtx);vm.runInContext(ab,dataCtx);
   const a=dataCtx.loadABData(),b=dataCtx.loadABData();assert.equal(a,b);assert.equal(fetches,1);
   release({ok:true,json:async()=>[{wmu:'100',huntCode:'1',pctDrawn:10}]});await a;assert.equal(dataCtx.AB_DATA.length,1);
-  const manifest=JSON.parse(fs.readFileSync('site/map-tiles/20261122-v4/manifest.json'));
+  const manifest=JSON.parse(fs.readFileSync('site/map-tiles/20261128-v5/manifest.json'));
   assert.equal(manifest.bc.featureCount,225);assert.equal(manifest.ab.featureCount,198);
   assert.ok(zlib.gzipSync(JSON.stringify(manifest)).length<350000);
+  const redirects=fs.readFileSync('site/_redirects','utf8');
+  assert.match(redirects,/^\/map-tiles\/\*\s+\/map-asset-not-found\.txt\s+404\s*\n\/\*\s+\/index\.html\s+200$/m);
+  assert.ok(fs.statSync('site/map-asset-not-found.txt').size>0);
   // Validate every deployed data URL resolves to identical records, not a subset.
   const deployed=fs.readFileSync('site/data.js','utf8');
   for(const url of deployed.matchAll(/\/app-data\/([^']+\.json)/g)) {

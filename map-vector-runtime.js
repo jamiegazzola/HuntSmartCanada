@@ -6,7 +6,7 @@
   'use strict';
 
   const VERSION = '2026-10-28-vector-v2';
-  const TILE_VERSION = '20261122-v4';
+  const TILE_VERSION = '20261128-v5';
   const BASE = `/map-tiles/${TILE_VERSION}`;
   const BOUNDS = {
     BC: [-139.3, 48.1, -113.8, 60.2],
@@ -31,11 +31,24 @@
         try { return new URL(s.src, location.href).pathname === new URL(src, location.href).pathname; }
         catch (_) { return false; }
       });
-      if (existing && existing.dataset.hsVectorLoaded === '1') { resolve(); return; }
+      if (existing && (existing.dataset.hsVectorLoaded === '1' || existing.dataset.hsLoaded === '1')) { resolve(); return; }
       const script = existing || document.createElement('script');
       let settled = false;
-      const done = () => { if (settled) return; settled = true; script.dataset.hsVectorLoaded = '1'; resolve(); };
-      const fail = () => { if (settled) return; settled = true; reject(new Error(`Failed to load ${src}`)); };
+      const timer = setTimeout(() => fail(), 12000);
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        script.dataset.hsVectorLoaded = '1';
+        resolve();
+      };
+      const fail = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (!existing) script.remove();
+        reject(new Error(`Failed to load ${src}`));
+      };
       script.addEventListener('load', done, { once:true });
       script.addEventListener('error', fail, { once:true });
       if (!existing) {
@@ -51,7 +64,12 @@
     if (state.manifest) return Promise.resolve(state.manifest);
     if (state.manifestPromise) return state.manifestPromise;
     const started = now();
-    state.manifestPromise = fetch(`${BASE}/manifest.json?v=${VERSION}`, { cache:'force-cache' })
+    const request = new AbortController();
+    const timeout = setTimeout(() => request.abort(), 8000);
+    state.manifestPromise = fetch(`${BASE}/manifest.json?v=${VERSION}`, {
+      cache: state.retryManifest ? 'reload' : 'force-cache',
+      signal: request.signal
+    })
       .then(response => {
         if (!response.ok) throw new Error(`WMU vector manifest returned ${response.status}`);
         return response.json();
@@ -64,7 +82,12 @@
         state.metrics.manifestMs = round(now() - started);
         return manifest;
       })
-      .catch(error => { state.manifestPromise = null; throw error; });
+      .catch(error => {
+        state.retryManifest = true;
+        state.manifestPromise = null;
+        throw error;
+      })
+      .finally(() => clearTimeout(timeout));
     return state.manifestPromise;
   }
 
@@ -116,7 +139,7 @@
 
     proto.addSource = function (sourceId, spec) {
       const province = provinceForSource(sourceId);
-      if (province && spec && spec.type === 'geojson') {
+      if (province && spec?.type === 'geojson' && spec.data?.__hsVectorIndex) {
         this.__hsVectorWmuSources ||= new Map();
         this.__hsVectorWmuSources.set(sourceId, province);
         const manifest = state.manifest;
@@ -129,6 +152,7 @@
           scheme:'xyz'
         });
       }
+      this.__hsVectorWmuSources?.delete(sourceId);
       return originalAddSource.call(this, sourceId, spec);
     };
 
@@ -164,42 +188,67 @@
     return fn && fn.__hsMapPerfOriginal ? fn.__hsMapPerfOriginal : fn;
   }
 
+  async function prepareGeometry(province) {
+    try {
+      await loadManifest();
+      installIndex(province);
+    } catch (error) {
+      console.warn('[HuntSmart WMU tiles] Loading full boundaries instead', error);
+      await (province === 'AB' ? ensureABFullGeometry() : ensureBCFullGeometry());
+    }
+  }
+
   function wrapFullMap() {
     const original = unwrapPerformanceGate(window.fullMapInit);
     if (typeof original !== 'function') return;
-    window.fullMapInit = function () {
-      const args = arguments;
-      const context = this;
-      const loading = document.getElementById('fullMapLoading');
-      try {
-        if (fullMapInstance && fullMapInitialized[fullMapProvince]) return original.apply(context, args);
-      } catch (_) {}
-      if (loading) loading.style.display = 'flex';
-      return loadManifest().then(() => {
-        let province = 'BC';
-        try { province = fullMapProvince === 'AB' ? 'AB' : 'BC'; } catch (_) {}
-        installIndex(province);
-        patchMapboxPrototype();
-        return original.apply(context, args);
-      }).catch(error => {
-        console.error('[HuntSmart vector map]', error);
-        const text = document.getElementById('fullMapLoadingText');
-        if (text) text.textContent = 'Map data failed to load. Please retry.';
-      });
+    let pending;
+    window.fullMapInit = function (options) {
+      const province = fullMapProvince;
+      if (fullMapInstance && fullMapInitialized[province]) return original.apply(this, arguments);
+      if (pending?.province === province) return pending.promise;
+      const overlay = document.getElementById('fullMapLoading');
+      if (overlay?.dataset.state === 'error' && overlay.dataset.province === province && !options?.retry) return;
+      if (overlay) overlay.dataset.province = province;
+      setHuntMapStatus('fullMapLoading', 'loading', `Loading ${province === 'AB' ? 'Alberta' : 'BC'} map…`);
+      const attempt = { province };
+      pending = attempt;
+      attempt.promise = Promise.all([prepareGeometry(province), ensureHuntMapLibrary()])
+        .then(() => {
+          if (pending !== attempt || fullMapProvince !== province) return;
+          patchMapboxPrototype();
+          return original.apply(this, arguments);
+        })
+        .catch(error => {
+          console.error('[HuntSmart Interactive Map]', error);
+          if (pending === attempt && fullMapProvince === province) {
+            setHuntMapStatus('fullMapLoading', 'error', 'The map could not load.');
+          }
+        })
+        .finally(() => { if (pending === attempt) pending = null; });
+      return attempt.promise;
     };
   }
 
   function wrapGOS() {
     const original = unwrapPerformanceGate(window.osInitMap);
     if (typeof original !== 'function') return;
-    window.osInitMap = function () {
-      const args = arguments;
-      const context = this;
-      return loadManifest().then(() => {
-        installIndex('BC');
-        patchMapboxPrototype();
-        return original.apply(context, args);
-      }).catch(error => console.error('[HuntSmart vector GOS]', error));
+    let pending;
+    window.osInitMap = function (options) {
+      if (osMapInitialized) return original.apply(this, arguments);
+      if (pending) return pending;
+      if (document.getElementById('osMapLoading')?.dataset.state === 'error' && !options?.retry) return;
+      setHuntMapStatus('osMapLoading', 'loading', 'Loading BC General Open Seasons map…');
+      pending = Promise.all([prepareGeometry('BC'), ensureHuntMapLibrary()])
+        .then(() => {
+          patchMapboxPrototype();
+          return original.apply(this, arguments);
+        })
+        .catch(error => {
+          console.error('[HuntSmart General Open Seasons]', error);
+          setHuntMapStatus('osMapLoading', 'error', 'The General Open Seasons map could not load.');
+        })
+        .finally(() => { pending = null; });
+      return pending;
     };
   }
 

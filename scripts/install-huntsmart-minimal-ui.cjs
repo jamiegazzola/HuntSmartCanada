@@ -58,10 +58,17 @@ const yearMarkup=[
 html=html.slice(0,periodEnd)+yearMarkup+html.slice(periodEnd);
 const extra=[
 '  <button id="hs-year-trigger" class="hs-year-trigger" type="button" hidden aria-controls="hs-harvest-panel" aria-label="Choose hunter success reporting years">Years</button>',
+'  <span id="hs-year-status" class="sr-only" role="status"></span>',
+'  <form id="hs-wmu-lookup" hidden>',
+'    <input id="hs-wmu-query" aria-label="Wildlife management unit number" placeholder="WMU, e.g. 5-5" list="hs-wmu-options" autocomplete="off" required>',
+'    <datalist id="hs-wmu-options"></datalist>',
+'    <button type="submit">Find WMU</button>',
+'    <div id="hs-wmu-lookup-status" role="status"></div>',
+'  </form>',
 '  <div id="hs-metric-legend" class="hs-metric-legend" hidden aria-label="Map metric legend"></div>',
 '  <section id="hs-wmu-card" class="hs-wmu-card" aria-label="Selected wildlife management unit" hidden>',
 '    <div class="hs-wmu-heading">',
-'      <div><h2 id="hs-wmu-title" class="hs-wmu-title">WMU</h2><div id="hs-wmu-meta" class="hs-wmu-meta"></div></div>',
+'      <div><h2 id="hs-wmu-title" class="hs-wmu-title" tabindex="-1">WMU</h2><div id="hs-wmu-meta" class="hs-wmu-meta"></div></div>',
 '      <button type="button" id="hs-wmu-close" class="hs-wmu-close" aria-label="Close management unit details">×</button>',
 '    </div>',
 '    <div class="hs-wmu-stats">',
@@ -104,10 +111,10 @@ app=app.replace(priorEra,
 new Function(app);
 const appTag=html.match(/<script src="app\.js\?v=[^"]+"><\/script>/);
 assert(appTag,'app script missing');
-html=html.replace(appTag[0],appTag[0]+'\n  <script src="hs-map-ui.js?v=compact-back-20261122b"></script>');
-html=html.replace('</head>','  <link rel="stylesheet" href="hs-map-ui.css?v=compact-back-20261122b">\n</head>');
+html=html.replace(appTag[0],appTag[0]+'\n  <script src="hs-map-ui.js?v=map-ux-20261128"></script>');
+html=html.replace('</head>','  <link rel="stylesheet" href="hs-map-ui.css?v=map-ux-20261128">\n</head>');
 html=html.replace(/app\.js\?v=[^"]+/,'app.js?v=bear-bison-20261123b');
-html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=bear-bison-20261123b');
+html=html.replace(/harvest-success\.js\?v=[^"]+/,'harvest-success.js?v=map-ux-20261128');
 html=html.replace(/species-catalog\.js\?v=[^"]+/,'species-catalog.js?v=bear-bison-20261123b');
 assert(html.includes('hs-map-ui.js?v=')&&html.includes('hs-map-ui.css?v='),'UI assets not linked');
 assert(!html.includes('data-hs-huntmode'),'Single Success view may not add hunt type controls');

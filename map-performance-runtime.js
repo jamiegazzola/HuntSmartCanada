@@ -84,20 +84,6 @@
       Array.isArray(AB_WMU_GEOJSON.features);
   }
 
-  function showFullMapLoading(message) {
-    const loader = document.getElementById('fullMapLoading');
-    const text = document.getElementById('fullMapLoadingText');
-    if (text) text.textContent = message || 'Loading map…';
-    if (loader) loader.style.display = 'flex';
-  }
-
-  function showFullMapLoadError(message) {
-    const loader = document.getElementById('fullMapLoading');
-    const text = document.getElementById('fullMapLoadingText');
-    if (text) text.textContent = message || 'Map data failed to load. Please retry.';
-    if (loader) loader.style.display = 'flex';
-  }
-
   async function ensureBCGeometry() {
     if (hasBCGeometry()) return true;
     if (state.bcGeometryPromise) return state.bcGeometryPromise;
@@ -155,14 +141,15 @@
       const loader = province === 'AB' ? ensureABGeometry : ensureBCGeometry;
 
       if (name === 'fullMapInit') {
-        showFullMapLoading(`Loading ${province === 'AB' ? 'Alberta' : 'BC'} map…`);
+        setHuntMapStatus('fullMapLoading', 'loading', `Loading ${province === 'AB' ? 'Alberta' : 'BC'} map…`);
       }
 
       return loader()
         .then(() => original.apply(ctx, args))
         .catch(err => {
           console.error(`[HuntSmart map] ${name} geometry gate failed`, err);
-          if (name === 'fullMapInit') showFullMapLoadError('Map data failed to load. Please retry.');
+          if (name === 'fullMapInit') setHuntMapStatus('fullMapLoading', 'error', 'The map could not load.');
+          if (name === 'osInitMap') setHuntMapStatus('osMapLoading', 'error', 'The General Open Seasons map could not load.');
           return undefined;
         });
     }

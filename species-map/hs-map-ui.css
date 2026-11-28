@@ -259,3 +259,51 @@ body.bc-black-bear-history .layer-note:not([hidden]){display:block!important}
 .hs-bear-legend{position:fixed;z-index:21;bottom:calc(env(safe-area-inset-bottom,0px) + 86px);left:12px;max-width:min(340px,calc(100vw - 24px));padding:8px 10px;border:1px solid rgba(255,255,255,.13);border-radius:9px;background:rgba(20,27,22,.9);color:#d1ded3;font:500 11px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;pointer-events:none}
 .hs-bear-legend[hidden]{display:none!important}.hs-bear-legend i{display:inline-block;width:10px;height:10px;margin-right:4px;border-radius:2px}.hs-bear-legend span{display:inline-block;margin-right:9px}.hs-bear-legend strong{display:block;font-weight:650;margin-bottom:3px}
 @media(max-width:700px){.hs-bear-legend{left:9px;bottom:calc(env(safe-area-inset-bottom,0px) + 84px);font-size:10px}}
+
+/* Keep the native species picker and wrap its visible selection on narrow screens. */
+.hs-map-toolbar .hs-toolbar-header .species-control { height:auto; min-height:42px; }
+.hs-map-toolbar .species-control select { opacity:0; }
+.hs-map-toolbar .species-control:focus-within { outline:2px solid #fff; outline-offset:2px; }
+.hs-selected-species {
+  display:flex;
+  align-items:center;
+  min-height:42px;
+  padding:6px 34px 6px 10px;
+  color:#fff;
+  font-size:13px;
+  font-weight:650;
+  line-height:1.2;
+  overflow-wrap:anywhere;
+  pointer-events:none;
+}
+.hs-province-status { padding:4px 3px 0; color:#d5e6d9; font-size:12px; }
+.hs-province-status:empty { padding:0; }
+.hs-map-toolbar .hs-success-tools { flex-wrap:wrap; }
+#hs-wmu-lookup {
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto;
+  gap:6px;
+  flex:1 0 100%;
+}
+#hs-wmu-lookup[hidden] { display:none; }
+#hs-wmu-query,#hs-wmu-lookup button {
+  min-width:0;
+  min-height:44px;
+  padding:0 9px;
+  border:1px solid #506458;
+  border-radius:9px;
+  background:#252d28;
+  color:#fff;
+  font:inherit;
+  font-size:13px;
+}
+#hs-wmu-query::placeholder { color:#c4d0c5; }
+#hs-wmu-query:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+#hs-wmu-lookup-status { grid-column:1 / -1; color:#d5e6d9; font-size:12px; }
+#hs-wmu-lookup-status:empty { display:none; }
+.hs-map-toolbar .hs-harvest-panel {
+  position:absolute;
+  top:calc(100% + 8px);
+  left:0;
+  width:100%;
+}

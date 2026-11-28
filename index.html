@@ -43,7 +43,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
 <link rel="preload" as="image" href="./images/hero-bg.jpg" fetchpriority="high"/>
-<link href="./style.css?v=20261124compactdraws" rel="stylesheet"/>
+<link href="./style.css?v=map-recovery-20261128" rel="stylesheet"/>
 <link href="./homepage-polish.css?v=20261127mapfirst" rel="stylesheet"/>
 <link href="./auth-styles.css?v=20260611e" rel="stylesheet"/>
 <link href="./stripe-styles.css?v=20260611e" rel="stylesheet"/>
@@ -1016,6 +1016,13 @@ summary.hs-green-detail-toggle:focus-visible,
       <div class="os-map-wrap">
         <div class="os-map-status" id="osMapStatus"></div>
         <div id="osMap" class="os-map"></div>
+        <div class="fullmap-loading" id="osMapLoading" hidden>
+          <div class="map-loading-inner">
+            <div class="map-spinner" aria-hidden="true"></div>
+            <div role="status" id="osMapLoadingText"></div>
+            <button type="button" class="map-retry" hidden onclick="osInitMap({ retry: true })">Retry map</button>
+          </div>
+        </div>
 
         <!-- HS MOBILE RAIL: GOS TAB — hidden on desktop via CSS -->
         <div class="gos-mobile-wrap" id="gosMobileWrap">
@@ -1204,10 +1211,11 @@ summary.hs-green-detail-toggle:focus-visible,
             <div class="hs-modal" id="hsModal" onclick="event.stopPropagation()"></div>
           </div>
         </div>
-        <div class="fullmap-loading" id="fullMapLoading" style="display:none">
+        <div class="fullmap-loading" id="fullMapLoading" hidden>
           <div class="map-loading-inner">
-            <div class="map-spinner"></div>
-            <div id="fullMapLoadingText">Loading map…</div>
+            <div class="map-spinner" aria-hidden="true"></div>
+            <div role="status" id="fullMapLoadingText"></div>
+            <button type="button" class="map-retry" hidden onclick="fullMapInit({ retry: true })">Retry map</button>
           </div>
         </div>
       </div>

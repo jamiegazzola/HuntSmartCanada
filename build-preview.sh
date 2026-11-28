@@ -331,6 +331,7 @@ cat > site/sitemap.xml <<'EOF'
 EOF
 
 # Preserve old bookmarks while establishing clean slash URLs as permanent.
+printf 'Map asset not found\n' > site/map-asset-not-found.txt
 cat > site/_redirects <<'EOF'
 https://huntsmartcanada.netlify.app/blog.html  https://huntsmartcanada.ca/blog/  301!
 https://huntsmartcanada.netlify.app/how-to-use-huntsmart.html  https://huntsmartcanada.ca/blog/how-to-use-huntsmart/  301!
@@ -347,6 +348,8 @@ https://huntsmartcanada.netlify.app/*  https://huntsmartcanada.ca/:splat  301!
 /how-to-use-huntsmart-map.html  /blog/how-to-use-huntsmart-map/  301!
 /admin.html  /admin/  301!
 
+# Sparse WMU tiles must return 404 instead of passing the app shell to Mapbox.
+/map-tiles/*  /map-asset-not-found.txt  404
 /*  /index.html  200
 EOF
 

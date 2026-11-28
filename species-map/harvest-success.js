@@ -237,7 +237,12 @@
   const detail=document.getElementById('hs-harvest-detail');
   const legend=document.getElementById('hs-harvest-legend');
   if(!btn||!control||!period||!detail||!legend) throw Error('Hunter success controls missing');
-  let context=null,enabled=false,layer=null,info=null,renderSerial=0;
+  const wmuLookup=document.getElementById('hs-wmu-lookup');
+  const wmuQuery=document.getElementById('hs-wmu-query');
+  const wmuLookupStatus=document.getElementById('hs-wmu-lookup-status');
+  let lookupIds=new Set();
+  let context=null,enabled=false,layer=null,info=null,renderSerial=0,yearsLoading=false;
+  let openedFromLookup=false;
   let boundaries=null,pendingBoundaries=null,official=null,pendingOfficial=null;
   let sheepAge=null,pendingAge=null,selectedSpecies=null;
   let history=null;
@@ -434,8 +439,12 @@
     const years=availableYears(),chip=document.getElementById('hs-year-trigger');
     if(chip){
       const label=selectedYearLabel().replace(' pooled','');
-      chip.textContent=label==='No available years'?'Years unavailable':label;
+      const status=document.getElementById('hs-year-status');
+      chip.textContent=yearsLoading?'Loading years…':label==='No available years'?'Years unavailable':label;
+      chip.disabled=yearsLoading||!years.length;
       chip.hidden=!enabled||!active();
+      if(status)status.textContent=chip.hidden?'':yearsLoading?'Loading reporting years…':
+        years.length?'Reporting years: '+label:'Reporting years unavailable.';
     }
     const start=document.getElementById('hs-year-from'),end=document.getElementById('hs-year-to');
     if(start&&end){
@@ -465,7 +474,14 @@
   }
   function removeLayer(){
     ++renderSerial;
+    yearsLoading=false;
     selectedWmu=null;
+    openedFromLookup=false;
+    if(wmuLookup){
+      wmuLookup.hidden=true;
+      wmuQuery.value='';
+      wmuLookupStatus.textContent='';
+    }
     const card=document.getElementById('hs-wmu-card');
     if(card)card.hidden=true;
     const floatingLegend=document.getElementById('hs-metric-legend');
@@ -511,14 +527,36 @@
       found.map(([name,v])=>name.slice(id.length+1)+' mean '+v[1]+
       ' years (n='+v[0]+')').join('; ')+'. Incomplete sample, not herd age.';
   }
-  function displayPopup(event){
-    const id=String(event.feature.getProperty('wmu_id')||event.feature.getProperty('WMUNIT_NUM')||'');
-    if(excludedForSpecies(id))return;
+  function openWmu(id, fromLookup=false){
+    if(!id||excludedForSpecies(id))return;
     selectedWmu=id;
+    openedFromLookup=fromLookup;
+    if(wmuQuery){
+      wmuQuery.value=id;
+      wmuLookupStatus.textContent='';
+    }
     refreshStyle();
     renderWmuCard(id);
     chartYear=null;
     drawTrend();
+    if(fromLookup)document.getElementById('hs-wmu-title')?.focus();
+  }
+  function displayPopup(event){
+    openWmu(String(event.feature.getProperty('wmu_id')||event.feature.getProperty('WMUNIT_NUM')||''));
+  }
+  function populateWmuLookup(collection){
+    if(!wmuLookup)return;
+    const ids=collection.features
+      .map(feature=>String(feature.properties.wmu_id||feature.properties.WMUNIT_NUM))
+      .filter(id=>!excludedForSpecies(id))
+      .sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+    lookupIds=new Set(ids);
+    document.getElementById('hs-wmu-options').replaceChildren(...ids.map(id=>{
+      const option=document.createElement('option');
+      option.value=id;
+      return option;
+    }));
+    wmuLookup.hidden=false;
   }
   function renderWmuCard(id){
     const s=unitStats(id);
@@ -669,6 +707,8 @@
   async function draw(){
     if(!enabled||!active()||!context.getMap()||layer)return;
     const generation=++renderSerial;
+    yearsLoading=!!code()&&huntMode()!=='gos';
+    syncYearControls();
     setDetail('Loading official BC WMU harvest data…');
     try{
       const targetCode=code();
@@ -688,6 +728,7 @@
         [loadOfficial(),loadHistory(targetCode),fetchBoundaries(),loadInspections().catch(e=>console.warn('Optional inspection evidence unavailable',e))]);
       if(generation!==renderSerial||!enabled||!active()||code()!==targetCode)return;
       resetStats();
+      yearsLoading=false;
       syncYearControls();
       updateMetricControls();
       if(isSheep())void loadAge();
@@ -702,11 +743,13 @@
       layer=new google.maps.Data({map:context.getMap()});
       layer.addGeoJson(collection);
       layer.addListener('click',displayPopup);
+      populateWmuLookup(collection);
       refreshStyle();
       legend.hidden=false;updateMetricControls();setDetail(summary());
       restoreUnitAfterModeSwitch();
     }catch(e){
       if(generation===renderSerial){
+        yearsLoading=false;
         enabled=false;updateButton();legend.hidden=true;period.hidden=true;
         syncYearControls();
         setDetail(e?.message||'Hunter success unavailable.');
@@ -732,9 +775,12 @@
       history=historyByCode.get(code())||null;
       resetStats();
     }
-    updateButton();syncYearControls();
+    updateButton();
     if(enabled&&!layer)void draw();
-    else if(enabled)updateMetricControls();
+    else{
+      syncYearControls();
+      if(enabled)updateMetricControls();
+    }
   }
   function exitSuccess(silent=false){
     if(!enabled)return;
@@ -747,15 +793,15 @@
     // The active mode tab should remain a mode tab; reporting years have their
     // own visible control and should not open when Success is clicked again.
     if(enabled)return;
-    enabled=true;updateButton();syncYearControls();
+    enabled=true;updateButton();
     period.hidden=false;legend.hidden=false;
     return context.onModeChange();
   });
   function changePeriod(){
     selectedWmu=null;removeLayer();resetStats();
     storage()?.setItem('hs-success-period',period.value);
-    syncYearControls();
     if(enabled)void draw();
+    else syncYearControls();
   }
   period.addEventListener('change',changePeriod);
   document.querySelectorAll?.('[data-hs-metric]')?.forEach(button=>button.addEventListener('click',()=>{
@@ -772,9 +818,26 @@
     control.classList.toggle('is-open');
   });
   document.getElementById('hs-year-close')?.addEventListener('click',()=>control.classList.remove('is-open'));
+  wmuLookup?.addEventListener('submit',event=>{
+    event.preventDefault();
+    const id=wmuQuery.value.trim().replace(/^WMU\s*/i,'').replace(/\s*[-–]\s*/,'-').replace(/-0+(?=\d)/,'-');
+    if(!lookupIds.has(id)){
+      wmuLookupStatus.textContent='No matching WMU for this map.';
+      return;
+    }
+    openWmu(id,true);
+  });
+  wmuQuery?.addEventListener('input',()=>{wmuLookupStatus.textContent='';});
   document.getElementById('hs-wmu-close')?.addEventListener('click',()=>{
     selectedWmu=null;const card=document.getElementById('hs-wmu-card');
-    if(card)card.hidden=true;refreshStyle();
+    if(card)card.hidden=true;
+    if(wmuLookup){
+      wmuQuery.value='';
+      wmuLookupStatus.textContent='';
+      if(openedFromLookup)wmuQuery.focus();
+    }
+    openedFromLookup=false;
+    refreshStyle();
   });
   document.querySelectorAll?.('[data-hs-period]').forEach(button=>button.addEventListener('click',()=>{
     period.value=button.dataset.hsPeriod;
