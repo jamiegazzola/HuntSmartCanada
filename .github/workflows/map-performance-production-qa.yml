@@ -33,14 +33,19 @@ jobs:
       - name: Validate vector-tile progressive map on production
         env:
           URL: https://huntsmartcanada.ca/
-          EXPECTED_VECTOR_VERSION: 2026-10-28-vector-v2
-          EXPECTED_TILE_VERSION: 20261122-v4
         run: |
           node <<'NODE'
           const { chromium } = require('playwright');
+          const { readFileSync } = require('node:fs');
           const assert = (value, message) => { if (!value) throw new Error(message); };
-          const expectedVector = process.env.EXPECTED_VECTOR_VERSION;
-          const expectedTiles = process.env.EXPECTED_TILE_VERSION;
+          const tileBuild = readFileSync('build-wmu-vector-tiles.mjs', 'utf8');
+          const expectedVector = tileBuild.match(/^const RUNTIME_VERSION = '([^']+)';$/m)?.[1];
+          const expectedTiles = tileBuild.match(/^const TILE_VERSION = '([^']+)';$/m)?.[1];
+          assert(expectedVector && expectedTiles, 'Vector versions are missing from the tile build');
+          const expectedVersions = { version:expectedVector, tileVersion:expectedTiles };
+          const hasExpectedVersions = ({ version, tileVersion }) =>
+            window.__HS_WMU_VECTOR_TILES__?.version === version &&
+            window.__HS_WMU_VECTOR_TILES__?.tileVersion === tileVersion;
           const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
           async function waitForDeployment(browser) {
@@ -49,11 +54,9 @@ jobs:
               const page = await browser.newPage({ viewport: { width:390, height:844 }, hasTouch:true });
               try {
                 await page.goto(`${process.env.URL}?vector-deploy=${Date.now()}-${i}`, { waitUntil:'commit', timeout:30000 });
-                await page.waitForFunction(v => window.__HS_WMU_VECTOR_TILES__?.version === v, expectedVector, { timeout:15000 });
-                const got = await page.evaluate(() => window.__HS_WMU_VECTOR_TILES__?.version || '');
-                last = got;
+                await page.waitForFunction(hasExpectedVersions, expectedVersions, { timeout:15000 });
                 await page.close();
-                if (got === expectedVector) return;
+                return;
               } catch (error) {
                 last = error.message;
                 await page.close().catch(()=>{});
@@ -77,7 +80,7 @@ jobs:
             page.on('pageerror', error => pageErrors.push(error.message));
 
             await page.goto(`${process.env.URL}?vector-map-qa=${Date.now()}`, { waitUntil:'commit', timeout:30000 });
-            await page.waitForFunction(v => window.__HS_WMU_VECTOR_TILES__?.version === v, expectedVector, { timeout:30000 });
+            await page.waitForFunction(hasExpectedVersions, expectedVersions, { timeout:30000 });
             await page.waitForLoadState('domcontentloaded', { timeout:30000 }).catch(()=>{});
             await page.waitForTimeout(400);
 
