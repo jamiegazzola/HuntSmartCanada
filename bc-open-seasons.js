@@ -2289,16 +2289,12 @@ function osInitMap() {
   const el = document.getElementById('osMap');
   if (!el) return;
   const token = (typeof MAPBOX_TOKEN !== 'undefined') ? MAPBOX_TOKEN : '';
-  if (!token || !window.mapboxgl) {
-    el.innerHTML = '<div class="os-map-error">Mapbox is unavailable. Check config.js and Mapbox GL loading.</div>';
-    return;
-  }
+  if (!token || !window.mapboxgl) throw new Error('Mapbox is unavailable');
   const wmuGeo = osGetWMUGeoJSON();
   const regGeo = osGetRegionGeoJSON();
-  if (!wmuGeo) { el.innerHTML = '<div class="os-map-error">BC WMU layer missing.</div>'; return; }
-  osMapInitialized = true;
+  if (!wmuGeo) throw new Error('BC WMU layer missing');
   mapboxgl.accessToken = token;
-  osMapInstance = new mapboxgl.Map({
+  const map = new mapboxgl.Map({
     container: 'osMap',
     style: OS_MAP_STYLES[osMapStyle] || OS_MAP_STYLES.streets,
     center: [-126.3, 54.4],
@@ -2308,13 +2304,20 @@ function osInitMap() {
     projection: 'mercator',
     attributionControl: true
   });
-  osMapInstance.addControl(new mapboxgl.ScaleControl(), 'bottom-left');
-  osMapInstance.on('load', () => {
+  map.addControl(new mapboxgl.ScaleControl(), 'bottom-left');
+  osMapInstance = map;
+  osMapInitialized = true;
+  watchHuntMapStartup(map, 'osMapLoading', OS_WMU_FILL, () => osMapInstance === map, () => {
+    map.remove();
+    osMapInstance = null;
+    osMapInitialized = false;
+  });
+  map.on('load', () => {
     osAddMapLayers(wmuGeo, regGeo);
     osRefreshMapStates();
     osFitBC(false);
   });
-  osMapInstance.on('error', e => console.warn('[Open Seasons map]', e.error || e));
+  map.on('error', e => console.warn('[Open Seasons map]', e.error || e));
 }
 
 function osRefreshMapStates() {

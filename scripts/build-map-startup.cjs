@@ -16,7 +16,7 @@ source = source.replace(/https:\/\/raw\.githubusercontent\.com\/jamiegazzola\/Hu
 fs.writeFileSync(file, source);
 let html = fs.readFileSync('site/index.html','utf8');
 // Content-version changed startup scripts so the PWA and browser revalidate them.
-for (const name of ['data.js','maps.js','map-vector-runtime.js','map-prewarm-runtime.js']) {
+for (const name of ['data.js','maps.js','bc-open-seasons.js','map-performance-runtime.js','map-vector-runtime.js','map-prewarm-runtime.js']) {
   const hash = crypto.createHash('sha256').update(fs.readFileSync('site/'+name)).digest('hex').slice(0,16);
   html = html.replace(new RegExp('('+name.replaceAll('.', '\\.')+')(?:\\?[^"\\s<]*)?', 'g'), `$1?v=${hash}`);
 }

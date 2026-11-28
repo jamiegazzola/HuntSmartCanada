@@ -22,6 +22,20 @@
   // Mount the toolbar before moving its existing controls into it.
   species.parentNode.insertBefore(toolbar,species);
   const header=node('div','hs-toolbar-header');
+  const speciesSelect=species.querySelector('select');
+  const selectedSpecies=node('span','hs-selected-species');
+  selectedSpecies.setAttribute('aria-hidden','true');
+  species.prepend(selectedSpecies);
+  const provinceStatus=node('div','hs-province-status');
+  provinceStatus.setAttribute('role','status');
+  const refreshSpeciesLabel=()=>{
+    selectedSpecies.textContent=speciesSelect.selectedOptions[0]?.textContent||'';
+  };
+  refreshSpeciesLabel();
+  speciesSelect.addEventListener('change',()=>{
+    refreshSpeciesLabel();
+    provinceStatus.textContent='';
+  });
   const modes=node('div','hs-toolbar-modes');
   const provinceWrap=node('div','hs-province-wrap');
   const provinceToggle=node('button','hs-province-toggle','BC');
@@ -57,7 +71,7 @@
   // Preserve the existing mode buttons and their event listeners.
   era.appendChild(success);
   modes.append(era,settingsWrap);
-  toolbar.append(header,modes);
+  toolbar.append(header,modes,provinceStatus);
   const sheepFilterRow=document.getElementById('hs-sheep-filter-row');
   if(sheepFilterRow)toolbar.append(sheepFilterRow);
   // Keep metric and reporting years together under the map modes; the years
@@ -70,9 +84,11 @@
     const successTools=node('div','hs-success-tools');
     successTools.setAttribute('role','group');
     successTools.setAttribute('aria-label','Hunter success map settings');
-    successTools.append(metricSwitch,yearTrigger);
+    const yearStatus=document.getElementById('hs-year-status');
+    const lookup=document.getElementById('hs-wmu-lookup');
+    successTools.append(metricSwitch,yearTrigger,yearStatus,lookup);
     metricHead?.remove();
-    toolbar.append(successTools);
+    toolbar.append(successTools,yearPanel);
     yearTrigger.setAttribute('aria-expanded','false');
     const closeYears=()=>{
       yearPanel.classList.remove('is-open');
@@ -105,11 +121,14 @@
   provinceToggle.addEventListener('click',()=>{
     const next=current()==='BC'?'province-alberta':'province-bc';
     document.getElementById(next)?.click();
-    refreshProvince();
     settings.hidden=true;settingsToggle.setAttribute('aria-expanded','false');
   });
   for(const id of ['province-bc','province-alberta']){
-    document.getElementById(id)?.addEventListener('click',refreshProvince);
+    document.getElementById(id)?.addEventListener('click',()=>{
+      refreshProvince();
+      refreshSpeciesLabel();
+      provinceStatus.textContent=current()==='AB'?'Switched to Alberta.':'Switched to British Columbia.';
+    });
   }
   settingsToggle.addEventListener('click',()=>{
     const expanded=settings.hidden;
