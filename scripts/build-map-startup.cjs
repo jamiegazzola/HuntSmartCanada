@@ -21,6 +21,6 @@ for (const name of ['data.js','maps.js','bc-open-seasons.js','map-performance-ru
   html = html.replace(new RegExp('('+name.replaceAll('.', '\\.')+')(?:\\?[^"\\s<]*)?', 'g'), `$1?v=${hash}`);
 }
 const drawUrl = source.match(/const DATA_URL = '([^']+)'/)[1];
-html = html.replace('</head>', `<meta name="huntsmart-startup-commit" content="${process.env.COMMIT_REF || 'local'}">\n<link rel="preload" as="fetch" crossorigin href="${drawUrl}">\n<link rel="preload" as="fetch" crossorigin href="/map-tiles/20261122-v4/manifest.json?v=2026-10-28-vector-v2">\n</head>`);
+html = html.replace('</head>', `<meta name="huntsmart-startup-commit" content="${process.env.COMMIT_REF || 'local'}">\n<link rel="preload" as="fetch" crossorigin href="${drawUrl}">\n<link rel="preload" as="fetch" crossorigin href="/map-tiles/20261128-v5/manifest.json?v=2026-10-28-vector-v2">\n</head>`);
 fs.writeFileSync('site/index.html',html);
 console.log('Map startup: deployed, compact, content-versioned draw data and early manifest fetch.');

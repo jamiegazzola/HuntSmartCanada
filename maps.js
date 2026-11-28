@@ -758,11 +758,11 @@ function watchHuntMapStartup(map, statusId, layerId, isCurrent, reset) {
     setHuntMapStatus(statusId, 'error', 'The map did not finish loading.');
   }, 18000);
   map.once('remove', () => clearTimeout(timeout));
-  map.on('idle', ready);
+  map.on('render', ready);
   function ready() {
     if (!isCurrent() || !map.getLayer(layerId)) return;
     clearTimeout(timeout);
-    map.off('idle', ready);
+    map.off('render', ready);
     setHuntMapStatus(statusId, 'ready');
   }
 }

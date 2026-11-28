@@ -6,7 +6,7 @@
   'use strict';
 
   const VERSION = '2026-10-28-vector-v2';
-  const TILE_VERSION = '20261122-v4';
+  const TILE_VERSION = '20261128-v5';
   const BASE = `/map-tiles/${TILE_VERSION}`;
   const BOUNDS = {
     BC: [-139.3, 48.1, -113.8, 60.2],
